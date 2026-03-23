@@ -24,6 +24,32 @@ export class PaiementsController {
         return this.paiementsService.findAll();
     }
 
+    @Get('suivi')
+    @ApiOperation({ summary: 'Suivi consolidé des paiements (Payé/Partiel/Impayé)' })
+    getSuivi(@Request() req) {
+        return this.paiementsService.getSuiviPaiements(req.query, req.user);
+    }
+
+    // ── Routes with specific prefixes MUST be declared BEFORE :id ──
+
+    @Get('facture/:id')
+    @ApiOperation({ summary: 'Historique des paiements d\'une facture' })
+    findByFacture(@Param('id') id: string) {
+        return this.paiementsService.findByFacture(+id);
+    }
+
+    @Get('calculate/:refColis')
+    @ApiOperation({ summary: 'Calculer le restant à payer pour un colis' })
+    calculateRestant(@Param('refColis') refColis: string) {
+        return this.paiementsService.calculateRestantAPayer(refColis);
+    }
+
+    @Get('colis/:refColis')
+    @ApiOperation({ summary: 'Historique des paiements d\'un colis' })
+    findByColis(@Param('refColis') refColis: string) {
+        return this.paiementsService.findByColis(refColis);
+    }
+
     @Get(':id')
     @ApiOperation({ summary: 'Détails d\'un paiement' })
     findOne(@Param('id') id: string) {
@@ -40,12 +66,6 @@ export class PaiementsController {
             'Content-Length': buffer.length,
         });
         res.end(buffer);
-    }
-
-    @Get('facture/:id')
-    @ApiOperation({ summary: 'Historique des paiements d\'une facture' })
-    findByFacture(@Param('id') id: string) {
-        return this.paiementsService.findByFacture(+id);
     }
 
     @Patch(':id/cancel')

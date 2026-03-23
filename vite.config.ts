@@ -9,10 +9,7 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [
-      react({
-        // Babel fast-refresh optimisé
-        fastRefresh: true,
-      }),
+      react(),
 
       // Split vendor chunks automatiquement (vite built-in)
       splitVendorChunkPlugin(),
@@ -287,6 +284,7 @@ export default defineConfig(({ mode }) => {
     ═══════════════════════════════════════ */
     server: {
       port: 5173,
+      host: '0.0.0.0', // Écoute sur toutes les interfaces (Wi-Fi inclus) pour scanner QR depuis un téléphone
       strictPort: false,
       // Proxy API en dev pour éviter les CORS
       proxy: {

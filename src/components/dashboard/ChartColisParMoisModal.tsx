@@ -1,12 +1,12 @@
 import React, { useState, useRef } from 'react'
 import { Modal, Typography, Table, Tag, Card, Row, Col, Statistic, Alert, Divider, Button, Space, message } from 'antd'
-import { 
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, 
-  ResponsiveContainer, Area, AreaChart, Cell 
+import {
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
+  ResponsiveContainer, Area, AreaChart, Cell
 } from 'recharts'
-import { 
-  WarningOutlined, ArrowDownOutlined, ArrowUpOutlined, 
-  DollarOutlined, InboxOutlined, FilePdfOutlined, FileExcelOutlined 
+import {
+  WarningOutlined, ArrowDownOutlined, ArrowUpOutlined,
+  DollarOutlined, InboxOutlined, FilePdfOutlined, FileExcelOutlined
 } from '@ant-design/icons'
 import { formatMontantWithDevise } from '@utils/format'
 import { exportChartToPDF, exportTableToExcel, exportMultiSheetToExcel } from '@utils/export'
@@ -43,16 +43,16 @@ interface ChartColisParMoisModalProps {
 // Fonction pour analyser les chutes dans les données
 const analyzeDrops = (data: ChartData[]): DropAnalysis[] => {
   const drops: DropAnalysis[] = []
-  
+
   for (let i = 1; i < data.length; i++) {
     const prev = data[i - 1]
     const current = data[i]
-    
+
     // Analyser Groupage
     if (current.groupage < prev.groupage) {
       const baisse = prev.groupage - current.groupage
       const pourcentageBaisse = (baisse / prev.groupage) * 100
-      
+
       drops.push({
         mois: current.mois,
         type: 'groupage',
@@ -65,12 +65,12 @@ const analyzeDrops = (data: ChartData[]): DropAnalysis[] => {
         revenus: calculateRevenus(baisse),
       })
     }
-    
+
     // Analyser Autres Envois
     if (current.autresEnvois < prev.autresEnvois) {
       const baisse = prev.autresEnvois - current.autresEnvois
       const pourcentageBaisse = (baisse / prev.autresEnvois) * 100
-      
+
       drops.push({
         mois: current.mois,
         type: 'autresEnvois',
@@ -83,12 +83,12 @@ const analyzeDrops = (data: ChartData[]): DropAnalysis[] => {
         revenus: calculateRevenus(baisse),
       })
     }
-    
+
     // Analyser Total
     if (current.total < prev.total) {
       const baisse = prev.total - current.total
       const pourcentageBaisse = (baisse / prev.total) * 100
-      
+
       drops.push({
         mois: current.mois,
         type: 'total',
@@ -102,14 +102,14 @@ const analyzeDrops = (data: ChartData[]): DropAnalysis[] => {
       })
     }
   }
-  
+
   return drops
 }
 
 // Générer les causes possibles selon le type et le pourcentage de baisse
 const generateCauses = (type: string, pourcentageBaisse: number): string[] => {
   const causes: string[] = []
-  
+
   if (pourcentageBaisse > 30) {
     causes.push('Baisse significative - Vérifier les problèmes opérationnels majeurs')
     causes.push('Augmentation des coûts de transport')
@@ -122,7 +122,7 @@ const generateCauses = (type: string, pourcentageBaisse: number): string[] => {
     causes.push('Baisse légère - Variation normale')
     causes.push('Ajustement des prix ou des services')
   }
-  
+
   if (type === 'groupage') {
     causes.push('Diminution des volumes de groupage')
     causes.push('Problèmes de consolidation')
@@ -130,7 +130,7 @@ const generateCauses = (type: string, pourcentageBaisse: number): string[] => {
     causes.push('Diminution des envois express')
     causes.push('Changement de stratégie client')
   }
-  
+
   return causes
 }
 
@@ -157,9 +157,9 @@ export const ChartColisParMoisModal: React.FC<ChartColisParMoisModalProps> = ({
   )
   const [exporting, setExporting] = useState(false)
   const chartRef = useRef<HTMLDivElement>(null)
-  
+
   const drops = analyzeDrops(data)
-  const dropsForSelectedMonth = selectedMonth 
+  const dropsForSelectedMonth = selectedMonth
     ? drops.filter(d => d.mois === selectedMonth)
     : drops
 
@@ -190,7 +190,7 @@ export const ChartColisParMoisModal: React.FC<ChartColisParMoisModalProps> = ({
         headers: ['Mois', 'Groupage', 'Autres Envois', 'Total'],
         rows: data.map(d => [d.mois, d.groupage, d.autresEnvois, d.total]),
       }
-      
+
       // Si des chutes sont analysées, ajouter une feuille supplémentaire
       if (dropsForSelectedMonth.length > 0) {
         const dropsData = {
@@ -204,7 +204,7 @@ export const ChartColisParMoisModal: React.FC<ChartColisParMoisModalProps> = ({
             `${d.pourcentageBaisse}%`
           ]),
         }
-        
+
         await exportMultiSheetToExcel(
           [
             { name: 'Données Graphique', data: tableData },
@@ -321,16 +321,16 @@ export const ChartColisParMoisModal: React.FC<ChartColisParMoisModalProps> = ({
       footer={
         <Space>
           <Button onClick={onClose}>Fermer</Button>
-          <Button 
-            icon={<FilePdfOutlined />} 
+          <Button
+            icon={<FilePdfOutlined />}
             onClick={handleExportPDF}
             loading={exporting}
           >
             Exporter PDF
           </Button>
-          <Button 
+          <Button
             type="primary"
-            icon={<FileExcelOutlined />} 
+            icon={<FileExcelOutlined />}
             onClick={handleExportExcel}
             loading={exporting}
           >
@@ -345,64 +345,64 @@ export const ChartColisParMoisModal: React.FC<ChartColisParMoisModalProps> = ({
         <Card title="Graphique Détaillé" style={{ marginBottom: 24 }}>
           <div ref={chartRef}>
             <ResponsiveContainer width="100%" height={400}>
-            <AreaChart data={data} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-              <defs>
-                <linearGradient id="colorGroupage" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#667eea" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="#667eea" stopOpacity={0} />
-                </linearGradient>
-                <linearGradient id="colorAutres" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-                </linearGradient>
-                <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" opacity={0.5} />
-              <XAxis dataKey="mois" stroke="#9ca3af" />
-              <YAxis stroke="#9ca3af" />
-              <Tooltip />
-              <Legend />
-              <Area
-                type="monotone"
-                dataKey="groupage"
-                stroke="#667eea"
-                strokeWidth={3}
-                fill="url(#colorGroupage)"
-                name="Groupage"
-                dot={{ fill: '#667eea', strokeWidth: 2, r: 5 }}
-                activeDot={{ r: 8, onClick: (e: any) => setSelectedMonth(e.payload.mois) }}
-              />
-              <Area
-                type="monotone"
-                dataKey="autresEnvois"
-                stroke="#10b981"
-                strokeWidth={3}
-                fill="url(#colorAutres)"
-                name="Autres Envois"
-                dot={{ fill: '#10b981', strokeWidth: 2, r: 5 }}
-                activeDot={{ r: 8, onClick: (e: any) => setSelectedMonth(e.payload.mois) }}
-              />
-              <Area
-                type="monotone"
-                dataKey="total"
-                stroke="#f59e0b"
-                strokeWidth={3}
-                fill="url(#colorTotal)"
-                name="Total"
-                dot={{ fill: '#f59e0b', strokeWidth: 2, r: 5 }}
-                activeDot={{ r: 8, onClick: (e: any) => setSelectedMonth(e.payload.mois) }}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
+              <AreaChart data={data} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="colorGroupage" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#667eea" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#667eea" stopOpacity={0} />
+                  </linearGradient>
+                  <linearGradient id="colorAutres" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                  </linearGradient>
+                  <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" opacity={0.5} />
+                <XAxis dataKey="mois" stroke="#9ca3af" />
+                <YAxis stroke="#9ca3af" />
+                <Tooltip />
+                <Legend />
+                <Area
+                  type="monotone"
+                  dataKey="groupage"
+                  stroke="#667eea"
+                  strokeWidth={3}
+                  fill="url(#colorGroupage)"
+                  name="Groupage"
+                  dot={{ fill: '#667eea', strokeWidth: 2, r: 5 }}
+                  activeDot={{ r: 8, onClick: (e: any) => setSelectedMonth(e.payload.mois) }}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="autresEnvois"
+                  stroke="#10b981"
+                  strokeWidth={3}
+                  fill="url(#colorAutres)"
+                  name="Autres Envois"
+                  dot={{ fill: '#10b981', strokeWidth: 2, r: 5 }}
+                  activeDot={{ r: 8, onClick: (e: any) => setSelectedMonth(e.payload.mois) }}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="total"
+                  stroke="#f59e0b"
+                  strokeWidth={3}
+                  fill="url(#colorTotal)"
+                  name="Total"
+                  dot={{ fill: '#f59e0b', strokeWidth: 2, r: 5 }}
+                  activeDot={{ r: 8, onClick: (e: any) => setSelectedMonth(e.payload.mois) }}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
           </div>
         </Card>
 
         {/* Analyse des chutes */}
         {dropsForSelectedMonth.length > 0 && (
-          <Card 
+          <Card
             title={
               <div>
                 <WarningOutlined style={{ color: '#ff4d4f', marginRight: 8 }} />
@@ -414,13 +414,13 @@ export const ChartColisParMoisModal: React.FC<ChartColisParMoisModalProps> = ({
             <Table
               dataSource={dropsForSelectedMonth}
               columns={columns}
-              rowKey={(record, index) => `${record.mois}-${record.type}-${index}`}
+              rowKey={(record: any, index: number) => `${record.mois}-${record.type}-${index}`}
               pagination={false}
               size="small"
             />
-            
+
             <Divider />
-            
+
             {/* Détails des causes et impacts financiers */}
             {dropsForSelectedMonth.map((drop, index) => (
               <Card
@@ -435,7 +435,7 @@ export const ChartColisParMoisModal: React.FC<ChartColisParMoisModalProps> = ({
                       title="Revenus Perdus"
                       value={drop.revenus || 0}
                       prefix={<DollarOutlined />}
-                      formatter={(value) => formatMontantWithDevise(Number(value))}
+                      formatter={(value: any) => formatMontantWithDevise(Number(value))}
                       valueStyle={{ color: '#ff4d4f' }}
                     />
                   </Col>
@@ -444,14 +444,14 @@ export const ChartColisParMoisModal: React.FC<ChartColisParMoisModalProps> = ({
                       title="Impact sur les Dépenses"
                       value={drop.depenses || 0}
                       prefix={<DollarOutlined />}
-                      formatter={(value) => formatMontantWithDevise(Number(value))}
+                      formatter={(value: any) => formatMontantWithDevise(Number(value))}
                       valueStyle={{ color: '#faad14' }}
                     />
                   </Col>
                 </Row>
-                
+
                 <Divider style={{ margin: '16px 0' }} />
-                
+
                 <div>
                   <Text strong>Causes Probables :</Text>
                   <ul style={{ marginTop: 8, marginBottom: 0 }}>
@@ -462,7 +462,7 @@ export const ChartColisParMoisModal: React.FC<ChartColisParMoisModalProps> = ({
                     ))}
                   </ul>
                 </div>
-                
+
                 {drop.pourcentageBaisse > 20 && (
                   <Alert
                     message="Attention : Baisse significative détectée"

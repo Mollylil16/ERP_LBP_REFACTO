@@ -27,4 +27,10 @@ export class DashboardController {
     getPointCaisse(@Query('date') date?: string) {
         return this.dashboardService.getPointCaisse(date);
     }
+
+    @Get('agencies-performances')
+    @ApiOperation({ summary: 'Performance journalière par agence (Directeur)' })
+    getAgenciesPerformances(@Query('date') date?: string) {
+        return this.dashboardService.getAgenciesPerformances(date);
+    }
 }

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { useParams } from 'react-router-dom'
 import { Card, Input, Button, Typography, Space, Timeline, Empty, Descriptions, Tag, Divider, Alert } from 'antd'
 import { SearchOutlined, EnvironmentOutlined, GlobalOutlined } from '@ant-design/icons'
 import { colisService, ColisTrackingInfo } from '@services/colis.service'
@@ -44,15 +45,25 @@ export const TrackPage: React.FC = () => {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Auto-search if ref is in URL (future improvement)
+  const { ref: pathRef } = useParams<{ ref: string }>()
+
+  // Auto-search if ref is in URL (params or path)
   useEffect(() => {
+    // 1. Check path params (for HashRouter /#/track/REF)
+    if (pathRef) {
+      setTrackingCode(pathRef)
+      handleSearch(pathRef)
+      return
+    }
+
+    // 2. Fallback to query params (?ref=REF)
     const params = new URLSearchParams(window.location.search)
     const ref = params.get('ref')
     if (ref) {
       setTrackingCode(ref)
       handleSearch(ref)
     }
-  }, [])
+  }, [pathRef])
 
   const handleSearch = async (value: string) => {
     if (!value) return

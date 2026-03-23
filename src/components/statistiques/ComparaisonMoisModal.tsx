@@ -4,6 +4,7 @@ import {
   ArrowUpOutlined, ArrowDownOutlined, DollarOutlined,
   InboxOutlined, TrophyOutlined, WarningOutlined
 } from '@ant-design/icons'
+type RangePickerProps = any;
 import { DonneesAnnuelles } from '@services/statistiques.service'
 import { formatMontantWithDevise } from '@utils/format'
 import './ComparaisonMoisModal.css'

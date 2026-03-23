@@ -1,6 +1,22 @@
 import { FactureColis, Colis, PaginatedResponse, PaginationParams } from '@types'
 import { apiService } from './api.service'
 
+function adaptFactureFromBackend(backendFacture: any): FactureColis {
+  return {
+    id: backendFacture.id,
+    num_facture: backendFacture.num_facture,
+    montant_ttc: Number(backendFacture.montant_ttc || 0),
+    montant_paye: Number(backendFacture.montant_paye || 0),
+    id_colis: backendFacture.colis?.id,
+    colis: backendFacture.colis,
+    ref_colis: backendFacture.colis?.ref_colis || '',
+    code_user: backendFacture.code_user || '',
+    etat: backendFacture.etat,
+    // Fallback pour la date au cas où le champ changerait de nom (serialization)
+    date_facture: backendFacture.date_facture || backendFacture.dateFacture || backendFacture.created_at,
+  }
+}
+
 class FacturesService {
   /**
    * Récupérer la liste des factures
@@ -15,42 +31,64 @@ class FacturesService {
     if (params?.limit) queryParams.append('limit', params.limit.toString())
     if (params?.search) queryParams.append('search', params.search)
 
-    return apiService.get<PaginatedResponse<FactureColis>>(`/factures?${queryParams.toString()}`)
+    const response = await apiService.get<any>(`/factures?${queryParams.toString()}`)
+
+    // Si c'est un tableau simple (backend sans pagination)
+    if (Array.isArray(response)) {
+      return {
+        data: response.map(adaptFactureFromBackend),
+        total: response.length,
+        page: params?.page || 1,
+        limit: params?.limit || response.length,
+        total_pages: 1
+      }
+    }
+
+    // Si c'est une PaginatedResponse
+    return {
+      ...response,
+      data: (response.data || []).map(adaptFactureFromBackend)
+    }
   }
 
   /**
    * Récupérer une facture par son ID
    */
   async getFactureById(id: number): Promise<FactureColis> {
-    return apiService.get<FactureColis>(`/factures/${id}`)
+    const data = await apiService.get<any>(`/factures/${id}`)
+    return adaptFactureFromBackend(data)
   }
 
   /**
    * Récupérer une facture par numéro
    */
   async getFactureByNum(numFacture: string): Promise<FactureColis> {
-    return apiService.get<FactureColis>(`/factures/num/${numFacture}`)
+    const data = await apiService.get<any>(`/factures/num/${numFacture}`)
+    return adaptFactureFromBackend(data)
   }
 
   /**
    * Récupérer la facture d'un colis
    */
   async getFactureByColis(refColis: string): Promise<FactureColis | null> {
-    return apiService.get<FactureColis | null>(`/factures/colis/${refColis}`)
+    const data = await apiService.get<any | null>(`/factures/colis/${refColis}`)
+    return data ? adaptFactureFromBackend(data) : null
   }
 
   /**
    * Créer une facture proforma pour un colis
    */
   async createFactureProforma(colisId: number): Promise<FactureColis> {
-    return apiService.post<FactureColis>(`/factures/generate/${colisId}`, {})
+    const data = await apiService.post<any>(`/factures/generate/${colisId}`, {})
+    return adaptFactureFromBackend(data)
   }
 
   /**
    * Valider une facture proforma (génère facture définitive)
    */
   async validateFacture(id: number): Promise<FactureColis> {
-    return apiService.patch<FactureColis>(`/factures/${id}/validate`)
+    const data = await apiService.patch<any>(`/factures/${id}/validate`)
+    return adaptFactureFromBackend(data)
   }
 
   /**
@@ -65,24 +103,35 @@ class FacturesService {
    */
   async generatePDF(id: number): Promise<Blob> {
     const response = await apiService.instance.get(`/factures/${id}/pdf`, {
-      responseType: 'blob',
+      responseType: 'arraybuffer', // Plus robuste que 'blob' avec certains axios versions
     })
-    return response.data
+    return new Blob([response.data], { type: 'application/pdf' })
   }
 
   /**
    * Télécharger le PDF d'une facture
    */
   async downloadPDF(id: number, filename?: string): Promise<void> {
-    const blob = await this.generatePDF(id)
-    const url = window.URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = filename || `facture-${id}.pdf`
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    window.URL.revokeObjectURL(url)
+    try {
+      const blob = await this.generatePDF(id)
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.setAttribute('download', filename || `facture-${id}.pdf`)
+
+      // Indispensable pour certains navigateurs
+      document.body.appendChild(link)
+      link.click()
+
+      // Nettoyage avec petit délai
+      setTimeout(() => {
+        document.body.removeChild(link)
+        window.URL.revokeObjectURL(url)
+      }, 100)
+    } catch (error) {
+      console.error('Erreur lors du téléchargement du PDF:', error)
+      throw error
+    }
   }
 
   /**

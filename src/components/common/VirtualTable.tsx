@@ -67,6 +67,7 @@ export interface VirtualTableProps<T> {
   className?: string
   size?: 'small' | 'middle' | 'large'
   bordered?: boolean
+  rowClassName?: string | ((record: T, index: number) => string)
   showHeader?: boolean
   /** Seuil à partir duquel la virtualisation s'active (défaut : 50) */
   virtualThreshold?: number
@@ -98,6 +99,7 @@ export function VirtualTable<T extends object>({
   className = '',
   size,
   bordered,
+  rowClassName,
   showHeader,
   virtualThreshold = VIRTUAL_THRESHOLD,
   scrollY,
@@ -119,14 +121,14 @@ export function VirtualTable<T extends object>({
     pagination === false
       ? (false as const)
       : {
-          showSizeChanger: true,
-          pageSizeOptions: ['20', '50', '100', '200'],
-          showTotal: (total: number) =>
-            `Total : ${total.toLocaleString('fr-FR')} ${totalLabel}`,
-          ...(typeof pagination === 'object' && pagination !== null
-            ? pagination
-            : {}),
-        }
+        showSizeChanger: true,
+        pageSizeOptions: ['20', '50', '100', '200'],
+        showTotal: (total: number) =>
+          `Total : ${total.toLocaleString('fr-FR')} ${totalLabel}`,
+        ...(typeof pagination === 'object' && pagination !== null
+          ? pagination
+          : {}),
+      }
 
   const mergedOnRow = (record: T, index: number) => {
     const base = onRow ? onRow(record, index) : {}
@@ -152,6 +154,7 @@ export function VirtualTable<T extends object>({
         summary={summary}
         size={size}
         bordered={bordered}
+        rowClassName={rowClassName}
         showHeader={showHeader}
         virtual={shouldVirtualize}
         className={`lbp-table ${shouldVirtualize ? 'lbp-table-virtual' : ''} ${className}`}

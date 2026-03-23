@@ -28,13 +28,13 @@ const RentabiliteTarifPage: React.FC = () => {
         }
     }
 
-    const totals = data.reduce(
+    const totals = (data || []).reduce(
         (acc, curr) => ({
-            revenu: acc.revenu + curr.revenu_total,
-            cout: acc.cout + curr.cout_total,
-            charges: acc.charges + curr.charges_totales,
-            benefice: acc.benefice + curr.benefice_total,
-            poids: acc.poids + curr.poids_total,
+            revenu: acc.revenu + (curr.revenu_total || 0),
+            cout: acc.cout + (curr.cout_total || 0),
+            charges: acc.charges + (curr.charges_totales || 0),
+            benefice: acc.benefice + (curr.benefice_total || 0),
+            poids: acc.poids + (curr.poids_total || 0),
         }),
         { revenu: 0, cout: 0, charges: 0, benefice: 0, poids: 0 }
     )
@@ -46,9 +46,9 @@ const RentabiliteTarifPage: React.FC = () => {
             key: 'nom_tarif',
             render: (text: string, record: any) => (
                 <Space direction="vertical" size={0}>
-                    <Text strong>{text}</Text>
+                    <Text strong>{text || '(Sans Nom)'}</Text>
                     <Text type="secondary" style={{ fontSize: '12px' }}>
-                        Base: {record.tarif.toLocaleString()} FCFA
+                        Base: {(record.tarif || 0).toLocaleString()} FCFA
                     </Text>
                 </Space>
             ),
@@ -57,33 +57,34 @@ const RentabiliteTarifPage: React.FC = () => {
             title: 'Poids Total',
             dataIndex: 'poids_total',
             key: 'poids_total',
-            render: (val: number) => `${val.toLocaleString()} kg`,
+            render: (val: number) => `${(val || 0).toLocaleString()} kg`,
         },
         {
             title: 'Montant Encaissé',
             dataIndex: 'revenu_total',
             key: 'revenu_total',
-            render: (val: number) => <Text strong>{val.toLocaleString()} FCFA</Text>,
+            render: (val: number) => <Text strong>{(val || 0).toLocaleString()} FCFA</Text>,
         },
         {
             title: 'Dû Compagnie',
             dataIndex: 'cout_total',
             key: 'cout_total',
-            render: (val: number) => `${val.toLocaleString()} FCFA`,
+            render: (val: number) => `${(val || 0).toLocaleString()} FCFA`,
         },
         {
             title: 'Charges',
             dataIndex: 'charges_totales',
             key: 'charges_totales',
-            render: (val: number) => `${val.toLocaleString()} FCFA`,
+            render: (val: number) => `${(val || 0).toLocaleString()} FCFA`,
         },
         {
             title: 'Bénéfice Net',
             dataIndex: 'benefice_total',
             key: 'benefice_total',
             render: (val: number) => {
-                const color = val > 0 ? 'green' : val < 0 ? 'red' : 'default'
-                return <Tag color={color} style={{ fontWeight: 'bold' }}>{val.toLocaleString()} FCFA</Tag>
+                const safeVal = val || 0
+                const color = safeVal > 0 ? 'green' : safeVal < 0 ? 'red' : 'default'
+                return <Tag color={color} style={{ fontWeight: 'bold' }}>{safeVal.toLocaleString()} FCFA</Tag>
             },
         },
         {

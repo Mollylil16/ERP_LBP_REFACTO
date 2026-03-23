@@ -20,6 +20,7 @@ import { AgencesModule } from './agences/agences.module';
 import { RolesModule } from './roles/roles.module';
 import { PermissionsModule } from './permissions/permissions.module';
 import { ProduitsCatalogueModule } from './produits-catalogue/produits-catalogue.module';
+import { TrackingModule } from './tracking/tracking.module';
 
 @Module({
   imports: [
@@ -79,6 +80,7 @@ import { ProduitsCatalogueModule } from './produits-catalogue/produits-catalogue
     RolesModule,
     PermissionsModule,
     ProduitsCatalogueModule,
+    TrackingModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -13,7 +13,8 @@ import {
   Input,
   Card,
 } from "antd";
-import type { RangePickerProps } from "antd/es/date-picker";
+import type { GetProps } from 'antd';
+type RangePickerProps = GetProps<typeof DatePicker.RangePicker>;
 import type { ChangeEvent } from "react";
 import { EmptyCaisseList } from "@components/common/EmptyState";
 import {

@@ -168,13 +168,13 @@ export const ExpeditionsPage: React.FC = () => {
             </div>
 
             <Table
-              columns={columns}
-              dataSource={expeditions}
-              rowKey="id"
-              loading={loading}
-              locale={{
-                emptyText: <EmptyExpeditionsList onCreateClick={() => setIsModalVisible(true)} />,
-              }}
+                columns={columns}
+                dataSource={expeditions}
+                rowKey="id"
+                loading={loading}
+                locale={{
+                    emptyText: <EmptyExpeditionsList onCreateClick={() => setIsModalVisible(true)} />,
+                }}
             />
 
             <Modal
@@ -223,7 +223,7 @@ export const ExpeditionsPage: React.FC = () => {
                         <Card title="Colis dans ce manifeste">
                             <List
                                 dataSource={selectedExpedition.colis}
-                                renderItem={(item) => (
+                                renderItem={(item: Colis) => (
                                     <List.Item
                                         actions={[
                                             <Button danger size="small" onClick={() => {

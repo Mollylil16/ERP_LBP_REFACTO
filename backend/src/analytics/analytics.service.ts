@@ -185,7 +185,9 @@ export class AnalyticsService {
         if (trend < -15) {
             // IA : Analyse de corrélation pour la cause
             const repartition = await this.getTrafficRepartition();
-            const maritimeTraffic = repartition.find(r => r.name === 'IMPORT_MARITIME' || r.name === 'EXPORT_MARITIME');
+            const maritimeTraffic = repartition.find(r =>
+                r.name?.toUpperCase().includes('MARITIME')
+            );
 
             let cause = 'Baisse de demande globale sur tous les axes.';
             let action = 'ACTIVER PLAN RELANCE : SMS marketing ciblé + Promo -10% pour réactivation.';

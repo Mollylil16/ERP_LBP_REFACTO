@@ -26,7 +26,7 @@ export const FactureGenerator: React.FC<FactureGeneratorProps> = ({ colisId, onS
 
     // Mutation pour générer la facture
     const generateMutation = useMutation({
-        mutationFn: () => facturesService.createFactureProforma(colis?.ref_colis || ''),
+        mutationFn: () => facturesService.createFactureProforma(colisId),
         onSuccess: (facture) => {
             setGeneratedFacture(facture);
             setCurrentStep(2);

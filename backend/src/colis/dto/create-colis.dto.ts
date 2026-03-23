@@ -55,6 +55,17 @@ export class CreateMarchandiseDto {
     @IsOptional()
     @IsNumber({}, { message: 'L\'ID du tarif doit être un nombre' })
     id_tarif?: number;
+
+    @ApiProperty({ example: 'carton', required: false, description: 'Type d\'emballage : carton | sac | valise | bôrô' })
+    @IsOptional()
+    @IsString()
+    type_emballage?: string;
+
+    @ApiProperty({ example: 1, description: 'Nombre d\'emballages utilisés' })
+    @IsNumber({}, { message: 'Le nombre d\'emballage doit être un nombre' })
+    @IsPositive({ message: 'Le nombre d\'emballage doit être positif' })
+    @Min(1, { message: 'Le nombre d\'emballage doit être au minimum 1' })
+    nbre_emballage: number;
 }
 
 export class CreateColisDto {
@@ -110,6 +121,10 @@ export class CreateColisDto {
     @ValidateNested({ each: true })
     @Type(() => CreateMarchandiseDto)
     marchandises: CreateMarchandiseDto[];
+
+    @ApiProperty({ example: false, required: false, description: 'Livraison à domicile demandée' })
+    @IsOptional()
+    livraison?: boolean;
 
     @ApiProperty({ example: 'Marie Durant', required: false })
     @IsOptional()

@@ -25,14 +25,12 @@ export const APP_CONFIG = {
 
   // Options trafic d'envoi
   traficEnvoi: [
-    'Import Aérien',
-    'Import Maritime',
-    'Export Aérien',
-    'Export Maritime',
-    'Colis France -> CI',
-    'Colis Sénégal -> CI',
-    'Colis CI -> France',
-    'Colis CI -> Sénégal',
+    'Groupage Aérien',
+    'Groupage Maritime',
+    'Colis Rapide CI vers FR',
+    'Colis Rapide FR vers CI',
+    'Colis Rapide SEN vers CI',
+    'Colis Rapide CI vers SEN',
   ] as const,
 
   // Modes d'envoi
@@ -56,16 +54,16 @@ export const APP_CONFIG = {
 
   // Modes de paiement
   modesPaiement: [
-    { value: 'especes',  label: 'Espèces',        color: 'green'    },
-    { value: 'wave',     label: 'Wave',            color: 'blue'     },
-    { value: 'om',       label: 'Orange Money',    color: 'orange'   },
-    { value: 'comptant', label: 'Comptant',        color: 'cyan'     },
-    { value: 'cheque',   label: 'Chèque',          color: 'purple'   },
-    { value: 'virement', label: 'Virement',        color: 'geekblue' },
-    { value: '30j',      label: 'Crédit 30 jours', color: 'gold'     },
-    { value: '45j',      label: 'Crédit 45 jours', color: 'gold'     },
-    { value: '60j',      label: 'Crédit 60 jours', color: 'gold'     },
-    { value: '90j',      label: 'Crédit 90 jours', color: 'gold'     },
+    { value: 'especes', label: 'Espèces', color: 'green' },
+    { value: 'wave', label: 'Wave', color: 'blue' },
+    { value: 'om', label: 'Orange Money', color: 'orange' },
+    { value: 'comptant', label: 'Comptant', color: 'cyan' },
+    { value: 'cheque', label: 'Chèque', color: 'purple' },
+    { value: 'virement', label: 'Virement', color: 'geekblue' },
+    { value: '30j', label: 'Crédit 30 jours', color: 'gold' },
+    { value: '45j', label: 'Crédit 45 jours', color: 'gold' },
+    { value: '60j', label: 'Crédit 60 jours', color: 'gold' },
+    { value: '90j', label: 'Crédit 90 jours', color: 'gold' },
   ],
 
   // Devise

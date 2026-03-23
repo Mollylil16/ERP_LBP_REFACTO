@@ -1,8 +1,19 @@
-import { Controller, Get, Post, Body, Param, Put, Delete, UseGuards } from '@nestjs/common';
+import {
+    Controller, Get, Post, Body, Param, Put, Delete, Patch,
+    UseGuards, Request, ForbiddenException, ParseIntPipe,
+} from '@nestjs/common';
 import { AgencesService } from './agences.service';
-import { Agence } from './entities/agence.entity';
+import type { CreateAgenceDto } from './agences.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { UserRole } from '../users/entities/user.entity';
+
+function assertAdminOrDG(req: any) {
+    const role = req.user?.role;
+    if (role !== UserRole.DIRECTEUR && role !== UserRole.ADMIN) {
+        throw new ForbiddenException('Accès réservé au Directeur ou au Superadmin');
+    }
+}
 
 @ApiTags('Agences')
 @ApiBearerAuth()
@@ -12,32 +23,47 @@ export class AgencesController {
     constructor(private readonly agencesService: AgencesService) { }
 
     @Get()
-    @ApiOperation({ summary: 'Récupérer toutes les agences actives' })
+    @ApiOperation({ summary: 'Toutes les agences actives (accessible à tous)' })
     findAll() {
         return this.agencesService.findAll();
     }
 
+    @Get('stats')
+    @ApiOperation({ summary: 'Stats agences : classement par activité (admin/DG)' })
+    getStats(@Request() req: any) {
+        // Accessible aussi au directeur pour le dashboard
+        return this.agencesService.getStats();
+    }
+
     @Get(':id')
-    @ApiOperation({ summary: 'Récupérer une agence par son ID' })
-    findOne(@Param('id') id: string) {
-        return this.agencesService.findOne(+id);
+    @ApiOperation({ summary: 'Détail d\'une agence' })
+    findOne(@Param('id', ParseIntPipe) id: number) {
+        return this.agencesService.findOne(id);
     }
 
     @Post()
-    @ApiOperation({ summary: 'Créer une nouvelle agence' })
-    create(@Body() agenceData: Partial<Agence>) {
-        return this.agencesService.create(agenceData);
+    @ApiOperation({ summary: 'Créer une agence (admin/DG)' })
+    create(@Body() dto: CreateAgenceDto, @Request() req: any) {
+        assertAdminOrDG(req);
+        return this.agencesService.create(dto);
     }
 
     @Put(':id')
-    @ApiOperation({ summary: 'Modifier une agence' })
-    update(@Param('id') id: string, @Body() agenceData: Partial<Agence>) {
-        return this.agencesService.update(+id, agenceData);
+    @Patch(':id')
+    @ApiOperation({ summary: 'Modifier une agence (admin/DG)' })
+    update(
+        @Param('id', ParseIntPipe) id: number,
+        @Body() dto: Partial<CreateAgenceDto>,
+        @Request() req: any,
+    ) {
+        assertAdminOrDG(req);
+        return this.agencesService.update(id, dto);
     }
 
     @Delete(':id')
-    @ApiOperation({ summary: 'Désactiver une agence' })
-    remove(@Param('id') id: string) {
-        return this.agencesService.remove(+id);
+    @ApiOperation({ summary: 'Désactiver une agence (admin/DG)' })
+    remove(@Param('id', ParseIntPipe) id: number, @Request() req: any) {
+        assertAdminOrDG(req);
+        return this.agencesService.remove(id);
     }
 }

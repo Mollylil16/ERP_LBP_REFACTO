@@ -2,103 +2,106 @@ import { User } from '@types'
 import { apiService } from './api.service'
 
 class UsersService {
+  /** Créer un utilisateur (admin/DG) */
   async create(data: {
     username: string
-    full_name: string
-    email?: string
-    phone?: string
+    nom_complet: string
     role: string
-    status: string
     password?: string
-  }): Promise<User> {
-    return apiService.post<User>('/users', {
-      username: data.username,
-      fullname: data.full_name,
-      email: data.email,
-      phone: data.phone,
-      role: data.role,
-      isActive: data.status === 'active',
-      password: data.password || 'ChangeMe123!',
-    })
-  }
-
-  async update(id: number, data: {
-    username?: string
-    full_name?: string
-    email?: string
+    agence_id?: number
     phone?: string
-    role?: string
-    status?: string
+    email?: string
   }): Promise<User> {
-    return apiService.patch<User>(`/users/${id}`, {
-      fullname: data.full_name,
-      email: data.email,
-      phone: data.phone,
-      role: data.role,
-      isActive: data.status === 'active',
-    })
+    return apiService.post<User>('/users', data)
   }
 
+  /** Mettre à jour un utilisateur */
+  async update(id: number, data: any): Promise<User> {
+    return apiService.patch<User>(`/users/${id}`, data)
+  }
+
+  /** Désactiver un utilisateur (soft delete) */
   async delete(id: number): Promise<void> {
     return apiService.delete<void>(`/users/${id}`)
   }
 
+  /** Activer/Désactiver toggle */
+  async toggleActive(id: number): Promise<User> {
+    return apiService.patch<User>(`/users/${id}/toggle-active`, {})
+  }
+
+  /** Liste tous les utilisateurs */
   async getAll(): Promise<User[]> {
     const users = await apiService.get<any[]>('/users')
+    return users.map(u => this.mapUser(u))
+  }
 
-    // Transformer les données du backend au format attendu par le frontend
-    return users.map((user) => ({
+  /** Voir le mot de passe temporaire en clair */
+  async getPasswordPlain(id: number): Promise<{ password_plain: string | null; changed: boolean }> {
+    return apiService.get(`/users/${id}/password`)
+  }
+
+  /** Réinitialiser le mdp avec un nouveau mdp temporaire */
+  async resetPassword(id: number, newPassword: string): Promise<void> {
+    return apiService.post(`/users/${id}/reset-password`, { newPassword })
+  }
+
+  /** Changer son propre mot de passe (1ère connexion ou profil) */
+  async changePassword(id: number, oldPassword: string, newPassword: string): Promise<void> {
+    return apiService.post(`/users/${id}/change-password`, { oldPassword, newPassword })
+  }
+
+  /** Sélectionner son agence (1ère connexion) */
+  async selectAgence(userId: number, agenceId: number): Promise<User> {
+    return apiService.post(`/users/${userId}/select-agence`, { agence_id: agenceId })
+  }
+
+  /** Stats utilisateurs pour dashboard */
+  async getStats(): Promise<any> {
+    return apiService.get('/users/stats')
+  }
+
+  private mapUser(user: any): User {
+    return {
       id: user.id,
-      code_user: `USER${user.id.toString().padStart(3, '0')}`,
+      code_user: user.code_user || `USER${user.id.toString().padStart(3, '0')}`,
       username: user.username,
-      full_name: user.fullname,
-      email: undefined,
-      phone: undefined,
+      nom_complet: user.nom_complet,
+      email: user.email,
+      phone: user.phone,
       role: {
         id: this.getRoleId(user.role),
         code: user.role,
         name: this.getRoleName(user.role),
       },
-      agency_id: user.id_agence || null,
-      filter_mode: this.getFilterMode(user.code_acces),
-      can_delete: user.code_acces === 2,
-      can_modify: user.code_acces !== 2,
-      status: user.isActive ? 'active' : 'inactive',
-      created_at: user.created_at ? new Date(user.created_at).toISOString() : new Date().toISOString(),
-    }))
+      agency: user.agence || null,
+      agency_id: user.agence?.id || null,
+      actif: user.actif,
+      must_change_password: user.must_change_password,
+      agence_selected: user.agence_selected,
+      password_plain: user.password_plain,
+      created_at: user.created_at,
+    } as User
   }
 
   private getRoleId(role: string): number {
     const roleMap: Record<string, number> = {
-      'SUPER_ADMIN': 1,
-      'ADMIN': 2,
-      'OPERATEUR_COLIS': 3,
-      'VALIDATEUR': 4,
-      'CAISSIER': 5,
-      'AGENCE_MANAGER': 6,
-      'LECTURE_SEULE': 7,
+      'DIRECTEUR': 1, 'MANAGER': 2, 'SUPERVISEUR_REGIONAL': 3,
+      'AGENT_EXPLOITATION': 4, 'AGENT_GROUPAGE': 5, 'CAISSIER': 6,
+      'CAISSIER_GROUPAGE': 7, 'AGENT_SUIVI': 8, 'ADMIN': 1,
     }
-    return roleMap[role] || 3
+    return roleMap[role] || 4
   }
 
   private getRoleName(role: string): string {
     const nameMap: Record<string, string> = {
-      'SUPER_ADMIN': 'Super Administrateur',
+      'DIRECTEUR': 'Directeur Général', 'MANAGER': 'Manager / Superviseur',
+      'SUPERVISEUR_REGIONAL': 'Superviseur Régional', 'AGENT_EXPLOITATION': 'Agent Exploitation',
+      'AGENT_GROUPAGE': 'Agent Groupage', 'CAISSIER': 'Caissier Principal',
+      'CAISSIER_GROUPAGE': 'Caissier Groupage', 'AGENT_SUIVI': 'Agent Suivi',
       'ADMIN': 'Administrateur',
-      'OPERATEUR_COLIS': 'Opérateur Colis',
-      'VALIDATEUR': 'Validateur',
-      'CAISSIER': 'Caissier',
-      'AGENCE_MANAGER': 'Gestionnaire Agence',
-      'LECTURE_SEULE': 'Lecture Seule',
     }
-    return nameMap[role] || 'Opérateur Colis'
-  }
-
-  private getFilterMode(code_acces: number): 'individual' | 'agency' | 'all' {
-    if (code_acces === 2 || code_acces === 1) {
-      return 'all'
-    }
-    return 'all'
+    return nameMap[role] || 'Agent Exploitation'
   }
 }
 

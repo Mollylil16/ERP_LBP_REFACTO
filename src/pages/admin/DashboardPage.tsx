@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react'
-import { Row, Col, Typography } from 'antd'
+import { Row, Col, Typography, Card, Space, Tag } from 'antd'
 import { useQuery } from '@tanstack/react-query'
 import { dashboardService } from '@services/dashboard.service'
 import { StatsCards } from '@components/dashboard/StatsCards'
@@ -8,6 +8,7 @@ import { ChartRevenus } from '@components/dashboard/ChartRevenus'
 import { ChartRepartitionTrafic } from '@components/dashboard/ChartRepartitionTrafic'
 import { RecentActivities } from '@components/dashboard/RecentActivities'
 import { PointCaisse } from '@components/dashboard/PointCaisse'
+import { AgenciesPerformanceGrid } from '@components/dashboard/AgenciesPerformanceGrid'
 import { WithPermission } from '@components/common/WithPermission'
 import { PERMISSIONS } from '@constants/permissions'
 import { APP_CONFIG } from '@constants/application'
@@ -16,9 +17,11 @@ import { useAuth } from '@hooks/useAuth'
 import { PredictionCard } from '@components/dashboard/PredictionCard'
 import { AIIntelligencePanel } from '@components/dashboard/AIIntelligencePanel'
 import { DashboardSkeleton } from '@components/common/SkeletonLoader'
+import { agencesService } from '@services/agences.service'
+import { TrophyOutlined } from '@ant-design/icons'
 import './DashboardPage.css'
 
-const { Title } = Typography
+const { Title, Text } = Typography
 
 export const DashboardPage: React.FC = () => {
   const { isAuthenticated } = useAuth()
@@ -40,6 +43,14 @@ export const DashboardPage: React.FC = () => {
     queryFn: () => dashboardService.getPointCaisse(),
     refetchInterval: APP_CONFIG.refresh.widgets,
     enabled: isAuthenticated, // Ne faire la requête que si authentifié
+  })
+
+  // Récupérer la performance par agence (seulement pour les directeurs/admin via permission)
+  const { data: agenciesPerf, isLoading: agenciesPerfLoading, refetch: refetchAgenciesPerf } = useQuery({
+    queryKey: ['dashboard', 'agencies-perf'],
+    queryFn: () => dashboardService.getAgenciesPerformances(),
+    refetchInterval: APP_CONFIG.refresh.dashboard,
+    enabled: isAuthenticated,
   })
 
   // Récupérer les activités récentes (seulement si authentifié)
@@ -74,11 +85,19 @@ export const DashboardPage: React.FC = () => {
     enabled: isAuthenticated,
   })
 
+  // Récupérer les stats des agences (nouvelle feature)
+  const { data: agencesStats, isLoading: agencesStatsLoading } = useQuery({
+    queryKey: ['dashboard', 'agences-stats'],
+    queryFn: () => agencesService.getStats(),
+    enabled: isAuthenticated,
+  })
+
   // Rafraîchir automatiquement toutes les données
   useEffect(() => {
     const interval = setInterval(() => {
       refetchStats()
       refetchCaisse()
+      refetchAgenciesPerf()
       refetchActivities()
     }, APP_CONFIG.refresh.dashboard)
 
@@ -115,7 +134,15 @@ export const DashboardPage: React.FC = () => {
       {/* STATISTIQUES */}
       {stats && <StatsCards stats={stats} loading={statsLoading} />}
 
-      {/* POINT CAISSE */}
+      {/* POINT CAISSE MULTI-AGENCES (Directeur) */}
+      <WithPermission permission={PERMISSIONS.DASHBOARD.CAISSE}>
+        <AgenciesPerformanceGrid
+          data={agenciesPerf || []}
+          loading={agenciesPerfLoading}
+        />
+      </WithPermission>
+
+      {/* POINT CAISSE (Agence locale) */}
       <WithPermission permission={PERMISSIONS.DASHBOARD.CAISSE}>
         {pointCaisse && (
           <div className="dashboard-section">
@@ -151,6 +178,39 @@ export const DashboardPage: React.FC = () => {
           <RecentActivities activities={activities || []} loading={activitiesLoading} />
         </Col>
         <Col xs={24} xl={8}>
+          {/* Widget Agence la plus active */}
+          <Card
+            title={<span><TrophyOutlined style={{ color: '#faad14', marginRight: 8 }} /> Agences les plus actives</span>}
+            className="dashboard-card"
+            loading={agencesStatsLoading}
+            style={{ marginBottom: 24 }}
+          >
+            {(agencesStats || []).length > 0 ? (
+              <div className="agences-stats-list">
+                {agencesStats?.slice(0, 5).map((a, index) => (
+                  <div key={a.id} className="agence-stat-row" style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    padding: '12px 0',
+                    borderBottom: index === 4 ? 'none' : '1px solid #f0f0f0'
+                  }}>
+                    <Space>
+                      <Tag color={index === 0 ? 'gold' : index === 1 ? 'silver' : index === 2 ? 'orange' : 'default'}>
+                        #{index + 1}
+                      </Tag>
+                      <Text strong>{a.name}</Text>
+                    </Space>
+                    <Text type="secondary">{a.total_colis} colis</Text>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div style={{ padding: '20px 0', textAlign: 'center' }}>
+                <Text type="secondary">Aucune donnée disponible</Text>
+              </div>
+            )}
+          </Card>
+
           <AIIntelligencePanel
             recommendations={recommendations}
             loading={recommendationsLoading}

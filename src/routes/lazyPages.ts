@@ -30,3 +30,8 @@ export const TarifManagementPage = lazy(() => import('../pages/admin/settings/Ta
 export const ColisMapView = lazy(() => import('../pages/admin/colis/ColisMapView').then(m => ({ default: m.ColisMapView })));
 export const PublicPaymentPage = lazy(() => import('../pages/public/PublicPaymentPage').then(m => ({ default: m.PublicPaymentPage })));
 export const WithdrawalTrackingPage = lazy(() => import('../pages/admin/caisse/WithdrawalTrackingPage'));
+
+// ✅ Pages de flux Auth (1ère connexion)
+export const ChangePasswordPage = lazy(() => import('../pages/auth/ChangePasswordPage').then(m => ({ default: m.ChangePasswordPage })));
+export const SelectAgencyPage = lazy(() => import('../pages/auth/SelectAgencyPage').then(m => ({ default: m.SelectAgencyPage })));
+export const AgencesManagementPage = lazy(() => import('../pages/admin/agences/AgencesManagementPage').then(m => ({ default: m.AgencesManagementPage })));

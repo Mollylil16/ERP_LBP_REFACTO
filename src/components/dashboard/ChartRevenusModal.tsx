@@ -385,7 +385,7 @@ export const ChartRevenusModal: React.FC<ChartRevenusModalProps> = ({
           <Table
             dataSource={performancesForSelectedMonth}
             columns={columns}
-            rowKey={(record) => record.mois}
+            rowKey={(record: any) => record.mois}
             pagination={false}
             size="small"
           />
@@ -415,7 +415,7 @@ export const ChartRevenusModal: React.FC<ChartRevenusModalProps> = ({
                     title="Objectif"
                     value={performance.objectif}
                     prefix={<TrophyOutlined />}
-                    formatter={(value) => formatMontantWithDevise(Number(value))}
+                    formatter={(value: any) => formatMontantWithDevise(Number(value))}
                     valueStyle={{ color: '#1890ff' }}
                   />
                 </Col>

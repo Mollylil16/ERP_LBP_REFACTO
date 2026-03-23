@@ -12,6 +12,7 @@ import {
   Row,
   Col,
   DatePicker,
+  Progress,
 } from "antd";
 import {
   EyeOutlined,
@@ -23,8 +24,10 @@ import {
   PrinterOutlined,
   GlobalOutlined,
   CopyOutlined,
+  LinkOutlined,
+  DollarOutlined,
   WhatsAppOutlined,
-  LinkOutlined
+  CreditCardOutlined
 } from "@ant-design/icons";
 import { Modal, Typography as AntdTypography } from "antd";
 import { paiementsLienService } from "@services/paiementsLien.service";
@@ -46,6 +49,9 @@ import { EmptyFacturesList, EmptySearchState, EmptyErrorState } from "@component
 import { VirtualTable } from "@components/common/VirtualTable";
 import toast from "react-hot-toast";
 
+import { PaiementForm } from "@components/paiements/PaiementForm";
+import { useCreatePaiement } from "@hooks/usePaiements";
+
 const { RangePicker } = DatePicker;
 const { Option } = Select;
 
@@ -53,6 +59,18 @@ interface FactureListProps {
   type?: "proforma" | "definitive";
   onView?: (facture: FactureColis) => void;
 }
+
+// ─── Helper: calcule le statut paiement d'une facture ───────────
+const getPaymentStatus = (facture: FactureColis) => {
+  const ttc = Number(facture.montant_ttc) || 0;
+  const paye = Number(facture.montant_paye) || 0;
+  const pct = ttc > 0 ? Math.round((paye / ttc) * 100) : 0;
+
+  if (paye <= 0) return { label: 'Non payé', color: '#ff4d4f', tagColor: 'error', pct: 0 };
+  if (paye >= ttc) return { label: 'Payé', color: '#52c41a', tagColor: 'success', pct: 100 };
+  return { label: `Partiel (${pct}%)`, color: '#fa8c16', tagColor: 'warning', pct };
+};
+
 
 export const FactureList: React.FC<FactureListProps> = ({ type, onView }) => {
   const [pagination, setPagination] = useState<PaginationParams>({
@@ -70,6 +88,9 @@ export const FactureList: React.FC<FactureListProps> = ({ type, onView }) => {
   const [generatedLink, setGeneratedLink] = useState("");
   const [currentFacture, setCurrentFacture] = useState<FactureColis | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isPaymentModalVisible, setIsPaymentModalVisible] = useState(false);
+
+  const createPaymentMutation = useCreatePaiement();
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ["factures", typeFilter, pagination, searchTerm],
@@ -146,15 +167,32 @@ export const FactureList: React.FC<FactureListProps> = ({ type, onView }) => {
   };
 
   const shareViaWhatsApp = () => {
-    const message = `Bonjour, voici le lien de paiement pour votre facture ${currentFacture?.num_fact_colis} : ${generatedLink}`;
+    const message = `Bonjour, voici le lien de paiement pour votre facture ${currentFacture?.num_facture} : ${generatedLink}`;
     window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, "_blank");
+  };
+
+  const handleOpenPaymentModal = (facture: FactureColis) => {
+    setCurrentFacture(facture);
+    setIsPaymentModalVisible(true);
+  };
+
+  const handlePaymentSubmit = async (data: any) => {
+    try {
+      await createPaymentMutation.mutateAsync(data);
+      setIsPaymentModalVisible(false);
+      refetch();
+      toast.success("Paiement enregistré avec succès");
+    } catch (error) {
+      // toast déjà géré par le hook ou l'intercepteur ? 
+      // On laisse le hook gérer le feedback d'erreur
+    }
   };
 
   const columns: ColumnsType<FactureColis> = [
     {
       title: "N° Facture",
-      dataIndex: "num_fact_colis",
-      key: "num_fact_colis",
+      dataIndex: "num_facture",
+      key: "num_facture",
       fixed: "left",
       width: 150,
       render: (text: string) => (
@@ -172,32 +210,73 @@ export const FactureList: React.FC<FactureListProps> = ({ type, onView }) => {
     },
     {
       title: "Date",
-      dataIndex: "date_fact",
-      key: "date_fact",
+      dataIndex: "date_facture",
+      key: "date_facture",
       width: 120,
       render: (date: string) => formatDate(date),
       sorter: true,
     },
     {
       title: "Montant TTC",
-      dataIndex: "total_mont_ttc",
-      key: "total_mont_ttc",
+      dataIndex: "montant_ttc",
+      key: "montant_ttc",
       width: 150,
       render: (montant: number) => formatMontantWithDevise(montant),
       sorter: true,
+    },
+    {
+      title: "Paiement",
+      key: "paiement",
+      width: 160,
+      render: (_: any, record: FactureColis) => {
+        const status = getPaymentStatus(record);
+        const paye = Number(record.montant_paye) || 0;
+        const ttc = Number(record.montant_ttc) || 0;
+        return (
+          <Tooltip title={`${paye.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.')} / ${ttc.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.')} FCFA`}>
+            <div style={{ minWidth: 130 }}>
+              <Tag color={status.tagColor} style={{ marginBottom: 4, fontWeight: 600, fontSize: 11 }}>
+                {status.label}
+              </Tag>
+              {status.pct > 0 && status.pct < 100 && (
+                <Progress
+                  percent={status.pct}
+                  size="small"
+                  strokeColor={status.color}
+                  showInfo={false}
+                  style={{ margin: 0 }}
+                />
+              )}
+            </div>
+          </Tooltip>
+        );
+      },
+      filters: [
+        { text: 'Payé', value: 'paid' },
+        { text: 'Partiel', value: 'partial' },
+        { text: 'Non payé', value: 'unpaid' },
+      ],
+      onFilter: (value: any, record: FactureColis) => {
+        const paye = Number(record.montant_paye) || 0;
+        const ttc = Number(record.montant_ttc) || 0;
+        if (value === 'paid') return paye >= ttc;
+        if (value === 'partial') return paye > 0 && paye < ttc;
+        return paye <= 0;
+      },
     },
     {
       title: "Statut",
       key: "etat",
       width: 120,
       render: (_: any, record: FactureColis) => (
-        <Tag color={record.etat === 1 ? "success" : "warning"}>
-          {record.etat === 1 ? "Validée" : "Proforma"}
+        <Tag color={record.etat === 1 ? "success" : record.etat === 2 ? "error" : "warning"}>
+          {record.etat === 1 ? "Validée" : record.etat === 2 ? "Annulée" : "Proforma"}
         </Tag>
       ),
       filters: [
         { text: "Validée", value: 1 },
         { text: "Proforma", value: 0 },
+        { text: "Annulée", value: 2 },
       ],
     },
     {
@@ -242,6 +321,21 @@ export const FactureList: React.FC<FactureListProps> = ({ type, onView }) => {
               style={{ color: '#ff7900' }}
             />
           </Tooltip>
+
+          <WithPermission permission={PERMISSIONS.PAIEMENTS.CREATE}>
+            {Number(record.montant_paye) < Number(record.montant_ttc) && record.etat !== 2 && (
+              <Tooltip title="Enregistrer un paiement manuel">
+                <Button
+                  size="small"
+                  type="primary"
+                  ghost
+                  icon={<DollarOutlined />}
+                  onClick={() => handleOpenPaymentModal(record)}
+                  style={{ color: '#52c41a', borderColor: '#52c41a' }}
+                />
+              </Tooltip>
+            )}
+          </WithPermission>
 
           {record.etat === 0 && (
             <WithPermission permission={PERMISSIONS.FACTURES.VALIDATE}>
@@ -412,13 +506,32 @@ export const FactureList: React.FC<FactureListProps> = ({ type, onView }) => {
           />
           <Card size="small" style={{ background: "#f5f5f5" }}>
             <AntdTypography.Paragraph style={{ marginBottom: 0 }}>
-              <strong>Facture:</strong> {currentFacture?.num_fact_colis}
+              <strong>Facture:</strong> {currentFacture?.num_facture}
               <br />
               <strong>Montant:</strong>{" "}
-              {currentFacture ? formatMontantWithDevise(currentFacture.total_mont_ttc) : ""}
+              {currentFacture ? formatMontantWithDevise(currentFacture.montant_ttc) : ""}
             </AntdTypography.Paragraph>
           </Card>
         </Space>
+      </Modal>
+
+      {/* MODAL ENREGISTRER PAIEMENT */}
+      <Modal
+        title={`Enregistrer un paiement — Facture ${currentFacture?.num_facture}`}
+        open={isPaymentModalVisible}
+        onCancel={() => setIsPaymentModalVisible(false)}
+        footer={null}
+        width="60%"
+        destroyOnClose
+      >
+        {currentFacture?.colis?.ref_colis && (
+          <PaiementForm
+            refColis={currentFacture.colis.ref_colis}
+            onSubmit={handlePaymentSubmit}
+            onCancel={() => setIsPaymentModalVisible(false)}
+            loading={createPaymentMutation.isPending}
+          />
+        )}
       </Modal>
     </div>
   );

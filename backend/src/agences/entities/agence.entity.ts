@@ -40,6 +40,16 @@ export class Agence {
     @Column({ length: 10, default: 'FCFA' })
     devise: string; // Ajouté pour le support multi-devises
 
+    // Coordonnées GPS (remplies automatiquement via Nominatim)
+    @Column({ type: 'float', nullable: true })
+    latitude: number | null;
+
+    @Column({ type: 'float', nullable: true })
+    longitude: number | null;
+
+    @Column({ nullable: true, length: 100 })
+    place_id: string | null; // ID OpenStreetMap
+
     @OneToMany(() => User, (user) => user.agence)
     users: User[];
 

@@ -5,15 +5,24 @@
 /**
  * Calcule le total d'une ligne marchandise
  */
+/**
+ * Formule LBP : Total ligne = Poids (kg) × Prix Unitaire (FCFA/kg) + frais annexes
+ */
 export function calculerTotalLigneMarchandise(
-  prixUnit: number,
-  nbreColis: number,
-  prixEmballage: number = 0,
-  prixAssurance: number = 0,
-  prixAgence: number = 0
+  prixUnit: any,
+  poids: any,
+  prixEmballage: any = 0,
+  prixAssurance: any = 0,
+  prixAgence: any = 0
 ): number {
-  const totalUnitaire = prixUnit * nbreColis
-  return totalUnitaire + prixEmballage + prixAssurance + prixAgence
+  const pUnit = Number(prixUnit || 0)
+  const pds = Number(poids || 0)
+  const pEmb = Number(prixEmballage || 0)
+  const pAss = Number(prixAssurance || 0)
+  const pAg = Number(prixAgence || 0)
+
+  const totalUnitaire = pUnit * pds
+  return totalUnitaire + pEmb + pAss + pAg
 }
 
 /**
@@ -22,7 +31,7 @@ export function calculerTotalLigneMarchandise(
 export function calculerTotalMarchandises(
   marchandises: Array<{
     prix_unit: number
-    nbre_colis: number
+    poids_total: number
     prix_emballage?: number
     prix_assurance?: number
     prix_agence?: number
@@ -33,7 +42,7 @@ export function calculerTotalMarchandises(
       total +
       calculerTotalLigneMarchandise(
         marchandise.prix_unit,
-        marchandise.nbre_colis,
+        marchandise.poids_total,
         marchandise.prix_emballage || 0,
         marchandise.prix_assurance || 0,
         marchandise.prix_agence || 0

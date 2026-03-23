@@ -112,7 +112,7 @@ export const SidebarMenu: React.FC<SidebarMenuProps> = ({ collapsed }) => {
         {
           key: "/factures",
           icon: <FileTextOutlined />,
-          label: "Factures",
+          label: "Facturation",
         },
       ]
       : []),
@@ -184,6 +184,11 @@ export const SidebarMenu: React.FC<SidebarMenuProps> = ({ collapsed }) => {
               icon: <DollarOutlined />,
               label: "Grilles Tarifaires",
             },
+            {
+              key: "/settings/agences",
+              icon: <GlobalOutlined />,
+              label: "Gestion Agences",
+            },
           ],
         },
       ]
@@ -201,7 +206,7 @@ export const SidebarMenu: React.FC<SidebarMenuProps> = ({ collapsed }) => {
 
   const handleMenuClick: any = ({ key }: any) => {
     // Navigate allowed if NOT a submenu key
-    if (key && !["colis", "/statistiques", "settings_root", "caisse_root"].includes(key)) {
+    if (key && !["colis", "/statistiques", "settings_root", "caisse_root", "flux_auth"].includes(key)) {
       navigate(key as string);
     }
   };

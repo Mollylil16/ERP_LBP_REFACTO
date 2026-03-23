@@ -4,6 +4,14 @@ import { Tarif } from '../../tarifs/entities/tarif.entity';
 import { Agence } from '../../agences/entities/agence.entity';
 import { Expedition } from './expedition.entity';
 
+export enum ColisStatutSuivi {
+    EMBALLE = 'EMBALLE',
+    EXPEDIE = 'EXPEDIE',
+    REC_BOBIGNY = 'REC_BOBIGNY',
+    EN_LIVRAISON = 'EN_LIVRAISON',
+    LIVRE = 'LIVRE',
+}
+
 @Entity('lbp_colis')
 export class Colis {
     @PrimaryGeneratedColumn()
@@ -13,13 +21,20 @@ export class Colis {
     ref_colis: string; // format généré: LBP-MMYY-XXX
 
     @Column()
-    trafic_envoi: string; // ex: Import Aérien, etc.
+    trafic_envoi: string; // ex: Groupage Aérien, Colis Rapide, etc.
 
     @Column({ default: 'groupage' })
     forme_envoi: string; // groupage, autres_envoi
 
     @Column({ nullable: true })
     mode_envoi: string; // ex: DHL, etc.
+
+    /** ID du traceur GPS physique fixé sur ce colis/groupage (ex: SPOT-001) */
+    @Column({ nullable: true, length: 100 })
+    tracker_id: string;
+
+    @Column({ type: 'boolean', default: false })
+    livraison: boolean; // true = livraison à domicile demandée
 
     @Column({ type: 'date' })
     date_envoi: Date;
@@ -71,6 +86,13 @@ export class Colis {
     @OneToMany(() => Marchandise, (marchandise) => marchandise.colis, { cascade: true })
     marchandises: Marchandise[];
 
+    @Column({
+        type: 'enum',
+        enum: ColisStatutSuivi,
+        default: ColisStatutSuivi.EMBALLE,
+    })
+    statut_suivi: ColisStatutSuivi;
+
     @CreateDateColumn()
     created_at: Date;
 
@@ -110,6 +132,12 @@ export class Marchandise {
     @ManyToOne(() => Tarif, (tarif) => tarif.marchandises, { nullable: true })
     @JoinColumn({ name: 'id_tarif' })
     tarif: Tarif;
+
+    @Column({ nullable: true, length: 20 })
+    type_emballage: string; // carton | sac | valise | bôrô
+
+    @Column({ type: 'int', default: 1 })
+    nbre_emballage: number;
 
     @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
     cout_reel: number; // Snapshot du coût transporteur au moment de la création

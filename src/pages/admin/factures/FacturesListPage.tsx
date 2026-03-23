@@ -15,7 +15,7 @@ export const FacturesListPage: React.FC = () => {
 
   return (
     <div>
-      <Title level={2}>Gestion des Factures</Title>
+      <Title level={2}>Gestion de la Facturation</Title>
       <FactureList onView={handleView} />
     </div>
   );

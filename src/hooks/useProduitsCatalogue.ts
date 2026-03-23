@@ -8,7 +8,7 @@ export const useProduitsCatalogue = () => {
     return useQuery({
         queryKey: ['produits-catalogue'],
         queryFn: () => produitsCatalogueService.getAll(),
-        staleTime: 1000 * 60 * 30, // 30 minutes (données stables)
+        staleTime: 1000 * 5, // 5 secondes (pour éviter cache obsolète en dev)
     })
 }
 

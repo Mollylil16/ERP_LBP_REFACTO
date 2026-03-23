@@ -25,6 +25,13 @@ export class Facture {
     @Column({ default: 0 })
     etat: number; // 0: Proforma, 1: Définitive, 2: Annulée
 
+    @Column({
+        type: 'enum',
+        enum: ['unpaid', 'partial', 'paid'],
+        default: 'unpaid'
+    })
+    payment_status: string;
+
     @Column({ length: 10, default: 'XOF' })
     devise: string;
 

@@ -18,7 +18,7 @@ const AppDataSource = new DataSource({
     username: configService.get<string>('DB_USERNAME'),
     password: configService.get<string>('DB_PASSWORD'),
     database: configService.get<string>('DB_DATABASE'),
-    entities: [Agence, User, Colis],
+    entities: [__dirname + '/../**/*.entity{.ts,.js}'],
     synchronize: false,
 });
 
@@ -35,8 +35,9 @@ async function runAgencesSeeds() {
         await AppDataSource.destroy();
         process.exit(0);
     } catch (error) {
-        console.error('❌ Error running agences seeds:', error);
-        await AppDataSource.destroy();
+        if (AppDataSource.isInitialized) {
+            await AppDataSource.destroy();
+        }
         process.exit(1);
     }
 }

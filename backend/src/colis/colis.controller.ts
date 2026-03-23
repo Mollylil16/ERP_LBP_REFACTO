@@ -44,13 +44,13 @@ export class ColisController {
     @Get()
     @ApiOperation({ summary: 'Liste des colis' })
     findAll(@Query() query, @Request() req) {
-        return this.colisService.findAll(query, req.user.id_agence);
+        return this.colisService.findAll(query, req.user);
     }
 
     @Get('search')
     @ApiOperation({ summary: 'Rechercher des colis' })
     search(@Query('search') searchTerm: string, @Query('forme_envoi') formeEnvoi: string, @Request() req) {
-        return this.colisService.searchColis(searchTerm, formeEnvoi, req.user.id_agence);
+        return this.colisService.searchColis(searchTerm, formeEnvoi, req.user);
     }
 
     @Get('track/:ref')
@@ -67,8 +67,14 @@ export class ColisController {
 
     @Patch(':id/validate')
     @ApiOperation({ summary: 'Valider un colis' })
-    validate(@Param('id') id: string) {
-        return this.colisService.validateColis(+id);
+    validate(@Param('id') id: number) {
+        return this.colisService.validateColis(id);
+    }
+
+    @Patch(':id/receive-at-hub')
+    @ApiOperation({ summary: 'Marquer le colis comme reçu au Hub (Bobigny)' })
+    receiveAtHub(@Param('id') id: number) {
+        return this.colisService.receiveAtHub(id);
     }
 
     @Delete(':id')

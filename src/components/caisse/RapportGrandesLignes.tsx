@@ -23,7 +23,8 @@ import {
   Tag,
   Dropdown,
 } from "antd";
-import type { RangePickerProps } from "antd/es/date-picker";
+import type { GetProps } from 'antd';
+type RangePickerProps = any;
 import { ReloadOutlined, DownloadOutlined, FilePdfOutlined, FileExcelOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { formatMontantWithDevise } from "@utils/format";

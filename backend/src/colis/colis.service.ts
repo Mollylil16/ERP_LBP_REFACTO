@@ -1,15 +1,17 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
-import { Colis, Marchandise } from './entities/colis.entity';
+import { Colis, Marchandise, ColisStatutSuivi } from './entities/colis.entity';
 import { CreateColisDto } from './dto/create-colis.dto';
 import { Client } from '../clients/entities/client.entity';
 import { FacturesService } from '../factures/factures.service';
 import { TarifsService } from '../tarifs/tarifs.service';
 import { Tarif } from '../tarifs/entities/tarif.entity';
+import { WhatsappService } from '../notifications/whatsapp.service';
 
 @Injectable()
 export class ColisService {
+    private readonly logger = new Logger(ColisService.name);
     constructor(
         @InjectRepository(Colis)
         private colisRepository: Repository<Colis>,
@@ -19,6 +21,7 @@ export class ColisService {
         private clientRepository: Repository<Client>,
         private facturesService: FacturesService,
         private tarifsService: TarifsService,
+        private whatsappService: WhatsappService,
         private dataSource: DataSource,
     ) { }
 
@@ -81,7 +84,19 @@ export class ColisService {
             }
 
             await queryRunner.commitTransaction();
+
+            // 📱 Notification au client (non-bloquante)
+            if (client.tel_exp) {
+                const destination = savedColis.lieu_dest || savedColis.nom_dest || 'destination';
+                this.whatsappService
+                    .notifyColisCreated(client.nom_exp, client.tel_exp, savedColis.ref_colis, destination)
+                    .catch(err => {
+                        this.logger?.warn?.(`Erreur notification création colis: ${err.message}`);
+                    });
+            }
+
             return savedColis;
+
         } catch (err) {
             await queryRunner.rollbackTransaction();
             throw err;
@@ -120,6 +135,7 @@ export class ColisService {
             if (typeof colisData.mode_envoi !== 'undefined') {
                 colis.mode_envoi = colisData.mode_envoi;
             }
+            colis.livraison = colisData.livraison ?? false;
 
             colis.date_envoi = new Date(updateColisDto.date_envoi);
             colis.client = client;
@@ -223,18 +239,24 @@ export class ColisService {
         return `LBP-${datePart}-${numPart}`;
     }
 
-    async findAll(query: any, agenceId?: number): Promise<Colis[]> {
+    async findAll(query: any, user: any): Promise<any> {
         const where: any = {};
-        if (agenceId) {
-            where.agence = { id: agenceId };
+
+        // Les rôles ADMIN et DIRECTEUR voient tout. Les autres sont filtrés par agence.
+        const canSeeAll = ['ADMIN', 'DIRECTEUR'].includes(user.role);
+
+        if (!canSeeAll && user.id_agence) {
+            where.agence = { id: user.id_agence };
         }
-        return this.colisRepository.find({
+        const [data, total] = await this.colisRepository.findAndCount({
             where,
             relations: ['client', 'marchandises'],
             order: { created_at: 'DESC' },
             ...(query.limit ? { take: query.limit } : {}),
             ...(query.page && query.limit ? { skip: (query.page - 1) * query.limit } : {}),
         });
+
+        return { data, total };
     }
 
     async findOne(id: number): Promise<Colis> {
@@ -254,7 +276,7 @@ export class ColisService {
         return await this.colisRepository.save(colis);
     }
 
-    async searchColis(searchTerm: string, formeEnvoi?: string, agenceId?: number): Promise<Colis[]> {
+    async searchColis(searchTerm: string, formeEnvoi: string, user: any): Promise<Colis[]> {
         const query = this.colisRepository.createQueryBuilder('colis')
             .leftJoinAndSelect('colis.client', 'client')
             .leftJoinAndSelect('colis.marchandises', 'marchandises')
@@ -264,8 +286,9 @@ export class ColisService {
             query.andWhere('colis.forme_envoi = :formeEnvoi', { formeEnvoi });
         }
 
-        if (agenceId) {
-            query.andWhere('colis.id_agence = :agenceId', { agenceId });
+        const canSeeAll = ['ADMIN', 'DIRECTEUR'].includes(user.role);
+        if (!canSeeAll && user.id_agence) {
+            query.andWhere('colis.id_agence = :agenceId', { agenceId: user.id_agence });
         }
 
         return await query.getMany();
@@ -302,12 +325,24 @@ export class ColisService {
         return {
             ref_colis: colis.ref_colis,
             status: colis.etat_validation === 1 ? 'En cours' : 'Brouillon',
+            statut_suivi: colis.statut_suivi,
             payment_status: paymentStatus,
-            current_location: 'Agence LBP',
+            current_location: this.getLocationByStatut(colis.statut_suivi),
             steps,
             client_colis: colis.client,
             colis,
         };
+    }
+
+    private getLocationByStatut(statut: ColisStatutSuivi): string {
+        switch (statut) {
+            case ColisStatutSuivi.EMBALLE: return 'Agence de départ (CI)';
+            case ColisStatutSuivi.EXPEDIE: return 'En transit international';
+            case ColisStatutSuivi.REC_BOBIGNY: return 'Hub Bobigny (France)';
+            case ColisStatutSuivi.EN_LIVRAISON: return 'En cours de livraison locale';
+            case ColisStatutSuivi.LIVRE: return 'Livré au destinataire';
+            default: return 'LBP Logistics';
+        }
     }
 
     /**
@@ -336,5 +371,48 @@ export class ColisService {
 
         // Supprimer le colis (les marchandises seront supprimées en cascade)
         await this.colisRepository.delete(id);
+    }
+
+    /**
+     * ✅ AJOUT: Marquer un colis comme reçu au hub (Destination)
+     */
+    async receiveAtHub(id: number): Promise<Colis> {
+        const colis = await this.colisRepository.findOne({
+            where: { id },
+            relations: ['client', 'expedition', 'expedition.agence_destination', 'agence']
+        });
+
+        if (!colis) {
+            throw new NotFoundException(`Colis #${id} non trouvé`);
+        }
+
+        colis.statut_suivi = ColisStatutSuivi.REC_BOBIGNY; // On garde ce nom d'enum pour le moment
+        const savedColis = await this.colisRepository.save(colis);
+
+        // Envoyer la notification
+        if (colis.client && colis.client.tel_exp) {
+            let location = 'Bobigny';
+            let address = 'PARIS 17 CHEMIN DES VIGNES 93000 BOBIGNY';
+
+            // Si c'est une expédition vers une autre agence (ex: CI, SEN)
+            if (colis.expedition?.agence_destination) {
+                location = colis.expedition.agence_destination.nom;
+                address = colis.expedition.agence_destination.adresse || '';
+            } else if (colis.lieu_dest && !colis.lieu_dest.toLowerCase().includes('france')) {
+                // Heuristique simple si pas d'agence de destination liée
+                location = colis.lieu_dest;
+                address = '';
+            }
+
+            await this.whatsappService.notifyArrivalAtHub(
+                colis.client.nom_exp,
+                colis.client.tel_exp,
+                colis.ref_colis,
+                location,
+                address
+            );
+        }
+
+        return savedColis;
     }
 }

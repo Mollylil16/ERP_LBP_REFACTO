@@ -73,44 +73,18 @@ class PaiementsService {
   /**
    * Suivi des paiements (payé / partiel / impayé) par colis/facture
    */
-  async getSuiviPaiements(params?: SuiviPaiementsParams): Promise<PaginatedResponse<SuiviPaiementItem>> {
+  async getSuiviPaiements(params?: SuiviPaiementsParams): Promise<PaginatedResponse<SuiviPaiementItem> & { stats?: any }> {
     const queryParams = new URLSearchParams()
-    if (params?.page)       queryParams.append('page', params.page.toString())
-    if (params?.limit)      queryParams.append('limit', params.limit.toString())
+    if (params?.page) queryParams.append('page', params.page.toString())
+    if (params?.limit) queryParams.append('limit', params.limit.toString())
     if (params?.statut && params.statut !== 'tous') queryParams.append('statut', params.statut)
-    if (params?.search)     queryParams.append('search', params.search)
+    if (params?.search) queryParams.append('search', params.search)
     if (params?.date_debut) queryParams.append('date_debut', params.date_debut)
-    if (params?.date_fin)   queryParams.append('date_fin', params.date_fin)
+    if (params?.date_fin) queryParams.append('date_fin', params.date_fin)
 
-    try {
-      return await apiService.get<PaginatedResponse<SuiviPaiementItem>>(
-        `/paiements/suivi?${queryParams.toString()}`
-      )
-    } catch {
-      // Fallback : construire le suivi depuis les factures existantes
-      const factures = await apiService.get<any>(`/factures?${queryParams.toString()}`)
-      const items: SuiviPaiementItem[] = (factures?.data || []).map((f: any) => {
-        const paye = f.montant_paye || 0
-        const total = f.total_mont_ttc || 0
-        const restant = Math.max(0, total - paye)
-        const statut: StatutPaiement = paye >= total ? 'paye' : paye > 0 ? 'partiel' : 'impaye'
-        return {
-          id: f.id,
-          ref_colis: f.ref_colis || f.colis?.ref_colis || '-',
-          facture_num: f.num_facture,
-          nom_client: f.colis?.client_colis?.nom_exp || f.nom_client || 'Client inconnu',
-          tel_client: f.colis?.client_colis?.tel_exp,
-          montant_total: total,
-          montant_paye: paye,
-          restant_a_payer: restant,
-          statut,
-          dernier_paiement_date: f.updated_at,
-          nb_paiements: f.nb_paiements || 0,
-          date_creation: f.created_at,
-        }
-      })
-      return { data: items, total: factures?.total || 0, page: params?.page || 1, limit: params?.limit || 20 }
-    }
+    return apiService.get<PaginatedResponse<SuiviPaiementItem> & { stats: any }>(
+      `/paiements/suivi?${queryParams.toString()}`
+    )
   }
 
   /**

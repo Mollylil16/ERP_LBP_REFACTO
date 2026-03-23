@@ -5,6 +5,7 @@ import { Expedition, ExpeditionStatut } from './entities/expedition.entity';
 import { Colis } from './entities/colis.entity';
 import { CreateExpeditionDto } from './dto/create-expedition.dto';
 import { Agence } from '../agences/entities/agence.entity';
+import { WhatsappService } from '../notifications/whatsapp.service';
 
 @Injectable()
 export class ExpeditionsService {
@@ -15,6 +16,7 @@ export class ExpeditionsService {
         private colisRepository: Repository<Colis>,
         @InjectRepository(Agence)
         private agenceRepository: Repository<Agence>,
+        private whatsappService: WhatsappService,
     ) { }
 
     async create(createExpeditionDto: any, user: any) {
@@ -104,11 +106,30 @@ export class ExpeditionsService {
 
     async updateStatus(id: number, statut: ExpeditionStatut) {
         const expedition = await this.findOne(id);
+        const oldStatut = expedition.statut;
         expedition.statut = statut;
 
-        // Optional: Update status of all colis inside?
-        // For now, keep it simple.
+        const savedExpedition = await this.expeditionRepository.save(expedition);
 
-        return await this.expeditionRepository.save(expedition);
+        // ✅ AJOUT: Notification de départ (CI -> FR/Ailleurs)
+        if (statut === ExpeditionStatut.EN_TRANSIT && oldStatut !== ExpeditionStatut.EN_TRANSIT) {
+            if (expedition.colis && expedition.colis.length > 0) {
+                for (const colis of expedition.colis) {
+                    if (colis.client && colis.client.tel_exp) {
+                        const origin = expedition.agence_depart?.nom || 'Côte d\'Ivoire';
+                        const destination = expedition.agence_destination?.nom || 'France';
+                        await this.whatsappService.notifyDeparture(
+                            colis.client.nom_exp,
+                            colis.client.tel_exp,
+                            colis.ref_colis,
+                            origin,
+                            destination
+                        );
+                    }
+                }
+            }
+        }
+
+        return savedExpedition;
     }
 }

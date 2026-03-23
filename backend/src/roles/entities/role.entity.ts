@@ -10,8 +10,8 @@ export class Role {
     @Column({ unique: true, length: 50 })
     code: string; // 'DIRECTEUR', 'MANAGER', 'AGENT_EXPLOITATION', etc.
 
-    @Column({ length: 100 })
-    libelle: string;
+    @Column({ name: 'libelle', length: 100 })
+    nom: string;
 
     @Column({ type: 'text', nullable: true })
     description: string;

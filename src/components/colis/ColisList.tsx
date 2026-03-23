@@ -23,6 +23,7 @@ import {
   ReloadOutlined,
   FilePdfOutlined,
   FileExcelOutlined,
+  HomeOutlined,
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import { Colis } from "@types";
@@ -36,6 +37,7 @@ import {
   useColisList,
   useDeleteColis,
   useValidateColis,
+  useReceiveAtHub,
 } from "@hooks/useColis";
 import { WithPermission } from "@components/common/WithPermission";
 import { PERMISSIONS } from "@constants/permissions";
@@ -57,6 +59,8 @@ const getPermissions = (formeEnvoi: "groupage" | "autres_envoi") => {
 };
 import { usePermissions } from "@hooks/usePermissions";
 import dayjs, { Dayjs } from "dayjs";
+import { APP_CONFIG } from "@constants/application";
+
 
 const { RangePicker } = DatePicker;
 const { Option } = Select;
@@ -93,6 +97,7 @@ export const ColisList: React.FC<ColisListProps> = ({
 
   const deleteMutation = useDeleteColis();
   const validateMutation = useValidateColis();
+  const receiveAtHubMutation = useReceiveAtHub();
 
   const handleSearch = (value: string) => {
     setSearchTerm(value);
@@ -204,6 +209,22 @@ export const ColisList: React.FC<ColisListProps> = ({
     refetch();
   };
 
+  const handleReceiveAtHub = async (id: number) => {
+    await receiveAtHubMutation.mutateAsync(id);
+    refetch();
+  };
+
+  const getStatusColor = (status?: string) => {
+    switch (status) {
+      case 'EMBALLE': return 'default';
+      case 'EXPEDIE': return 'orange';
+      case 'REC_BOBIGNY': return 'blue';
+      case 'EN_LIVRAISON': return 'purple';
+      case 'LIVRE': return 'green';
+      default: return 'default';
+    }
+  };
+
   const columns: ColumnsType<Colis> = [
     {
       title: t("reference"),
@@ -231,12 +252,18 @@ export const ColisList: React.FC<ColisListProps> = ({
       key: "trafic_envoi",
       width: 150,
       render: (trafic: string) => <Tag>{trafic}</Tag>,
-      filters: [
-        { text: t("traficImportAerien"), value: "Import Aérien" },
-        { text: t("traficImportMaritime"), value: "Import Maritime" },
-        { text: t("traficExportAerien"), value: "Export Aérien" },
-        { text: t("traficExportMaritime"), value: "Export Maritime" },
-      ],
+      filters: APP_CONFIG.traficEnvoi.map(trafic => ({ text: trafic, value: trafic })),
+    },
+    {
+      title: "Statut Suivi",
+      dataIndex: "statut_suivi",
+      key: "statut_suivi",
+      width: 130,
+      render: (status: string) => (
+        <Tag color={getStatusColor(status)}>
+          {status || 'EMBALLE'}
+        </Tag>
+      ),
     },
     {
       title: t("expediteur"),
@@ -313,6 +340,19 @@ export const ColisList: React.FC<ColisListProps> = ({
             </Tooltip>
           )}
 
+          {record.statut_suivi !== 'REC_BOBIGNY' && record.statut_suivi !== 'LIVRE' && (
+            <Tooltip title="Marquer comme reçu à Bobigny">
+              <Button
+                type="default"
+                size="small"
+                icon={<HomeOutlined />}
+                onClick={() => handleReceiveAtHub(record.id)}
+                loading={receiveAtHubMutation.isPending}
+                style={{ color: '#1890ff', borderColor: '#1890ff' }}
+              />
+            </Tooltip>
+          )}
+
           {hasPermission(colisPermissions.DELETE) && (
             <Popconfirm
               title={t("deleteConfirm")}
@@ -362,14 +402,15 @@ export const ColisList: React.FC<ColisListProps> = ({
               style={{ width: "100%" }}
               size="large"
             >
-              <Option value="Import Aérien">{t("traficImportAerien")}</Option>
-              <Option value="Import Maritime">
-                {t("traficImportMaritime")}
-              </Option>
-              <Option value="Export Aérien">{t("traficExportAerien")}</Option>
-              <Option value="Export Maritime">
-                {t("traficExportMaritime")}
-              </Option>
+              {APP_CONFIG.traficEnvoi
+                .filter((trafic) =>
+                  formeEnvoi === 'groupage'
+                    ? trafic.includes('Groupage')
+                    : trafic.includes('Colis Rapide')
+                )
+                .map(trafic => (
+                  <Option key={trafic} value={trafic}>{trafic}</Option>
+                ))}
             </Select>
           </Col>
 

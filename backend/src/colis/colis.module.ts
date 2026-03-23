@@ -10,6 +10,7 @@ import { ExpeditionsService } from './expeditions.service';
 import { ExpeditionsController } from './expeditions.controller';
 import { FacturesModule } from '../factures/factures.module';
 import { TarifsModule } from '../tarifs/tarifs.module';
+import { WhatsappService } from '../notifications/whatsapp.service';
 
 @Module({
   imports: [
@@ -17,7 +18,7 @@ import { TarifsModule } from '../tarifs/tarifs.module';
     FacturesModule,
     TarifsModule,
   ],
-  providers: [ColisService, ExpeditionsService],
+  providers: [ColisService, ExpeditionsService, WhatsappService],
   controllers: [ColisController, ExpeditionsController],
   exports: [ColisService, TypeOrmModule],
 })

@@ -5,14 +5,15 @@ import { PaiementsController } from './paiements.controller';
 import { PaiementsHistoryController } from './paiements-history.controller';
 import { Paiement } from './entities/paiement.entity';
 import { Facture } from '../factures/entities/facture.entity';
+import { Colis } from '../colis/entities/colis.entity';
 import { LienPaiement } from './entities/lien-paiement.entity';
 import { PaiementLienService } from './paiements-lien.service';
-import { PaiementsLienController } from './paiements-lien.controller'; // ✅ AJOUT
+import { PaiementsLienController } from './paiements-lien.controller';
 import { CaisseModule } from '../caisse/caisse.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Paiement, Facture, LienPaiement]),
+    TypeOrmModule.forFeature([Paiement, Facture, LienPaiement, Colis]),
     CaisseModule,
   ],
   providers: [PaiementsService, PaiementLienService],

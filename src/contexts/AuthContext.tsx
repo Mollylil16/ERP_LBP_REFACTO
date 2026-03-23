@@ -41,16 +41,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     try {
       const token = localStorage.getItem("lbp_token");
       if (token) {
-        // En mode mock, récupérer depuis localStorage
-        if (import.meta.env.DEV && token.startsWith("mock_token_")) {
-          const userStr = localStorage.getItem("lbp_mock_user");
-          if (userStr) {
-            setUser(JSON.parse(userStr));
-            setIsLoading(false);
-            hasCheckedAuth.current = true;
-            return;
-          }
-        }
 
         // Vérifier la validité du token et récupérer l'utilisateur
         try {
@@ -92,17 +82,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       return;
     }
 
-    // En mode mock, récupérer depuis localStorage
-    if (import.meta.env.DEV && token.startsWith("mock_token_")) {
-      const userStr = localStorage.getItem("lbp_mock_user");
-      if (userStr) {
-        console.log('[AuthContext] Mock user found in localStorage');
-        setUser(JSON.parse(userStr));
-        setIsLoading(false);
-        hasCheckedAuth.current = true;
-        return;
-      }
-    }
 
     // Vérifier la validité du token et récupérer l'utilisateur
     console.log('[AuthContext] Checking auth with token');
@@ -126,10 +105,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         JSON.stringify(response.permissions)
       );
 
-      // En mode mock, sauvegarder aussi l'utilisateur
-      if (import.meta.env.DEV) {
-        localStorage.setItem("lbp_mock_user", JSON.stringify(response.user));
-      }
 
       // Définir l'utilisateur directement depuis la réponse (pas besoin de vérifier à nouveau)
       console.log('[Auth] Login successful, setting user:', response.user);
@@ -141,11 +116,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       setUser(response.user);
       setIsLoading(false);
 
-      toast.success(`Bienvenue ${response.user.full_name} !`);
+      toast.success(`Bienvenue ${response.user.nom_complet || response.user.username} !`);
 
-      // Naviguer vers le dashboard
-      console.log('[Auth] Navigating to dashboard');
-      navigate("/dashboard", { replace: true });
+      // ✅ Logique de redirection selon les flags de 1ère connexion
+      if (response.user.must_change_password) {
+        console.log('[Auth] Redirecting to change-password');
+        navigate("/auth/change-password", { replace: true });
+      } else if (!response.user.agence_selected) {
+        console.log('[Auth] Redirecting to select-agency');
+        navigate("/auth/select-agency", { replace: true });
+      } else {
+        console.log('[Auth] Navigating to dashboard');
+        navigate("/dashboard", { replace: true });
+      }
     } catch (error: any) {
       const message =
         error.response?.data?.message || error.message || "Erreur de connexion";

@@ -18,6 +18,7 @@ import { LazyPageLoader } from '../components/common/LazyPageLoader'
 const LoginPage = lazy(() => import('../pages/public/LoginPage').then(m => ({ default: m.LoginPage })))
 const TrackPage = lazy(() => import('../pages/public/TrackPage').then(m => ({ default: m.TrackPage })))
 const PublicPaymentPage = lazy(() => import('../pages/public/PublicPaymentPage').then(m => ({ default: m.PublicPaymentPage })))
+const InvoicePublicPaymentPage = lazy(() => import('../pages/public/InvoicePublicPaymentPage').then(m => ({ default: m.InvoicePublicPaymentPage })))
 
 // Pages - Admin (lazy loaded)
 const DashboardPage = lazy(() => import('../pages/admin/DashboardPage').then(m => ({ default: m.DashboardPage })))
@@ -54,11 +55,26 @@ const StatistiquesHistoriquesPage = lazy(() => import('../pages/admin/statistiqu
 const RentabiliteTarifPage = lazy(() => import('../pages/admin/statistiques/RentabiliteTarifPage'))
 const TarifManagementPage = lazy(() => import('../pages/admin/settings/TarifManagementPage'))
 
+// ✅ Flux Auth & Agences
+import { ChangePasswordPage, SelectAgencyPage, AgencesManagementPage } from './lazyPages'
+
 /**
  * Configuration des routes de l'application
  */
 export const AppRoutes: React.FC = () => {
-  const { isAuthenticated } = useAuth()
+  const { isAuthenticated, user } = useAuth()
+
+  // ✅ Redirection forcée pour le flux de première connexion
+  if (isAuthenticated && user) {
+    // 1. Forcer le changement de mot de passe si le flag est à true
+    if (user.must_change_password && window.location.pathname !== '/auth/change-password') {
+      return <Navigate to="/auth/change-password" replace />
+    }
+    // 2. Forcer la sélection d'agence si elle n'est pas encore faite (et mdp déjà changé)
+    if (!user.must_change_password && !user.agence_selected && window.location.pathname !== '/auth/select-agency') {
+      return <Navigate to="/auth/select-agency" replace />
+    }
+  }
 
   return (
     <Routes>
@@ -69,7 +85,7 @@ export const AppRoutes: React.FC = () => {
           element={<Navigate to={isAuthenticated ? '/dashboard' : '/login'} replace />}
         />
         <Route
-          path="track"
+          path="track/:ref?"
           element={
             <LazyPageLoader>
               <TrackPage />
@@ -85,10 +101,35 @@ export const AppRoutes: React.FC = () => {
           }
         />
         <Route
+          path="invoice/:id/pay"
+          element={
+            <LazyPageLoader>
+              <InvoicePublicPaymentPage />
+            </LazyPageLoader>
+          }
+        />
+        <Route
           path="login"
           element={
             <LazyPageLoader>
               <LoginPage />
+            </LazyPageLoader>
+          }
+        />
+        {/* Flux Auth (Accessibles même sans layout principal) */}
+        <Route
+          path="auth/change-password"
+          element={
+            <LazyPageLoader>
+              <ChangePasswordPage />
+            </LazyPageLoader>
+          }
+        />
+        <Route
+          path="auth/select-agency"
+          element={
+            <LazyPageLoader>
+              <SelectAgencyPage />
             </LazyPageLoader>
           }
         />
@@ -249,6 +290,14 @@ export const AppRoutes: React.FC = () => {
           element={
             <LazyPageLoader>
               <TarifManagementPage />
+            </LazyPageLoader>
+          }
+        />
+        <Route
+          path="settings/agences"
+          element={
+            <LazyPageLoader>
+              <AgencesManagementPage />
             </LazyPageLoader>
           }
         />

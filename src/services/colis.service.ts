@@ -14,7 +14,7 @@ function adaptColisFromBackend(backendColis: any): Colis {
   const totalMontant = marchandises.reduce((sum: number, m: any) => {
     return sum + calculerTotalLigneMarchandise(
       Number(m.prix_unit || 0),
-      Number(m.nbre_colis || 0),
+      Number(m.poids_total || 0),
       Number(m.prix_emballage || 0),
       Number(m.prix_assurance || 0),
       Number(m.prix_agence || 0)
@@ -129,11 +129,19 @@ class ColisService {
   /**
    * Récupérer tous les colis (pour compatibilité avec alerts.service)
    */
-  async getAll(params?: { statut?: string, limit?: number, page?: number }): Promise<PaginatedResponse<Colis>> {
+  async getAll(params?: {
+    statut?: string,
+    limit?: number,
+    page?: number,
+    sans_expedition?: boolean,
+    agence_id?: number
+  }): Promise<PaginatedResponse<Colis>> {
     const queryParams = new URLSearchParams()
     if (params?.statut) queryParams.append('statut', params.statut)
     if (params?.limit) queryParams.append('limit', params.limit.toString())
     if (params?.page) queryParams.append('page', params.page.toString())
+    if (params?.sans_expedition) queryParams.append('sans_expedition', 'true')
+    if (params?.agence_id) queryParams.append('agence_id', params.agence_id.toString())
 
     return apiService.get<PaginatedResponse<Colis>>(
       `/colis?${queryParams.toString()}`
@@ -186,6 +194,14 @@ class ColisService {
     const query = formeEnvoi ? `?forme_envoi=${formeEnvoi}&search=${searchTerm}` : `?search=${searchTerm}`
     const backendColisList = await apiService.get<any[]>(`/colis/search${query}`)
     return backendColisList.map(adaptColisFromBackend)
+  }
+
+  /**
+   * Marquer le colis comme reçu au Hub (Bobigny)
+   */
+  async receiveAtHub(id: number): Promise<Colis> {
+    const backendColis = await apiService.patch<any>(`/colis/${id}/receive-at-hub`)
+    return adaptColisFromBackend(backendColis)
   }
 
   /**

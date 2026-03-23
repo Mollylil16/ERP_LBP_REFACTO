@@ -3,12 +3,16 @@ import { Facture } from '../../factures/entities/facture.entity';
 
 export enum PaymentMode {
     COMPTANT = 'comptant',
+    ESPECES = 'especes',
+    OM = 'om',
+    ORANGE_MONEY = 'orange_money',
+    WAVE = 'wave',
+    CHEQUE = 'cheque',
+    VIREMENT = 'virement',
     TRENTE_JOURS = '30j',
     QUARANTE_CINQ_JOURS = '45j',
     SOIXANTE_JOURS = '60j',
     QUATRE_VINGT_DIX_JOURS = '90j',
-    ORANGE_MONEY = 'orange_money',
-    WAVE = 'wave',
 }
 
 @Entity('lbp_paiements')

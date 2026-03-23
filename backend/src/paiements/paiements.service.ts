@@ -4,6 +4,7 @@ import { Repository, DataSource } from 'typeorm';
 import { Paiement } from './entities/paiement.entity';
 import { CreatePaiementDto } from './dto/create-paiement.dto';
 import { Facture } from '../factures/entities/facture.entity';
+import { Colis } from '../colis/entities/colis.entity';
 import { CaisseService } from '../caisse/caisse.service';
 import { MouvementType } from '../caisse/entities/mouvement-caisse.entity';
 
@@ -16,8 +17,10 @@ export class PaiementsService {
         private paiementRepository: Repository<Paiement>,
         @InjectRepository(Facture)
         private factureRepository: Repository<Facture>,
+        @InjectRepository(Colis)
+        private colisRepository: Repository<Colis>,
         private dataSource: DataSource,
-        private caisseService: CaisseService, // ✅ AJOUT: Injection CaisseService
+        private caisseService: CaisseService,
     ) { }
 
     async create(createPaiementDto: CreatePaiementDto, userId: string): Promise<Paiement> {
@@ -26,15 +29,40 @@ export class PaiementsService {
         await queryRunner.startTransaction();
 
         try {
-            const { id_facture, ...paiementData } = createPaiementDto;
+            const { id_facture, ref_colis, ...paiementData } = createPaiementDto as any;
 
-            // 1. Check facture
-            const facture = await this.factureRepository.findOne({
-                where: { id: id_facture },
-                relations: ['colis']
-            });
+            // 1. Trouver la facture par id ou par ref_colis
+            let facture: Facture | null = null;
+            if (id_facture) {
+                facture = await this.factureRepository.findOne({
+                    where: { id: id_facture },
+                    relations: ['colis', 'colis.client']
+                });
+            } else if (ref_colis) {
+                // Résoudre ref_colis → facture
+                const colis = await this.colisRepository.findOne({
+                    where: { ref_colis },
+                });
+                if (!colis) {
+                    throw new NotFoundException(`Colis "${ref_colis}" introuvable`);
+                }
+                facture = await this.factureRepository.findOne({
+                    where: { colis: { id: colis.id }, etat: 1 }, // uniquement factures validées
+                    relations: ['colis', 'colis.client'],
+                    order: { created_at: 'DESC' },
+                });
+                if (!facture) {
+                    // Essayer aussi les proformas
+                    facture = await this.factureRepository.findOne({
+                        where: { colis: { id: colis.id } },
+                        relations: ['colis', 'colis.client'],
+                        order: { created_at: 'DESC' },
+                    });
+                }
+            }
+
             if (!facture) {
-                throw new NotFoundException(`Facture #${id_facture} not found`);
+                throw new NotFoundException(`Aucune facture trouvée`);
             }
 
             // ✅ AJOUT: Gestion paiements partiels - Vérifier le montant restant
@@ -69,15 +97,20 @@ export class PaiementsService {
                 code_user: userId,
             });
 
-            const savedPaiement = await queryRunner.manager.save(paiement);
+            const savedPaiement = await queryRunner.manager.save(paiement) as unknown as Paiement;
 
             // 4. Update Facture totals
             facture.montant_paye = Number(facture.montant_paye) + Number(paiementData.montant);
 
-            // ✅ AJOUT: Validation automatique si paiement complet
+            // ✅ AJOUT: Mise à jour du statut de paiement
             if (Number(facture.montant_paye) >= Number(facture.montant_ttc)) {
+                facture.payment_status = 'paid';
                 facture.etat = 1; // Définitive
-                this.logger.log(`Facture ${facture.num_facture} automatiquement validée (paiement complet)`);
+                this.logger.log(`Facture ${facture.num_facture} entièrement payée et validée`);
+            } else if (Number(facture.montant_paye) > 0) {
+                facture.payment_status = 'partial';
+            } else {
+                facture.payment_status = 'unpaid';
             }
 
             // Si c'était une proforma, elle devient tacitement définitive ou on gère ça via validation manuelle ?
@@ -118,6 +151,53 @@ export class PaiementsService {
             where: { facture: { id: factureId } },
             order: { date_paiement: 'DESC' },
         });
+    }
+
+    async findByColis(refColis: string): Promise<Paiement[]> {
+        return this.paiementRepository.find({
+            where: { facture: { colis: { ref_colis: refColis } } },
+            relations: ['facture'],
+            order: { date_paiement: 'DESC' },
+        });
+    }
+
+    /**
+     * Calculer le montant restant à payer pour un colis (via sa référence)
+     */
+    async calculateRestantAPayer(refColis: string): Promise<{
+        ref_colis: string;
+        facture_num: string | null;
+        montant_total: number;
+        montant_paye: number;
+        restant_a_payer: number;
+    }> {
+        const colis = await this.colisRepository.findOne({ where: { ref_colis: refColis } });
+        if (!colis) throw new NotFoundException(`Colis "${refColis}" introuvable`);
+
+        const facture = await this.factureRepository.findOne({
+            where: { colis: { id: colis.id } },
+            order: { created_at: 'DESC' },
+        });
+
+        if (!facture) {
+            return {
+                ref_colis: refColis,
+                facture_num: null,
+                montant_total: 0,
+                montant_paye: 0,
+                restant_a_payer: 0,
+            };
+        }
+
+        const montant_total = Number(facture.montant_ttc);
+        const montant_paye = Number(facture.montant_paye);
+        return {
+            ref_colis: refColis,
+            facture_num: facture.num_facture,
+            montant_total,
+            montant_paye,
+            restant_a_payer: Math.max(0, montant_total - montant_paye),
+        };
     }
 
     async findOne(id: number): Promise<Paiement> {
@@ -306,7 +386,7 @@ export class PaiementsService {
             .leftJoinAndSelect('facture.colis', 'colis')
             .leftJoinAndSelect('colis.client', 'client')
             .leftJoinAndSelect('colis.agence', 'agence')
-            .where('facture.montant_paye < facture.montant_ttc')
+            .where('facture.payment_status IN (:...statuses)', { statuses: ['unpaid', 'partial'] })
             .andWhere('facture.etat != 2'); // Not cancelled
 
         if (agenceId) {
@@ -387,6 +467,132 @@ export class PaiementsService {
             date: date.toISOString().split('T')[0],
             reconciliation: Object.values(byAgency),
             totalGeneral: paiements.reduce((sum, p) => sum + Number(p.montant), 0),
+        };
+    }
+
+    /**
+     * Get overdue invoices for notifications
+     */
+    /**
+     * Get consolidated tracking (Suivi) for invoices/colis
+     */
+    async getSuiviPaiements(params: any, user: any) {
+        const page = Number(params.page) || 1;
+        const limit = Number(params.limit) || 20;
+        const skip = (page - 1) * limit;
+
+        const { statut, search, date_debut, date_fin } = params;
+
+        const queryBuilder = this.factureRepository
+            .createQueryBuilder('facture')
+            .leftJoinAndSelect('facture.colis', 'colis')
+            .leftJoinAndSelect('colis.client', 'client')
+            .leftJoinAndSelect('colis.agence', 'agence')
+            .where('facture.etat != 2'); // Not cancelled
+
+        // Role-based filtering
+        const canSeeAll = ['ADMIN', 'DIRECTEUR'].includes(user.role);
+        if (!canSeeAll && user.id_agence) {
+            const agenceId = Number(user.id_agence);
+            if (!isNaN(agenceId)) {
+                queryBuilder.andWhere('colis.agence.id = :agenceId', { agenceId });
+            }
+        }
+
+        // Search filtering (client, ref_colis, num_facture)
+        if (search) {
+            queryBuilder.andWhere(
+                '(colis.ref_colis ILIKE :search OR facture.num_facture ILIKE :search OR client.nom_exp ILIKE :search)',
+                { search: `%${search}%` }
+            );
+        }
+
+        // Date range filtering
+        if (date_debut) {
+            queryBuilder.andWhere('facture.date_facture >= :date_debut', { date_debut });
+        }
+        if (date_fin) {
+            queryBuilder.andWhere('facture.date_facture <= :date_fin', { date_fin });
+        }
+
+        // Status filtering (calculated from amounts)
+        if (statut) {
+            if (statut === 'paye') {
+                queryBuilder.andWhere('facture.montant_paye >= facture.montant_ttc');
+            } else if (statut === 'partiel') {
+                queryBuilder.andWhere('facture.montant_paye > 0 AND facture.montant_paye < facture.montant_ttc');
+            } else if (statut === 'impaye') {
+                queryBuilder.andWhere('facture.montant_paye = 0');
+            }
+        }
+
+        // ─── 1. GLOBAL STATS (Clone BEFORE pagination) ──────────────
+        const allStatsQuery = queryBuilder.clone();
+        allStatsQuery.select([
+            'COUNT(*) FILTER (WHERE facture.montant_paye >= facture.montant_ttc) AS paye_count',
+            'COUNT(*) FILTER (WHERE facture.montant_paye > 0 AND facture.montant_paye < facture.montant_ttc) AS partiel_count',
+            'COUNT(*) FILTER (WHERE facture.montant_paye = 0) AS impaye_count',
+            'SUM(facture.montant_paye) AS total_paye',
+            'SUM(facture.montant_ttc - facture.montant_paye) AS total_restant'
+        ]);
+
+        const statsRaw = await allStatsQuery.getRawOne();
+
+        // ─── 2. PAGINATED DATA ────────────────────────────────────────
+        const [factures, total] = await queryBuilder
+            .orderBy('facture.created_at', 'DESC')
+            .skip(skip)
+            .take(limit)
+            .getManyAndCount();
+
+        // 3. Fetch details for items
+        const items = await Promise.all(
+            factures.map(async (f) => {
+                const lastPaiement = await this.paiementRepository.findOne({
+                    where: { facture: { id: f.id }, etat_validation: 1 },
+                    order: { date_paiement: 'DESC' }
+                });
+
+                const nbPaiements = await this.paiementRepository.count({
+                    where: { facture: { id: f.id }, etat_validation: 1 }
+                });
+
+                const paye = Number(f.montant_paye);
+                const totalM = Number(f.montant_ttc);
+                const status: 'paye' | 'partiel' | 'impaye' =
+                    paye >= totalM ? 'paye' : paye > 0 ? 'partiel' : 'impaye';
+
+                return {
+                    id: f.id,
+                    ref_colis: f.colis?.ref_colis || '-',
+                    facture_num: f.num_facture,
+                    nom_client: f.colis?.client?.nom_exp || 'Inconnu',
+                    tel_client: f.colis?.client?.tel_exp,
+                    montant_total: totalM,
+                    montant_paye: paye,
+                    restant_a_payer: Math.max(0, totalM - paye),
+                    statut: status,
+                    dernier_paiement_date: lastPaiement?.date_paiement,
+                    dernier_mode_paiement: lastPaiement?.mode_paiement,
+                    nb_paiements: nbPaiements,
+                    date_creation: f.date_facture,
+                };
+            })
+        );
+
+        return {
+            data: items,
+            total,
+            page,
+            limit,
+            total_pages: Math.ceil(total / limit),
+            stats: {
+                paye: Number(statsRaw?.paye_count || 0),
+                partiel: Number(statsRaw?.partiel_count || 0),
+                impaye: Number(statsRaw?.impaye_count || 0),
+                totalEncaissé: Number(statsRaw?.total_paye || 0),
+                totalRestant: Number(statsRaw?.total_restant || 0),
+            }
         };
     }
 

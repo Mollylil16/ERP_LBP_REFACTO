@@ -118,3 +118,21 @@ export function useValidateColis() {
     },
   })
 }
+
+/**
+ * Hook pour marquer un colis comme reçu au Hub (Bobigny)
+ */
+export function useReceiveAtHub() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (id: number) => colisService.receiveAtHub(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['colis'] })
+      toast.success('Colis marqué comme reçu à Bobigny')
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Erreur lors de la mise à jour du statut')
+    },
+  })
+}

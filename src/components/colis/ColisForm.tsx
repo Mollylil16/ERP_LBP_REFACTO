@@ -13,8 +13,10 @@ import {
   Typography,
   InputNumber,
   AutoComplete,
+  Alert,
+  Checkbox,
 } from 'antd'
-import { PlusOutlined, DeleteOutlined, SaveOutlined } from '@ant-design/icons'
+import { PlusOutlined, DeleteOutlined, SaveOutlined, UserAddOutlined, CheckCircleOutlined } from '@ant-design/icons'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -35,14 +37,16 @@ const { Option } = Select
 // Schéma de validation Zod
 const marchandiseSchema = z.object({
   nom_marchandise: z.string().min(1, 'Le nom de la marchandise est obligatoire'),
-  nbre_colis: z.number().min(1, 'Le nombre de colis doit être au moins 1'),
-  nbre_articles: z.number().min(1, 'Le nombre d\'articles doit être au moins 1'),
-  poids_total: z.number().min(0.01, 'Le poids doit être supérieur à 0'),
-  prix_unit: z.number().min(0, 'Le prix unitaire doit être positif'),
-  prix_emballage: z.number().min(0).optional().default(0),
-  prix_assurance: z.number().min(0).optional().default(0),
-  prix_agence: z.number().min(0).optional().default(0),
+  nbre_colis: z.coerce.number().min(1, 'Le nombre de colis doit être au moins 1'),
+  nbre_articles: z.coerce.number().min(1, 'Le nombre d\'articles doit être au moins 1'),
+  poids_total: z.coerce.number().min(0.01, 'Le poids doit être supérieur à 0'),
+  prix_unit: z.coerce.number().min(0, 'Le prix unitaire doit être positif'),
+  prix_emballage: z.coerce.number().min(0).optional().default(0),
+  prix_assurance: z.coerce.number().min(0).optional().default(0),
+  prix_agence: z.coerce.number().min(0).optional().default(0),
   id_tarif: z.number().optional(),
+  type_emballage: z.string().optional(),
+  nbre_emballage: z.coerce.number().min(1, 'Le nombre d\'emballage doit être au moins 1'),
 })
 
 const colisFormSchema = z.object({
@@ -73,6 +77,12 @@ const colisFormSchema = z.object({
   adresse_recup: z.string().optional(),
   tel_recup: z.string().optional(),
   email_recup: z.string().email('Email invalide').optional().or(z.literal('')),
+
+  // Livraison à domicile
+  livraison: z.boolean().optional().default(false),
+
+  // ID traceur GPS physique (optionnel)
+  tracker_id: z.string().optional(),
 })
 
 type ColisFormData = z.infer<typeof colisFormSchema>
@@ -97,6 +107,13 @@ export const ColisForm: React.FC<ColisFormProps> = ({
   const [clients, setClients] = useState<any[]>([])
   const [tarifs, setTarifs] = useState<any[]>([])
   const [searching, setSearching] = useState(false)
+  const [savedClient, setSavedClient] = useState<any>(null)  // client déjà sélectionné / créé
+  const [creatingClient, setCreatingClient] = useState(false)
+  // Avertissement doublons de nom
+  const [duplicateWarning, setDuplicateWarning] = useState<string | null>(null)
+  // Saisie téléphone pour désambiguation
+  const [phoneSearch, setPhoneSearch] = useState<string>('')
+  const [phoneMatchMsg, setPhoneMatchMsg] = useState<string | null>(null)
   const { user, getCurrency } = useAuth()
   const currency = getCurrency()
   const { data: produitsCatalogue = [], isLoading: loadingProduits } = useProduitsCatalogue()
@@ -111,7 +128,7 @@ export const ColisForm: React.FC<ColisFormProps> = ({
     resolver: zodResolver(colisFormSchema),
     defaultValues: {
       mode_envoi: formeEnvoi === 'groupage' ? 'groupage' : '',
-      marchandise: [{ nom_marchandise: '', nbre_colis: 0, nbre_articles: 0, poids_total: 0, prix_unit: 0 }],
+      marchandise: [{ nom_marchandise: '', nbre_colis: 0, nbre_articles: 0, poids_total: 0, prix_unit: 0, nbre_emballage: 1 }],
       ...initialData,
     },
   })
@@ -141,7 +158,7 @@ export const ColisForm: React.FC<ColisFormProps> = ({
 
     const safeMarchandises = marchandiseValues.map((line) => ({
       prix_unit: line?.prix_unit || 0,
-      nbre_colis: line?.nbre_colis || 0,
+      poids_total: line?.poids_total || 0,
       prix_emballage: line?.prix_emballage || 0,
       prix_assurance: line?.prix_assurance || 0,
       prix_agence: line?.prix_agence || 0,
@@ -179,6 +196,7 @@ export const ColisForm: React.FC<ColisFormProps> = ({
         prix_emballage: 0,
         prix_assurance: 0,
         prix_agence: 0,
+        nbre_emballage: 1,
       },
     ])
   }
@@ -197,30 +215,34 @@ export const ColisForm: React.FC<ColisFormProps> = ({
   const onFormSubmit = async (data: ColisFormData) => {
     try {
       // 1) Résoudre / créer le client expéditeur => id_client (attendu par le backend)
-      const tel = data.client_colis.tel_exp?.trim()
-      const nom = data.client_colis.nom_exp?.trim()
+      // Si le client a déjà été sélectionné ou créé via le bouton, on l'utilise directement
+      let client = savedClient
 
-      // On cherche d'abord par téléphone (plus fiable), sinon par nom
-      const searchTerm = tel || nom
-      if (!searchTerm) {
-        message.error("Téléphone ou nom de l'expéditeur requis pour créer le client")
-        return
+      if (!client) {
+        const tel = data.client_colis.tel_exp?.trim()
+        const nom = data.client_colis.nom_exp?.trim()
+
+        const searchTerm = tel || nom
+        if (!searchTerm) {
+          message.error("Téléphone ou nom de l'expéditeur requis pour créer le client")
+          return
+        }
+
+        const found = await clientsService.searchClients(searchTerm)
+        const existing =
+          found.find((c) => (tel ? c.tel_exp === tel : false)) ||
+          found.find((c) => c.nom_exp?.toLowerCase() === nom?.toLowerCase())
+
+        client =
+          existing ||
+          (await clientsService.createClient({
+            nom_exp: data.client_colis.nom_exp,
+            type_piece_exp: data.client_colis.type_piece_exp,
+            num_piece_exp: data.client_colis.num_piece_exp,
+            tel_exp: data.client_colis.tel_exp,
+            email_exp: data.client_colis.email_exp || undefined,
+          }))
       }
-
-      const found = await clientsService.searchClients(searchTerm)
-      const existing =
-        found.find((c) => (tel ? c.tel_exp === tel : false)) ||
-        found.find((c) => c.nom_exp?.toLowerCase() === nom?.toLowerCase())
-
-      const client =
-        existing ||
-        (await clientsService.createClient({
-          nom_exp: data.client_colis.nom_exp,
-          type_piece_exp: data.client_colis.type_piece_exp,
-          num_piece_exp: data.client_colis.num_piece_exp,
-          tel_exp: data.client_colis.tel_exp,
-          email_exp: data.client_colis.email_exp || undefined,
-        }))
 
       // 2) Mapper le modèle formulaire -> modèle backend
       const payload = {
@@ -246,8 +268,12 @@ export const ColisForm: React.FC<ColisFormProps> = ({
           prix_emballage: m.prix_emballage || 0,
           prix_assurance: m.prix_assurance || 0,
           prix_agence: m.prix_agence || 0,
+          type_emballage: m.type_emballage || undefined,
+          nbre_emballage: m.nbre_emballage || 1,
         })),
 
+        livraison: data.livraison ?? false,
+        tracker_id: data.tracker_id || undefined,
         nom_recup: data.nom_recup || undefined,
         adresse_recup: data.adresse_recup || undefined,
         tel_recup: data.tel_recup || undefined,
@@ -267,15 +293,29 @@ export const ColisForm: React.FC<ColisFormProps> = ({
     if (!value || value.length < 2) {
       console.log('[ColisForm] Recherche annulée: valeur trop courte')
       setClients([])
+      setDuplicateWarning(null)
       return
     }
 
     try {
       setSearching(true)
-      console.log('[ColisForm] Appel API searchClients...')
       const results = await clientsService.searchClients(value)
-      console.log('[ColisForm] Résultats trouvés:', results.length, results)
       setClients(results)
+
+      // Détecte les doublons de nom exact (insensible à la casse)
+      const normalized = value.trim().toLowerCase()
+      const sameNameCount = results.filter(
+        (c: any) => (c.nom_exp || '').trim().toLowerCase() === normalized
+      ).length
+
+      if (sameNameCount >= 2) {
+        setDuplicateWarning(
+          `⚠️ Attention — il existe ${sameNameCount} clients avec le nom "${value.trim()}". ` +
+          `Veuillez sélectionner le bon client dans la liste en vérifiant son numéro de téléphone ou de pièce d'identité.`
+        )
+      } else {
+        setDuplicateWarning(null)
+      }
     } catch (error) {
       console.error('[ColisForm] Erreur recherche clients:', error)
     } finally {
@@ -292,6 +332,71 @@ export const ColisForm: React.FC<ColisFormProps> = ({
       setValue('client_colis.num_piece_exp', selectedClient.num_piece_exp)
       setValue('client_colis.tel_exp', selectedClient.tel_exp)
       setValue('client_colis.email_exp', selectedClient.email_exp || '')
+      setSavedClient(selectedClient)
+      // Le bon client est sélectionné — on efface l'alerte
+      setDuplicateWarning(null)
+      setPhoneSearch('')
+      setPhoneMatchMsg(null)
+    }
+  }
+
+  // Désambiguation par numéro de téléphone quand plusieurs clients ont le même nom
+  const handlePhoneSearch = (phone: string) => {
+    setPhoneSearch(phone)
+    if (!phone.trim()) {
+      setPhoneMatchMsg(null)
+      return
+    }
+    // On filtre parmi les clients déjà chargés en mémoire
+    const matches = clients.filter((c: any) =>
+      (c.tel_exp || '').replace(/\s/g, '').includes(phone.replace(/\s/g, ''))
+    )
+    if (matches.length === 1) {
+      // Match unique : auto-sélection
+      const c = matches[0]
+      setValue('client_colis.nom_exp', c.nom_exp)
+      setValue('client_colis.type_piece_exp', c.type_piece_exp)
+      setValue('client_colis.num_piece_exp', c.num_piece_exp)
+      setValue('client_colis.tel_exp', c.tel_exp)
+      setValue('client_colis.email_exp', c.email_exp || '')
+      setSavedClient(c)
+      setDuplicateWarning(null)
+      setPhoneSearch('')
+      setPhoneMatchMsg(null)
+    } else if (matches.length === 0) {
+      setPhoneMatchMsg(`❌ Aucun client trouvé avec ce numéro parmi les résultats.`)
+    } else {
+      setPhoneMatchMsg(`🔍 ${matches.length} correspondance(s) — continuez à saisir pour affiner.`)
+    }
+  }
+
+  const handleCreateClient = async () => {
+    const nom = watch('client_colis.nom_exp')?.trim()
+    const type_piece = watch('client_colis.type_piece_exp')
+    const num_piece = watch('client_colis.num_piece_exp')?.trim()
+    const tel = watch('client_colis.tel_exp')?.trim()
+    const email = watch('client_colis.email_exp')
+
+    if (!nom || !type_piece || !num_piece || !tel) {
+      message.warning('Veuillez remplir tous les champs obligatoires avant de créer le client (Nom, Type pièce, N° pièce, Téléphone)')
+      return
+    }
+
+    try {
+      setCreatingClient(true)
+      const newClient = await clientsService.createClient({
+        nom_exp: nom,
+        type_piece_exp: type_piece,
+        num_piece_exp: num_piece,
+        tel_exp: tel,
+        email_exp: email || undefined,
+      })
+      setSavedClient(newClient)
+      message.success(`Client "${nom}" créé et enregistré avec succès !`)
+    } catch (e: any) {
+      message.error(e?.message || 'Erreur lors de la création du client')
+    } finally {
+      setCreatingClient(false)
     }
   }
 
@@ -314,11 +419,17 @@ export const ColisForm: React.FC<ColisFormProps> = ({
                   help={errors.trafic_envoi?.message}
                 >
                   <Select {...field} placeholder="Sélectionner le trafic d'envoi" size="large">
-                    {APP_CONFIG.traficEnvoi.map((trafic) => (
-                      <Option key={trafic} value={trafic}>
-                        {trafic}
-                      </Option>
-                    ))}
+                    {APP_CONFIG.traficEnvoi
+                      .filter((trafic) =>
+                        isGroupage
+                          ? trafic.includes('Groupage')
+                          : trafic.includes('Colis Rapide')
+                      )
+                      .map((trafic) => (
+                        <Option key={trafic} value={trafic}>
+                          {trafic}
+                        </Option>
+                      ))}
                   </Select>
                 </Form.Item>
               )}
@@ -374,11 +485,52 @@ export const ColisForm: React.FC<ColisFormProps> = ({
               />
             </Col>
           )}
+
+          {/* ID Traceur GPS — optionnel, pour le suivi temps réel sur la carte */}
+          <Col xs={24} md={12}>
+            <Controller
+              name="tracker_id"
+              control={control}
+              render={({ field }) => (
+                <Form.Item
+                  label={
+                    <span>
+                      ID Traceur GPS&nbsp;
+                      <span style={{ fontWeight: 400, color: '#888', fontSize: 12 }}>
+                        (optionnel — ex: SPOT-001, TIVE-ABC)
+                      </span>
+                    </span>
+                  }
+                  tooltip="Entrez l'identifiant du traceur physique fixé sur ce colis pour activer le suivi en temps réel sur la cartographie."
+                >
+                  <Input
+                    {...field}
+                    placeholder="Ex: SPOT-001"
+                    size="large"
+                    prefix={<span style={{ fontSize: 16 }}>🛰️</span>}
+                    style={{ fontFamily: 'monospace' }}
+                  />
+                </Form.Item>
+              )}
+            />
+          </Col>
         </Row>
       </Card>
 
       {/* SECTION 2: CLIENT EXPÉDITEUR */}
-      <Card title="Informations Expéditeur" style={{ marginBottom: 16 }}>
+      <Card
+        title={
+          <Space>
+            Informations Expéditeur
+            {savedClient && (
+              <span style={{ fontSize: 13, color: '#52c41a', fontWeight: 'normal' }}>
+                <CheckCircleOutlined /> {savedClient.id ? 'Client enregistré' : ''}
+              </span>
+            )}
+          </Space>
+        }
+        style={{ marginBottom: 16 }}
+      >
         <Row gutter={16}>
           <Col xs={24}>
             <Controller
@@ -391,31 +543,111 @@ export const ColisForm: React.FC<ColisFormProps> = ({
                   validateStatus={errors.client_colis?.nom_exp ? 'error' : ''}
                   help={errors.client_colis?.nom_exp?.message}
                 >
-                  <AutoComplete
-                    {...field}
-                    options={clients.map((client) => ({
-                      value: client.nom_exp,
-                      label: (
-                        <div>
-                          <strong>{client.nom_exp}</strong>
-                          <br />
-                          <small style={{ color: '#888' }}>
-                            {client.tel_exp} • {client.type_piece_exp}
-                          </small>
+                  <Space.Compact style={{ width: '100%' }}>
+                    <AutoComplete
+                      {...field}
+                      style={{ flex: 1 }}
+                      options={clients.map((client) => ({
+                        value: client.nom_exp,
+                        label: (
+                          <div>
+                            <strong>{client.nom_exp}</strong>
+                            <br />
+                            <small style={{ color: '#888' }}>
+                              {client.tel_exp} • {client.type_piece_exp}
+                            </small>
+                          </div>
+                        ),
+                        key: client.id,
+                      }))}
+                      onSearch={(val: string) => {
+                        // Si l'utilisateur retape, on réinitialise le client sauvegardé
+                        if (savedClient && val !== savedClient.nom_exp) {
+                          setSavedClient(null)
+                        }
+                        handleSearchClients(val)
+                      }}
+                      onSelect={(value: string, option: any) => {
+                        field.onChange(value)
+                        handleSelectClient(value, option)
+                      }}
+                      onChange={(val: string) => {
+                        field.onChange(val)
+                        // Si l'utilisateur vide le champ, on réinitialise
+                        if (!val) {
+                          setSavedClient(null)
+                          setDuplicateWarning(null)
+                          setPhoneSearch('')
+                          setPhoneMatchMsg(null)
+                        }
+                      }}
+                      placeholder="Rechercher ou saisir un client"
+                      size="large"
+                      allowClear
+                      notFoundContent={searching ? 'Recherche...' : null}
+                    />
+                    {!savedClient && (
+                      <Button
+                        size="large"
+                        type="primary"
+                        icon={<UserAddOutlined />}
+                        loading={creatingClient}
+                        onClick={handleCreateClient}
+                        title="Créer et enregistrer ce client"
+                        style={{ whiteSpace: 'nowrap' }}
+                      >
+                        Créer et enregistrer
+                      </Button>
+                    )}
+                    {savedClient && (
+                      <Button
+                        size="large"
+                        icon={<CheckCircleOutlined />}
+                        style={{ color: '#52c41a', borderColor: '#52c41a', whiteSpace: 'nowrap' }}
+                        onClick={() => {
+                          setSavedClient(null)
+                          setValue('client_colis.nom_exp', '')
+                          setValue('client_colis.type_piece_exp', '')
+                          setValue('client_colis.num_piece_exp', '')
+                          setValue('client_colis.tel_exp', '')
+                          setValue('client_colis.email_exp', '')
+                          setClients([])
+                        }}
+                      >
+                        Changer de client
+                      </Button>
+                    )}
+                  </Space.Compact>
+
+                  {/* Bloc désambiguation doublons */}
+                  {duplicateWarning && (
+                    <div style={{ marginTop: 8 }}>
+                      <Alert
+                        type="warning"
+                        showIcon
+                        message={duplicateWarning}
+                        style={{ marginBottom: 8 }}
+                      />
+                      {/* Saisie du numéro de téléphone pour trouver le bon client */}
+                      <Input
+                        prefix={<span style={{ color: '#B8900A', fontWeight: 700 }}>📞</span>}
+                        placeholder="Saisir le numéro de téléphone du client pour l'identifier…"
+                        value={phoneSearch}
+                        onChange={({ currentTarget: { value } }: React.ChangeEvent<HTMLInputElement>) => handlePhoneSearch(value)}
+                        size="large"
+                        allowClear
+                        style={{
+                          borderColor: '#B8900A',
+                          boxShadow: '0 0 0 2px rgba(184,144,10,0.15)',
+                        }}
+                      />
+                      {phoneMatchMsg && (
+                        <div style={{ marginTop: 4, fontSize: 12, color: phoneMatchMsg.startsWith('❌') ? '#c0392b' : '#1A2B5B' }}>
+                          {phoneMatchMsg}
                         </div>
-                      ),
-                      key: client.id,
-                    }))}
-                    onSearch={handleSearchClients}
-                    onSelect={(value: string, option: any) => {
-                      field.onChange(value)
-                      handleSelectClient(value, option)
-                    }}
-                    placeholder="Rechercher ou saisir un client"
-                    size="large"
-                    allowClear
-                    notFoundContent={searching ? 'Recherche...' : 'Aucun client trouvé'}
-                  />
+                      )}
+                    </div>
+                  )}
                 </Form.Item>
               )}
             />
@@ -528,42 +760,55 @@ export const ColisForm: React.FC<ColisFormProps> = ({
             <Row gutter={16}>
               {/* NOUVEAU: Sélecteur de produit du catalogue */}
               <Col xs={24} md={12}>
-                <Form.Item label="Produit du catalogue (optionnel)" help="Sélectionnez un produit pour remplir automatiquement le nom et le prix">
+                <Form.Item label="Produit du catalogue (optionnel)" help="Sélectionnez un ou plusieurs produits pour remplir automatiquement la ligne">
                   <Select
-                    placeholder="Rechercher un produit..."
+                    mode="multiple"
+                    placeholder="Rechercher des produits..."
                     size="large"
                     allowClear
                     showSearch
                     loading={loadingProduits}
-                    filterOption={(input, option) =>
+                    filterOption={(input: string, option: any) =>
                       (option?.label ?? '').toString().toLowerCase().includes(input.toLowerCase())
                     }
-                    onChange={(produitId: number) => {
-                      if (produitId) {
-                        const produit = produitsCatalogue.find(p => p.id === produitId)
-                        if (produit) {
-                          // Auto-remplir le nom
-                          setValue(`marchandise.${index}.nom_marchandise`, produit.nom)
+                    onChange={(ids: number[]) => {
+                      if (ids && ids.length > 0) {
+                        const selectedProds = produitsCatalogue.filter(p => ids.includes(p.id));
 
-                          // Auto-remplir le prix selon la nature du produit
-                          let prix = 0
-                          if (produit.nature === 'PRIX_UNITAIRE' && produit.prix_unitaire) {
-                            prix = produit.prix_unitaire
-                          } else if (produit.nature === 'PRIX_FORFAITAIRE' && produit.prix_forfaitaire) {
-                            prix = produit.prix_forfaitaire
-                          }
+                        // Vérifier si tous les produits ont le même prix
+                        const prices = selectedProds.map(p => {
+                          const pUnit = Number(p.prix_unitaire || 0);
+                          const pForfait = Number(p.prix_forfaitaire || 0);
+                          return pUnit > 0 ? pUnit : pForfait;
+                        });
 
-                          if (prix > 0) {
-                            setValue(`marchandise.${index}.prix_unit`, prix)
-                            message.success(`Produit "${produit.nom}" sélectionné - Prix: ${prix} ${produit.devise}`)
-                          }
+                        const uniquePrices = [...new Set(prices)];
+
+                        if (uniquePrices.length > 1) {
+                          message.error("Erreur de sélection : Les produits sélectionnés doivent avoir le même prix unitaire.");
+                          // On ne met pas à jour le formulaire si les prix diffèrent
+                          return;
                         }
+
+                        const sharedPrice = uniquePrices[0];
+                        const joinedNames = selectedProds.map(p => p.nom).join(', ');
+
+                        // Mettre à jour les champs
+                        setValue(`marchandise.${index}.nom_marchandise`, joinedNames);
+                        if (sharedPrice > 0) {
+                          setValue(`marchandise.${index}.prix_unit`, sharedPrice);
+                        }
+
+                        message.success(`${selectedProds.length} produit(s) sélectionné(s) - Prix: ${sharedPrice} ${selectedProds[0]?.devise || 'FCFA'}`);
+                      } else {
+                        // Si on vide la sélection, on peut choisir de vider or non le nom. 
+                        // Ici on laisse l'utilisateur décider s'il veut garder le texte ou non.
                       }
                     }}
                     options={produitsCatalogue
                       .filter(p => p.actif)
                       .map(p => {
-                        const prix = p.prix_unitaire || p.prix_forfaitaire || 0
+                        const prix = Number(p.prix_unitaire || 0) || Number(p.prix_forfaitaire || 0)
                         const devise = p.devise || 'FCFA'
                         return {
                           value: p.id,
@@ -616,7 +861,56 @@ export const ColisForm: React.FC<ColisFormProps> = ({
                 />
               </Col>
 
+              {/* Type d'emballage */}
               <Col xs={24} sm={6}>
+                <Controller
+                  name={`marchandise.${index}.type_emballage`}
+                  control={control}
+                  render={({ field }) => (
+                    <Form.Item label="Type d'emballage">
+                      <Select
+                        {...field}
+                        placeholder="Sélectionner"
+                        size="large"
+                        allowClear
+                      >
+                        <Option value="petit_carton">📦 Petit Carton</Option>
+                        <Option value="moyen_carton">📦 Moyen Carton</Option>
+                        <Option value="grand_carton">📦 Grand Carton</Option>
+                        <Option value="sac">👜 Sac</Option>
+                        <Option value="valise">🧳 Valise</Option>
+                        <Option value="bôrô">🪣 Bôrô</Option>
+                      </Select>
+                    </Form.Item>
+                  )}
+                />
+              </Col>
+
+              <Col xs={24} sm={4}>
+                <Controller
+                  name={`marchandise.${index}.nbre_emballage`}
+                  control={control}
+                  render={({ field }) => (
+                    <Form.Item
+                      label="Nbre d'emb."
+                      required
+                      validateStatus={errors.marchandise?.[index]?.nbre_emballage ? 'error' : ''}
+                      help={errors.marchandise?.[index]?.nbre_emballage?.message}
+                    >
+                      <InputNumber
+                        {...field}
+                        value={field.value}
+                        onChange={(value: number | null) => field.onChange(value || 1)}
+                        min={1}
+                        style={{ width: '100%' }}
+                        size="large"
+                      />
+                    </Form.Item>
+                  )}
+                />
+              </Col>
+
+              <Col xs={24} sm={4}>
                 <Controller
                   name={`marchandise.${index}.nbre_articles`}
                   control={control}
@@ -640,37 +934,7 @@ export const ColisForm: React.FC<ColisFormProps> = ({
                 />
               </Col>
 
-              <Col xs={24} sm={8}>
-                <Controller
-                  name={`marchandise.${index}.id_tarif`}
-                  control={control}
-                  render={({ field }) => (
-                    <Form.Item label="Tarif / Type d'envoi">
-                      <Select
-                        {...field}
-                        placeholder="Sélectionner un tarif"
-                        size="large"
-                        allowClear
-                        onChange={(val: any) => {
-                          field.onChange(val)
-                          if (val) {
-                            const selected = tarifs.find((t) => t.id === val)
-                            if (selected) {
-                              setValue(`marchandise.${index}.prix_unit`, Number(selected.prix_vente_conseille))
-                            }
-                          }
-                        }}
-                      >
-                        {tarifs.map((t) => (
-                          <Option key={t.id} value={t.id}>
-                            {t.nom} ({t.prix_vente_conseille} FCFA)
-                          </Option>
-                        ))}
-                      </Select>
-                    </Form.Item>
-                  )}
-                />
-              </Col>
+
 
               <Col xs={24} sm={8}>
                 <Controller
@@ -786,7 +1050,7 @@ export const ColisForm: React.FC<ColisFormProps> = ({
                   {formatMontantWithDevise(
                     calculerTotalLigneMarchandise(
                       watch(`marchandise.${index}.prix_unit`) || 0,
-                      watch(`marchandise.${index}.nbre_colis`) || 0,
+                      watch(`marchandise.${index}.poids_total`) || 0,
                       watch(`marchandise.${index}.prix_emballage`) || 0,
                       watch(`marchandise.${index}.prix_assurance`) || 0,
                       watch(`marchandise.${index}.prix_agence`) || 0
@@ -806,7 +1070,7 @@ export const ColisForm: React.FC<ColisFormProps> = ({
               marchandiseLines.reduce((total, _, index) => {
                 return total + calculerTotalLigneMarchandise(
                   watch(`marchandise.${index}.prix_unit`) || 0,
-                  watch(`marchandise.${index}.nbre_colis`) || 0,
+                  watch(`marchandise.${index}.poids_total`) || 0,
                   watch(`marchandise.${index}.prix_emballage`) || 0,
                   watch(`marchandise.${index}.prix_assurance`) || 0,
                   watch(`marchandise.${index}.prix_agence`) || 0
@@ -883,6 +1147,29 @@ export const ColisForm: React.FC<ColisFormProps> = ({
                   help={errors.email_dest?.message}
                 >
                   <Input {...field} type="email" placeholder="email@example.com" size="large" />
+                </Form.Item>
+              )}
+            />
+          </Col>
+
+          {/* Livraison à domicile */}
+          <Col xs={24}>
+            <Controller
+              name="livraison"
+              control={control}
+              render={({ field }) => (
+                <Form.Item>
+                  <Checkbox
+                    checked={field.value ?? false}
+                    onChange={(e: { target: { checked: boolean } }) => field.onChange(e.target.checked)}
+                  >
+                    <span style={{ fontWeight: 600, fontSize: 14 }}>
+                      🚚 Livraison à domicile demandée
+                    </span>
+                    <span style={{ color: '#888', marginLeft: 8, fontSize: 12 }}>
+                      (si coché, "LIVRAISON : OUI" apparaîtra sur la facture)
+                    </span>
+                  </Checkbox>
                 </Form.Item>
               )}
             />

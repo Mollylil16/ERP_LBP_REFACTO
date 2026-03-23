@@ -16,18 +16,18 @@ export class AuthService {
             console.log(`[Auth] User not found: ${username}`);
             return null;
         }
-        
-        if (!user.isActive) {
+
+        if (!user.actif) {
             console.log(`[Auth] User is inactive: ${username}`);
             return null;
         }
-        
+
         const isPasswordValid = await bcrypt.compare(pass, user.password);
         if (!isPasswordValid) {
             console.log(`[Auth] Invalid password for user: ${username}`);
             return null;
         }
-        
+
         const { password, ...result } = user;
         return result;
     }
@@ -38,30 +38,33 @@ export class AuthService {
             sub: user.id,
             role: user.role,
             code_acces: user.code_acces,
-            id_agence: user.id_agence
+            id_agence: user.agence?.id ?? null,
         };
-        
-        // Formater l'utilisateur selon le format attendu par le frontend
+
         const formattedUser = {
             id: user.id,
-            code_user: `USER${user.id.toString().padStart(3, '0')}`, // Générer un code_user
+            code_user: `USER${user.id.toString().padStart(3, '0')}`,
             username: user.username,
-            full_name: user.fullname,
-            email: null, // Peut être ajouté plus tard
-            phone: null, // Peut être ajouté plus tard
+            full_name: user.nom_complet,
+            email: user.email ?? null,
+            phone: user.phone ?? null,
             role: {
                 id: this.getRoleId(user.role),
                 code: user.role,
                 name: this.getRoleName(user.role),
             },
-            agency_id: user.id_agence || null,
+            agency_id: user.agence?.id ?? null,
+            agency_name: user.agence?.nom ?? null,
             filter_mode: this.getFilterMode(user.code_acces),
-            can_delete: user.code_acces === 2, // Seulement Super Admin
-            can_modify: user.code_acces !== 2, // Super Admin ne peut pas modifier
-            status: user.isActive ? 'active' : 'inactive' as 'active' | 'inactive',
+            can_delete: user.code_acces === 2,
+            can_modify: user.code_acces !== 2,
+            status: user.actif ? 'active' : 'inactive' as 'active' | 'inactive',
+            // ✅ Flags pour le flux de 1ère connexion
+            must_change_password: user.must_change_password ?? false,
+            agence_selected: user.agence_selected ?? (user.agence != null),
             created_at: user.created_at ? new Date(user.created_at).toISOString() : new Date().toISOString(),
         };
-        
+
         return {
             token: this.jwtService.sign(payload),
             refresh_token: this.jwtService.sign(payload, { expiresIn: '7d' }),
@@ -69,33 +72,37 @@ export class AuthService {
             permissions: this.getPermissionsForUser(user),
         };
     }
-    
+
     private getRoleId(role: string): number {
         const roleMap: Record<string, number> = {
-            'SUPER_ADMIN': 1,
-            'ADMIN': 2,
-            'OPERATEUR_COLIS': 3,
-            'VALIDATEUR': 4,
-            'CAISSIER': 5,
-            'AGENCE_MANAGER': 6,
-            'LECTURE_SEULE': 7,
+            'DIRECTEUR': 1,
+            'MANAGER': 2,
+            'SUPERVISEUR_REGIONAL': 3,
+            'AGENT_EXPLOITATION': 4,
+            'AGENT_GROUPAGE': 5,
+            'CAISSIER': 6,
+            'CAISSIER_GROUPAGE': 7,
+            'AGENT_SUIVI': 8,
+            'ADMIN': 1,
         };
-        return roleMap[role] || 3;
+        return roleMap[role] || 4;
     }
-    
+
     private getRoleName(role: string): string {
         const nameMap: Record<string, string> = {
-            'SUPER_ADMIN': 'Super Administrateur',
+            'DIRECTEUR': 'Directeur Général',
+            'MANAGER': 'Manager / Superviseur',
+            'SUPERVISEUR_REGIONAL': 'Superviseur Régional',
+            'AGENT_EXPLOITATION': 'Agent Exploitation',
+            'AGENT_GROUPAGE': 'Agent Groupage',
+            'CAISSIER': 'Caissier Principal',
+            'CAISSIER_GROUPAGE': 'Caissier Groupage',
+            'AGENT_SUIVI': 'Agent Suivi',
             'ADMIN': 'Administrateur',
-            'OPERATEUR_COLIS': 'Opérateur Colis',
-            'VALIDATEUR': 'Validateur',
-            'CAISSIER': 'Caissier',
-            'AGENCE_MANAGER': 'Gestionnaire Agence',
-            'LECTURE_SEULE': 'Lecture Seule',
         };
-        return nameMap[role] || 'Opérateur Colis';
+        return nameMap[role] || 'Agent Exploitation';
     }
-    
+
     private getFilterMode(code_acces: number): 'individual' | 'agency' | 'all' {
         // CODEACCES 2 = Super Admin (all)
         // CODEACCES 1 = Admin/Manager (all)
@@ -110,39 +117,29 @@ export class AuthService {
     }
 
     getPermissionsForUser(user: any): string[] {
-        // CODEACCES 2 = Super Admin (toutes les permissions)
-        if (user.code_acces === 2 || user.role === 'SUPER_ADMIN') {
+        // DIRECTEUR - Toutes les permissions
+        if (user.role === 'DIRECTEUR' || user.role === 'ADMIN' || user.code_acces === 2) {
             return ['*'];
         }
 
-        // Mapper les rôles vers leurs permissions selon les constantes du frontend
         const rolePermissions: Record<string, string[]> = {
-            'ADMIN': [
-                'dashboard.admin',
+            'DIRECTEUR': ['*'],
+            'MANAGER': [
+                'dashboard.view',
                 'colis.groupage.read',
                 'colis.groupage.create',
                 'colis.groupage.update',
-                'colis.groupage.delete',
                 'colis.autres-envois.read',
                 'colis.autres-envois.create',
                 'colis.autres-envois.update',
-                'colis.autres-envois.delete',
                 'clients.read',
                 'clients.create',
-                'clients.update',
-                'clients.delete',
                 'factures.read',
                 'factures.create',
-                'factures.validate',
-                'factures.print',
                 'paiements.read',
-                'paiements.create',
                 'rapports.view',
-                'rapports.export',
-                'caisse.view',
-                'caisse.operations',
             ],
-            'OPERATEUR_COLIS': [
+            'AGENT_EXPLOITATION': [
                 'dashboard.view',
                 'colis.groupage.read',
                 'colis.groupage.create',
@@ -154,6 +151,15 @@ export class AuthService {
                 'clients.create',
                 'factures.read',
                 'factures.print',
+            ],
+            'AGENT_GROUPAGE': [
+                'dashboard.view',
+                'colis.groupage.read',
+                'colis.groupage.create',
+                'colis.groupage.update',
+                'colis.autres-envois.read',
+                'clients.read',
+                'factures.read',
             ],
             'CAISSIER': [
                 'dashboard.view',
@@ -166,46 +172,36 @@ export class AuthService {
                 'caisse.view',
                 'caisse.operations',
             ],
-            'VALIDATEUR': [
+            'CAISSIER_GROUPAGE': [
                 'dashboard.view',
+                'dashboard.caisse',
                 'colis.groupage.read',
-                'colis.groupage.validate',
-                'colis.autres-envois.read',
-                'colis.autres-envois.validate',
                 'factures.read',
-                'factures.validate',
-                'paiements.read',
-                'paiements.validate',
-            ],
-            'AGENCE_MANAGER': [
-                'dashboard.view',
-                'colis.groupage.read',
-                'colis.groupage.create',
-                'colis.groupage.update',
-                'colis.autres-envois.read',
-                'colis.autres-envois.create',
-                'colis.autres-envois.update',
-                'clients.read',
-                'clients.create',
-                'factures.read',
-                'factures.create',
                 'paiements.read',
                 'paiements.create',
+                'caisse.view',
+            ],
+            'AGENT_SUIVI': [
+                'dashboard.view',
+                'colis.groupage.read',
+                'colis.autres-envois.read',
+                'clients.read',
+                'factures.read',
+                'paiements.read',
+                'rapports.view',
+            ],
+            'SUPERVISEUR_REGIONAL': [
+                'dashboard.view',
+                'colis.groupage.read',
+                'colis.autres-envois.read',
+                'clients.read',
+                'factures.read',
+                'paiements.read',
                 'rapports.view',
                 'caisse.view',
             ],
-            'LECTURE_SEULE': [
-                'dashboard.view',
-                'colis.groupage.read',
-                'colis.autres-envois.read',
-                'clients.read',
-                'factures.read',
-                'paiements.read',
-                'rapports.view',
-            ],
         };
 
-        // Retourner les permissions selon le rôle
         return rolePermissions[user.role] || [];
     }
 }

@@ -3,7 +3,8 @@ import { AuthContext } from '../contexts/AuthContext';
 import { PermissionModule, PermissionAction } from '../types/roles.types';
 
 export const usePermission = () => {
-    const { user } = useContext(AuthContext);
+    const context = useContext(AuthContext);
+    const user = context?.user;
 
     const hasPermission = (permissionCode: string): boolean => {
         if (!user || !user.roleEntity) {
@@ -11,7 +12,7 @@ export const usePermission = () => {
         }
 
         // Super admin a tous les droits
-        if (user.role === 'SUPER_ADMIN') {
+        if (user.role.code === 'SUPER_ADMIN') {
             return true;
         }
 
@@ -37,7 +38,7 @@ export const usePermission = () => {
         }
 
         // Vérifier l'ancien système de rôles
-        if (user.role === roleCode) {
+        if (user.role.code === roleCode) {
             return true;
         }
 
@@ -54,22 +55,22 @@ export const usePermission = () => {
     };
 
     const canCreate = (module: PermissionModule, fonctionnalite: string): boolean => {
-        const permissionCode = `${module.toLowerCase()}.${fonctionnalite}.${PermissionAction.CREATE.toLowerCase()}`;
+        const permissionCode = `${ module.toLowerCase() }.${ fonctionnalite }.${ PermissionAction.CREATE.toLowerCase() } `;
         return hasPermission(permissionCode);
     };
 
     const canRead = (module: PermissionModule, fonctionnalite: string): boolean => {
-        const permissionCode = `${module.toLowerCase()}.${fonctionnalite}.${PermissionAction.READ.toLowerCase()}`;
+        const permissionCode = `${ module.toLowerCase() }.${ fonctionnalite }.${ PermissionAction.READ.toLowerCase() } `;
         return hasPermission(permissionCode);
     };
 
     const canUpdate = (module: PermissionModule, fonctionnalite: string): boolean => {
-        const permissionCode = `${module.toLowerCase()}.${fonctionnalite}.${PermissionAction.UPDATE.toLowerCase()}`;
+        const permissionCode = `${ module.toLowerCase() }.${ fonctionnalite }.${ PermissionAction.UPDATE.toLowerCase() } `;
         return hasPermission(permissionCode);
     };
 
     const canDelete = (module: PermissionModule, fonctionnalite: string): boolean => {
-        const permissionCode = `${module.toLowerCase()}.${fonctionnalite}.${PermissionAction.DELETE.toLowerCase()}`;
+        const permissionCode = `${ module.toLowerCase() }.${ fonctionnalite }.${ PermissionAction.DELETE.toLowerCase() } `;
         return hasPermission(permissionCode);
     };
 
@@ -89,7 +90,7 @@ export const usePermission = () => {
         }
 
         // Super admin peut tout voir
-        if (user.role === 'SUPER_ADMIN') {
+        if (user.role.code === 'SUPER_ADMIN') {
             return true;
         }
 

@@ -1,6 +1,6 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import { BrowserRouter } from 'react-router-dom'
+import { HashRouter } from 'react-router-dom'
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client'
 import { Toaster } from 'react-hot-toast'
 
@@ -21,7 +21,7 @@ import './styles/accessibility.css'
 const AppWrapper = (
   <React.StrictMode>
     <ErrorBoundary>
-      <BrowserRouter>
+      <HashRouter>
         <PersistQueryClientProvider
           client={queryClient}
           persistOptions={{
@@ -41,7 +41,7 @@ const AppWrapper = (
             </AuthProvider>
           </ThemeProvider>
         </PersistQueryClientProvider>
-      </BrowserRouter>
+      </HashRouter>
     </ErrorBoundary>
   </React.StrictMode>
 )

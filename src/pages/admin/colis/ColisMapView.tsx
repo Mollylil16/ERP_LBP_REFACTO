@@ -1,11 +1,12 @@
-import React, { useState } from 'react'
-import { Card, Typography, Space, Tag, Input, Select, Empty, Descriptions } from 'antd'
-import { GlobalOutlined, SearchOutlined, FilterOutlined, EnvironmentOutlined, TeamOutlined } from '@ant-design/icons'
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
+import React, { useState, useEffect, useRef } from 'react'
+import { Card, Typography, Space, Tag, Input, Select, Empty, Badge, Tooltip } from 'antd'
+import { GlobalOutlined, SearchOutlined, EnvironmentOutlined, TeamOutlined, WifiOutlined, DisconnectOutlined } from '@ant-design/icons'
+import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { useColisList } from '@hooks/useColis'
 import { Colis } from '@types'
+import { io, Socket } from 'socket.io-client'
 
 // Fix Leaflet marker icon issue
 // @ts-ignore
@@ -18,7 +19,7 @@ L.Icon.Default.mergeOptions({
 
 const { Title, Text } = Typography
 
-// Mock geocoding - Mapping cities to coordinates
+// Coordonnées statiques des villes connues
 const CITY_COORDS: Record<string, [number, number]> = {
     'Abidjan': [5.36, -4.0083],
     'Paris': [48.8566, 2.3522],
@@ -27,136 +28,232 @@ const CITY_COORDS: Record<string, [number, number]> = {
     'Lomé': [6.1375, 1.2125],
     'Ouagadougou': [12.3714, -1.5197],
     'Bamako': [12.6392, -8.0029],
+    'Bonoua': [5.273, -3.598],
+    'Marseille': [43.2965, 5.3698],
+    'Lyon': [45.7640, 4.8357],
 }
+
+// Icônes selon le type
+const getMarkerIcon = (type: 'destination' | 'live' | 'live-stale') => {
+    const colorMap = {
+        'destination': 'blue',
+        'live': 'green',
+        'live-stale': 'orange',
+    }
+    return new L.Icon({
+        iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-${colorMap[type]}.png`,
+        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+        popupAnchor: [1, -34],
+        shadowSize: [41, 41]
+    })
+}
+
+// Pulse animée pour les marqueurs live
+const LivePulseIcon = () => new L.DivIcon({
+    className: '',
+    html: `<div style="
+        width:20px;height:20px;border-radius:50%;
+        background:#52c41a;border:3px solid white;
+        box-shadow:0 0 0 0 rgba(82,196,26,0.7);
+        animation: pulse-green 1.5s infinite;
+    "></div>
+    <style>
+    @keyframes pulse-green {
+        0% { box-shadow: 0 0 0 0 rgba(82,196,26,0.7); }
+        70% { box-shadow: 0 0 0 12px rgba(82,196,26,0); }
+        100% { box-shadow: 0 0 0 0 rgba(82,196,26,0); }
+    }
+    </style>`,
+    iconSize: [20, 20],
+    iconAnchor: [10, 10],
+});
+
+interface LivePosition {
+    tracker_id: string
+    ref_colis: string
+    latitude: number
+    longitude: number
+    vitesse?: number
+    batterie?: number
+    statut?: string
+    timestamp_gps?: string
+    updated_at?: string
+}
+
+const BACKEND_URL = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:3000'
 
 export const ColisMapView: React.FC = () => {
     const [envoiType, setEnvoiType] = useState<'groupage' | 'autres_envoi'>('groupage')
     const { data: colisResponse } = useColisList(envoiType, { page: 1, limit: 100 })
     const [searchTerm, setSearchTerm] = useState('')
     const [statusFilter, setStatusFilter] = useState<number | null>(null)
-
-    // State to store dynamically fetched coordinates
     const [dynamicCoords, setDynamicCoords] = useState<Record<string, [number, number]>>({})
 
-    const allColis = colisResponse?.data || []
+    // ── WebSocket : positions temps réel ──────────────────────────────────
+    const [livePositions, setLivePositions] = useState<Record<string, LivePosition>>({})
+    const [wsConnected, setWsConnected] = useState(false)
+    const socketRef = useRef<Socket | null>(null)
 
+    useEffect(() => {
+        // Charger les positions existantes au démarrage
+        fetch(`${BACKEND_URL}/tracking/live`)
+            .then(r => r.json())
+            .then((data: LivePosition[]) => {
+                const map: Record<string, LivePosition> = {}
+                data.forEach(p => { map[p.ref_colis || p.tracker_id] = p })
+                setLivePositions(map)
+            })
+            .catch(() => { })
+
+        // Connexion WebSocket
+        const socket = io(`${BACKEND_URL}/tracking`, {
+            transports: ['websocket'],
+            reconnectionAttempts: 5,
+        })
+        socketRef.current = socket
+
+        socket.on('connect', () => setWsConnected(true))
+        socket.on('disconnect', () => setWsConnected(false))
+
+        // Mise à jour temps réel : quand un traceur envoie une position
+        socket.on('tracking:live', (pos: LivePosition) => {
+            setLivePositions(prev => ({
+                ...prev,
+                [pos.ref_colis || pos.tracker_id]: {
+                    ...pos,
+                    updated_at: new Date().toISOString(),
+                }
+            }))
+        })
+
+        return () => { socket.disconnect() }
+    }, [])
+
+    const allColis = colisResponse?.data || []
     const filteredColis = allColis.filter((c: Colis) => {
         const matchesSearch = c.ref_colis.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            c.nom_destinataire.toLowerCase().includes(searchTerm.toLowerCase())
+            c.nom_dest?.toLowerCase().includes(searchTerm.toLowerCase())
         const matchesStatus = statusFilter === null || c.etat_validation === statusFilter
         return matchesSearch && matchesStatus
     })
 
-    // Fetch coordinates for locations not in CITY_COORDS
-    React.useEffect(() => {
-        const locationsToFetch = new Set<string>();
+    // Géocodage dynamique pour villes inconnues
+    useEffect(() => {
+        const toFetch = new Set<string>();
         filteredColis.forEach((c: Colis) => {
             if (c.lieu_dest && !CITY_COORDS[c.lieu_dest] && !dynamicCoords[c.lieu_dest]) {
-                locationsToFetch.add(c.lieu_dest);
+                toFetch.add(c.lieu_dest);
             }
         });
-
-        locationsToFetch.forEach(async (location) => {
+        toFetch.forEach(async (loc) => {
             try {
-                // Using Nominatim (OpenStreetMap public API)
-                // Note: In production, you should have your own tile server or cache heavily
-                const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(location)}`);
-                const data = await response.json();
-                if (data && data.length > 0) {
-                    setDynamicCoords(prev => ({
-                        ...prev,
-                        [location]: [parseFloat(data[0].lat), parseFloat(data[0].lon)]
-                    }));
+                const r = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(loc)}`);
+                const d = await r.json();
+                if (d?.length > 0) {
+                    setDynamicCoords(prev => ({ ...prev, [loc]: [parseFloat(d[0].lat), parseFloat(d[0].lon)] }));
                 }
-            } catch (error) {
-                console.error(`Error geocoding ${location}:`, error);
-            }
+            } catch { }
         });
-    }, [filteredColis, dynamicCoords]);
+    }, [filteredColis])
 
-    // Get marker color based on status
-    const getMarkerIcon = (status: number) => {
-        const color = status === 1 ? 'green' : 'blue'
-        return new L.Icon({
-            iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-${color}.png`,
-            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-            iconSize: [25, 41],
-            iconAnchor: [12, 41],
-            popupAnchor: [1, -34],
-            shadowSize: [41, 41]
-        })
+    // Vérifie si une position live est récente (< 10 minutes)
+    const isRecent = (pos: LivePosition) => {
+        if (!pos.updated_at) return false
+        return (Date.now() - new Date(pos.updated_at).getTime()) < 10 * 60 * 1000
     }
 
     return (
         <div style={{ padding: '24px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-                <Title level={2}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                <Title level={2} style={{ margin: 0 }}>
                     <Space><GlobalOutlined /> Cartographie en temps réel</Space>
                 </Title>
                 <Space>
-                    <Space>
-                        <Select
-                            value={envoiType}
-                            style={{ width: 150 }}
-                            onChange={(value: 'groupage' | 'autres_envoi') => setEnvoiType(value)}
-                        >
-                            <Select.Option value="groupage">Groupage</Select.Option>
-                            <Select.Option value="autres_envoi">Autres Envois</Select.Option>
-                        </Select>
-                        <Input
-                            placeholder="Rechercher un colis..."
-                            prefix={<SearchOutlined />}
-                            value={searchTerm}
-                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
-                            style={{ width: 250 }}
-                        />
-                        <Select
-                            placeholder="Statut"
-                            style={{ width: 150 }}
-                            allowClear
-                            onChange={(value: number | undefined) => setStatusFilter(value === undefined ? null : value)}
-                        >
-                            <Select.Option value={0}>Brouillon</Select.Option>
-                            <Select.Option value={1}>Validé</Select.Option>
-                        </Select>
-                    </Space>
+                    {/* Indicateur de connexion WebSocket */}
+                    <Tooltip title={wsConnected ? 'Tracking en direct connecté' : 'Déconnecté du tracking en direct'}>
+                        <Tag icon={wsConnected ? <WifiOutlined /> : <DisconnectOutlined />}
+                            color={wsConnected ? 'success' : 'error'}>
+                            {wsConnected ? 'Live' : 'Hors ligne'}
+                        </Tag>
+                    </Tooltip>
+                    <Select value={envoiType} style={{ width: 150 }}
+                        onChange={(v: 'groupage' | 'autres_envoi') => setEnvoiType(v)}>
+                        <Select.Option value="groupage">Groupage</Select.Option>
+                        <Select.Option value="autres_envoi">Autres Envois</Select.Option>
+                    </Select>
+                    <Input placeholder="Rechercher un colis..." prefix={<SearchOutlined />}
+                        value={searchTerm} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)} style={{ width: 220 }} />
+                    <Select placeholder="Statut" style={{ width: 130 }} allowClear
+                        onChange={(v: number | undefined) => setStatusFilter(v === undefined ? null : v)}>
+                        <Select.Option value={0}>Brouillon</Select.Option>
+                        <Select.Option value={1}>Validé</Select.Option>
+                    </Select>
                 </Space>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 350px', gap: 24, height: 'calc(100vh - 200px)' }}>
-                <Card bodyStyle={{ padding: 0, height: '100%' }} style={{ borderRadius: 12, overflow: 'hidden', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', height: '100%' }}>
-                    <MapContainer center={[5.36, -4.0083]} zoom={4} style={{ height: '100%', width: '100%', zIndex: 0 }}>
+            {/* Légende */}
+            <div style={{ display: 'flex', gap: 16, marginBottom: 12 }}>
+                <Tag color="blue">🔵 Destination (statique)</Tag>
+                <Tag color="green">🟢 Position traceur (temps réel)</Tag>
+                <Tag color="orange">🟠 Traceur ({'>'}10 min)</Tag>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 350px', gap: 24, height: 'calc(100vh - 230px)' }}>
+                {/* CARTE */}
+                <Card bodyStyle={{ padding: 0, height: '100%' }} style={{ borderRadius: 12, overflow: 'hidden', height: '100%' }}>
+                    <MapContainer center={[20, 0]} zoom={2} style={{ height: '100%', width: '100%', zIndex: 0 }}>
                         <TileLayer
                             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                         />
-                        {filteredColis.map((c: Colis) => {
-                            // Resolve coordinates: Static > Dynamic > Default (Abidjan)
-                            const coords = CITY_COORDS[c.lieu_dest || ''] || dynamicCoords[c.lieu_dest || ''] || [5.36, -4.0083]
-                            // Validate coords to avoid crashes
-                            if (!coords || isNaN(coords[0]) || isNaN(coords[1])) return null;
 
+                        {/* MARQUEURS DESTINATION (bleus) */}
+                        {filteredColis.map((c: Colis) => {
+                            const coords = CITY_COORDS[c.lieu_dest || ''] || dynamicCoords[c.lieu_dest || '']
+                            if (!coords || isNaN(coords[0])) return null
+                            // Ne pas afficher le marqueur destination si un traceur live existe pour ce colis
+                            const hasLive = !!livePositions[c.ref_colis]
+                            if (hasLive) return null // Le marqueur live le remplace
                             return (
-                                <Marker key={c.id} position={coords as [number, number]} icon={getMarkerIcon(c.etat_validation || 0)}>
+                                <Marker key={`dest-${c.id}`} position={coords} icon={getMarkerIcon('destination')}>
+                                    <Popup>
+                                        <Text strong>{c.ref_colis}</Text><br />
+                                        <Text type="secondary">Destination : {c.lieu_dest}</Text><br />
+                                        <Text type="secondary">Destinataire : {c.nom_dest}</Text><br />
+                                        <Tag color={c.etat_validation === 1 ? 'green' : 'blue'}>
+                                            {c.etat_validation === 1 ? 'Validé' : 'Brouillon'}
+                                        </Tag>
+                                        <br /><Text type="secondary" style={{ fontSize: 11 }}>⚠️ Position de destination (pas de traceur)</Text>
+                                    </Popup>
+                                </Marker>
+                            )
+                        })}
+
+                        {/* MARQUEURS LIVE (verts/oranges) — positions réelles des traceurs */}
+                        {Object.values(livePositions).map((pos) => {
+                            const live = isRecent(pos)
+                            const lat = Number(pos.latitude)
+                            const lon = Number(pos.longitude)
+                            if (isNaN(lat) || isNaN(lon)) return null
+                            return (
+                                <Marker key={`live-${pos.tracker_id}`}
+                                    position={[lat, lon]}
+                                    icon={live ? LivePulseIcon() : getMarkerIcon('live-stale')}>
                                     <Popup>
                                         <div style={{ minWidth: 200 }}>
-                                            <div style={{ marginBottom: 10, borderBottom: '1px solid #eee', paddingBottom: 5 }}>
-                                                <Text strong style={{ fontSize: 16 }}>{c.ref_colis}</Text>
-                                            </div>
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                                    <Text type="secondary">Destinataire:</Text>
-                                                    <Text strong>{c.nom_destinataire}</Text>
-                                                </div>
-                                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                                    <Text type="secondary">Lieu:</Text>
-                                                    <Text>{c.lieu_dest}</Text>
-                                                </div>
-                                                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 5 }}>
-                                                    <Tag color={c.etat_validation === 1 ? 'green' : 'blue'}>
-                                                        {c.etat_validation === 1 ? 'Validé' : 'Brouillon'}
-                                                    </Tag>
-                                                </div>
+                                            <Text strong style={{ fontSize: 15 }}>📦 {pos.ref_colis}</Text><br />
+                                            <Tag color="green" style={{ marginTop: 4 }}>🛰️ Position GPS réelle</Tag><br />
+                                            <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 3 }}>
+                                                <Text type="secondary">Traceur : <b>{pos.tracker_id}</b></Text>
+                                                <Text type="secondary">Statut : <b>{pos.statut || 'EN_TRANSIT'}</b></Text>
+                                                {pos.vitesse !== undefined && <Text type="secondary">Vitesse : <b>{pos.vitesse} km/h</b></Text>}
+                                                {pos.batterie !== undefined && <Text type="secondary">Batterie : <b>{pos.batterie}%</b></Text>}
+                                                <Text type="secondary">Coordonnées : {lat.toFixed(4)}, {lon.toFixed(4)}</Text>
+                                                {pos.timestamp_gps && <Text type="secondary" style={{ fontSize: 10 }}>
+                                                    Dernière MAJ : {new Date(pos.timestamp_gps).toLocaleString('fr-FR')}
+                                                </Text>}
                                             </div>
                                         </div>
                                     </Popup>
@@ -166,35 +263,49 @@ export const ColisMapView: React.FC = () => {
                     </MapContainer>
                 </Card>
 
-                <Card title={<Space><EnvironmentOutlined /><span>Liste des colis ({filteredColis.length})</span></Space>} style={{ borderRadius: 12, overflowY: 'auto', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', height: '100%' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                        {filteredColis.map((c: Colis) => (
-                            <Card
-                                key={c.id}
-                                bodyStyle={{ padding: 12 }}
-                                hoverable
-                                style={{ border: '1px solid #f0f0f0', borderRadius: 8 }}
-                            >
-                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                                    <Text strong>{c.ref_colis}</Text>
-                                    <Tag color={c.etat_validation === 1 ? 'green' : 'blue'}>
-                                        {c.etat_validation === 1 ? 'Validé' : 'Brouillon'}
-                                    </Tag>
-                                </div>
-                                <div style={{ fontSize: 13, color: '#666' }}>
-                                    <Space direction="vertical" size={2}>
-                                        <Space>
-                                            <EnvironmentOutlined style={{ color: '#1890ff' }} />
-                                            <Text>{c.lieu_dest || 'Non défini'}</Text>
+                {/* LISTE LATÉRALE */}
+                <Card title={<Space><EnvironmentOutlined /><span>Colis ({filteredColis.length})</span></Space>}
+                    style={{ borderRadius: 12, overflowY: 'auto', height: '100%' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        {filteredColis.map((c: Colis) => {
+                            const livePos = livePositions[c.ref_colis]
+                            return (
+                                <Card key={c.id} bodyStyle={{ padding: 10 }} hoverable
+                                    style={{ border: `1px solid ${livePos ? '#52c41a' : '#f0f0f0'}`, borderRadius: 8 }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                                        <Text strong>{c.ref_colis}</Text>
+                                        <Space size={4}>
+                                            {livePos && (
+                                                <Tooltip title={`Traceur ${livePos.tracker_id} actif`}>
+                                                    <Badge status={isRecent(livePos) ? 'processing' : 'warning'} />
+                                                </Tooltip>
+                                            )}
+                                            <Tag color={c.etat_validation === 1 ? 'green' : 'blue'}>
+                                                {c.etat_validation === 1 ? 'Validé' : 'Brouillon'}
+                                            </Tag>
                                         </Space>
-                                        <Space>
-                                            <TeamOutlined style={{ color: '#52c41a' }} />
-                                            <Text type="secondary">{c.nom_destinataire}</Text>
+                                    </div>
+                                    <div style={{ fontSize: 12, color: '#666' }}>
+                                        <Space direction="vertical" size={2}>
+                                            <Space>
+                                                <EnvironmentOutlined style={{ color: '#1890ff' }} />
+                                                <Text>{livePos ? `${Number(livePos.latitude).toFixed(4)}, ${Number(livePos.longitude).toFixed(4)}` : (c.lieu_dest || 'Non défini')}</Text>
+                                            </Space>
+                                            <Space>
+                                                <TeamOutlined style={{ color: '#52c41a' }} />
+                                                <Text type="secondary">{c.nom_dest}</Text>
+                                            </Space>
+                                            {livePos && (
+                                                <Text style={{ color: '#52c41a', fontSize: 11 }}>
+                                                    🛰️ GPS live · {livePos.statut}
+                                                    {livePos.batterie !== undefined ? ` · 🔋${livePos.batterie}%` : ''}
+                                                </Text>
+                                            )}
                                         </Space>
-                                    </Space>
-                                </div>
-                            </Card>
-                        ))}
+                                    </div>
+                                </Card>
+                            )
+                        })}
                         {filteredColis.length === 0 && <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Aucun colis trouvé" />}
                     </div>
                 </Card>

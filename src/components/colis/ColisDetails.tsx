@@ -77,30 +77,30 @@ export const ColisDetails: React.FC<ColisDetailsProps> = ({ colisId, onClose, on
             title: 'Prix Unit.',
             dataIndex: 'prix_unit',
             key: 'prix_unit',
-            render: (val: number) => `${val?.toLocaleString()} FCFA`,
+            render: (val: number) => `${Number(val || 0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")} FCFA`,
         },
         {
             title: 'Emballage',
             dataIndex: 'prix_emballage',
             key: 'prix_emballage',
-            render: (val: number) => `${val?.toLocaleString() || 0} FCFA`,
+            render: (val: number) => `${Number(val || 0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")} FCFA`,
         },
         {
             title: 'Assurance',
             dataIndex: 'prix_assurance',
             key: 'prix_assurance',
-            render: (val: number) => `${val?.toLocaleString() || 0} FCFA`,
+            render: (val: number) => `${Number(val || 0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")} FCFA`,
         },
         {
             title: 'Total',
             key: 'total',
             render: (_: any, record: any) => {
                 const total =
-                    Number(record.prix_unit) * Number(record.nbre_colis) +
+                    Number(record.prix_unit) * Number(record.poids_total) +
                     Number(record.prix_emballage || 0) +
                     Number(record.prix_assurance || 0) +
                     Number(record.prix_agence || 0);
-                return `${total.toLocaleString()} FCFA`;
+                return `${total.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")} FCFA`;
             },
         },
     ];
@@ -233,7 +233,7 @@ export const ColisDetails: React.FC<ColisDetailsProps> = ({ colisId, onClose, on
                     let totalGeneral = 0;
                     pageData.forEach((record: any) => {
                         totalGeneral +=
-                            Number(record.prix_unit) * Number(record.nbre_colis) +
+                            Number(record.prix_unit) * Number(record.poids_total) +
                             Number(record.prix_emballage || 0) +
                             Number(record.prix_assurance || 0) +
                             Number(record.prix_agence || 0);
@@ -245,7 +245,7 @@ export const ColisDetails: React.FC<ColisDetailsProps> = ({ colisId, onClose, on
                                 <strong>TOTAL GÉNÉRAL</strong>
                             </Table.Summary.Cell>
                             <Table.Summary.Cell index={1}>
-                                <strong>{totalGeneral.toLocaleString()} FCFA</strong>
+                                <strong>{totalGeneral.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")} FCFA</strong>
                             </Table.Summary.Cell>
                         </Table.Summary.Row>
                     );

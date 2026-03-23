@@ -1,11 +1,11 @@
 import React, { useState } from 'react'
 import { Card, Row, Col, Select, Typography, Space, DatePicker, Button, Alert } from 'antd'
-import { 
-  BarChartOutlined, 
-  CalendarOutlined, 
+import {
+  BarChartOutlined,
+  CalendarOutlined,
   DownloadOutlined,
   TrophyOutlined,
-  WarningOutlined 
+  WarningOutlined
 } from '@ant-design/icons'
 import { useQuery } from '@tanstack/react-query'
 import { statistiquesService } from '@services/statistiques.service'
@@ -50,7 +50,7 @@ export const StatistiquesHistoriquesPage: React.FC = () => {
 
     const exportData = {
       headers: ['Année', 'Mois', 'Colis Groupage', 'Colis Autres', 'Total Colis', 'Revenus'],
-      rows: historiqueData.flatMap(yearData => 
+      rows: historiqueData.flatMap(yearData =>
         yearData.mois.map(month => [
           yearData.annee.toString(),
           month.mois,
@@ -76,7 +76,7 @@ export const StatistiquesHistoriquesPage: React.FC = () => {
 
     const exportData = {
       headers: ['Année', 'Mois', 'Colis Groupage', 'Colis Autres', 'Total Colis', 'Revenus'],
-      rows: historiqueData.flatMap(yearData => 
+      rows: historiqueData.flatMap(yearData =>
         yearData.mois.map(month => [
           yearData.annee.toString(),
           month.mois,
@@ -150,13 +150,13 @@ export const StatistiquesHistoriquesPage: React.FC = () => {
           </Col>
           <Col xs={24} sm={24} md={8}>
             <Space>
-              <Button 
+              <Button
                 icon={<CalendarOutlined />}
                 onClick={() => setSelectedYears([currentYear - 1, currentYear])}
               >
                 Dernière année
               </Button>
-              <Button 
+              <Button
                 icon={<CalendarOutlined />}
                 onClick={() => setSelectedYears([currentYear - 2, currentYear - 1, currentYear])}
               >
@@ -181,7 +181,7 @@ export const StatistiquesHistoriquesPage: React.FC = () => {
           {/* Graphiques comparatifs - Histogrammes interactifs */}
           <Row gutter={[16, 16]} style={{ marginTop: 24 }}>
             <Col xs={24} lg={12}>
-              <Card 
+              <Card
                 title="Évolution des Colis - Comparaison Années"
                 extra={
                   <Text type="secondary" style={{ fontSize: 12 }}>
@@ -189,14 +189,14 @@ export const StatistiquesHistoriquesPage: React.FC = () => {
                   </Text>
                 }
               >
-                <ComparaisonAnneesBarChart 
+                <ComparaisonAnneesBarChart
                   data={historiqueData}
                   type="colis"
                 />
               </Card>
             </Col>
             <Col xs={24} lg={12}>
-              <Card 
+              <Card
                 title="Évolution des Revenus - Comparaison Années"
                 extra={
                   <Text type="secondary" style={{ fontSize: 12 }}>
@@ -204,7 +204,7 @@ export const StatistiquesHistoriquesPage: React.FC = () => {
                   </Text>
                 }
               >
-                <ComparaisonAnneesBarChart 
+                <ComparaisonAnneesBarChart
                   data={historiqueData}
                   type="revenus"
                 />
@@ -216,7 +216,7 @@ export const StatistiquesHistoriquesPage: React.FC = () => {
           <Row gutter={[16, 16]} style={{ marginTop: 24 }}>
             <Col xs={24} lg={12}>
               <Card title="Tendances des Colis - Vue Ligne">
-                <ComparaisonAnneesChart 
+                <ComparaisonAnneesChart
                   data={historiqueData}
                   type="colis"
                 />
@@ -224,7 +224,7 @@ export const StatistiquesHistoriquesPage: React.FC = () => {
             </Col>
             <Col xs={24} lg={12}>
               <Card title="Tendances des Revenus - Vue Ligne">
-                <ComparaisonAnneesChart 
+                <ComparaisonAnneesChart
                   data={historiqueData}
                   type="revenus"
                 />
@@ -236,7 +236,7 @@ export const StatistiquesHistoriquesPage: React.FC = () => {
           {tendancesData && (
             <Row gutter={[16, 16]} style={{ marginTop: 24 }}>
               <Col xs={24}>
-                <Card 
+                <Card
                   title={
                     <Space>
                       <TrophyOutlined />
@@ -253,7 +253,7 @@ export const StatistiquesHistoriquesPage: React.FC = () => {
           {/* Recommandations */}
           <Row gutter={[16, 16]} style={{ marginTop: 24 }}>
             <Col xs={24}>
-              <Card 
+              <Card
                 title={
                   <Space>
                     <WarningOutlined />
@@ -261,10 +261,7 @@ export const StatistiquesHistoriquesPage: React.FC = () => {
                   </Space>
                 }
               >
-                <RecommandationsHistoriques 
-                  historiqueData={historiqueData}
-                  tendancesData={tendancesData}
-                />
+                <RecommandationsHistoriques />
               </Card>
             </Col>
           </Row>

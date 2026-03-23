@@ -6,6 +6,8 @@ import { Client } from '../clients/entities/client.entity';
 import { Facture } from '../factures/entities/facture.entity';
 import { Paiement } from '../paiements/entities/paiement.entity';
 import { CaisseService } from '../caisse/caisse.service';
+import { AgencesService } from '../agences/agences.service';
+import { Agence } from '../agences/entities/agence.entity';
 
 @Injectable()
 export class DashboardService {
@@ -19,6 +21,7 @@ export class DashboardService {
         @InjectRepository(Paiement)
         private paiementRepository: Repository<Paiement>,
         private caisseService: CaisseService,
+        private agencesService: AgencesService,
     ) { }
 
     async getStats(): Promise<any> {
@@ -86,5 +89,38 @@ export class DashboardService {
 
     async getPointCaisse(date?: string): Promise<any> {
         return this.caisseService.getPointCaisse(date);
+    }
+
+    async getAgenciesPerformances(date?: string): Promise<any[]> {
+        const agences = await this.agencesService.findAll();
+        const results: any[] = [];
+
+        for (const agence of agences) {
+            // Pour chaque agence, on récupère ses caisses
+            const caisses = await this.caisseService.findAllCaisses(agence.id);
+
+            let totalEntrees = 0;
+            let totalSorties = 0;
+            let soldeGlobal = 0;
+
+            for (const caisse of caisses) {
+                const point = await this.caisseService.getPointCaisse(date, caisse.id);
+                totalEntrees += point.entrees;
+                totalSorties += point.sorties;
+                soldeGlobal += point.solde;
+            }
+
+            results.push({
+                agenceId: agence.id,
+                agenceNom: agence.nom,
+                agenceCode: agence.code,
+                entrees: totalEntrees,
+                sorties: totalSorties,
+                solde: soldeGlobal,
+                date: date || new Date().toISOString().split('T')[0]
+            });
+        }
+
+        return results;
     }
 }

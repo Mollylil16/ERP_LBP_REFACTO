@@ -60,36 +60,36 @@ const getModeConfig = (value: string) =>
 
 const getReferencePlaceholder = (mode: string): string => {
   switch (mode) {
-    case 'wave':     return 'Ex: TXN-WAVE-XXXXXXXX'
-    case 'om':       return 'Ex: OM-CI-XXXXXXXXXX'
-    case 'cheque':   return 'Numéro de chèque'
+    case 'wave': return 'Ex: TXN-WAVE-XXXXXXXX'
+    case 'om': return 'Ex: OM-CI-XXXXXXXXXX'
+    case 'cheque': return 'Numéro de chèque'
     case 'virement': return 'Référence virement bancaire'
-    default:         return 'Référence optionnelle'
+    default: return 'Référence optionnelle'
   }
 }
 
 const getModeIcon = (mode: string) => {
   switch (mode) {
     case 'wave':
-    case 'om':       return <MobileOutlined />
-    case 'especes':  return <WalletOutlined />
-    case 'cheque':   return <FileTextOutlined />
+    case 'om': return <MobileOutlined />
+    case 'especes': return <WalletOutlined />
+    case 'cheque': return <FileTextOutlined />
     case 'virement': return <BankOutlined />
     case '30j':
     case '45j':
     case '60j':
-    case '90j':      return <CalendarOutlined />
-    default:         return <DollarOutlined />
+    case '90j': return <CalendarOutlined />
+    default: return <DollarOutlined />
   }
 }
 
 const getReferenceIcon = (mode: string) => {
   switch (mode) {
     case 'wave':
-    case 'om':       return <MobileOutlined />
+    case 'om': return <MobileOutlined />
     case 'virement':
-    case 'cheque':   return <BankOutlined />
-    default:         return <DollarOutlined />
+    case 'cheque': return <BankOutlined />
+    default: return <DollarOutlined />
   }
 }
 
@@ -159,11 +159,10 @@ export const PaiementForm: React.FC<PaiementFormProps> = ({
   }, [restantInfo, modePaiement, setValue, montant])
 
   const onFormSubmit = (data: PaiementFormData) => {
-    const modeConfig = getModeConfig(data.mode_paiement)
     const submitData: CreatePaiementDto = {
       ref_colis: refColis,
       montant: data.montant,
-      mode_paiement: modeConfig?.label || data.mode_paiement,
+      mode_paiement: data.mode_paiement, // valeur enum : 'especes', 'wave', 'om', etc.
       date_paiement: data.date_paiement,
       reference: data.reference,
       monnaie_rendue: isEspeces ? monnaieRendue : undefined,

@@ -14,8 +14,8 @@ import {
   Tooltip,
   Progress,
 } from 'antd'
-import type { RangePickerProps } from 'antd/es/date-picker'
-import type { ColumnsType } from 'antd/es/table'
+// import type { RangePickerProps } from 'antd/es/date-picker'
+// import type { ColumnsType } from 'antd/es/table'
 import type { ChangeEvent } from 'react'
 import {
   SearchOutlined,
@@ -47,9 +47,9 @@ const { RangePicker } = DatePicker
 
 // ─── Config statuts ────────────────────────────────────────────────
 const STATUT_CONFIG: Record<StatutPaiement, { label: string; color: string; icon: React.ReactNode }> = {
-  paye:    { label: 'Payé',          color: 'success', icon: <CheckCircleOutlined /> },
-  partiel: { label: 'Partiel',       color: 'warning', icon: <ClockCircleOutlined /> },
-  impaye:  { label: 'Non payé',      color: 'error',   icon: <CloseCircleOutlined /> },
+  paye: { label: 'Payé', color: 'success', icon: <CheckCircleOutlined /> },
+  partiel: { label: 'Partiel', color: 'warning', icon: <ClockCircleOutlined /> },
+  impaye: { label: 'Non payé', color: 'error', icon: <CloseCircleOutlined /> },
 }
 
 const StatutTag: React.FC<{ statut: StatutPaiement }> = ({ statut }) => {
@@ -67,15 +67,15 @@ const StatutTag: React.FC<{ statut: StatutPaiement }> = ({ statut }) => {
 const getModeIcon = (value: string) => {
   switch (value) {
     case 'wave':
-    case 'om':       return <MobileOutlined />
-    case 'especes':  return <WalletOutlined />
-    case 'cheque':   return <FileTextOutlined />
+    case 'om': return <MobileOutlined />
+    case 'especes': return <WalletOutlined />
+    case 'cheque': return <FileTextOutlined />
     case 'virement': return <BankOutlined />
     case '30j':
     case '45j':
     case '60j':
-    case '90j':      return <CalendarOutlined />
-    default:         return <DollarOutlined />
+    case '90j': return <CalendarOutlined />
+    default: return <DollarOutlined />
   }
 }
 
@@ -104,7 +104,7 @@ export const SuiviPaiementsPage: React.FC = () => {
     statut: activeTab === 'tous' ? undefined : activeTab as StatutPaiement,
     search: search || undefined,
     date_debut: dateRange?.[0]?.format('YYYY-MM-DD'),
-    date_fin:   dateRange?.[1]?.format('YYYY-MM-DD'),
+    date_fin: dateRange?.[1]?.format('YYYY-MM-DD'),
     ...pagination,
   }
 
@@ -114,21 +114,22 @@ export const SuiviPaiementsPage: React.FC = () => {
   })
 
   const items = data?.data || []
+  const stats = data?.stats || { paye: 0, partiel: 0, impaye: 0, totalEncaissé: 0, totalRestant: 0 }
 
-  // ─── Statistiques récapitulatives ───────────────────────────────
-  const statsPayé    = items.filter((i) => i.statut === 'paye').length
-  const statsPartiel = items.filter((i) => i.statut === 'partiel').length
-  const statsImpayé  = items.filter((i) => i.statut === 'impaye').length
-  const totalEncaissé = items.reduce((sum, i) => sum + i.montant_paye, 0)
-  const totalRestant  = items.reduce((sum, i) => sum + i.restant_a_payer, 0)
+  // ─── Statistiques récapitulatives (Globales) ───────────────────────────────
+  const statsPayé = stats.paye
+  const statsPartiel = stats.partiel
+  const statsImpayé = stats.impaye
+  const totalEncaissé = stats.totalEncaissé
+  const totalRestant = stats.totalRestant
 
-  const columns: ColumnsType<SuiviPaiementItem> = [
+  const columns: any[] = [
     {
       title: 'Client',
       key: 'client',
       width: 200,
       fixed: 'left',
-      render: (_, r) => (
+      render: (_: any, r: SuiviPaiementItem) => (
         <div>
           <div style={{ fontWeight: 600 }}>{r.nom_client}</div>
           {r.tel_client && (
@@ -162,14 +163,14 @@ export const SuiviPaiementsPage: React.FC = () => {
       key: 'montant_total',
       width: 150,
       render: (v: number) => <strong>{formatMontantWithDevise(v)}</strong>,
-      sorter: (a, b) => a.montant_total - b.montant_total,
+      sorter: (a: SuiviPaiementItem, b: SuiviPaiementItem) => a.montant_total - b.montant_total,
     },
     {
       title: 'Payé',
       dataIndex: 'montant_paye',
       key: 'montant_paye',
       width: 150,
-      render: (v: number, r) => (
+      render: (v: number, r: SuiviPaiementItem) => (
         <div>
           <div style={{ color: '#52c41a', fontWeight: 600 }}>
             {formatMontantWithDevise(v)}
@@ -183,7 +184,7 @@ export const SuiviPaiementsPage: React.FC = () => {
           />
         </div>
       ),
-      sorter: (a, b) => a.montant_paye - b.montant_paye,
+      sorter: (a: SuiviPaiementItem, b: SuiviPaiementItem) => a.montant_paye - b.montant_paye,
     },
     {
       title: 'Reste à payer',
@@ -195,7 +196,7 @@ export const SuiviPaiementsPage: React.FC = () => {
           {v > 0 ? formatMontantWithDevise(v) : '✓ Soldé'}
         </strong>
       ),
-      sorter: (a, b) => a.restant_a_payer - b.restant_a_payer,
+      sorter: (a: SuiviPaiementItem, b: SuiviPaiementItem) => a.restant_a_payer - b.restant_a_payer,
     },
     {
       title: 'Statut',
@@ -204,8 +205,8 @@ export const SuiviPaiementsPage: React.FC = () => {
       width: 120,
       render: (statut: StatutPaiement) => <StatutTag statut={statut} />,
       filters: [
-        { text: 'Payé',     value: 'paye' },
-        { text: 'Partiel',  value: 'partiel' },
+        { text: 'Payé', value: 'paye' },
+        { text: 'Partiel', value: 'partiel' },
         { text: 'Non payé', value: 'impaye' },
       ],
     },
@@ -213,7 +214,7 @@ export const SuiviPaiementsPage: React.FC = () => {
       title: 'Dernier paiement',
       key: 'dernier',
       width: 180,
-      render: (_, r) => (
+      render: (_: any, r: SuiviPaiementItem) => (
         <div>
           <div>{r.dernier_paiement_date ? formatDate(r.dernier_paiement_date) : '—'}</div>
           {r.dernier_mode_paiement && (
@@ -240,7 +241,7 @@ export const SuiviPaiementsPage: React.FC = () => {
       key: 'date_creation',
       width: 120,
       render: (d: string) => formatDate(d),
-      sorter: (a, b) => new Date(a.date_creation).getTime() - new Date(b.date_creation).getTime(),
+      sorter: (a: SuiviPaiementItem, b: SuiviPaiementItem) => new Date(a.date_creation).getTime() - new Date(b.date_creation).getTime(),
     },
   ]
 
@@ -318,7 +319,7 @@ export const SuiviPaiementsPage: React.FC = () => {
               style={{ width: '100%' }}
               size="large"
               value={dateRange}
-              onChange={(dates: RangePickerProps['value']) =>
+              onChange={(dates: any) =>
                 setDateRange(dates as [Dayjs | null, Dayjs | null])
               }
               format="DD/MM/YYYY"
@@ -327,7 +328,15 @@ export const SuiviPaiementsPage: React.FC = () => {
           </Col>
           <Col xs={24} md={8} style={{ textAlign: 'right' }}>
             <Tooltip title="Actualiser">
-              <Button icon={<ReloadOutlined />} onClick={() => refetch()} size="large">
+              <Button
+                icon={<ReloadOutlined />}
+                onClick={() => {
+                  setPagination({ ...pagination, page: 1 });
+                  refetch();
+                }}
+                size="large"
+                loading={isLoading}
+              >
                 Actualiser
               </Button>
             </Tooltip>
@@ -339,12 +348,12 @@ export const SuiviPaiementsPage: React.FC = () => {
       <Card>
         <Tabs
           activeKey={activeTab}
-          onChange={(key) => { setActiveTab(key as TabKey); setPagination({ page: 1, limit: 20 }) }}
+          onChange={(key: string) => { setActiveTab(key as TabKey); setPagination({ page: 1, limit: 20 }) }}
           items={[
-            { key: 'tous',    label: `Tous (${data?.total ?? 0})` },
-            { key: 'paye',    label: <Space><CheckCircleOutlined style={{ color: '#52c41a' }} />Payés ({statsPayé})</Space> },
+            { key: 'tous', label: `Tous (${data?.total ?? 0})` },
+            { key: 'paye', label: <Space><CheckCircleOutlined style={{ color: '#52c41a' }} />Payés ({statsPayé})</Space> },
             { key: 'partiel', label: <Space><ClockCircleOutlined style={{ color: '#faad14' }} />Partiels ({statsPartiel})</Space> },
-            { key: 'impaye',  label: <Space><CloseCircleOutlined style={{ color: '#ff4d4f' }} />Non payés ({statsImpayé})</Space> },
+            { key: 'impaye', label: <Space><CloseCircleOutlined style={{ color: '#ff4d4f' }} />Non payés ({statsImpayé})</Space> },
           ]}
         />
 
@@ -357,7 +366,7 @@ export const SuiviPaiementsPage: React.FC = () => {
           totalLabel="enregistrements"
           rowClassName={(record) =>
             record.statut === 'impaye' ? 'row-impaye' :
-            record.statut === 'partiel' ? 'row-partiel' : ''
+              record.statut === 'partiel' ? 'row-partiel' : ''
           }
           pagination={{
             current: pagination.page,

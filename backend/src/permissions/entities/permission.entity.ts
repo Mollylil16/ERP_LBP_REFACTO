@@ -22,20 +22,14 @@ export class Permission {
     @PrimaryGeneratedColumn()
     id: number;
 
-    @Column({
-        type: 'enum',
-        enum: PermissionModule,
-    })
-    module: PermissionModule;
+    @Column({ length: 50, default: 'EXPLOITATION' })
+    module: string;
 
     @Column({ length: 100 })
-    fonctionnalite: string; // 'groupage_colis', 'cotation', 'reglement_client', etc.
+    fonctionnalite: string;
 
-    @Column({
-        type: 'enum',
-        enum: PermissionAction,
-    })
-    action: PermissionAction;
+    @Column({ length: 50, nullable: true })
+    action: string;
 
     @Column({ unique: true, length: 150 })
     code: string; // 'exploitation.groupage_colis.create'

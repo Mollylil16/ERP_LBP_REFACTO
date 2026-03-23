@@ -39,8 +39,11 @@ async function bootstrap() {
   // ✅ Gestion globale des erreurs
   app.useGlobalFilters(new GlobalExceptionFilter());
 
-  // CORS
-  app.enableCors();
+  // CORS — accepter toutes les origines en développement (indispensable pour accès depuis téléphone via IP réseau)
+  app.enableCors({
+    origin: true, // Accepte toutes les origines (à restreindre en production)
+    credentials: true,
+  });
 
   // Swagger
   const config = new DocumentBuilder()

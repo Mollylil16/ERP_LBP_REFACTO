@@ -44,10 +44,8 @@ export function formatMontant(montant: number | string | null | undefined): stri
 
   if (isNaN(num)) return '0'
 
-  return new Intl.NumberFormat('fr-FR', {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(num)
+  // Utiliser des points comme séparateurs de milliers pour répondre à la demande utilisateur (1.067.500)
+  return Math.round(num).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")
 }
 
 /**

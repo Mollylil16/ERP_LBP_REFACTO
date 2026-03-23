@@ -12,7 +12,7 @@ import {
   Col,
   DatePicker,
 } from "antd";
-import type { RangePickerProps } from "antd/es/date-picker";
+type RangePickerProps = any;
 import type { ChangeEvent, KeyboardEvent } from "react";
 import {
   SearchOutlined,
@@ -76,15 +76,15 @@ export const PaiementList: React.FC<PaiementListProps> = ({ refColis }) => {
   const getModeIcon = (value: string) => {
     switch (value) {
       case 'wave':
-      case 'om':       return <MobileOutlined />;
-      case 'especes':  return <WalletOutlined />;
-      case 'cheque':   return <FileTextOutlined />;
+      case 'om': return <MobileOutlined />;
+      case 'especes': return <WalletOutlined />;
+      case 'cheque': return <FileTextOutlined />;
       case 'virement': return <BankOutlined />;
       case '30j':
       case '45j':
       case '60j':
-      case '90j':      return <CalendarOutlined />;
-      default:         return <DollarOutlined />;
+      case '90j': return <CalendarOutlined />;
+      default: return <DollarOutlined />;
     }
   };
 

@@ -3,7 +3,8 @@ export interface User {
   id: number
   code_user: string
   username: string
-  full_name: string
+  nom_complet: string
+  full_name?: string // Ajouté pour compatibilité
   email?: string
   phone?: string
   role: Role
@@ -12,10 +13,30 @@ export interface User {
   filter_mode?: 'individual' | 'agency' | 'all' // Mode de filtrage (CODEACCES 8, 9, 14)
   can_delete?: boolean // Protection suppression (CODEACCES 5)
   can_modify?: boolean // Protection modification (CODEACCES 6)
-  status: 'active' | 'inactive' | 'suspended'
+  actif: boolean
   last_login?: string
   created_at: string
+  roleEntity?: any // Ajouté pour usePermission
+  actionsSpeciales?: any[] // Ajouté pour usePermission
+  peut_voir_toutes_agences?: boolean // Ajouté pour usePermission
+  // ✅ Nouveaux champs pour le flux de gestion
+  must_change_password?: boolean
+  agence_selected?: boolean
+  password_plain?: string | null
 }
+
+export enum UserRole {
+  ADMIN = 'ADMIN',
+  DIRECTEUR = 'DIRECTEUR',
+  MANAGER = 'MANAGER',
+  SUPERVISEUR_REGIONAL = 'SUPERVISEUR_REGIONAL',
+  AGENT_EXPLOITATION = 'AGENT_EXPLOITATION',
+  AGENT_GROUPAGE = 'AGENT_GROUPAGE',
+  CAISSIER = 'CAISSIER',
+  CAISSIER_GROUPAGE = 'CAISSIER_GROUPAGE',
+  AGENT_SUIVI = 'AGENT_SUIVI',
+}
+
 
 export interface Role {
   id: number
@@ -32,6 +53,9 @@ export interface Agency {
   phone?: string
   email?: string
   currency?: string // Ajouté pour le support multi-devises
+  latitude?: number | null
+  longitude?: number | null
+  place_id?: string | null
 }
 
 export interface AuthResponse {
@@ -46,7 +70,9 @@ export interface LoginCredentials {
   password: string
 }
 
+
 // Types permissions
+
 export interface Permission {
   id: number
   code: string
@@ -81,12 +107,13 @@ export interface Colis {
   tel_recup?: string
   email_recup?: string
   forme_envoi: 'groupage' | 'autres_envoi'
-  trafic_envoi: 'Import Aérien' | 'Import Maritime' | 'Export Aérien' | 'Export Maritime'
+  trafic_envoi: string
   code_user: string
   agence?: Agency
   date_enrg: string
   // Champs additionnels pour compatibilité avec les composants
   etat_validation?: number
+  statut_suivi?: 'EMBALLE' | 'EXPEDIE' | 'REC_BOBIGNY' | 'EN_LIVRAISON' | 'LIVRE'
   client?: any
   nom_dest?: string
   marchandises?: any[]
@@ -106,13 +133,15 @@ export interface ClientColis {
 // Types Factures
 export interface FactureColis {
   id: number
-  num_fact_colis: string
-  total_mont_ttc: number
+  num_facture: string
+  montant_ttc: number
+  montant_paye: number  // montant déjà encaissé
   id_colis: number
+  colis?: Colis
   ref_colis: string
   code_user: string
-  etat: 0 | 1 // 0 = non validée, 1 = validée
-  date_fact: string
+  etat: 0 | 1 | 2 // 0 = proforma, 1 = définitive, 2 = annulée
+  date_facture: string
 }
 
 // Types Paiements
@@ -262,6 +291,7 @@ export interface CreateColisDto {
     prix_unit: number
     id_tarif?: number
     prix_emballage?: number
+    nbre_emballage?: number // Ajouté pour compatibilité
     prix_assurance?: number
     prix_agence?: number
   }>

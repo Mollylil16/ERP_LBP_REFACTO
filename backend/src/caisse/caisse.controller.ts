@@ -42,7 +42,9 @@ export class CaisseController {
     @Get('mouvements')
     @ApiOperation({ summary: 'Liste des mouvements de caisse' })
     getMouvements(@Query() query: any, @Request() req) {
-        return this.caisseService.getMouvements(query, req.user.id_agence);
+        const canSeeAll = ['ADMIN', 'DIRECTEUR', 'SUPER_ADMIN'].includes(req.user.role);
+        const agenceId = canSeeAll ? undefined : req.user.id_agence;
+        return this.caisseService.getMouvements(query, agenceId);
     }
 
     @Get('solde')
@@ -50,7 +52,9 @@ export class CaisseController {
     async getSolde(@Query('id_caisse') id_caisse?: string, @Request() req?) {
         let finalCaisseId = id_caisse ? +id_caisse : undefined;
         if (!finalCaisseId && req?.user?.id_agence) {
-            const caisses = await this.caisseService.findAllCaisses(req.user.id_agence);
+            const canSeeAll = ['ADMIN', 'DIRECTEUR', 'SUPER_ADMIN'].includes(req.user.role);
+            const agenceId = canSeeAll ? undefined : req.user.id_agence;
+            const caisses = await this.caisseService.findAllCaisses(agenceId);
             finalCaisseId = caisses[0]?.id;
         }
         const solde = await this.caisseService.getSolde(finalCaisseId || 1);
@@ -66,7 +70,9 @@ export class CaisseController {
     @Get('caisses')
     @ApiOperation({ summary: 'Liste des caisses' })
     getCaisses(@Request() req) {
-        return this.caisseService.findAllCaisses(req.user.id_agence);
+        const canSeeAll = ['ADMIN', 'DIRECTEUR', 'SUPER_ADMIN'].includes(req.user.role ?? req.user.role?.code);
+        const agenceId = canSeeAll ? undefined : req.user.id_agence;
+        return this.caisseService.findAllCaisses(agenceId);
     }
 
     @Get('rapport-grandes-lignes')

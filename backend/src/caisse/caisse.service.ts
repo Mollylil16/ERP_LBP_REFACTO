@@ -130,11 +130,22 @@ export class CaisseService implements OnApplicationBootstrap {
         };
     }
 
-    async findAllCaisses(agenceId?: number): Promise<Caisse[]> {
-        if (agenceId) {
-            return this.caisseRepository.find({ where: { agence: { id: agenceId } } });
+    async findAllCaisses(agenceId?: number): Promise<any[]> {
+        const caisses = agenceId
+            ? await this.caisseRepository.find({ where: { agence: { id: agenceId } } })
+            : await this.caisseRepository.find();
+
+        const results: any[] = [];
+        for (const caisse of caisses) {
+            const solde_actuel = await this.getSolde(caisse.id);
+            results.push({
+                ...caisse,
+                libelle: caisse.nom,
+                montant_initial: caisse.solde_initial,
+                solde_actuel: solde_actuel,
+            });
         }
-        return this.caisseRepository.find();
+        return results;
     }
 
     async getRapportGrandesLignes(params: {

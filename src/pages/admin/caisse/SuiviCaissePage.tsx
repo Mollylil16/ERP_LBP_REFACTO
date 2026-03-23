@@ -3,7 +3,7 @@
  */
 
 import React from 'react'
-import { Tabs, Button, Space, Card } from 'antd'
+import { Tabs, Button, Space, Card, Select } from 'antd'
 import {
   WalletOutlined,
   ArrowUpOutlined,
@@ -19,7 +19,7 @@ import { MouvementsCaisseList } from '@components/caisse/MouvementsCaisseList'
 import { RapportGrandesLignes } from '@components/caisse/RapportGrandesLignes'
 import { WithPermission } from '@components/common/WithPermission'
 import { PERMISSIONS } from '@constants/permissions'
-import { useCaisses } from '@hooks/useCaisse'
+import { useCaisses, useSoldeCaisse } from '@hooks/useCaisse'
 
 export const SuiviCaissePage: React.FC = () => {
   const [activeTab, setActiveTab] = React.useState('appro')
@@ -30,17 +30,30 @@ export const SuiviCaissePage: React.FC = () => {
     'ENTREE_CHEQUE' | 'ENTREE_ESPECE' | 'ENTREE_VIREMENT'
   >('ENTREE_ESPECE')
   const [refreshKey, setRefreshKey] = React.useState(0)
+  const [selectedCaisseId, setSelectedCaisseId] = React.useState<number | undefined>()
 
-  const { data: caisses, isLoading: caissesLoading } = useCaisses()
-  const selectedCaisse = caisses?.[0] // Pour l'instant, on prend la première caisse
-  const idCaisse = selectedCaisse?.id || 1 // Fallback à 1 si pas de caisse
-  const soldeActuel = selectedCaisse?.solde_actuel || 0
+  const { data: caisses, isLoading: caissesLoading, refetch: refetchCaisses } = useCaisses()
+
+  // Initialisation de la caisse sélectionnée au premier chargement
+  React.useEffect(() => {
+    if (caisses && caisses.length > 0 && !selectedCaisseId) {
+      setSelectedCaisseId(caisses[0].id)
+    }
+  }, [caisses, selectedCaisseId])
+
+  const selectedCaisse = caisses?.find(c => c.id === selectedCaisseId) || caisses?.[0]
+  const idCaisse = selectedCaisseId || selectedCaisse?.id || 1
+
+  const { data: soldeActuelRealtime, refetch: refetchSolde } = useSoldeCaisse(idCaisse)
+  const soldeActuel = soldeActuelRealtime ?? selectedCaisse?.solde_actuel ?? 0
 
   const handleSuccess = () => {
     setApproFormVisible(false)
     setDecaissementFormVisible(false)
     setEntreeFormVisible(false)
     setRefreshKey((prev) => prev + 1) // Force le rechargement des listes
+    refetchSolde()
+    refetchCaisses()
   }
 
   const handleOpenEntreeForm = (type: 'ENTREE_CHEQUE' | 'ENTREE_ESPECE' | 'ENTREE_VIREMENT') => {
@@ -206,10 +219,19 @@ export const SuiviCaissePage: React.FC = () => {
             <h1>
               <WalletOutlined /> Suivi Caisse
             </h1>
-            {selectedCaisse && (
+            {caisses && caisses.length > 0 && (
               <Card size="small" style={{ backgroundColor: '#f0f2f5' }}>
-                <Space>
-                  <strong>Caisse:</strong> {selectedCaisse.libelle}
+                <Space wrap>
+                  <strong>Caisse:</strong>
+                  <Select
+                    value={idCaisse}
+                    onChange={(val) => setSelectedCaisseId(val)}
+                    style={{ minWidth: 200 }}
+                    options={caisses.map((c) => ({
+                      label: c.libelle || c.nom,
+                      value: c.id,
+                    }))}
+                  />
                   <strong>Solde actuel:</strong>{' '}
                   <span style={{ color: '#52c41a', fontWeight: 'bold' }}>
                     {soldeActuel.toLocaleString('fr-FR')} FCFA

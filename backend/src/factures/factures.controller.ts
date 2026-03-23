@@ -11,9 +11,9 @@ export class FacturesController {
     constructor(private readonly facturesService: FacturesService) { }
 
     @Get()
-    @ApiOperation({ summary: 'Liste de toutes les factures' })
+    @ApiOperation({ summary: 'Liste des factures' })
     findAll(@Request() req) {
-        return this.facturesService.findAll(req.user.id_agence);
+        return this.facturesService.findAll(req.user);
     }
 
     @Post('generate/:colisId')
@@ -52,7 +52,7 @@ export class FacturesController {
     @Get(':id/pdf')
     @ApiOperation({ summary: 'Générer le PDF d\'une facture' })
     async getPDF(@Param('id') id: string, @Request() req, @Response() res) {
-        const buffer = await this.facturesService.generatePDF(+id);
+        const buffer = await this.facturesService.generatePDF(+id, req.user);
         res.set({
             'Content-Type': 'application/pdf',
             'Content-Disposition': `attachment; filename=facture-${id}.pdf`,

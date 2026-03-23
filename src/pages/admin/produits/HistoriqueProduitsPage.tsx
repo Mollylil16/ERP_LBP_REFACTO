@@ -137,7 +137,7 @@ export const HistoriqueProduitsPage: React.FC = () => {
                         pagination={{
                             pageSize: 20,
                             showSizeChanger: true,
-                            showTotal: (total) => `Total: ${total} produits`,
+                            showTotal: (total: number) => `Total: ${total} produits`,
                         }}
                         scroll={{ x: 1000 }}
                     />

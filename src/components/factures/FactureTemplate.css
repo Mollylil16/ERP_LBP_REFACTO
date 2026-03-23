@@ -1,39 +1,119 @@
-/* Styles pour le template de facture */
+/* ─── EN-TÊTE ─────────────────────────────────────────────── */
 
-.facture-template-container {
-  font-family: 'Arial', 'Helvetica', sans-serif;
-  background: white;
-  color: #333;
-  line-height: 1.6;
+.facture-header-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 0 8px;
+  border-bottom: 2px solid #1A2B5B;
 }
 
-.facture-template-container.print-mode {
-  padding: 0;
-  min-height: auto;
+.facture-logo {
+  height: 72px;
+  width: auto;
+  object-fit: contain;
+  flex-shrink: 0;
 }
 
-.facture-header {
-  margin-bottom: 40px;
-  text-align: center;
-  border-bottom: 3px solid #667eea;
-  padding-bottom: 20px;
+.facture-title-box {
+  flex: 1;
+  background: #1A2B5B;
+  border-radius: 6px;
+  padding: 8px 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
 }
 
-.facture-header img {
-  max-width: 100%;
-  height: auto;
-  margin-bottom: 16px;
+.facture-title-box-label {
+  font-size: 9px;
+  font-weight: 600;
+  color: #B8900A;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
 }
 
-.facture-header .facture-type-tag {
+.facture-title-box-main {
   font-size: 18px;
   font-weight: 700;
-  padding: 12px 24px;
-  margin-top: 16px;
+  color: #ffffff;
+  letter-spacing: 0.5px;
+}
+
+.facture-tag-area {
+  flex-shrink: 0;
+}
+
+.facture-type-tag {
   display: inline-block;
-  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 6px 14px;
+  border-radius: 6px;
   letter-spacing: 1px;
 }
+
+.facture-type-tag.proforma {
+  background: #fff3cd;
+  color: #7d5a00;
+  border: 2px solid #B8900A;
+}
+
+.facture-type-tag.definitive {
+  background: #d4edda;
+  color: #155724;
+  border: 2px solid #28a745;
+}
+
+/* ─── BANDE AVERTISSEMENT ─────────────────────────────────── */
+
+.facture-warning-band {
+  background: #fff3cd;
+  border-left: 4px solid #B8900A;
+  font-size: 9px;
+  color: #7D5A00;
+  padding: 5px 10px;
+  margin: 8px 0 0;
+  line-height: 1.5;
+}
+
+/* ─── BARRE AGENCE ───────────────────────────────────────── */
+
+.facture-agence-bar {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  padding: 4px 0 6px;
+  border-bottom: 1px solid #C8CDD8;
+}
+
+.facture-agence-left {
+  font-size: 11px;
+  font-weight: 700;
+  color: #C0392B;
+}
+
+/* ─── GRAND TITRE DETAILS COLIS ─────────────────────────── */
+
+.facture-colis-title-block {
+  background: #1A2B5B;
+  border-top: 4px solid #B8900A;
+  border-bottom: 4px solid #B8900A;
+  padding: 14px 0;
+  text-align: center;
+  margin: 14px 0 4px;
+}
+
+.facture-colis-title-text {
+  font-size: 28px;
+  font-weight: 900;
+  color: #ffffff;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  font-family: 'Arial', 'Helvetica', sans-serif;
+}
+
 
 .facture-info-section {
   margin-bottom: 32px;
@@ -97,7 +177,7 @@
   overflow: hidden;
 }
 
-.facture-items-table .ant-table-thead > tr > th {
+.facture-items-table .ant-table-thead>tr>th {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
   font-weight: 600;
@@ -106,12 +186,12 @@
   padding: 12px 8px;
 }
 
-.facture-items-table .ant-table-tbody > tr > td {
+.facture-items-table .ant-table-tbody>tr>td {
   border-bottom: 1px solid #e5e7eb;
   padding: 12px 8px;
 }
 
-.facture-items-table .ant-table-tbody > tr:hover > td {
+.facture-items-table .ant-table-tbody>tr:hover>td {
   background: #f9fafb;
 }
 

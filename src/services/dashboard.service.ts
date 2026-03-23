@@ -37,6 +37,21 @@ class DashboardService {
   async getTrafficRepartition(): Promise<any[]> {
     return apiService.get<any[]>('/analytics/traffic-repartition')
   }
+
+  /**
+   * Récupérer la performance journalière par agence (Directeur)
+   */
+  async getAgenciesPerformances(date?: string): Promise<any[]> {
+    const url = date ? `/dashboard/agencies-performances?date=${date}` : '/dashboard/agencies-performances'
+    return apiService.get<any[]>(url)
+  }
+
+  /**
+   * Récupérer les recommandations IA
+   */
+  async getAIRecommendations(): Promise<any[]> {
+    return apiService.get<any[]>('/analytics/recommendations')
+  }
 }
 
 export const dashboardService = new DashboardService()

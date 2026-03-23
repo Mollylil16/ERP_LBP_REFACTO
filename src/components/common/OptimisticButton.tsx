@@ -4,7 +4,8 @@
  */
 
 import React from 'react'
-import { Button, ButtonProps } from 'antd'
+import { Button, DatePicker } from 'antd'
+import type { ButtonProps } from 'antd'
 import { LoadingOutlined } from '@ant-design/icons'
 import './OptimisticButton.css'
 

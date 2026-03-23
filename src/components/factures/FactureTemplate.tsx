@@ -11,7 +11,6 @@ import {
   Divider,
   Typography,
   Space,
-  Tag,
 } from "antd";
 import type { FactureColis } from "@/types";
 import {
@@ -65,42 +64,55 @@ export const FactureTemplate: React.FC<FactureTemplateProps> = ({
   const footerImagePath = "/images/footer_lbp.png";
 
   // Calcul des montants
-  const montantHT = colis?.total_montant || facture.total_mont_ttc || 0;
+  const montantHT = colis?.total_montant || facture.montant_ttc || 0;
   const tva = 0; // Pas de TVA pour l'instant
-  const montantTTC = facture.total_mont_ttc;
+  const montantTTC = facture.montant_ttc;
 
   return (
     <div
-      className={`facture-template-container ${
-        mode === "print" || mode === "pdf" ? "print-mode" : ""
-      }`}
+      className={`facture-template-container ${mode === "print" || mode === "pdf" ? "print-mode" : ""
+        }`}
     >
-      {/* En-tête avec image */}
-      <div className="facture-header">
+      {/* En-tête : Logo LBP haut-gauche + bloc titre */}
+      <div className="facture-header-row">
         <img
-          src={headerImagePath}
-          alt="En-tête LBP"
-          style={{
-            maxWidth: "100%",
-            height: "auto",
-            marginBottom: 16,
-          }}
+          src="/images/WhatsApp Image 2026-02-20 at 12.20.22.jpeg"
+          alt="Logo LBP"
+          className="facture-logo"
           onError={(e) => {
-            // Fallback si l'image n'existe pas
-            const target = e.target as HTMLImageElement;
-            target.style.display = "none";
+            (e.target as HTMLImageElement).style.display = 'none';
           }}
         />
-        {isProforma && (
-          <Tag className="facture-type-tag" color="orange">
-            FACTURE PROFORMA
-          </Tag>
-        )}
-        {!isProforma && (
-          <Tag className="facture-type-tag" color="green">
-            FACTURE DÉFINITIVE
-          </Tag>
-        )}
+        <div className="facture-title-box">
+          <span className="facture-title-box-label">IMPRIMÉ SPÉCIFIQUE</span>
+          <span className="facture-title-box-main">Facture &amp; Colisage</span>
+        </div>
+        <div className="facture-tag-area">
+          {isProforma && (
+            <span className="facture-type-tag proforma">FACTURE PROFORMA</span>
+          )}
+          {!isProforma && (
+            <span className="facture-type-tag definitive">FACTURE DÉFINITIVE</span>
+          )}
+        </div>
+      </div>
+
+      {/* Bande avertissement */}
+      <div className="facture-warning-band">
+        VOUS NE DISPOSEZ QUE DE TROIS JOURS POUR LA RÉCUPÉRATION DE VOTRE COLIS À COMPTER DE LA DATE
+        DE NOTIFICATION. PASSÉ CE DÉLAI, NOUS DÉCLINONS TOUTE RESPONSABILITÉ VIS-À-VIS DU COLIS.
+      </div>
+
+      {/* Ligne agence + service client */}
+      <div className="facture-agence-bar">
+        <span className="facture-agence-left">SERVICES CLIENT : +225 05 08 00 36 35</span>
+      </div>
+
+      {/* === GRAND TITRE DETAILS COLIS === */}
+      <div className="facture-colis-title-block">
+        <div className="facture-colis-title-text">
+          DETAILS COLIS&nbsp;{formatRefColis(facture.ref_colis || facture.colis?.ref_colis)}
+        </div>
       </div>
 
       {/* Informations facture */}
@@ -113,14 +125,14 @@ export const FactureTemplate: React.FC<FactureTemplateProps> = ({
           <Descriptions bordered column={{ xs: 1, sm: 2, md: 3 }} size="small">
             <Descriptions.Item label="N° Facture" span={1}>
               <Text strong style={{ fontSize: 16, color: "#1890ff" }}>
-                {facture.num_fact_colis}
+                {facture.num_facture}
               </Text>
             </Descriptions.Item>
             <Descriptions.Item label="Date" span={1}>
-              <Text>{formatDate(facture.date_fact)}</Text>
+              <Text>{formatDate(facture.date_facture)}</Text>
             </Descriptions.Item>
             <Descriptions.Item label="Référence Colis" span={1}>
-              <Text>{formatRefColis(facture.ref_colis)}</Text>
+              <Text>{formatRefColis(facture.ref_colis || facture.colis?.ref_colis)}</Text>
             </Descriptions.Item>
           </Descriptions>
         </div>

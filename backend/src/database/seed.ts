@@ -1,6 +1,10 @@
 import { DataSource } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
+import { config } from 'dotenv';
 import { runAllSeeders } from './seeders';
+
+// Load environment variables
+config();
 
 async function bootstrap() {
     const configService = new ConfigService();

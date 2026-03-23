@@ -44,7 +44,7 @@ export const FacturePreviewPage: React.FC = () => {
     try {
       await facturesService.downloadPDF(
         facture.id,
-        `facture-${facture.num_fact_colis}.pdf`
+        `facture-${facture.num_facture}.pdf`
       )
       toast.success('Facture téléchargée avec succès')
     } catch (error) {
@@ -117,8 +117,8 @@ export const FacturePreviewPage: React.FC = () => {
             onClick={() => {
               if (navigator.share) {
                 navigator.share({
-                  title: `Facture ${facture.num_fact_colis}`,
-                  text: `Facture ${facture.num_fact_colis} - ${facture.total_mont_ttc} FCFA`,
+                  title: `Facture ${facture.num_facture}`,
+                  text: `Facture ${facture.num_facture} - ${facture.montant_ttc} FCFA`,
                 }).catch((err) => console.error('Erreur partage:', err))
               } else {
                 navigator.clipboard.writeText(window.location.href)
@@ -138,6 +138,39 @@ export const FacturePreviewPage: React.FC = () => {
           colis={
             colisData
               ? {
+                client_colis: colisData.client_colis,
+                nom_destinataire: colisData.nom_destinataire,
+                lieu_dest: colisData.lieu_dest,
+                tel_dest: colisData.tel_dest,
+                email_dest: colisData.email_dest,
+                nom_recup: colisData.nom_recup,
+                adresse_recup: colisData.adresse_recup,
+                tel_recup: colisData.tel_recup,
+                email_recup: colisData.email_recup,
+                nom_marchandise: colisData.nom_marchandise,
+                nbre_colis: colisData.nbre_colis,
+                nbre_articles: colisData.nbre_articles,
+                poids_total: colisData.poids_total,
+                prix_unit: colisData.prix_unit,
+                prix_emballage: colisData.prix_emballage,
+                prix_assurance: colisData.prix_assurance,
+                prix_agence: colisData.prix_agence,
+                total_montant: colisData.total_montant,
+              }
+              : undefined
+          }
+          mode="print"
+        />
+      </div>
+
+      {/* Zone d'aperçu à l'écran */}
+      <div className="facture-preview-content screen-only">
+        <div className="facture-preview-wrapper">
+          <FactureTemplate
+            facture={facture}
+            colis={
+              colisData
+                ? {
                   client_colis: colisData.client_colis,
                   nom_destinataire: colisData.nom_destinataire,
                   lieu_dest: colisData.lieu_dest,
@@ -157,39 +190,6 @@ export const FacturePreviewPage: React.FC = () => {
                   prix_agence: colisData.prix_agence,
                   total_montant: colisData.total_montant,
                 }
-              : undefined
-          }
-          mode="print"
-        />
-      </div>
-
-      {/* Zone d'aperçu à l'écran */}
-      <div className="facture-preview-content screen-only">
-        <div className="facture-preview-wrapper">
-          <FactureTemplate
-            facture={facture}
-            colis={
-              colisData
-                ? {
-                    client_colis: colisData.client_colis,
-                    nom_destinataire: colisData.nom_destinataire,
-                    lieu_dest: colisData.lieu_dest,
-                    tel_dest: colisData.tel_dest,
-                    email_dest: colisData.email_dest,
-                    nom_recup: colisData.nom_recup,
-                    adresse_recup: colisData.adresse_recup,
-                    tel_recup: colisData.tel_recup,
-                    email_recup: colisData.email_recup,
-                    nom_marchandise: colisData.nom_marchandise,
-                    nbre_colis: colisData.nbre_colis,
-                    nbre_articles: colisData.nbre_articles,
-                    poids_total: colisData.poids_total,
-                    prix_unit: colisData.prix_unit,
-                    prix_emballage: colisData.prix_emballage,
-                    prix_assurance: colisData.prix_assurance,
-                    prix_agence: colisData.prix_agence,
-                    total_montant: colisData.total_montant,
-                  }
                 : undefined
             }
             mode="preview"

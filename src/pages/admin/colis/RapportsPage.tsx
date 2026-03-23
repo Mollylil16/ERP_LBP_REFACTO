@@ -52,7 +52,7 @@ export const ColisRapportsPage: React.FC = () => {
       // Générer le rapport via l'API
       const reportData = await rapportsService.generateRapportColis(params)
       console.log('Report data:', reportData)
-      
+
       toast.success('Rapport généré avec succès')
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Erreur lors de la génération du rapport')
@@ -98,18 +98,18 @@ export const ColisRapportsPage: React.FC = () => {
   // Données de graphiques (à remplacer par des données réelles du rapport)
   const chartData = reportParams
     ? [
-        { mois: 'Jan', groupage: 120, autresEnvois: 80, total: 200 },
-        { mois: 'Fév', groupage: 150, autresEnvois: 100, total: 250 },
-      ]
+      { mois: 'Jan', groupage: 120, autresEnvois: 80, total: 200 },
+      { mois: 'Fév', groupage: 150, autresEnvois: 100, total: 250 },
+    ]
     : []
 
   const traficData = reportParams
     ? [
-        { name: 'Import Aérien', value: 45 },
-        { name: 'Import Maritime', value: 30 },
-        { name: 'Export Aérien', value: 15 },
-        { name: 'Export Maritime', value: 10 },
-      ]
+      { name: 'Groupage Aérien', value: 45 },
+      { name: 'Groupage Maritime', value: 30 },
+      { name: 'Colis Rapide CI vers FR', value: 15 },
+      { name: 'Colis Rapide FR vers CI', value: 10 },
+    ]
     : []
 
   return (
@@ -137,14 +137,28 @@ export const ColisRapportsPage: React.FC = () => {
             </Col>
 
             <Col xs={24} sm={12} md={6}>
-              <Form.Item name="trafic_envoi" label="Trafic d'envoi">
-                <Select placeholder="Tous" allowClear size="large">
-                  {APP_CONFIG.traficEnvoi.map((trafic) => (
-                    <Option key={trafic} value={trafic}>
-                      {trafic}
-                    </Option>
-                  ))}
-                </Select>
+              <Form.Item noStyle shouldUpdate={(prev: any, curr: any) => prev.forme_envoi !== curr.forme_envoi}>
+                {({ getFieldValue }: { getFieldValue: (name: string) => any }) => {
+                  const currentFormeEnvoi = getFieldValue('forme_envoi');
+                  return (
+                    <Form.Item name="trafic_envoi" label="Trafic d'envoi">
+                      <Select placeholder="Tous" allowClear size="large">
+                        {APP_CONFIG.traficEnvoi
+                          .filter((trafic) => {
+                            if (!currentFormeEnvoi) return true;
+                            return currentFormeEnvoi === 'groupage'
+                              ? trafic.includes('Groupage')
+                              : trafic.includes('Colis Rapide');
+                          })
+                          .map((trafic) => (
+                            <Option key={trafic} value={trafic}>
+                              {trafic}
+                            </Option>
+                          ))}
+                      </Select>
+                    </Form.Item>
+                  );
+                }}
               </Form.Item>
             </Col>
 
@@ -208,7 +222,7 @@ export const ColisRapportsPage: React.FC = () => {
       </Card>
 
       {reportParams && (
-        <Tabs 
+        <Tabs
           defaultActiveKey="charts"
           items={[
             {

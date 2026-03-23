@@ -4,13 +4,7 @@ import { Agence } from '../../agences/entities/agence.entity';
 export async function seedAgences(dataSource: DataSource) {
     const agenceRepository = dataSource.getRepository(Agence);
 
-    // Check if agencies already exist
-    const count = await agenceRepository.count();
-    if (count > 0) {
-        console.log('✅ Agences already seeded');
-        return;
-    }
-
+    // Insert or update each agency based on its unique code
     const agences = [
         {
             code: 'CI-AEROPORT',
@@ -92,6 +86,16 @@ export async function seedAgences(dataSource: DataSource) {
         },
     ];
 
-    await agenceRepository.save(agences);
-    console.log(`✅ ${agences.length} agences insérées avec succès`);
+    for (const agence of agences) {
+        const existing = await agenceRepository.findOne({ where: { code: agence.code } });
+        if (!existing) {
+            await agenceRepository.save(agence);
+            console.log(`📡 Agence ${agence.code} - ${agence.nom} insérée`);
+        } else {
+            // Optionnel : mettre à jour les infos si l'agence existe déjà
+            Object.assign(existing, agence);
+            await agenceRepository.save(existing);
+        }
+    }
+    console.log(`✅ ${agences.length} agences traitées avec succès`);
 }

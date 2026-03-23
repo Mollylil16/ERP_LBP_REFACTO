@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { rolesService } from '../../services/roles.service';
-import { permissionsService } from '../../services/permissions.service';
-import { Role, Permission, PermissionModule } from '../../types/roles.types';
-import { usePermission } from '../../hooks/usePermission';
+import { rolesService } from '../../../services/roles.service';
+import { permissionsService } from '../../../services/permissions.service';
+import { Role, Permission, PermissionModule } from '../../../types/roles.types';
+import { usePermission } from '../../../hooks/usePermission';
 import { TableSkeleton } from '@components/common/SkeletonLoader';
 import { EmptyRolesList, EmptyErrorState } from '@components/common/EmptyState';
 import './RolesListPage.css';

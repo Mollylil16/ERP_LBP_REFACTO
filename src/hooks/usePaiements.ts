@@ -46,6 +46,7 @@ export function useCreatePaiement() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['paiements'] })
       queryClient.invalidateQueries({ queryKey: ['colis'] })
+      queryClient.invalidateQueries({ queryKey: ['factures'] })
       toast.success('Paiement enregistré avec succès')
     },
     onError: (error: any) => {
