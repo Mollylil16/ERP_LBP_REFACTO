@@ -225,10 +225,10 @@ export const SuiviCaissePage: React.FC = () => {
                   <strong>Caisse:</strong>
                   <Select
                     value={idCaisse}
-                    onChange={(val) => setSelectedCaisseId(val)}
+                    onChange={(val: number) => setSelectedCaisseId(val)}
                     style={{ minWidth: 200 }}
                     options={caisses.map((c) => ({
-                      label: c.libelle || c.nom,
+                      label: c.libelle || c.code,
                       value: c.id,
                     }))}
                   />

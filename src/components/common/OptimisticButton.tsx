@@ -4,12 +4,13 @@
  */
 
 import React from 'react'
-import { Button, DatePicker } from 'antd'
-import type { ButtonProps } from 'antd'
+import { Button } from 'antd'
 import { LoadingOutlined } from '@ant-design/icons'
 import './OptimisticButton.css'
 
-interface OptimisticButtonProps extends ButtonProps {
+type AntdButtonProps = React.ComponentProps<typeof Button>
+
+interface OptimisticButtonProps extends AntdButtonProps {
   isOptimistic?: boolean // Indique si l'action est en cours (optimiste)
   optimisticLabel?: string // Label à afficher pendant l'action optimiste
 }

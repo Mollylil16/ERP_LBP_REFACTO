@@ -4,7 +4,6 @@ import {
   ArrowUpOutlined, ArrowDownOutlined, DollarOutlined,
   InboxOutlined, TrophyOutlined, WarningOutlined
 } from '@ant-design/icons'
-type RangePickerProps = any;
 import { DonneesAnnuelles } from '@services/statistiques.service'
 import { formatMontantWithDevise } from '@utils/format'
 import './ComparaisonMoisModal.css'
@@ -196,7 +195,7 @@ export const ComparaisonMoisModal: React.FC<ComparaisonMoisModalProps> = ({
                 prefix={type === 'colis' ? <InboxOutlined /> : <DollarOutlined />}
                 suffix={type === 'colis' ? 'colis' : ''}
                 valueStyle={{ color: '#52c41a', fontSize: 20 }}
-                formatter={(value) => type === 'colis'
+                formatter={(value: string | number) => type === 'colis'
                   ? value.toLocaleString()
                   : formatMontantWithDevise(Number(value))
                 }
@@ -214,7 +213,7 @@ export const ComparaisonMoisModal: React.FC<ComparaisonMoisModalProps> = ({
                 prefix={type === 'colis' ? <InboxOutlined /> : <DollarOutlined />}
                 suffix={type === 'colis' ? 'colis' : ''}
                 valueStyle={{ color: '#ff4d4f', fontSize: 20 }}
-                formatter={(value) => type === 'colis'
+                formatter={(value: string | number) => type === 'colis'
                   ? value.toLocaleString()
                   : formatMontantWithDevise(Number(value))
                 }
@@ -254,7 +253,7 @@ export const ComparaisonMoisModal: React.FC<ComparaisonMoisModalProps> = ({
             rowKey="annee"
             pagination={false}
             size="small"
-            rowClassName={(record) => {
+            rowClassName={(record: (typeof moisData)[number]) => {
               if (record.annee === meilleureAnnee?.annee) return 'row-success'
               if (record.annee === pireAnnee?.annee) return 'row-danger'
               return ''

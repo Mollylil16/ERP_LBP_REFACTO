@@ -13,8 +13,6 @@ import {
   Input,
   Card,
 } from "antd";
-import type { GetProps } from 'antd';
-type RangePickerProps = GetProps<typeof DatePicker.RangePicker>;
 import type { ChangeEvent } from "react";
 import { EmptyCaisseList } from "@components/common/EmptyState";
 import {
@@ -233,7 +231,7 @@ export const MouvementsCaisseList: React.FC<MouvementsCaisseListProps> = ({
         <Space wrap>
           <RangePicker
             value={dateRange}
-            onChange={(dates: RangePickerProps["value"]) =>
+            onChange={(dates: [dayjs.Dayjs | null, dayjs.Dayjs | null] | null) =>
               setDateRange(dates as [dayjs.Dayjs, dayjs.Dayjs] | null)
             }
             format="DD/MM/YYYY"

@@ -110,6 +110,7 @@ export const ColisAutresEnvoisListPage: React.FC = () => {
                       prix_emballage: selectedColis.prix_emballage || 0,
                       prix_assurance: selectedColis.prix_assurance || 0,
                       prix_agence: selectedColis.prix_agence || 0,
+                      nbre_emballage: 1,
                     },
                   ],
                   nom_destinataire: selectedColis.nom_destinataire,
