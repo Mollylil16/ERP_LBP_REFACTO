@@ -27,6 +27,7 @@ import {
   KeyOutlined,
   UserOutlined,
   SendOutlined,
+  CopyOutlined,
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import { User, UserRole, Agency } from "@types";
@@ -136,7 +137,8 @@ export const UsersListPage: React.FC = () => {
       title: "Agence",
       key: "agence",
       width: 180,
-      render: (_: any, record: User) => record.agency?.name || <Tag>Non assignée</Tag>,
+      render: (_: any, record: User) =>
+        (record.agency?.name || (record.agency as any)?.nom || record.agency?.code) || <Tag>Non assignée</Tag>,
     },
     {
       title: "Statut",
@@ -169,6 +171,23 @@ export const UsersListPage: React.FC = () => {
               icon={<EyeOutlined />}
               onClick={() => showPassword(record.id)}
               disabled={!record.password_plain}
+            />
+          </Tooltip>
+
+          <Tooltip title="Copier mdp temporaire">
+            <Button
+              size="small"
+              icon={<CopyOutlined />}
+              disabled={!record.password_plain}
+              onClick={async () => {
+                if (!record.password_plain) return;
+                try {
+                  await navigator.clipboard.writeText(record.password_plain);
+                  message.success("Mot de passe temporaire copié");
+                } catch {
+                  message.error("Impossible de copier le mot de passe");
+                }
+              }}
             />
           </Tooltip>
 
@@ -310,6 +329,7 @@ const UserForm: React.FC<{ user: any, agences: Agency[], onSuccess: () => void, 
 }) => {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
+  const [createdPassword, setCreatedPassword] = useState<string | null>(null);
 
   const onFinish = async (values: any) => {
     setLoading(true);
@@ -317,11 +337,16 @@ const UserForm: React.FC<{ user: any, agences: Agency[], onSuccess: () => void, 
       if (user) {
         await usersService.update(user.id, values);
         message.success("Utilisateur mis à jour");
+        onSuccess();
       } else {
-        await usersService.create(values);
+        const created: any = await usersService.create(values);
+        if (created?.password_plain) {
+          setCreatedPassword(created.password_plain);
+        } else {
+          onSuccess();
+        }
         message.success("Utilisateur créé avec succès");
       }
-      onSuccess();
     } catch (error: any) {
       message.error(error.message || "Erreur lors de l'enregistrement");
     } finally {
@@ -351,9 +376,9 @@ const UserForm: React.FC<{ user: any, agences: Agency[], onSuccess: () => void, 
       </Form.Item>
 
       {!user && (
-        <Form.Item name="password" label="Mot de passe initial" rules={[{ required: true }]}>
-          <Input.Password placeholder="Mot de passe temporaire" />
-        </Form.Item>
+        <div style={{ marginBottom: 12, color: "#8c8c8c", fontSize: 13 }}>
+          Le mot de passe temporaire est généré automatiquement à la création.
+        </div>
       )}
 
       <Row gutter={16}>
@@ -367,10 +392,10 @@ const UserForm: React.FC<{ user: any, agences: Agency[], onSuccess: () => void, 
           </Form.Item>
         </Col>
         <Col span={12}>
-          <Form.Item name="agence_id" label="Agence">
+          <Form.Item name="agence_id" label="Agence" rules={[{ required: true, message: "Sélectionnez une agence" }]}>
             <Select placeholder="Sélectionner une agence" allowClear>
               {agences.map(a => (
-                <Option key={a.id} value={a.id}>{a.name}</Option>
+                <Option key={a.id} value={a.id}>{a.name || (a as any).nom || a.code}</Option>
               ))}
             </Select>
           </Form.Item>
@@ -379,12 +404,20 @@ const UserForm: React.FC<{ user: any, agences: Agency[], onSuccess: () => void, 
 
       <Row gutter={16}>
         <Col span={12}>
-          <Form.Item name="email" label="Email">
+          <Form.Item
+            name="email"
+            label="Email"
+            rules={user ? [] : [{ required: true, message: "Email obligatoire" }]}
+          >
             <Input type="email" />
           </Form.Item>
         </Col>
         <Col span={12}>
-          <Form.Item name="phone" label="Téléphone">
+          <Form.Item
+            name="phone"
+            label="Téléphone"
+            rules={user ? [] : [{ required: true, message: "Téléphone obligatoire" }]}
+          >
             <Input />
           </Form.Item>
         </Col>
@@ -402,6 +435,41 @@ const UserForm: React.FC<{ user: any, agences: Agency[], onSuccess: () => void, 
           </Button>
         </Space>
       </Form.Item>
+
+      <Modal
+        title="Utilisateur créé - mot de passe temporaire"
+        open={!!createdPassword}
+        onCancel={() => {
+          setCreatedPassword(null);
+          onSuccess();
+        }}
+        footer={[
+          <Button
+            key="copy"
+            icon={<CopyOutlined />}
+            onClick={async () => {
+              if (!createdPassword) return;
+              await navigator.clipboard.writeText(createdPassword);
+              message.success("Mot de passe temporaire copié");
+            }}
+          >
+            Copier
+          </Button>,
+          <Button
+            key="close"
+            type="primary"
+            onClick={() => {
+              setCreatedPassword(null);
+              onSuccess();
+            }}
+          >
+            Fermer
+          </Button>,
+        ]}
+      >
+        <p>Communiquez ce mot de passe temporaire à l'utilisateur.</p>
+        <Title level={4} copyable>{createdPassword}</Title>
+      </Modal>
     </Form>
   );
 };

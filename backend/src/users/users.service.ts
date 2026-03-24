@@ -17,7 +17,7 @@ import { WhatsappService } from '../notifications/whatsapp.service';
 
 export interface CreateUserDto {
     username: string;
-    password: string;
+    password?: string;
     nom_complet: string;
     role: UserRole;
     code_acces?: number;
@@ -62,7 +62,8 @@ export class UsersService implements OnApplicationBootstrap {
         const existing = await this.usersRepository.findOne({ where: { username: dto.username } });
         if (existing) throw new ConflictException('Ce nom d\'utilisateur existe déjà');
 
-        const hashedPassword = await bcrypt.hash(dto.password, 10);
+        const temporaryPassword = dto.password?.trim() || this.generateTemporaryPassword();
+        const hashedPassword = await bcrypt.hash(temporaryPassword, 10);
         let agence: Agence | null = null;
         if (dto.agence_id) {
             agence = await this.agenceRepository.findOne({ where: { id: dto.agence_id } });
@@ -71,7 +72,7 @@ export class UsersService implements OnApplicationBootstrap {
         const user = this.usersRepository.create({
             username: dto.username,
             password: hashedPassword,
-            password_plain: dto.password,         // mdp visible jusqu'au 1er changement
+            password_plain: temporaryPassword,    // mdp visible jusqu'au 1er changement
             must_change_password: true,
             agence_selected: agence ? true : false,
             nom_complet: dto.nom_complet,
@@ -84,6 +85,15 @@ export class UsersService implements OnApplicationBootstrap {
         } as User);
 
         return this.usersRepository.save(user);
+    }
+
+    private generateTemporaryPassword(length: number = 10): string {
+        const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
+        let pwd = '';
+        for (let i = 0; i < length; i++) {
+            pwd += alphabet.charAt(Math.floor(Math.random() * alphabet.length));
+        }
+        return pwd;
     }
 
     /** Liste tous les utilisateurs avec leur agence */
