@@ -20,13 +20,13 @@ export class User {
     @PrimaryGeneratedColumn()
     id: number;
 
-    @Column({ unique: true })
+    @Column({ unique: true, type: 'varchar', length: 100 })
     username: string;
 
-    @Column({ select: false }) // Hide password by default
+    @Column({ select: false, type: 'varchar', length: 255 }) // Hide password by default
     password: string;
 
-    @Column({ name: 'fullname' })
+    @Column({ name: 'fullname', type: 'varchar', length: 255 })
     nom_complet: string;
 
     @Column({
@@ -39,26 +39,26 @@ export class User {
     @Column({ type: 'int', default: 2 }) // Mapping to CODEACCES from STTINTER
     code_acces: number;
 
-    @Column({ name: 'isActive', default: true })
+    @Column({ name: 'isActive', type: 'boolean', default: true })
     actif: boolean;
 
     // Mot de passe temporaire en clair — visible par superadmin/DG
     // Effacé automatiquement dès que l'utilisateur change son mdp
-    @Column({ nullable: true, type: 'text' })
+    @Column({ type: 'text', nullable: true })
     password_plain: string | null;
 
     // Forcer le changement de mdp à la 1ère connexion
-    @Column({ default: true })
+    @Column({ type: 'boolean', default: true })
     must_change_password: boolean;
 
     // L'utilisateur a-t-il choisi son agence ?
-    @Column({ default: false })
+    @Column({ type: 'boolean', default: false })
     agence_selected: boolean;
 
-    @Column({ nullable: true, length: 20 })
+    @Column({ type: 'varchar', length: 20, nullable: true })
     phone: string | null;
 
-    @Column({ nullable: true, length: 100 })
+    @Column({ type: 'varchar', length: 100, nullable: true })
     email: string | null;
 
     @ManyToOne(() => Agence, (agence) => agence.users, { nullable: true })
@@ -68,9 +68,9 @@ export class User {
     // Nouveau système de rôles et permissions
     @ManyToOne(() => Role, (role) => role.users, { nullable: true, eager: true })
     @JoinColumn({ name: 'role_id' })
-    roleEntity: Role;
+    roleEntity: Role | null;
 
-    @Column({ default: false })
+    @Column({ type: 'boolean', default: false })
     peut_voir_toutes_agences: boolean;
 
     @OneToMany(() => UserActionSpeciale, (userAction) => userAction.user, { eager: true })

@@ -49,7 +49,12 @@ class ApiService {
         if (error.response?.status === 401) {
           // Ne pas déconnecter si on est sur la page de login ou si c'est une requête de login
           const isLoginRequest = error.config?.url?.includes('/auth/login')
-          const isOnLoginPage = window.location.pathname === '/login'
+          // Support both BrowserRouter and HashRouter login routes
+          const hashPath = window.location.hash.replace(/^#/, '')
+          const isOnLoginPage =
+            window.location.pathname === '/login' ||
+            hashPath === '/login' ||
+            hashPath.startsWith('/login?')
           const isAuthMeRequest = error.config?.url?.includes('/auth/me')
 
           // Ne pas déconnecter pour les requêtes d'authentification ou si on vient juste de se connecter

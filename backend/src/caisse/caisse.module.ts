@@ -4,10 +4,15 @@ import { CaisseService } from './caisse.service';
 import { CaisseController } from './caisse.controller';
 import { Caisse } from './entities/caisse.entity';
 import { MouvementCaisse } from './entities/mouvement-caisse.entity';
+import { CaisseSession } from './entities/caisse-session.entity';
+import { CaisseMouvementWorkflow } from './entities/caisse-mouvement-workflow.entity';
+import { CaisseAuditLog } from './entities/caisse-audit-log.entity';
 import { Agence } from '../agences/entities/agence.entity';
+import { Paiement } from '../paiements/entities/paiement.entity';
+import { Facture } from '../factures/entities/facture.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Caisse, MouvementCaisse, Agence])],
+  imports: [TypeOrmModule.forFeature([Caisse, MouvementCaisse, CaisseSession, CaisseMouvementWorkflow, CaisseAuditLog, Agence, Paiement, Facture])],
   providers: [CaisseService],
   controllers: [CaisseController],
   exports: [CaisseService],

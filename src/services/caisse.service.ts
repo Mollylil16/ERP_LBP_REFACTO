@@ -129,6 +129,52 @@ export const getPointCaisse = async (date?: string): Promise<PointCaisse> => {
   return apiService.get<PointCaisse>(url)
 }
 
+export const getActiveSession = async (id_caisse: number) => {
+  return apiService.get<any>(`${BASE_URL}/sessions/active`, { params: { id_caisse } })
+}
+
+export const getSessionHistory = async (id_caisse: number, limit = 20) => {
+  return apiService.get<any[]>(`${BASE_URL}/sessions/history`, { params: { id_caisse, limit } })
+}
+
+export const openSession = async (payload: {
+  id_caisse: number
+  solde_ouverture_reel: number
+  note?: string
+}) => {
+  return apiService.post<any>(`${BASE_URL}/sessions/open`, payload)
+}
+
+export const closeSession = async (
+  sessionId: number,
+  payload: { solde_fermeture_reel: number; note?: string },
+) => {
+  return apiService.post<any>(`${BASE_URL}/sessions/${sessionId}/close`, payload)
+}
+
+export const submitMouvement = async (mouvementId: number) => {
+  return apiService.post<any>(`${BASE_URL}/mouvements/${mouvementId}/submit`)
+}
+
+export const validateMouvement = async (
+  mouvementId: number,
+  payload: { approve: boolean; reason?: string },
+) => {
+  return apiService.post<any>(`${BASE_URL}/mouvements/${mouvementId}/validate`, payload)
+}
+
+export const attachJustificatif = async (mouvementId: number, justificatif_url: string) => {
+  return apiService.post<any>(`${BASE_URL}/mouvements/${mouvementId}/justificatif`, { justificatif_url })
+}
+
+export const getReconciliation = async (params?: { date?: string; id_caisse?: number }) => {
+  return apiService.get<any>(`${BASE_URL}/reconciliation`, { params })
+}
+
+export const getCaisseAnomalies = async (params?: { date_debut?: string; date_fin?: string }) => {
+  return apiService.get<any>(`${BASE_URL}/anomalies`, { params })
+}
+
 /**
  * Service caisse exporté comme objet (pour compatibilité)
  */
@@ -146,4 +192,13 @@ export const caisseService = {
   getCaisseById,
   validateNumeroDossier,
   getPointCaisse,
+  getActiveSession,
+  getSessionHistory,
+  openSession,
+  closeSession,
+  submitMouvement,
+  validateMouvement,
+  attachJustificatif,
+  getReconciliation,
+  getCaisseAnomalies,
 }

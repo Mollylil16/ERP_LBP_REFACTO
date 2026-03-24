@@ -19,12 +19,14 @@ import { AIIntelligencePanel } from '@components/dashboard/AIIntelligencePanel'
 import { DashboardSkeleton } from '@components/common/SkeletonLoader'
 import { agencesService } from '@services/agences.service'
 import { TrophyOutlined } from '@ant-design/icons'
+import { useNavigate } from 'react-router-dom'
 import './DashboardPage.css'
 
 const { Title, Text } = Typography
 
 export const DashboardPage: React.FC = () => {
   const { isAuthenticated } = useAuth()
+  const navigate = useNavigate()
 
   // Activer les alertes automatiques
   useAlerts();
@@ -81,6 +83,14 @@ export const DashboardPage: React.FC = () => {
   const { data: recommendations = [], isLoading: recommendationsLoading } = useQuery({
     queryKey: ['dashboard', 'recommendations'],
     queryFn: () => dashboardService.getAIRecommendations(),
+    refetchInterval: APP_CONFIG.refresh.dashboard * 5,
+    enabled: isAuthenticated,
+  })
+
+  // Monitoring IA V1 (drift + alertes)
+  const { data: aiMonitoring } = useQuery({
+    queryKey: ['dashboard', 'ai-monitoring'],
+    queryFn: () => dashboardService.getAIMonitoring(),
     refetchInterval: APP_CONFIG.refresh.dashboard * 5,
     enabled: isAuthenticated,
   })
@@ -214,6 +224,10 @@ export const DashboardPage: React.FC = () => {
           <AIIntelligencePanel
             recommendations={recommendations}
             loading={recommendationsLoading}
+            monitoring={aiMonitoring}
+            onActionClick={(action) => {
+              if (action.route) navigate(action.route)
+            }}
           />
         </Col>
       </Row>

@@ -1,4 +1,4 @@
-import { defineConfig, splitVendorChunkPlugin } from 'vite'
+import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 import path from 'path'
@@ -10,9 +10,6 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [
       react(),
-
-      // Split vendor chunks automatiquement (vite built-in)
-      splitVendorChunkPlugin(),
 
       VitePWA({
         registerType: 'autoUpdate',
@@ -195,80 +192,6 @@ export default defineConfig(({ mode }) => {
               return 'assets/fonts/[name]-[hash][extname]'
             }
             return 'assets/[name]-[hash][extname]'
-          },
-
-          // Découpage manuel des vendors en chunks logiques
-          manualChunks: (id) => {
-            // React core — chargé en premier, toujours en cache
-            if (id.includes('node_modules/react/') || id.includes('node_modules/react-dom/')) {
-              return 'vendor-react'
-            }
-
-            // React Router
-            if (id.includes('node_modules/react-router')) {
-              return 'vendor-router'
-            }
-
-            // Ant Design UI — très volumineux, chunk séparé
-            if (id.includes('node_modules/antd/') || id.includes('node_modules/@ant-design/')) {
-              return 'vendor-antd'
-            }
-
-            // TanStack Query (état serveur)
-            if (id.includes('node_modules/@tanstack/')) {
-              return 'vendor-query'
-            }
-
-            // Recharts (graphiques) — chargé seulement sur le dashboard
-            if (id.includes('node_modules/recharts') || id.includes('node_modules/d3-')) {
-              return 'vendor-charts'
-            }
-
-            // Leaflet (cartes) — chargé seulement sur la page carte
-            if (id.includes('node_modules/leaflet') || id.includes('node_modules/react-leaflet')) {
-              return 'vendor-maps'
-            }
-
-            // PDF / Excel — chargé seulement quand export
-            if (
-              id.includes('node_modules/jspdf') ||
-              id.includes('node_modules/jspdf-autotable') ||
-              id.includes('node_modules/exceljs') ||
-              id.includes('node_modules/file-saver') ||
-              id.includes('node_modules/xlsx')
-            ) {
-              return 'vendor-export'
-            }
-
-            // QR Code
-            if (id.includes('node_modules/qrcode')) {
-              return 'vendor-qrcode'
-            }
-
-            // i18n
-            if (id.includes('node_modules/i18next') || id.includes('node_modules/react-i18next')) {
-              return 'vendor-i18n'
-            }
-
-            // Formulaires
-            if (
-              id.includes('node_modules/react-hook-form') ||
-              id.includes('node_modules/zod') ||
-              id.includes('node_modules/@hookform/')
-            ) {
-              return 'vendor-forms'
-            }
-
-            // Utilitaires (dayjs, axios, zustand, react-hot-toast)
-            if (
-              id.includes('node_modules/dayjs') ||
-              id.includes('node_modules/axios') ||
-              id.includes('node_modules/zustand') ||
-              id.includes('node_modules/react-hot-toast') ||
-              id.includes('node_modules/react-window')
-            ) {
-              return 'vendor-utils'
-            }
           },
         },
         // Avertir si des modules sont importés de manière circulaire

@@ -86,4 +86,80 @@ export class CaisseController {
     getWithdrawals(@Query() query: any) {
         return this.caisseService.getMouvements({ ...query, type: MouvementType.DECAISSEMENT });
     }
+
+    @Post('sessions/open')
+    @ApiOperation({ summary: 'Ouvrir une session de caisse (obligatoire en début de journée)' })
+    openSession(@Body() body: any, @Request() req) {
+        return this.caisseService.openSession(
+            Number(body.id_caisse),
+            req.user.username,
+            Number(body.solde_ouverture_reel ?? 0),
+            body.note,
+        );
+    }
+
+    @Post('sessions/:id/close')
+    @ApiOperation({ summary: 'Clôturer une session de caisse (fin de journée)' })
+    closeSession(@Param('id') id: string, @Body() body: any, @Request() req) {
+        return this.caisseService.closeSession(
+            Number(id),
+            req.user.username,
+            Number(body.solde_fermeture_reel ?? 0),
+            body.note,
+        );
+    }
+
+    @Get('sessions/active')
+    @ApiOperation({ summary: 'Récupérer la session active de la caisse' })
+    getActiveSession(@Query('id_caisse') idCaisse: string) {
+        return this.caisseService.getActiveSession(Number(idCaisse));
+    }
+
+    @Get('sessions/history')
+    @ApiOperation({ summary: 'Historique des sessions de caisse' })
+    getSessionHistory(@Query('id_caisse') idCaisse: string, @Query('limit') limit?: string) {
+        return this.caisseService.getSessionHistory(Number(idCaisse), limit ? Number(limit) : 20);
+    }
+
+    @Post('mouvements/:id/submit')
+    @ApiOperation({ summary: 'Soumettre un mouvement pour validation' })
+    submitMovement(@Param('id') id: string, @Request() req) {
+        return this.caisseService.submitMouvement(Number(id), req.user.username);
+    }
+
+    @Post('mouvements/:id/validate')
+    @ApiOperation({ summary: 'Valider ou rejeter un mouvement' })
+    validateMovement(@Param('id') id: string, @Body() body: any, @Request() req) {
+        return this.caisseService.validateMouvement(
+            Number(id),
+            req.user.username,
+            req.user.role,
+            Boolean(body.approve),
+            body.reason,
+        );
+    }
+
+    @Get('mouvements/:id/workflow')
+    @ApiOperation({ summary: 'Récupérer le workflow d’un mouvement' })
+    getWorkflow(@Param('id') id: string) {
+        return this.caisseService.getWorkflow(Number(id));
+    }
+
+    @Post('mouvements/:id/justificatif')
+    @ApiOperation({ summary: 'Attacher une pièce justificative à un mouvement' })
+    attachJustificatif(@Param('id') id: string, @Body('justificatif_url') justificatifUrl: string, @Request() req) {
+        return this.caisseService.attachJustificatif(Number(id), justificatifUrl, req.user.username);
+    }
+
+    @Get('reconciliation')
+    @ApiOperation({ summary: 'Rapprochement automatique caisse / paiements / factures' })
+    reconcile(@Query('date') date?: string, @Query('id_caisse') idCaisse?: string) {
+        return this.caisseService.reconcileDaily(date || new Date().toISOString().slice(0, 10), idCaisse ? Number(idCaisse) : undefined);
+    }
+
+    @Get('anomalies')
+    @ApiOperation({ summary: 'Détection anomalies (doublons, incohérences, trous de séquence)' })
+    getAnomalies(@Query('date_debut') dateDebut?: string, @Query('date_fin') dateFin?: string) {
+        return this.caisseService.detectAnomalies(dateDebut, dateFin);
+    }
 }

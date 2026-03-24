@@ -46,6 +46,11 @@ class UsersService {
     return apiService.post(`/users/${id}/reset-password`, { newPassword })
   }
 
+  /** Envoyer le mot de passe temporaire par WhatsApp/SMS */
+  async sendTemporaryPassword(id: number): Promise<{ sent: boolean; message: string }> {
+    return apiService.post(`/users/${id}/send-temp-password`)
+  }
+
   /** Changer son propre mot de passe (1ère connexion ou profil) */
   async changePassword(id: number, oldPassword: string, newPassword: string): Promise<void> {
     return apiService.post(`/users/${id}/change-password`, { oldPassword, newPassword })

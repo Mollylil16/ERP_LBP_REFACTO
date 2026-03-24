@@ -4,7 +4,7 @@
  */
 
 import React, { lazy } from 'react'
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from '@hooks/useAuth'
 import { ProtectedRoute } from '../components/common/ProtectedRoute'
 import { MainLayout } from '../components/layout/MainLayout'
@@ -63,15 +63,34 @@ import { ChangePasswordPage, SelectAgencyPage, AgencesManagementPage } from './l
  */
 export const AppRoutes: React.FC = () => {
   const { isAuthenticated, user } = useAuth()
+  const location = useLocation()
+
+  const hasGlobalAgencyAccess = (() => {
+    if (!user) return false
+    const storedPermissions = JSON.parse(localStorage.getItem('lbp_permissions') || '[]') as string[]
+    const allPermissions = Array.isArray(storedPermissions) && storedPermissions.includes('*')
+    return Boolean(
+      user.peut_voir_toutes_agences ||
+      user.filter_mode === 'all' ||
+      user.role?.code === 'DIRECTEUR' ||
+      user.role?.code === 'ADMIN' ||
+      allPermissions
+    )
+  })()
 
   // ✅ Redirection forcée pour le flux de première connexion
   if (isAuthenticated && user) {
     // 1. Forcer le changement de mot de passe si le flag est à true
-    if (user.must_change_password && window.location.pathname !== '/auth/change-password') {
+    if (user.must_change_password && location.pathname !== '/auth/change-password') {
       return <Navigate to="/auth/change-password" replace />
     }
     // 2. Forcer la sélection d'agence si elle n'est pas encore faite (et mdp déjà changé)
-    if (!user.must_change_password && !user.agence_selected && window.location.pathname !== '/auth/select-agency') {
+    if (
+      !user.must_change_password &&
+      !user.agence_selected &&
+      !hasGlobalAgencyAccess &&
+      location.pathname !== '/auth/select-agency'
+    ) {
       return <Navigate to="/auth/select-agency" replace />
     }
   }

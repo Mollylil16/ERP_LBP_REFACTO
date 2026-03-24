@@ -26,6 +26,7 @@ import {
   EyeOutlined,
   KeyOutlined,
   UserOutlined,
+  SendOutlined,
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import { User, UserRole, Agency } from "@types";
@@ -71,6 +72,19 @@ export const UsersListPage: React.FC = () => {
       refetch();
     },
     onError: (err: any) => message.error(err.message || "Erreur lors du reset"),
+  });
+
+  // Mutation pour envoi du mdp temporaire
+  const sendTempPwdMutation = useMutation({
+    mutationFn: (id: number) => usersService.sendTemporaryPassword(id),
+    onSuccess: (res) => {
+      if (res.sent) {
+        message.success(res.message || "Mot de passe temporaire envoyé.");
+      } else {
+        message.warning(res.message || "Envoi impossible.");
+      }
+    },
+    onError: (err: any) => message.error(err.message || "Erreur lors de l'envoi du mot de passe temporaire"),
   });
 
   // Mutation pour toggle actif
@@ -146,7 +160,7 @@ export const UsersListPage: React.FC = () => {
       title: "Actions",
       key: "actions",
       fixed: "right",
-      width: 200,
+      width: 260,
       render: (_: any, record: User) => (
         <Space size="small">
           <Tooltip title="Voir mdp temporaire">
@@ -168,6 +182,15 @@ export const UsersListPage: React.FC = () => {
             >
               <Button size="small" icon={<KeyOutlined />} />
             </Popconfirm>
+          </Tooltip>
+
+          <Tooltip title="Envoyer mdp temporaire (WhatsApp/SMS)">
+            <Button
+              size="small"
+              icon={<SendOutlined />}
+              loading={sendTempPwdMutation.isPending}
+              onClick={() => sendTempPwdMutation.mutate(record.id)}
+            />
           </Tooltip>
 
           <Button

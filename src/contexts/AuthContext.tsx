@@ -31,6 +31,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const navigate = useNavigate();
   const hasCheckedAuth = useRef(false);
 
+  const hasGlobalAgencyAccess = useCallback((u: User | null, perms?: string[]) => {
+    if (!u) return false;
+    const roleCode = u.role?.code;
+    const allPermissions = Array.isArray(perms) ? perms.includes('*') : false;
+    return Boolean(
+      u.peut_voir_toutes_agences ||
+      u.filter_mode === 'all' ||
+      roleCode === 'DIRECTEUR' ||
+      roleCode === 'ADMIN' ||
+      allPermissions
+    );
+  }, []);
+
   // Vérifier si l'utilisateur est déjà connecté au chargement
   const checkAuth = useCallback(async () => {
     // Éviter de vérifier plusieurs fois
@@ -122,7 +135,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       if (response.user.must_change_password) {
         console.log('[Auth] Redirecting to change-password');
         navigate("/auth/change-password", { replace: true });
-      } else if (!response.user.agence_selected) {
+      } else if (!response.user.agence_selected && !hasGlobalAgencyAccess(response.user, response.permissions)) {
         console.log('[Auth] Redirecting to select-agency');
         navigate("/auth/select-agency", { replace: true });
       } else {

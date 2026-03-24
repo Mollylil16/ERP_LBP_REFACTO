@@ -49,7 +49,7 @@ export const SelectAgencyPage: React.FC = () => {
                 <div style={{ textAlign: 'center', marginBottom: 40, animation: 'fadeInDown 0.8s ease' }}>
                     <Title level={1} className="brand-title-premium">Choisissez votre Agence</Title>
                     <Text className="brand-subtitle-premium">
-                        Bienvenue ${user?.nom_complet}. Veuillez sélectionner votre agence de rattachement pour commencer.
+                        Bienvenue {user?.nom_complet}. Veuillez sélectionner votre agence de rattachement pour commencer.
                     </Text>
                 </div>
 
@@ -73,8 +73,12 @@ export const SelectAgencyPage: React.FC = () => {
                                         <div className="feature-icon-wrapper" style={{ margin: '0 auto 16px' }}>
                                             <ShopOutlined className="feature-icon-premium" />
                                         </div>
-                                        <Title level={4} style={{ margin: 0 }}>{agence.name}</Title>
-                                        <Text type="secondary">{agence.address || 'Adresse non renseignée'}</Text>
+                                        <Title level={4} style={{ margin: 0 }}>
+                                            {agence.name || (agence as any).nom || agence.code}
+                                        </Title>
+                                        <Text type="secondary">
+                                            {agence.address || (agence as any).adresse || 'Adresse non renseignée'}
+                                        </Text>
                                     </div>
 
                                     <div style={{ marginTop: 'auto', textAlign: 'center' }}>

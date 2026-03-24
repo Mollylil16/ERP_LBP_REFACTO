@@ -27,11 +27,22 @@ export function handleApiError(error: unknown): AppError {
     }
 
     const { status, data } = error.response
+    const requestUrl = error.config?.url || ''
 
     // Erreur 401 - Non autorisé
     if (status === 401) {
+      // Cas login: privilégier un message d'identifiants invalides
+      if (requestUrl.includes('/auth/login')) {
+        return {
+          message: data?.message || 'Nom d\'utilisateur ou mot de passe incorrect.',
+          code: 'UNAUTHORIZED_LOGIN',
+          statusCode: 401,
+        }
+      }
+
+      // Cas générique: garder le message backend s'il existe
       return {
-        message: 'Votre session a expiré. Veuillez vous reconnecter.',
+        message: data?.message || 'Votre session a expiré. Veuillez vous reconnecter.',
         code: 'UNAUTHORIZED',
         statusCode: 401,
       }

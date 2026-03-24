@@ -13,6 +13,7 @@ import { User, UserRole } from './entities/user.entity';
 import { Agence } from '../agences/entities/agence.entity';
 import { ActionSpeciale } from '../permissions/entities/action-speciale.entity';
 import { UserActionSpeciale } from './entities/user-action-speciale.entity';
+import { WhatsappService } from '../notifications/whatsapp.service';
 
 export interface CreateUserDto {
     username: string;
@@ -46,11 +47,12 @@ export class UsersService implements OnApplicationBootstrap {
         private actionSpecialeRepository: Repository<ActionSpeciale>,
         @InjectRepository(UserActionSpeciale)
         private userActionSpecialeRepository: Repository<UserActionSpeciale>,
+        private whatsappService: WhatsappService,
     ) { }
 
     async onApplicationBootstrap() {
-        console.log('🚀 UsersService Bootstrap: Seeding test users...');
-        await this.createDefaultAdmin();
+        // Production-safe bootstrap: no automatic test/demo user seeding.
+        console.log('✅ UsersService Bootstrap: automatic test user seeding disabled.');
     }
 
     // ─── CRUD PRINCIPAL ────────────────────────────────────────────────────
@@ -189,6 +191,41 @@ export class UsersService implements OnApplicationBootstrap {
             password_plain: user.password_plain,
             changed: user.password_plain === null,
         };
+    }
+
+    /**
+     * Envoyer le mot de passe temporaire via WhatsApp/SMS.
+     * Nécessite un numéro de téléphone et un password_plain disponible.
+     */
+    async sendTemporaryPassword(id: number): Promise<{ sent: boolean; message: string }> {
+        const user = await this.usersRepository.findOne({ where: { id } });
+        if (!user) throw new NotFoundException('Utilisateur introuvable');
+
+        if (!user.phone) {
+            return { sent: false, message: 'Numéro de téléphone non renseigné pour cet utilisateur.' };
+        }
+
+        if (!user.password_plain) {
+            return { sent: false, message: 'Le mot de passe temporaire n’est plus disponible (déjà modifié par l’utilisateur).' };
+        }
+
+        const safePhone = user.phone.trim();
+        const tempPassword = user.password_plain;
+        const appUrl = process.env.APP_URL || 'https://labelleporte.cloud';
+        const displayName = user.nom_complet || user.username;
+
+        const text = `Bonjour ${displayName}, voici vos accès temporaires LBP.\n` +
+            `Identifiant: ${user.username}\n` +
+            `Mot de passe temporaire: ${tempPassword}\n` +
+            `Connexion: ${appUrl}\n` +
+            `Veuillez changer ce mot de passe dès votre première connexion.`;
+
+        const sent = await this.whatsappService.sendMessage(safePhone, text);
+        if (!sent) {
+            return { sent: false, message: 'Échec de l’envoi du message. Veuillez réessayer.' };
+        }
+
+        return { sent: true, message: `Mot de passe temporaire envoyé à ${safePhone}.` };
     }
 
     // ─── SÉLECTION D'AGENCE (1ère CONNEXION) ───────────────────────────────

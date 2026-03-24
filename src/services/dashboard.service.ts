@@ -52,6 +52,13 @@ class DashboardService {
   async getAIRecommendations(): Promise<any[]> {
     return apiService.get<any[]>('/analytics/recommendations')
   }
+
+  /**
+   * Monitoring IA V1: métriques + drift
+   */
+  async getAIMonitoring(): Promise<any> {
+    return apiService.get<any>('/analytics/monitoring')
+  }
 }
 
 export const dashboardService = new DashboardService()

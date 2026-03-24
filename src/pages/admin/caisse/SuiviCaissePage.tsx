@@ -3,7 +3,7 @@
  */
 
 import React from 'react'
-import { Tabs, Button, Space, Card, Select } from 'antd'
+import { Tabs, Button, Space, Card, Select, Modal, InputNumber, message, Typography } from 'antd'
 import {
   WalletOutlined,
   ArrowUpOutlined,
@@ -20,6 +20,8 @@ import { RapportGrandesLignes } from '@components/caisse/RapportGrandesLignes'
 import { WithPermission } from '@components/common/WithPermission'
 import { PERMISSIONS } from '@constants/permissions'
 import { useCaisses, useSoldeCaisse } from '@hooks/useCaisse'
+import { caisseService } from '@services/caisse.service'
+import { useQuery, useMutation } from '@tanstack/react-query'
 
 export const SuiviCaissePage: React.FC = () => {
   const [activeTab, setActiveTab] = React.useState('appro')
@@ -31,6 +33,10 @@ export const SuiviCaissePage: React.FC = () => {
   >('ENTREE_ESPECE')
   const [refreshKey, setRefreshKey] = React.useState(0)
   const [selectedCaisseId, setSelectedCaisseId] = React.useState<number | undefined>()
+  const [openAmount, setOpenAmount] = React.useState<number | null>(null)
+  const [closeAmount, setCloseAmount] = React.useState<number | null>(null)
+  const [openModalVisible, setOpenModalVisible] = React.useState(false)
+  const [closeModalVisible, setCloseModalVisible] = React.useState(false)
 
   const { data: caisses, isLoading: caissesLoading, refetch: refetchCaisses } = useCaisses()
 
@@ -46,6 +52,38 @@ export const SuiviCaissePage: React.FC = () => {
 
   const { data: soldeActuelRealtime, refetch: refetchSolde } = useSoldeCaisse(idCaisse)
   const soldeActuel = soldeActuelRealtime ?? selectedCaisse?.solde_actuel ?? 0
+
+  const { data: activeSession, refetch: refetchSession } = useQuery({
+    queryKey: ['caisse-active-session', idCaisse],
+    queryFn: () => caisseService.getActiveSession(idCaisse),
+    enabled: Boolean(idCaisse),
+  })
+
+  const openSessionMutation = useMutation({
+    mutationFn: (amount: number) =>
+      caisseService.openSession({ id_caisse: idCaisse, solde_ouverture_reel: amount }),
+    onSuccess: () => {
+      message.success('Session de caisse ouverte avec succes.');
+      setOpenModalVisible(false);
+      setOpenAmount(null);
+      refetchSession();
+    },
+    onError: (err: any) => message.error(err.message || "Erreur lors de l'ouverture de session"),
+  })
+
+  const closeSessionMutation = useMutation({
+    mutationFn: (amount: number) =>
+      caisseService.closeSession(activeSession.id, { solde_fermeture_reel: amount }),
+    onSuccess: () => {
+      message.success('Session de caisse cloturee avec succes.');
+      setCloseModalVisible(false);
+      setCloseAmount(null);
+      refetchSession();
+      refetchSolde();
+      refetchCaisses();
+    },
+    onError: (err: any) => message.error(err.message || 'Erreur lors de la cloture de session'),
+  })
 
   const handleSuccess = () => {
     setApproFormVisible(false)
@@ -236,6 +274,20 @@ export const SuiviCaissePage: React.FC = () => {
                   <span style={{ color: '#52c41a', fontWeight: 'bold' }}>
                     {soldeActuel.toLocaleString('fr-FR')} FCFA
                   </span>
+                  <Typography.Text type={activeSession?.id ? 'success' : 'warning'}>
+                    {activeSession?.id ? 'Session: OUVERTE' : 'Session: FERMEE'}
+                  </Typography.Text>
+                  <WithPermission permission={PERMISSIONS.CAISSE.OPERATIONS}>
+                    {!activeSession?.id ? (
+                      <Button type="primary" onClick={() => setOpenModalVisible(true)}>
+                        Ouvrir caisse
+                      </Button>
+                    ) : (
+                      <Button danger onClick={() => setCloseModalVisible(true)}>
+                        Cloturer caisse
+                      </Button>
+                    )}
+                  </WithPermission>
                 </Space>
               </Card>
             )}
@@ -270,6 +322,49 @@ export const SuiviCaissePage: React.FC = () => {
         soldeActuel={soldeActuel}
         typeEntree={entreeType}
       />
+
+      <Modal
+        title="Ouverture de caisse"
+        open={openModalVisible}
+        onCancel={() => setOpenModalVisible(false)}
+        onOk={() => {
+          if (openAmount === null) return message.warning('Saisissez le solde reel a l ouverture.');
+          openSessionMutation.mutate(openAmount);
+        }}
+        confirmLoading={openSessionMutation.isPending}
+      >
+        <Space direction="vertical" style={{ width: '100%' }}>
+          <Typography.Text>Solde reel a l ouverture</Typography.Text>
+          <InputNumber
+            value={openAmount}
+            onChange={(v: number | null) => setOpenAmount(typeof v === 'number' ? v : null)}
+            style={{ width: '100%' }}
+            min={0}
+          />
+        </Space>
+      </Modal>
+
+      <Modal
+        title="Cloture de caisse"
+        open={closeModalVisible}
+        onCancel={() => setCloseModalVisible(false)}
+        onOk={() => {
+          if (closeAmount === null) return message.warning('Saisissez le solde reel a la fermeture.');
+          if (!activeSession?.id) return message.warning('Aucune session active.');
+          closeSessionMutation.mutate(closeAmount);
+        }}
+        confirmLoading={closeSessionMutation.isPending}
+      >
+        <Space direction="vertical" style={{ width: '100%' }}>
+          <Typography.Text>Solde reel a la fermeture</Typography.Text>
+          <InputNumber
+            value={closeAmount}
+            onChange={(v: number | null) => setCloseAmount(typeof v === 'number' ? v : null)}
+            style={{ width: '100%' }}
+            min={0}
+          />
+        </Space>
+      </Modal>
     </div>
   )
 }

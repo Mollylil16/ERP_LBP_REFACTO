@@ -41,13 +41,13 @@ export class Agence {
     devise: string; // Ajouté pour le support multi-devises
 
     // Coordonnées GPS (remplies automatiquement via Nominatim)
-    @Column({ type: 'float', nullable: true })
+    @Column({ type: 'double precision', nullable: true })
     latitude: number | null;
 
-    @Column({ type: 'float', nullable: true })
+    @Column({ type: 'double precision', nullable: true })
     longitude: number | null;
 
-    @Column({ nullable: true, length: 100 })
+    @Column({ type: 'varchar', length: 255, nullable: true })
     place_id: string | null; // ID OpenStreetMap
 
     @OneToMany(() => User, (user) => user.agence)

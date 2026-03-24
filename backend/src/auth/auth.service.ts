@@ -33,6 +33,8 @@ export class AuthService {
     }
 
     async login(user: any) {
+        const hasGlobalAgencyAccess = this.hasGlobalAgencyAccess(user);
+
         const payload = {
             username: user.username,
             sub: user.id,
@@ -61,7 +63,8 @@ export class AuthService {
             status: user.actif ? 'active' : 'inactive' as 'active' | 'inactive',
             // ✅ Flags pour le flux de 1ère connexion
             must_change_password: user.must_change_password ?? false,
-            agence_selected: user.agence_selected ?? (user.agence != null),
+            // Les profils globaux n'ont pas besoin de sélectionner une agence
+            agence_selected: hasGlobalAgencyAccess ? true : (user.agence_selected ?? (user.agence != null)),
             created_at: user.created_at ? new Date(user.created_at).toISOString() : new Date().toISOString(),
         };
 
@@ -203,5 +206,15 @@ export class AuthService {
         };
 
         return rolePermissions[user.role] || [];
+    }
+
+    private hasGlobalAgencyAccess(user: any): boolean {
+        return Boolean(
+            user?.peut_voir_toutes_agences ||
+            user?.code_acces === 2 ||
+            user?.code_acces === 1 ||
+            user?.role === 'DIRECTEUR' ||
+            user?.role === 'ADMIN'
+        );
     }
 }

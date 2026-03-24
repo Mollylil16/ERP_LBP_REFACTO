@@ -119,6 +119,13 @@ export class UsersController {
         return this.usersService.getPasswordPlain(id);
     }
 
+    @Post(':id/send-temp-password')
+    @ApiOperation({ summary: 'Envoyer le mot de passe temporaire par WhatsApp/SMS (admin/DG)' })
+    async sendTemporaryPassword(@Param('id', ParseIntPipe) id: number, @Request() req: any) {
+        assertAdminOrDG(req);
+        return this.usersService.sendTemporaryPassword(id);
+    }
+
     // ── Sélection d'Agence (1ère connexion) ────────────────────────────────
 
     @Post(':id/select-agence')

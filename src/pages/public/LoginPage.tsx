@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react'
-import { Form, Input, Button, Typography, Collapse, Space, Card, Switch, Tooltip } from 'antd'
+import { Form, Input, Button, Typography, Space, Card, Switch, Tooltip, Alert } from 'antd'
 import {
   UserOutlined,
   LockOutlined,
-  InfoCircleOutlined,
   MoonOutlined,
   SunOutlined,
   ThunderboltOutlined
@@ -17,7 +16,6 @@ export const LoginPage: React.FC = () => {
   const [loading, setLoading] = useState(false)
   const [darkMode, setDarkMode] = useState(false)
   const { login } = useAuth()
-  const isDevMode = import.meta.env.DEV
 
   useEffect(() => {
     // Appliquer le mode sombre au body
@@ -181,64 +179,14 @@ export const LoginPage: React.FC = () => {
               </Text>
             </div>
 
-            {isDevMode && (
-              <Card
-                className="dev-mode-card-premium"
-                size="small"
-              >
-                <Collapse
-                  ghost
-                  className="dev-info-collapse-premium"
-                  items={[
-                    {
-                      key: '1',
-                      label: (
-                        <Space>
-                          <InfoCircleOutlined />
-                          <span>Mode développement - Identifiants de test</span>
-                        </Space>
-                      ),
-                      children: (
-                        <div className="dev-credentials-premium">
-                          <div className="credentials-list-premium">
-                            <div className="credential-row-premium">
-                              <Text code className="credential-username-premium">admin</Text>
-                              <Text className="credential-separator-premium">/</Text>
-                              <Text code className="credential-password-premium">adminpassword</Text>
-                              <Text className="credential-badge-premium admin">Super Admin</Text>
-                            </div>
-                            <div className="credential-row-premium">
-                              <Text code className="credential-username-premium">manager</Text>
-                              <Text className="credential-separator-premium">/</Text>
-                              <Text code className="credential-password-premium">manager123</Text>
-                              <Text className="credential-badge-premium manager">Admin</Text>
-                            </div>
-                            <div className="credential-row-premium">
-                              <Text code className="credential-username-premium">operateur</Text>
-                              <Text className="credential-separator-premium">/</Text>
-                              <Text code className="credential-password-premium">operateur123</Text>
-                              <Text className="credential-badge-premium operator">Opérateur</Text>
-                            </div>
-                            <div className="credential-row-premium">
-                              <Text code className="credential-username-premium">caissier</Text>
-                              <Text className="credential-separator-premium">/</Text>
-                              <Text code className="credential-password-premium">caissier123</Text>
-                              <Text className="credential-badge-premium cashier">Caissier</Text>
-                            </div>
-                            <div className="credential-row-premium">
-                              <Text code className="credential-username-premium">validateur</Text>
-                              <Text className="credential-separator-premium">/</Text>
-                              <Text code className="credential-password-premium">validateur123</Text>
-                              <Text className="credential-badge-premium validator">Validateur</Text>
-                            </div>
-                          </div>
-                        </div>
-                      ),
-                    },
-                  ]}
-                />
-              </Card>
-            )}
+            <Card className="dev-mode-card-premium" size="small">
+              <Alert
+                type="info"
+                showIcon
+                message="Connexion sécurisée"
+                description="Utilisez vos identifiants professionnels. Lors de la première connexion, un mot de passe temporaire vous est communiqué, puis vous devez le modifier et sélectionner votre agence."
+              />
+            </Card>
 
             <Form
               name="login"

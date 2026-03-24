@@ -48,6 +48,18 @@ export const NotificationsProvider: React.FC<{
 
   // Charger les notifications depuis le backend
   const fetchNotifications = useCallback(async () => {
+    const token = localStorage.getItem("lbp_token");
+    const hashPath = window.location.hash.replace(/^#/, "");
+    const isOnLoginPage =
+      window.location.pathname === "/login" ||
+      hashPath === "/login" ||
+      hashPath.startsWith("/login?");
+
+    // Ne pas appeler l'API notifications sans session active
+    if (!token || isOnLoginPage) {
+      return;
+    }
+
     try {
       const data = await notificationsService.getUnread();
       const formatted = data.map((n: any) => ({
