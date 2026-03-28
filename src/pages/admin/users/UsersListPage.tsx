@@ -10,8 +10,6 @@ import {
   Popconfirm,
   Tooltip,
   Card,
-  Row,
-  Col,
   Select,
   Switch,
   message,
@@ -30,10 +28,9 @@ import {
   CopyOutlined,
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
-import { User, UserRole, Agency } from "@types";
+import { User, UserRole } from "@types";
 import { formatDate } from "@utils/format";
 import { usersService } from "@services/users.service";
-import { apiService } from "@services/api.service";
 import { PERMISSIONS } from "@constants/permissions";
 import { WithPermission } from "@components/common/WithPermission";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -57,12 +54,6 @@ export const UsersListPage: React.FC = () => {
   const { data: users, isLoading, error, refetch } = useQuery<User[]>({
     queryKey: ['users'],
     queryFn: () => usersService.getAll(),
-  });
-
-  // Récupérer les agences pour les sélecteurs
-  const { data: agences } = useQuery<Agency[]>({
-    queryKey: ['agences'],
-    queryFn: () => apiService.get('/agences'),
   });
 
   // Mutation pour reset mdp
@@ -294,7 +285,6 @@ export const UsersListPage: React.FC = () => {
       >
         <UserForm
           user={selectedUser}
-          agences={agences || []}
           onSuccess={() => {
             setIsModalOpen(false);
             refetch();
@@ -324,8 +314,8 @@ export const UsersListPage: React.FC = () => {
   );
 };
 
-const UserForm: React.FC<{ user: any, agences: Agency[], onSuccess: () => void, onCancel: () => void }> = ({
-  user, agences, onSuccess, onCancel
+const UserForm: React.FC<{ user: any; onSuccess: () => void; onCancel: () => void }> = ({
+  user, onSuccess, onCancel
 }) => {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
@@ -335,17 +325,34 @@ const UserForm: React.FC<{ user: any, agences: Agency[], onSuccess: () => void, 
     setLoading(true);
     try {
       if (user) {
-        await usersService.update(user.id, values);
+        const { nom_complet, role, phone, actif } = values;
+        await usersService.update(user.id, { nom_complet, role, phone, actif });
         message.success("Utilisateur mis à jour");
         onSuccess();
       } else {
-        const created: any = await usersService.create(values);
-        if (created?.password_plain) {
+        const { nom_complet, username, role, phone, actif } = values;
+        const created: any = await usersService.create({
+          nom_complet,
+          username,
+          role,
+          phone,
+          actif,
+        });
+        if (created?.temp_password_sent) {
+          message.success(
+            created.temp_password_message || "Utilisateur créé — accès envoyés par SMS / WhatsApp.",
+          );
+          onSuccess();
+        } else if (created?.password_plain) {
           setCreatedPassword(created.password_plain);
+          message.warning(
+            created.temp_password_message ||
+              "Utilisateur créé mais l'envoi automatique a échoué. Communiquez le mot de passe manuellement.",
+          );
         } else {
+          message.success("Utilisateur créé avec succès");
           onSuccess();
         }
-        message.success("Utilisateur créé avec succès");
       }
     } catch (error: any) {
       message.error(error.message || "Erreur lors de l'enregistrement");
@@ -359,9 +366,11 @@ const UserForm: React.FC<{ user: any, agences: Agency[], onSuccess: () => void, 
       form={form}
       layout="vertical"
       initialValues={user ? {
-        ...user,
+        nom_complet: user.nom_complet,
+        username: user.username,
         role: user.role?.code,
-        agence_id: user.agency?.id
+        phone: user.phone,
+        actif: user.actif,
       } : {
         role: 'AGENT_EXPLOITATION',
         actif: true
@@ -377,51 +386,33 @@ const UserForm: React.FC<{ user: any, agences: Agency[], onSuccess: () => void, 
 
       {!user && (
         <div style={{ marginBottom: 12, color: "#8c8c8c", fontSize: 13 }}>
-          Le mot de passe temporaire est généré automatiquement à la création.
+          Le mot de passe temporaire est généré automatiquement et envoyé par SMS / WhatsApp sur le contact renseigné.
+          L’agence et l’e-mail seront renseignés par l’utilisateur (première connexion / paramètres).
         </div>
       )}
 
-      <Row gutter={16}>
-        <Col span={12}>
-          <Form.Item name="role" label="Rôle" rules={[{ required: true }]}>
-            <Select>
-              {Object.values(UserRole).map(r => (
-                <Option key={r} value={r}>{r}</Option>
-              ))}
-            </Select>
-          </Form.Item>
-        </Col>
-        <Col span={12}>
-          <Form.Item name="agence_id" label="Agence" rules={[{ required: true, message: "Sélectionnez une agence" }]}>
-            <Select placeholder="Sélectionner une agence" allowClear>
-              {agences.map(a => (
-                <Option key={a.id} value={a.id}>{a.name || (a as any).nom || a.code}</Option>
-              ))}
-            </Select>
-          </Form.Item>
-        </Col>
-      </Row>
+      <Form.Item name="role" label="Rôle" rules={[{ required: true }]}>
+        <Select>
+          {Object.values(UserRole).map(r => (
+            <Option key={r} value={r}>{r}</Option>
+          ))}
+        </Select>
+      </Form.Item>
 
-      <Row gutter={16}>
-        <Col span={12}>
-          <Form.Item
-            name="email"
-            label="Email"
-            rules={user ? [] : [{ required: true, message: "Email obligatoire" }]}
-          >
-            <Input type="email" />
-          </Form.Item>
-        </Col>
-        <Col span={12}>
-          <Form.Item
-            name="phone"
-            label="Téléphone"
-            rules={user ? [] : [{ required: true, message: "Téléphone obligatoire" }]}
-          >
-            <Input />
-          </Form.Item>
-        </Col>
-      </Row>
+      <Form.Item
+        name="phone"
+        label="Contact (SMS / WhatsApp)"
+        rules={[{ required: true, message: "Contact obligatoire pour l’envoi des accès" }]}
+      >
+        <Input placeholder="+225 05 XX XX XX XX ou +33 6 XX XX XX XX" />
+      </Form.Item>
+
+      {user && (
+        <div style={{ marginBottom: 12, color: "#8c8c8c", fontSize: 13 }}>
+          Agence : {(user.agency?.name || (user.agency as any)?.nom || user.agency?.code) || "Non assignée — choisie par l’utilisateur à la première connexion"}.
+          L’e-mail peut être complété par l’utilisateur dans ses paramètres.
+        </div>
+      )}
 
       <Form.Item name="actif" valuePropName="checked">
         <Switch checkedChildren="Actif" unCheckedChildren="Inactif" />

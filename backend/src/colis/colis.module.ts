@@ -11,15 +11,19 @@ import { ExpeditionsController } from './expeditions.controller';
 import { FacturesModule } from '../factures/factures.module';
 import { TarifsModule } from '../tarifs/tarifs.module';
 import { WhatsappService } from '../notifications/whatsapp.service';
+import { NotificationModule } from '../notifications/notification.module';
+import { RolesModule } from '../roles/roles.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Colis, Marchandise, Client, Expedition, Agence]),
     FacturesModule,
     TarifsModule,
+    NotificationModule,
+    RolesModule,
   ],
   providers: [ColisService, ExpeditionsService, WhatsappService],
   controllers: [ColisController, ExpeditionsController],
   exports: [ColisService, TypeOrmModule],
 })
-export class ColisModule { }
+export class ColisModule {}

@@ -1,10 +1,10 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class AddCaisseWorkflowAndSessions1742800000000 implements MigrationInterface {
-    name = 'AddCaisseWorkflowAndSessions1742800000000';
+  name = 'AddCaisseWorkflowAndSessions1742800000000';
 
-    public async up(queryRunner: QueryRunner): Promise<void> {
-        await queryRunner.query(`
+  public async up(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(`
             DO $$ BEGIN
                 CREATE TYPE "public"."lbp_caisse_sessions_status_enum" AS ENUM('OPEN', 'CLOSED');
             EXCEPTION
@@ -12,7 +12,7 @@ export class AddCaisseWorkflowAndSessions1742800000000 implements MigrationInter
             END $$;
         `);
 
-        await queryRunner.query(`
+    await queryRunner.query(`
             CREATE TABLE IF NOT EXISTS "lbp_caisse_sessions" (
                 "id" SERIAL NOT NULL,
                 "status" "public"."lbp_caisse_sessions_status_enum" NOT NULL DEFAULT 'OPEN',
@@ -34,7 +34,7 @@ export class AddCaisseWorkflowAndSessions1742800000000 implements MigrationInter
             )
         `);
 
-        await queryRunner.query(`
+    await queryRunner.query(`
             DO $$ BEGIN
                 ALTER TABLE "lbp_caisse_sessions"
                 ADD CONSTRAINT "FK_lbp_caisse_sessions_id_caisse"
@@ -45,7 +45,7 @@ export class AddCaisseWorkflowAndSessions1742800000000 implements MigrationInter
             END $$;
         `);
 
-        await queryRunner.query(`
+    await queryRunner.query(`
             DO $$ BEGIN
                 CREATE TYPE "public"."lbp_caisse_mouvement_workflows_mouvement_type_enum" AS ENUM(
                     'APPRO', 'DECAISSEMENT', 'ENTREE_CHEQUE', 'ENTREE_ESPECE', 'ENTREE_VIREMENT'
@@ -55,7 +55,7 @@ export class AddCaisseWorkflowAndSessions1742800000000 implements MigrationInter
             END $$;
         `);
 
-        await queryRunner.query(`
+    await queryRunner.query(`
             DO $$ BEGIN
                 CREATE TYPE "public"."lbp_caisse_mouvement_workflows_status_enum" AS ENUM(
                     'DRAFT', 'SUBMITTED', 'VALIDATED', 'REJECTED'
@@ -65,7 +65,7 @@ export class AddCaisseWorkflowAndSessions1742800000000 implements MigrationInter
             END $$;
         `);
 
-        await queryRunner.query(`
+    await queryRunner.query(`
             CREATE TABLE IF NOT EXISTS "lbp_caisse_mouvement_workflows" (
                 "id" SERIAL NOT NULL,
                 "mouvement_id" integer NOT NULL,
@@ -86,7 +86,7 @@ export class AddCaisseWorkflowAndSessions1742800000000 implements MigrationInter
             )
         `);
 
-        await queryRunner.query(`
+    await queryRunner.query(`
             CREATE TABLE IF NOT EXISTS "lbp_caisse_audit_logs" (
                 "id" SERIAL NOT NULL,
                 "action" character varying(100) NOT NULL,
@@ -101,21 +101,40 @@ export class AddCaisseWorkflowAndSessions1742800000000 implements MigrationInter
             )
         `);
 
-        await queryRunner.query(`CREATE INDEX IF NOT EXISTS "IDX_lbp_caisse_sessions_caisse_status" ON "lbp_caisse_sessions" ("id_caisse", "status")`);
-        await queryRunner.query(`CREATE INDEX IF NOT EXISTS "IDX_lbp_caisse_workflows_status" ON "lbp_caisse_mouvement_workflows" ("status")`);
-        await queryRunner.query(`CREATE INDEX IF NOT EXISTS "IDX_lbp_caisse_audit_created_at" ON "lbp_caisse_audit_logs" ("created_at")`);
-    }
+    await queryRunner.query(
+      `CREATE INDEX IF NOT EXISTS "IDX_lbp_caisse_sessions_caisse_status" ON "lbp_caisse_sessions" ("id_caisse", "status")`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX IF NOT EXISTS "IDX_lbp_caisse_workflows_status" ON "lbp_caisse_mouvement_workflows" ("status")`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX IF NOT EXISTS "IDX_lbp_caisse_audit_created_at" ON "lbp_caisse_audit_logs" ("created_at")`,
+    );
+  }
 
-    public async down(queryRunner: QueryRunner): Promise<void> {
-        await queryRunner.query(`DROP INDEX IF EXISTS "IDX_lbp_caisse_audit_created_at"`);
-        await queryRunner.query(`DROP INDEX IF EXISTS "IDX_lbp_caisse_workflows_status"`);
-        await queryRunner.query(`DROP INDEX IF EXISTS "IDX_lbp_caisse_sessions_caisse_status"`);
-        await queryRunner.query(`DROP TABLE IF EXISTS "lbp_caisse_audit_logs"`);
-        await queryRunner.query(`DROP TABLE IF EXISTS "lbp_caisse_mouvement_workflows"`);
-        await queryRunner.query(`DROP TABLE IF EXISTS "lbp_caisse_sessions"`);
-        await queryRunner.query(`DROP TYPE IF EXISTS "public"."lbp_caisse_mouvement_workflows_status_enum"`);
-        await queryRunner.query(`DROP TYPE IF EXISTS "public"."lbp_caisse_mouvement_workflows_mouvement_type_enum"`);
-        await queryRunner.query(`DROP TYPE IF EXISTS "public"."lbp_caisse_sessions_status_enum"`);
-    }
+  public async down(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "IDX_lbp_caisse_audit_created_at"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "IDX_lbp_caisse_workflows_status"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "IDX_lbp_caisse_sessions_caisse_status"`,
+    );
+    await queryRunner.query(`DROP TABLE IF EXISTS "lbp_caisse_audit_logs"`);
+    await queryRunner.query(
+      `DROP TABLE IF EXISTS "lbp_caisse_mouvement_workflows"`,
+    );
+    await queryRunner.query(`DROP TABLE IF EXISTS "lbp_caisse_sessions"`);
+    await queryRunner.query(
+      `DROP TYPE IF EXISTS "public"."lbp_caisse_mouvement_workflows_status_enum"`,
+    );
+    await queryRunner.query(
+      `DROP TYPE IF EXISTS "public"."lbp_caisse_mouvement_workflows_mouvement_type_enum"`,
+    );
+    await queryRunner.query(
+      `DROP TYPE IF EXISTS "public"."lbp_caisse_sessions_status_enum"`,
+    );
+  }
 }
-

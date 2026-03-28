@@ -11,6 +11,7 @@ class UsersService {
     agence_id?: number
     phone?: string
     email?: string
+    actif?: boolean
   }): Promise<User> {
     return apiService.post<User>('/users', data)
   }
@@ -34,6 +35,16 @@ class UsersService {
   async getAll(): Promise<User[]> {
     const users = await apiService.get<any[]>('/users')
     return users.map(u => this.mapUser(u))
+  }
+
+  /** Détail (ex. son propre profil si id = utilisateur courant) */
+  async getById(id: number): Promise<any> {
+    return apiService.get(`/users/${id}`)
+  }
+
+  /** Mise à jour e-mail / téléphone par l’utilisateur connecté */
+  async updateMyProfile(body: { email?: string | null; phone?: string | null }): Promise<any> {
+    return apiService.patch('/users/me/profile', body)
   }
 
   /** Voir le mot de passe temporaire en clair */

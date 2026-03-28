@@ -1,10 +1,13 @@
 import React, { useState } from 'react';
-import { Card, Button, Descriptions, Alert, Space, Modal, Form, Input } from 'antd';
+import { Card, Descriptions, Alert, Space, Modal, Form, Input, Typography } from 'antd';
 import { CheckCircleOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { facturesService } from '../../services/factures.service';
 import { paiementsService } from '../../services/paiements.service';
 import { confirmValidation } from '../common/ConfirmDialogs';
+import { TracedActionButton } from '../audit/TracedActionButton';
+
+const { Text } = Typography;
 
 interface FactureValidatorProps {
     facture: any;
@@ -128,15 +131,16 @@ export const FactureValidator: React.FC<FactureValidatorProps> = ({ facture, onS
                         )}
 
                         <div style={{ marginTop: 16, textAlign: 'right' }}>
-                            <Button
+                            <TracedActionButton
                                 type="primary"
                                 icon={<CheckCircleOutlined />}
                                 onClick={handleValidate}
                                 disabled={!allChecksPass || !canValidate}
                                 loading={validateMutation.isPending}
+                                traceHint="La validation définitive est enregistrée dans le journal d’audit (facture, utilisateur, horodatage)."
                             >
                                 Valider la Facture
-                            </Button>
+                            </TracedActionButton>
                         </div>
                     </>
                 )}
@@ -159,6 +163,9 @@ export const FactureValidator: React.FC<FactureValidatorProps> = ({ facture, onS
                     style={{ marginBottom: 16 }}
                 />
 
+                <Text type="secondary" style={{ display: 'block', marginBottom: 12, fontSize: 13 }}>
+                    Action tracée : une entrée d’audit métier est créée lorsque vous confirmez.
+                </Text>
                 <Form form={form} layout="vertical">
                     <Form.Item
                         label="Notes de validation (optionnel)"

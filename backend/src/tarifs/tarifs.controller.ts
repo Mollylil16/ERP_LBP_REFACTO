@@ -1,34 +1,50 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  UseGuards,
+} from '@nestjs/common';
 import { TarifsService } from './tarifs.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { PermissionsGuard } from '../auth/guards/permissions.guard';
+import { RequirePermission } from '../auth/decorators/permissions.decorator';
 
 @Controller('tarifs')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 export class TarifsController {
-    constructor(private readonly tarifsService: TarifsService) { }
+  constructor(private readonly tarifsService: TarifsService) {}
 
-    @Post()
-    create(@Body() createTarifDto: any) {
-        return this.tarifsService.create(createTarifDto);
-    }
+  @Post()
+  @RequirePermission('config.update')
+  create(@Body() createTarifDto: any) {
+    return this.tarifsService.create(createTarifDto);
+  }
 
-    @Get()
-    findAll() {
-        return this.tarifsService.findAll();
-    }
+  @Get()
+  @RequirePermission('config.view')
+  findAll() {
+    return this.tarifsService.findAll();
+  }
 
-    @Get(':id')
-    findOne(@Param('id') id: string) {
-        return this.tarifsService.findOne(+id);
-    }
+  @Get(':id')
+  @RequirePermission('config.view')
+  findOne(@Param('id') id: string) {
+    return this.tarifsService.findOne(+id);
+  }
 
-    @Patch(':id')
-    update(@Param('id') id: string, @Body() updateTarifDto: any) {
-        return this.tarifsService.update(+id, +updateTarifDto);
-    }
+  @Patch(':id')
+  @RequirePermission('config.update')
+  update(@Param('id') id: string, @Body() updateTarifDto: any) {
+    return this.tarifsService.update(+id, +updateTarifDto);
+  }
 
-    @Delete(':id')
-    remove(@Param('id') id: string) {
-        return this.tarifsService.remove(+id);
-    }
+  @Delete(':id')
+  @RequirePermission('config.update')
+  remove(@Param('id') id: string) {
+    return this.tarifsService.remove(+id);
+  }
 }

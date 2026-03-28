@@ -8,13 +8,13 @@ import { NotificationModule } from '../notifications/notification.module';
 import { CaisseModule } from '../caisse/caisse.module';
 
 @Module({
-    imports: [
-        ScheduleModule.forRoot(),
-        TypeOrmModule.forFeature([Caisse, Facture]),
-        NotificationModule,
-        CaisseModule,
-    ],
-    providers: [AlertService],
-    exports: [AlertService],
+  imports: [
+    ScheduleModule.forRoot(),
+    TypeOrmModule.forFeature([Caisse, Facture]),
+    NotificationModule,
+    CaisseModule,
+  ],
+  providers: [AlertService],
+  exports: [AlertService],
 })
-export class AlertModule { }
+export class AlertModule {}

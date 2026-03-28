@@ -15,203 +15,249 @@ import {
   LineChartOutlined,
   GlobalOutlined,
   ArrowUpOutlined,
+  AlertOutlined,
+  MessageOutlined,
 } from "@ant-design/icons";
 import { usePermissions } from "@hooks/usePermissions";
-import { useAuth } from "@hooks/useAuth";
+import { ROUTE_ACCESS, COLIS_READ_ANY } from "@constants/routeAccess";
 import "./SidebarMenu.css";
 
 interface SidebarMenuProps {
   collapsed: boolean;
 }
 
-export const SidebarMenu: React.FC<SidebarMenuProps> = ({ collapsed }) => {
+export const SidebarMenu: React.FC<SidebarMenuProps> = ({ collapsed: _collapsed }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useAuth();
-  const { hasPermission, permissions, isLoading: isPermsLoading } = usePermissions();
+  const { hasPermission, hasAnyPermission } = usePermissions();
 
-  // Construction du menu selon les permissions
+  const canColisGroupage =
+    hasPermission("colis.groupage.read") ||
+    hasPermission("colis.groupage.create") ||
+    hasPermission("colis.groupage.update");
+  const canColisAutres =
+    hasPermission("colis.autres-envois.read") ||
+    hasPermission("colis.autres-envois.create") ||
+    hasPermission("colis.autres-envois.update");
+  const canColisRapports = hasPermission(ROUTE_ACCESS.colisRapports);
+  const canColisMap = hasAnyPermission([...COLIS_READ_ANY]);
+  const canExpeditions = hasAnyPermission([...ROUTE_ACCESS.expeditions]);
+
+  const showColisSection =
+    canColisGroupage || canColisAutres || canColisRapports || canColisMap;
+
+  const settingsChildren = [
+    ...(hasPermission(ROUTE_ACCESS.settings)
+      ? [
+          {
+            key: "/settings",
+            icon: <SettingOutlined />,
+            label: "Général",
+          },
+        ]
+      : []),
+    ...(hasPermission(ROUTE_ACCESS.settingsTarifs)
+      ? [
+          {
+            key: "/settings/tarifs",
+            icon: <DollarOutlined />,
+            label: "Grilles Tarifaires",
+          },
+        ]
+      : []),
+    ...(hasPermission(ROUTE_ACCESS.settingsAgences)
+      ? [
+          {
+            key: "/settings/agences",
+            icon: <GlobalOutlined />,
+            label: "Gestion Agences",
+          },
+        ]
+      : []),
+  ];
+  const settingsMenuBlock =
+    settingsChildren.length > 0
+      ? [
+          {
+            key: "settings_root",
+            icon: <SettingOutlined />,
+            label: "Paramètres",
+            children: settingsChildren,
+          },
+        ]
+      : [];
+
   const menuItems: any[] = [
-    {
-      key: "/dashboard",
-      icon: <DashboardOutlined />,
-      label: "Tableau de bord",
-    },
-    // Afficher le menu "Gestion Colis" si l'utilisateur a au moins une permission liée aux colis
-    ...(hasPermission("colis.groupage.read") ||
-      hasPermission("colis.groupage.create") ||
-      hasPermission("colis.groupage.update") ||
-      hasPermission("colis.autres-envois.read") ||
-      hasPermission("colis.autres-envois.create") ||
-      hasPermission("colis.autres-envois.update") ||
-      hasPermission("rapports.view")
+    ...(hasPermission(ROUTE_ACCESS.dashboard)
       ? [
-        {
-          key: "colis",
-          icon: <InboxOutlined />,
-          label: "Gestion Colis",
-          children: [
-            ...(hasPermission("colis.groupage.read") ||
-              hasPermission("colis.groupage.create") ||
-              hasPermission("colis.groupage.update")
-              ? [
-                {
-                  key: "/colis/groupage",
-                  icon: <FolderOutlined />,
-                  label: "Groupage",
-                },
-              ]
-              : []),
-            ...(hasPermission("colis.autres-envois.read") ||
-              hasPermission("colis.autres-envois.create") ||
-              hasPermission("colis.autres-envois.update")
-              ? [
-                {
-                  key: "/colis/autres-envois",
-                  icon: <InboxOutlined />,
-                  label: "Autres Envois",
-                },
-              ]
-              : []),
-            ...(hasPermission("rapports.view")
-              ? [
-                {
-                  key: "/colis/rapports",
-                  icon: <BarChartOutlined />,
-                  label: "Rapports",
-                },
-              ]
-              : []),
-            // Map moved here? user said menu doesn't work. The route is /colis/map.
-            // If I put it here, key is /colis/map.
-            {
-              key: "/colis/map",
-              icon: <GlobalOutlined />,
-              label: "Cartographie",
-            },
-          ],
-        },
-      ]
+          {
+            key: "/dashboard",
+            icon: <DashboardOutlined />,
+            label: "Tableau de bord",
+          },
+        ]
       : []),
-    {
-      key: "/expeditions",
-      icon: <GlobalOutlined />,
-      label: "Expéditions (Manifestes)",
-    },
-    ...(hasPermission("clients.read")
+    ...(showColisSection
       ? [
-        {
-          key: "/clients",
-          icon: <TeamOutlined />,
-          label: "Clients Expéditeurs",
-        },
-      ]
+          {
+            key: "colis",
+            icon: <InboxOutlined />,
+            label: "Gestion Colis",
+            children: [
+              ...(canColisGroupage
+                ? [
+                    {
+                      key: "/colis/groupage",
+                      icon: <FolderOutlined />,
+                      label: "Groupage",
+                    },
+                  ]
+                : []),
+              ...(canColisAutres
+                ? [
+                    {
+                      key: "/colis/autres-envois",
+                      icon: <InboxOutlined />,
+                      label: "Autres Envois",
+                    },
+                  ]
+                : []),
+              ...(canColisRapports
+                ? [
+                    {
+                      key: "/colis/rapports",
+                      icon: <BarChartOutlined />,
+                      label: "Rapports",
+                    },
+                  ]
+                : []),
+              ...(canColisMap
+                ? [
+                    {
+                      key: "/colis/map",
+                      icon: <GlobalOutlined />,
+                      label: "Cartographie",
+                    },
+                  ]
+                : []),
+            ],
+          },
+        ]
       : []),
-    ...(hasPermission("factures.read")
+    ...(canExpeditions
       ? [
-        {
-          key: "/factures",
-          icon: <FileTextOutlined />,
-          label: "Facturation",
-        },
-      ]
+          {
+            key: "/expeditions",
+            icon: <GlobalOutlined />,
+            label: "Expéditions (Manifestes)",
+          },
+        ]
       : []),
-    ...(hasPermission("paiements.read")
+    ...(hasPermission(ROUTE_ACCESS.clients)
       ? [
-        {
-          key: "/paiements",
-          icon: <DollarOutlined />,
-          label: "Paiements",
-        },
-      ]
+          {
+            key: "/clients",
+            icon: <TeamOutlined />,
+            label: "Clients Expéditeurs",
+          },
+        ]
       : []),
-    ...(hasPermission("caisse.view")
+    ...(hasPermission(ROUTE_ACCESS.litiges)
       ? [
-        {
-          key: "caisse_root",
-          icon: <WalletOutlined />,
-          label: "Gestion Caisse",
-          children: [
-            {
-              key: "/caisse/suivi",
-              icon: <WalletOutlined />,
-              label: "Suivi Caisse",
-            },
-            {
-              key: "/caisse/retraits",
-              icon: <ArrowUpOutlined />,
-              label: "Suivi des Retraits",
-            },
-          ],
-        },
-      ]
+          {
+            key: "/litiges",
+            icon: <AlertOutlined />,
+            label: "Litiges",
+          },
+        ]
       : []),
-    ...(hasPermission("rapports.view")
+    ...(hasPermission(ROUTE_ACCESS.callcenterInbox)
       ? [
-        {
-          key: "/statistiques",
-          icon: <LineChartOutlined />,
-          label: "Statistiques & Finance",
-          children: [
-            {
-              key: "/statistiques/historiques",
-              icon: <LineChartOutlined />,
-              label: "Statistiques Historiques",
-            },
-            {
-              key: "/statistiques/rentabilite",
-              icon: <BarChartOutlined />,
-              label: "Analyse Rentabilité",
-            },
-          ]
-        },
-      ]
+          {
+            key: "/callcenter/inbox",
+            icon: <MessageOutlined />,
+            label: "Messagerie (inbox)",
+          },
+        ]
       : []),
-    ...(hasPermission("config.view")
+    ...(hasPermission(ROUTE_ACCESS.factures)
       ? [
-        {
-          key: "settings_root",
-          icon: <SettingOutlined />,
-          label: "Paramètres",
-          children: [
-            {
-              key: "/settings",
-              icon: <SettingOutlined />,
-              label: "Général",
-            },
-            {
-              key: "/settings/tarifs",
-              icon: <DollarOutlined />,
-              label: "Grilles Tarifaires",
-            },
-            {
-              key: "/settings/agences",
-              icon: <GlobalOutlined />,
-              label: "Gestion Agences",
-            },
-          ],
-        },
-      ]
+          {
+            key: "/factures",
+            icon: <FileTextOutlined />,
+            label: "Facturation",
+          },
+        ]
       : []),
-    ...(hasPermission("users.read")
+    ...(hasPermission(ROUTE_ACCESS.paiements)
       ? [
-        {
-          key: "/users",
-          icon: <TeamOutlined />,
-          label: "Gestion Utilisateurs",
-        },
-      ]
+          {
+            key: "/paiements",
+            icon: <DollarOutlined />,
+            label: "Paiements",
+          },
+        ]
+      : []),
+    ...(hasPermission(ROUTE_ACCESS.caisse)
+      ? [
+          {
+            key: "caisse_root",
+            icon: <WalletOutlined />,
+            label: "Gestion Caisse",
+            children: [
+              {
+                key: "/caisse/suivi",
+                icon: <WalletOutlined />,
+                label: "Suivi Caisse",
+              },
+              {
+                key: "/caisse/retraits",
+                icon: <ArrowUpOutlined />,
+                label: "Suivi des Retraits",
+              },
+            ],
+          },
+        ]
+      : []),
+    ...(hasPermission(ROUTE_ACCESS.statistiques)
+      ? [
+          {
+            key: "/statistiques",
+            icon: <LineChartOutlined />,
+            label: "Statistiques & Finance",
+            children: [
+              {
+                key: "/statistiques/historiques",
+                icon: <LineChartOutlined />,
+                label: "Statistiques Historiques",
+              },
+              {
+                key: "/statistiques/rentabilite",
+                icon: <BarChartOutlined />,
+                label: "Analyse Rentabilité",
+              },
+            ],
+          },
+        ]
+      : []),
+    ...settingsMenuBlock,
+    ...(hasPermission(ROUTE_ACCESS.users)
+      ? [
+          {
+            key: "/users",
+            icon: <TeamOutlined />,
+            label: "Gestion Utilisateurs",
+          },
+        ]
       : []),
   ];
 
   const handleMenuClick: any = ({ key }: any) => {
-    // Navigate allowed if NOT a submenu key
     if (key && !["colis", "/statistiques", "settings_root", "caisse_root", "flux_auth"].includes(key)) {
       navigate(key as string);
     }
   };
 
-  // Déterminer la clé sélectionnée
   const selectedKeys = [location.pathname];
   const openKeys = location.pathname.startsWith("/colis") ? ["colis"] :
     location.pathname.startsWith("/statistiques") ? ["/statistiques"] :

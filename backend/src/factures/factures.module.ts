@@ -6,11 +6,17 @@ import { FacturesPublicController } from './factures-public.controller';
 import { Facture } from './entities/facture.entity';
 import { Colis } from '../colis/entities/colis.entity';
 import { LienPaiement } from '../paiements/entities/lien-paiement.entity';
+import { RolesModule } from '../roles/roles.module';
+import { AuditModule } from '../audit/audit.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Facture, Colis, LienPaiement])],
+  imports: [
+    TypeOrmModule.forFeature([Facture, Colis, LienPaiement]),
+    RolesModule,
+    AuditModule,
+  ],
   providers: [FacturesService],
   controllers: [FacturesController, FacturesPublicController],
   exports: [FacturesService, TypeOrmModule],
 })
-export class FacturesModule { }
+export class FacturesModule {}

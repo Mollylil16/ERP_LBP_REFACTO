@@ -12,6 +12,7 @@ import { Colis } from '../colis/entities/colis.entity';
 import { Client } from '../clients/entities/client.entity';
 import { Facture } from '../factures/entities/facture.entity';
 import { Paiement } from '../paiements/entities/paiement.entity';
+import { RolesModule } from '../roles/roles.module';
 
 @Module({
   imports: [
@@ -22,8 +23,9 @@ import { Paiement } from '../paiements/entities/paiement.entity';
     PaiementsModule,
     AgencesModule,
     CaisseModule,
+    RolesModule,
   ],
   providers: [DashboardService],
   controllers: [DashboardController],
 })
-export class DashboardModule { }
+export class DashboardModule {}

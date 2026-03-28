@@ -97,8 +97,13 @@ export const ColisMapView: React.FC = () => {
     const socketRef = useRef<Socket | null>(null)
 
     useEffect(() => {
-        // Charger les positions existantes au démarrage
-        fetch(`${BACKEND_URL}/tracking/live`)
+        const token = localStorage.getItem('lbp_token')
+        const authHeaders: HeadersInit = token
+            ? { Authorization: `Bearer ${token}` }
+            : {}
+
+        // Charger les positions existantes au démarrage (JWT + droits colis côté API)
+        fetch(`${BACKEND_URL}/tracking/live`, { headers: authHeaders })
             .then(r => r.json())
             .then((data: LivePosition[]) => {
                 const map: Record<string, LivePosition> = {}
@@ -107,10 +112,11 @@ export const ColisMapView: React.FC = () => {
             })
             .catch(() => { })
 
-        // Connexion WebSocket
+        // Connexion WebSocket — JWT exigé par le gateway
         const socket = io(`${BACKEND_URL}/tracking`, {
             transports: ['websocket'],
             reconnectionAttempts: 5,
+            auth: token ? { token } : {},
         })
         socketRef.current = socket
 
@@ -154,7 +160,9 @@ export const ColisMapView: React.FC = () => {
                 if (d?.length > 0) {
                     setDynamicCoords(prev => ({ ...prev, [loc]: [parseFloat(d[0].lat), parseFloat(d[0].lon)] }));
                 }
-            } catch { }
+            } catch {
+                void 0 // géocodage Nominatim optionnel : ignorer les erreurs réseau
+            }
         });
     }, [filteredColis])
 

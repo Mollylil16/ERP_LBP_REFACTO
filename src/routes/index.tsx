@@ -7,7 +7,9 @@ import React, { lazy } from 'react'
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from '@hooks/useAuth'
 import { ProtectedRoute } from '../components/common/ProtectedRoute'
+import { ROUTE_ACCESS } from '@constants/routeAccess'
 import { MainLayout } from '../components/layout/MainLayout'
+import { OnboardingTourProvider } from '../components/onboarding/AppOnboardingTour'
 import { PublicLayout } from '../components/layout/PublicLayout'
 import { LazyPageLoader } from '../components/common/LazyPageLoader'
 
@@ -16,6 +18,7 @@ import { LazyPageLoader } from '../components/common/LazyPageLoader'
 
 // Pages - Public (lazy loaded)
 const LoginPage = lazy(() => import('../pages/public/LoginPage').then(m => ({ default: m.LoginPage })))
+const ForbiddenPage = lazy(() => import('../pages/public/ForbiddenPage').then(m => ({ default: m.ForbiddenPage })))
 const TrackPage = lazy(() => import('../pages/public/TrackPage').then(m => ({ default: m.TrackPage })))
 const PublicPaymentPage = lazy(() => import('../pages/public/PublicPaymentPage').then(m => ({ default: m.PublicPaymentPage })))
 const InvoicePublicPaymentPage = lazy(() => import('../pages/public/InvoicePublicPaymentPage').then(m => ({ default: m.InvoicePublicPaymentPage })))
@@ -33,6 +36,16 @@ const ExpeditionsPage = lazy(() => import('../pages/expeditions/ExpeditionsPage'
 // Pages - Clients (lazy loaded)
 const ClientsListPage = lazy(() => import('../pages/admin/clients/ClientsListPage').then(m => ({ default: m.ClientsListPage })))
 
+// Pages - Litiges & Call center (lazy loaded)
+const LitigesListPage = lazy(() => import('../pages/admin/litiges/LitigesListPage').then(m => ({ default: m.LitigesListPage })))
+const LitigeDetailPage = lazy(() => import('../pages/admin/litiges/LitigeDetailPage').then(m => ({ default: m.LitigeDetailPage })))
+const CallCenterInboxPage = lazy(() =>
+  import('../pages/admin/callcenter/CallCenterInboxPage').then(m => ({ default: m.CallCenterInboxPage })),
+)
+const CallCenterConversationPage = lazy(() =>
+  import('../pages/admin/callcenter/CallCenterConversationPage').then(m => ({ default: m.CallCenterConversationPage })),
+)
+
 // Pages - Factures (lazy loaded)
 const FacturesListPage = lazy(() => import('../pages/admin/factures/FacturesListPage').then(m => ({ default: m.FacturesListPage })))
 const FacturePreviewPage = lazy(() => import('../pages/admin/factures/FacturePreviewPage').then(m => ({ default: m.FacturePreviewPage })))
@@ -42,6 +55,7 @@ const PaiementsListPage = lazy(() => import('../pages/admin/paiements/PaiementsL
 
 // Pages - Settings (lazy loaded)
 const SettingsPage = lazy(() => import('../pages/admin/settings/SettingsPage').then(m => ({ default: m.SettingsPage })))
+const ProfilePage = lazy(() => import('../pages/admin/account/ProfilePage').then(m => ({ default: m.ProfilePage })))
 
 // Pages - Users (lazy loaded)
 const UsersListPage = lazy(() => import('../pages/admin/users/UsersListPage').then(m => ({ default: m.UsersListPage })))
@@ -135,6 +149,14 @@ export const AppRoutes: React.FC = () => {
             </LazyPageLoader>
           }
         />
+        <Route
+          path="forbidden"
+          element={
+            <LazyPageLoader>
+              <ForbiddenPage />
+            </LazyPageLoader>
+          }
+        />
         {/* Flux Auth (Accessibles même sans layout principal) */}
         <Route
           path="auth/change-password"
@@ -159,7 +181,9 @@ export const AppRoutes: React.FC = () => {
         path="/"
         element={
           <ProtectedRoute>
-            <MainLayout />
+            <OnboardingTourProvider>
+              <MainLayout />
+            </OnboardingTourProvider>
           </ProtectedRoute>
         }
       >
@@ -167,9 +191,23 @@ export const AppRoutes: React.FC = () => {
         <Route
           path="dashboard"
           element={
-            <LazyPageLoader>
-              <DashboardPage />
-            </LazyPageLoader>
+            <ProtectedRoute requiredPermission={ROUTE_ACCESS.dashboard}>
+              <LazyPageLoader>
+                <DashboardPage />
+              </LazyPageLoader>
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Profil utilisateur (tous rôles authentifiés) */}
+        <Route
+          path="profile"
+          element={
+            <ProtectedRoute>
+              <LazyPageLoader>
+                <ProfilePage />
+              </LazyPageLoader>
+            </ProtectedRoute>
           }
         />
 
@@ -178,33 +216,41 @@ export const AppRoutes: React.FC = () => {
           <Route
             path="groupage"
             element={
-              <LazyPageLoader>
-                <ColisGroupageListPage />
-              </LazyPageLoader>
+              <ProtectedRoute requiredPermission={ROUTE_ACCESS.colisGroupage}>
+                <LazyPageLoader>
+                  <ColisGroupageListPage />
+                </LazyPageLoader>
+              </ProtectedRoute>
             }
           />
           <Route
             path="autres-envois"
             element={
-              <LazyPageLoader>
-                <ColisAutresEnvoisListPage />
-              </LazyPageLoader>
+              <ProtectedRoute requiredPermission={ROUTE_ACCESS.colisAutresEnvois}>
+                <LazyPageLoader>
+                  <ColisAutresEnvoisListPage />
+                </LazyPageLoader>
+              </ProtectedRoute>
             }
           />
           <Route
             path="rapports"
             element={
-              <LazyPageLoader>
-                <ColisRapportsPage />
-              </LazyPageLoader>
+              <ProtectedRoute requiredPermission={ROUTE_ACCESS.colisRapports}>
+                <LazyPageLoader>
+                  <ColisRapportsPage />
+                </LazyPageLoader>
+              </ProtectedRoute>
             }
           />
           <Route
             path="map"
             element={
-              <LazyPageLoader>
-                <ColisMapView />
-              </LazyPageLoader>
+              <ProtectedRoute requiredPermission={[...ROUTE_ACCESS.colisMap]}>
+                <LazyPageLoader>
+                  <ColisMapView />
+                </LazyPageLoader>
+              </ProtectedRoute>
             }
           />
         </Route>
@@ -213,9 +259,11 @@ export const AppRoutes: React.FC = () => {
         <Route
           path="expeditions"
           element={
-            <LazyPageLoader>
-              <ExpeditionsPage />
-            </LazyPageLoader>
+            <ProtectedRoute requiredPermission={[...ROUTE_ACCESS.expeditions]}>
+              <LazyPageLoader>
+                <ExpeditionsPage />
+              </LazyPageLoader>
+            </ProtectedRoute>
           }
         />
 
@@ -223,9 +271,55 @@ export const AppRoutes: React.FC = () => {
         <Route
           path="clients"
           element={
-            <LazyPageLoader>
-              <ClientsListPage />
-            </LazyPageLoader>
+            <ProtectedRoute requiredPermission={ROUTE_ACCESS.clients}>
+              <LazyPageLoader>
+                <ClientsListPage />
+              </LazyPageLoader>
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Litiges */}
+        <Route
+          path="litiges/:id"
+          element={
+            <ProtectedRoute requiredPermission={ROUTE_ACCESS.litiges}>
+              <LazyPageLoader>
+                <LitigeDetailPage />
+              </LazyPageLoader>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="litiges"
+          element={
+            <ProtectedRoute requiredPermission={ROUTE_ACCESS.litiges}>
+              <LazyPageLoader>
+                <LitigesListPage />
+              </LazyPageLoader>
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Call center — boîte de réception */}
+        <Route
+          path="callcenter/inbox/:conversationId"
+          element={
+            <ProtectedRoute requiredPermission={ROUTE_ACCESS.callcenterInbox}>
+              <LazyPageLoader>
+                <CallCenterConversationPage />
+              </LazyPageLoader>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="callcenter/inbox"
+          element={
+            <ProtectedRoute requiredPermission={ROUTE_ACCESS.callcenterInbox}>
+              <LazyPageLoader>
+                <CallCenterInboxPage />
+              </LazyPageLoader>
+            </ProtectedRoute>
           }
         />
 
@@ -234,17 +328,21 @@ export const AppRoutes: React.FC = () => {
           <Route
             index
             element={
-              <LazyPageLoader>
-                <FacturesListPage />
-              </LazyPageLoader>
+              <ProtectedRoute requiredPermission={ROUTE_ACCESS.factures}>
+                <LazyPageLoader>
+                  <FacturesListPage />
+                </LazyPageLoader>
+              </ProtectedRoute>
             }
           />
           <Route
             path=":id/preview"
             element={
-              <LazyPageLoader>
-                <FacturePreviewPage />
-              </LazyPageLoader>
+              <ProtectedRoute requiredPermission={ROUTE_ACCESS.factures}>
+                <LazyPageLoader>
+                  <FacturePreviewPage />
+                </LazyPageLoader>
+              </ProtectedRoute>
             }
           />
         </Route>
@@ -253,9 +351,11 @@ export const AppRoutes: React.FC = () => {
         <Route
           path="paiements"
           element={
-            <LazyPageLoader>
-              <PaiementsListPage />
-            </LazyPageLoader>
+            <ProtectedRoute requiredPermission={ROUTE_ACCESS.paiements}>
+              <LazyPageLoader>
+                <PaiementsListPage />
+              </LazyPageLoader>
+            </ProtectedRoute>
           }
         />
 
@@ -263,17 +363,21 @@ export const AppRoutes: React.FC = () => {
         <Route
           path="caisse/suivi"
           element={
-            <LazyPageLoader>
-              <SuiviCaissePage />
-            </LazyPageLoader>
+            <ProtectedRoute requiredPermission={ROUTE_ACCESS.caisse}>
+              <LazyPageLoader>
+                <SuiviCaissePage />
+              </LazyPageLoader>
+            </ProtectedRoute>
           }
         />
         <Route
           path="caisse/retraits"
           element={
-            <LazyPageLoader>
-              <WithdrawalTrackingPage />
-            </LazyPageLoader>
+            <ProtectedRoute requiredPermission={ROUTE_ACCESS.caisse}>
+              <LazyPageLoader>
+                <WithdrawalTrackingPage />
+              </LazyPageLoader>
+            </ProtectedRoute>
           }
         />
 
@@ -281,9 +385,11 @@ export const AppRoutes: React.FC = () => {
         <Route
           path="settings"
           element={
-            <LazyPageLoader>
-              <SettingsPage />
-            </LazyPageLoader>
+            <ProtectedRoute requiredPermission={ROUTE_ACCESS.settings}>
+              <LazyPageLoader>
+                <SettingsPage />
+              </LazyPageLoader>
+            </ProtectedRoute>
           }
         />
 
@@ -291,33 +397,41 @@ export const AppRoutes: React.FC = () => {
         <Route
           path="statistiques/historiques"
           element={
-            <LazyPageLoader>
-              <StatistiquesHistoriquesPage />
-            </LazyPageLoader>
+            <ProtectedRoute requiredPermission={ROUTE_ACCESS.statistiques}>
+              <LazyPageLoader>
+                <StatistiquesHistoriquesPage />
+              </LazyPageLoader>
+            </ProtectedRoute>
           }
         />
         <Route
           path="statistiques/rentabilite"
           element={
-            <LazyPageLoader>
-              <RentabiliteTarifPage />
-            </LazyPageLoader>
+            <ProtectedRoute requiredPermission={ROUTE_ACCESS.statistiques}>
+              <LazyPageLoader>
+                <RentabiliteTarifPage />
+              </LazyPageLoader>
+            </ProtectedRoute>
           }
         />
         <Route
           path="settings/tarifs"
           element={
-            <LazyPageLoader>
-              <TarifManagementPage />
-            </LazyPageLoader>
+            <ProtectedRoute requiredPermission={ROUTE_ACCESS.settingsTarifs}>
+              <LazyPageLoader>
+                <TarifManagementPage />
+              </LazyPageLoader>
+            </ProtectedRoute>
           }
         />
         <Route
           path="settings/agences"
           element={
-            <LazyPageLoader>
-              <AgencesManagementPage />
-            </LazyPageLoader>
+            <ProtectedRoute requiredPermission={ROUTE_ACCESS.settingsAgences}>
+              <LazyPageLoader>
+                <AgencesManagementPage />
+              </LazyPageLoader>
+            </ProtectedRoute>
           }
         />
 
@@ -325,9 +439,11 @@ export const AppRoutes: React.FC = () => {
         <Route
           path="users"
           element={
-            <LazyPageLoader>
-              <UsersListPage />
-            </LazyPageLoader>
+            <ProtectedRoute requiredPermission={ROUTE_ACCESS.users}>
+              <LazyPageLoader>
+                <UsersListPage />
+              </LazyPageLoader>
+            </ProtectedRoute>
           }
         />
 

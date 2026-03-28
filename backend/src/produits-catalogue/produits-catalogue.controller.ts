@@ -1,63 +1,76 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards, ParseIntPipe } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Body,
+  Param,
+  Query,
+  UseGuards,
+  ParseIntPipe,
+} from '@nestjs/common';
 import { ProduitsCatalogueService } from './produits-catalogue.service';
 import { CreateProduitCatalogueDto } from './dto/create-produit-catalogue.dto';
 import { UpdateProduitCatalogueDto } from './dto/update-produit-catalogue.dto';
 import { CategoriesProduit } from './entities/produit-catalogue.entity';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../auth/guards/roles.guard';
-import { RequireRole } from '../auth/decorators/roles.decorator';
+import { PermissionsGuard } from '../auth/guards/permissions.guard';
+import { RequirePermission } from '../auth/decorators/permissions.decorator';
 
 @Controller('produits-catalogue')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 export class ProduitsCatalogueController {
-    constructor(private readonly produitsService: ProduitsCatalogueService) { }
+  constructor(private readonly produitsService: ProduitsCatalogueService) {}
 
-    @Get()
-    findAll() {
-        return this.produitsService.findAll();
-    }
+  @Get()
+  @RequirePermission('factures.read')
+  findAll() {
+    return this.produitsService.findAll();
+  }
 
-    @Get('categorie/:categorie')
-    findByCategorie(@Param('categorie') categorie: CategoriesProduit) {
-        return this.produitsService.findByCategorie(categorie);
-    }
+  @Get('categorie/:categorie')
+  @RequirePermission('factures.read')
+  findByCategorie(@Param('categorie') categorie: CategoriesProduit) {
+    return this.produitsService.findByCategorie(categorie);
+  }
 
-    @Get('search')
-    search(@Query('q') query: string) {
-        return this.produitsService.search(query);
-    }
+  @Get('search')
+  @RequirePermission('factures.read')
+  search(@Query('q') query: string) {
+    return this.produitsService.search(query);
+  }
 
-    @Get('historique')
-    getHistorique() {
-        return this.produitsService.getHistoriqueUtilisation();
-    }
+  @Get('historique')
+  @RequirePermission('factures.read')
+  getHistorique() {
+    return this.produitsService.getHistoriqueUtilisation();
+  }
 
-    @Get(':id')
-    findOne(@Param('id', ParseIntPipe) id: number) {
-        return this.produitsService.findOne(id);
-    }
+  @Get(':id')
+  @RequirePermission('factures.read')
+  findOne(@Param('id', ParseIntPipe) id: number) {
+    return this.produitsService.findOne(id);
+  }
 
-    @Post()
-    @UseGuards(RolesGuard)
-    @RequireRole('admin', 'manager')
-    create(@Body() createDto: CreateProduitCatalogueDto) {
-        return this.produitsService.create(createDto);
-    }
+  @Post()
+  @RequirePermission('factures.create')
+  create(@Body() createDto: CreateProduitCatalogueDto) {
+    return this.produitsService.create(createDto);
+  }
 
-    @Put(':id')
-    @UseGuards(RolesGuard)
-    @RequireRole('admin', 'manager')
-    update(
-        @Param('id', ParseIntPipe) id: number,
-        @Body() updateDto: UpdateProduitCatalogueDto,
-    ) {
-        return this.produitsService.update(id, updateDto);
-    }
+  @Put(':id')
+  @RequirePermission('factures.create')
+  update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updateDto: UpdateProduitCatalogueDto,
+  ) {
+    return this.produitsService.update(id, updateDto);
+  }
 
-    @Delete(':id')
-    @UseGuards(RolesGuard)
-    @RequireRole('admin')
-    remove(@Param('id', ParseIntPipe) id: number) {
-        return this.produitsService.remove(id);
-    }
+  @Delete(':id')
+  @RequirePermission('factures.delete')
+  remove(@Param('id', ParseIntPipe) id: number) {
+    return this.produitsService.remove(id);
+  }
 }

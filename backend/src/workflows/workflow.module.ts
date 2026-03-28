@@ -5,8 +5,8 @@ import { FacturesModule } from '../factures/factures.module';
 import { NotificationModule } from '../notifications/notification.module';
 
 @Module({
-    imports: [ColisModule, FacturesModule, NotificationModule],
-    providers: [WorkflowService],
-    exports: [WorkflowService],
+  imports: [ColisModule, FacturesModule, NotificationModule],
+  providers: [WorkflowService],
+  exports: [WorkflowService],
 })
-export class WorkflowModule { }
+export class WorkflowModule {}

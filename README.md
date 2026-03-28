@@ -71,6 +71,8 @@ L'application sera accessible sur `http://localhost:3000`
 - `npm run build` - Build de production
 - `npm run preview` - Prévisualise le build de production
 - `npm run lint` - Vérifie le code avec ESLint
+- `npm run verify:permissions` - Vérifie l’alignement des codes `@RequirePermission` (backend) avec `PERMISSIONS` (front)
+- **Mise en production** : voir **`DEPLOIEMENT.md`** à la racine du dépôt (migrations, seed, variables, recette).
 
 ## 🎨 Fonctionnalités principales
 
@@ -154,6 +156,8 @@ Les fichiers seront générés dans le dossier `dist/`
 5. Ajouter les tests
 
 ## 📚 Documentation
+
+**API / droits utilisateur** : les permissions viennent de la base (`lbp_permissions`, `lbp_role_permissions`). Les migrations et le **`npm run seed`** du dossier `backend/` ne partent **pas** tout seuls au démarrage de l’API — voir la section dédiée dans [backend/README.md](backend/README.md).
 
 Pour plus d'informations sur les technologies utilisées :
 - [React](https://react.dev)

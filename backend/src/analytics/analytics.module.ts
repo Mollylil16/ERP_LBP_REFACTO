@@ -8,14 +8,22 @@ import { Facture } from '../factures/entities/facture.entity';
 import { Paiement } from '../paiements/entities/paiement.entity';
 import { MouvementCaisse } from '../caisse/entities/mouvement-caisse.entity';
 import { CaisseModule } from '../caisse/caisse.module';
+import { RolesModule } from '../roles/roles.module';
 
 @Module({
-    imports: [
-        TypeOrmModule.forFeature([Colis, Client, Facture, Paiement, MouvementCaisse]),
-        CaisseModule,
-    ],
-    controllers: [AnalyticsController],
-    providers: [AnalyticsService],
-    exports: [AnalyticsService],
+  imports: [
+    TypeOrmModule.forFeature([
+      Colis,
+      Client,
+      Facture,
+      Paiement,
+      MouvementCaisse,
+    ]),
+    CaisseModule,
+    RolesModule,
+  ],
+  controllers: [AnalyticsController],
+  providers: [AnalyticsService],
+  exports: [AnalyticsService],
 })
-export class AnalyticsModule { }
+export class AnalyticsModule {}

@@ -335,3 +335,95 @@ export interface CreateExpeditionDto {
   compagnie_transport?: string;
   date_arrivee_prevue?: string;
 }
+
+/** Réponse paginée API litiges */
+export interface LitigesListResponse {
+  data: LitigeListItem[]
+  total: number
+  page: number
+  limit: number
+  totalPages: number
+}
+
+export interface LitigeListItem {
+  id: number
+  num_litige: string
+  type: string
+  statut: string
+  priorite?: string
+  objet: string
+  created_at: string
+  agence?: { id: number; nom?: string; code?: string }
+  client?: { id: number; nom_exp?: string }
+  colis?: { id: number; ref_colis?: string } | null
+}
+
+export interface LitigeUserRef {
+  id: number
+  username?: string
+  nom_complet?: string
+}
+
+export interface LitigeMessageItem {
+  id: number
+  type: string
+  contenu: string
+  interne?: boolean
+  created_at: string
+  auteur?: LitigeUserRef | null
+}
+
+/** Détail litige (GET /litiges/:id) — inclut le fil de messages */
+export interface LitigeDetail extends LitigeListItem {
+  description?: string
+  contact_nom?: string
+  contact_email?: string
+  contact_telephone?: string
+  escalade?: boolean
+  resolution?: string | null
+  montant_compensation?: number | null
+  createur?: LitigeUserRef | null
+  assigne?: LitigeUserRef | null
+  messages?: LitigeMessageItem[]
+  facture?: { id: number } | null
+  deleted_at?: string | null
+}
+
+/** Réponse paginée boîte call center */
+export interface CallCenterConversationsResponse {
+  data: CallCenterConversationRow[]
+  total: number
+  page: number
+  limit: number
+  totalPages: number
+}
+
+export interface CallCenterConversationRow {
+  id: number
+  channel: string
+  customer_phone: string
+  callcenter_phone: string | null
+  last_message_at: string | null
+  unread_count: number
+  client_id: number | null
+}
+
+/** Messages d’une conversation (GET /callcenter/conversations/:id/messages) */
+export interface CallCenterMessageRow {
+  id: number
+  conversation_id: number
+  channel: 'sms' | 'whatsapp'
+  direction: 'in' | 'out'
+  from_phone: string
+  to_phone: string
+  message: string
+  provider?: string | null
+  created_at: string
+}
+
+export interface CallCenterMessagesResponse {
+  data: CallCenterMessageRow[]
+  total: number
+  offset: number
+  limit: number
+}

@@ -14,6 +14,11 @@ import { PERMISSIONS } from '@constants/permissions'
 import { APP_CONFIG } from '@constants/application'
 import { useAlerts } from '@services/alerts.service'
 import { useAuth } from '@hooks/useAuth'
+import {
+  resolveDashboardPersona,
+  DASHBOARD_PERSONA_COPY,
+} from './dashboard/resolveDashboardPersona'
+import { DashboardQuickActions } from './dashboard/DashboardQuickActions'
 import { PredictionCard } from '@components/dashboard/PredictionCard'
 import { AIIntelligencePanel } from '@components/dashboard/AIIntelligencePanel'
 import { DashboardSkeleton } from '@components/common/SkeletonLoader'
@@ -25,8 +30,19 @@ import './DashboardPage.css'
 const { Title, Text } = Typography
 
 export const DashboardPage: React.FC = () => {
-  const { isAuthenticated } = useAuth()
+  const { isAuthenticated, user } = useAuth()
   const navigate = useNavigate()
+  const persona = resolveDashboardPersona(user?.role?.code)
+  const copy = DASHBOARD_PERSONA_COPY[persona]
+  const showAgenciesPerf = persona === 'direction' || persona === 'manager'
+  const showAiPanel = persona === 'direction'
+  const showCharts =
+    persona !== 'caissier' &&
+    (persona === 'direction' ||
+      persona === 'manager' ||
+      persona === 'agent' ||
+      persona === 'suivi' ||
+      persona === 'default')
 
   // Activer les alertes automatiques
   useAlerts();
@@ -52,7 +68,7 @@ export const DashboardPage: React.FC = () => {
     queryKey: ['dashboard', 'agencies-perf'],
     queryFn: () => dashboardService.getAgenciesPerformances(),
     refetchInterval: APP_CONFIG.refresh.dashboard,
-    enabled: isAuthenticated,
+    enabled: isAuthenticated && showAgenciesPerf,
   })
 
   // Récupérer les activités récentes (seulement si authentifié)
@@ -63,20 +79,19 @@ export const DashboardPage: React.FC = () => {
     enabled: isAuthenticated, // Ne faire la requête que si authentifié
   })
 
-  // Récupérer les données pour les graphiques
+  // Graphiques : requêtes uniquement si la persona affiche les graphiques (ex. pas les caissiers)
   const { data: chartData, isLoading: chartLoading } = useQuery({
     queryKey: ['dashboard', 'charts'],
     queryFn: () => dashboardService.getChartData(),
     refetchInterval: APP_CONFIG.refresh.dashboard * 2,
-    enabled: isAuthenticated,
+    enabled: isAuthenticated && showCharts,
   })
 
-  // Récupérer la répartition du trafic
   const { data: trafficData, isLoading: trafficLoading } = useQuery({
     queryKey: ['dashboard', 'traffic'],
     queryFn: () => dashboardService.getTrafficRepartition(),
     refetchInterval: APP_CONFIG.refresh.dashboard * 2,
-    enabled: isAuthenticated,
+    enabled: isAuthenticated && showCharts,
   })
 
   // Récupérer les recommandations IA
@@ -84,7 +99,7 @@ export const DashboardPage: React.FC = () => {
     queryKey: ['dashboard', 'recommendations'],
     queryFn: () => dashboardService.getAIRecommendations(),
     refetchInterval: APP_CONFIG.refresh.dashboard * 5,
-    enabled: isAuthenticated,
+    enabled: isAuthenticated && showAiPanel,
   })
 
   // Monitoring IA V1 (drift + alertes)
@@ -92,14 +107,14 @@ export const DashboardPage: React.FC = () => {
     queryKey: ['dashboard', 'ai-monitoring'],
     queryFn: () => dashboardService.getAIMonitoring(),
     refetchInterval: APP_CONFIG.refresh.dashboard * 5,
-    enabled: isAuthenticated,
+    enabled: isAuthenticated && showAiPanel,
   })
 
   // Récupérer les stats des agences (nouvelle feature)
   const { data: agencesStats, isLoading: agencesStatsLoading } = useQuery({
     queryKey: ['dashboard', 'agences-stats'],
     queryFn: () => agencesService.getStats(),
-    enabled: isAuthenticated,
+    enabled: isAuthenticated && showAgenciesPerf,
   })
 
   // Rafraîchir automatiquement toutes les données
@@ -114,7 +129,7 @@ export const DashboardPage: React.FC = () => {
     return () => {
       if (interval) clearInterval(interval)
     }
-  }, [refetchStats, refetchCaisse, refetchActivities])
+  }, [refetchStats, refetchCaisse, refetchAgenciesPerf, refetchActivities])
 
   const isInitialLoading = statsLoading && !stats
 
@@ -122,7 +137,7 @@ export const DashboardPage: React.FC = () => {
     return (
       <div className="dashboard-page">
         <div className="dashboard-header">
-          <Title level={2} className="dashboard-title">Tableau de Bord</Title>
+          <Title level={2} className="dashboard-title">{copy.title}</Title>
           <div className="dashboard-subtitle">Chargement en cours…</div>
         </div>
         <DashboardSkeleton />
@@ -134,101 +149,120 @@ export const DashboardPage: React.FC = () => {
     <div className="dashboard-page">
       <div className="dashboard-header">
         <Title level={2} className="dashboard-title">
-          Tableau de Bord
+          {copy.title}
         </Title>
         <div className="dashboard-subtitle">
-          Vue d'ensemble de votre activité
+          {copy.subtitle}
         </div>
       </div>
+
+      <DashboardQuickActions persona={persona} />
 
       {/* STATISTIQUES */}
       {stats && <StatsCards stats={stats} loading={statsLoading} />}
 
-      {/* POINT CAISSE MULTI-AGENCES (Directeur) */}
-      <WithPermission permission={PERMISSIONS.DASHBOARD.CAISSE}>
-        <AgenciesPerformanceGrid
-          data={agenciesPerf || []}
-          loading={agenciesPerfLoading}
-        />
-      </WithPermission>
+      {/* POINT CAISSE MULTI-AGENCES (direction / manager) */}
+      {showAgenciesPerf ? (
+        <WithPermission permission={PERMISSIONS.DASHBOARD.CAISSE}>
+          <AgenciesPerformanceGrid
+            data={agenciesPerf || []}
+            loading={agenciesPerfLoading}
+          />
+        </WithPermission>
+      ) : null}
 
-      {/* POINT CAISSE (Agence locale) */}
+      {/* POINT CAISSE (Agence locale) — en tête pour caissiers */}
       <WithPermission permission={PERMISSIONS.DASHBOARD.CAISSE}>
-        {pointCaisse && (
+        {pointCaisse && persona === 'caissier' ? (
           <div className="dashboard-section">
             <PointCaisse data={pointCaisse} loading={caisseLoading} />
           </div>
-        )}
+        ) : null}
       </WithPermission>
 
       {/* GRAPHIQUES */}
-      <Row gutter={[24, 24]} className="dashboard-section">
-        <Col xs={24} lg={8}>
-          <PredictionCard
-            data={(chartData || []).map((d: any) => d.total)}
-            loading={chartLoading}
-          />
-        </Col>
-        <Col xs={24} lg={16}>
-          <ChartRevenus data={chartData || []} loading={chartLoading} />
-        </Col>
-      </Row>
+      {showCharts ? (
+        <Row gutter={[24, 24]} className="dashboard-section">
+          <Col xs={24} lg={8}>
+            <PredictionCard
+              data={(chartData || []).map((d: any) => d.total)}
+              loading={chartLoading}
+            />
+          </Col>
+          <Col xs={24} lg={16}>
+            <ChartRevenus data={chartData || []} loading={chartLoading} />
+          </Col>
+        </Row>
+      ) : null}
 
-      <Row gutter={[24, 24]} className="dashboard-section">
-        <Col xs={24} lg={12}>
-          <ChartColisParMois data={chartData || []} loading={chartLoading} />
-        </Col>
-        <Col xs={24} lg={12}>
-          <ChartRepartitionTrafic data={trafficData || []} loading={trafficLoading} />
-        </Col>
-      </Row>
+      {showCharts ? (
+        <Row gutter={[24, 24]} className="dashboard-section">
+          <Col xs={24} lg={12}>
+            <ChartColisParMois data={chartData || []} loading={chartLoading} />
+          </Col>
+          <Col xs={24} lg={12}>
+            <ChartRepartitionTrafic data={trafficData || []} loading={trafficLoading} />
+          </Col>
+        </Row>
+      ) : null}
+
+      <WithPermission permission={PERMISSIONS.DASHBOARD.CAISSE}>
+        {pointCaisse && persona !== 'caissier' ? (
+          <div className="dashboard-section">
+            <PointCaisse data={pointCaisse} loading={caisseLoading} />
+          </div>
+        ) : null}
+      </WithPermission>
 
       <Row gutter={[24, 24]} className="dashboard-section">
         <Col xs={24} xl={16}>
           <RecentActivities activities={activities || []} loading={activitiesLoading} />
         </Col>
         <Col xs={24} xl={8}>
-          {/* Widget Agence la plus active */}
-          <Card
-            title={<span><TrophyOutlined style={{ color: '#faad14', marginRight: 8 }} /> Agences les plus actives</span>}
-            className="dashboard-card"
-            loading={agencesStatsLoading}
-            style={{ marginBottom: 24 }}
-          >
-            {(agencesStats || []).length > 0 ? (
-              <div className="agences-stats-list">
-                {agencesStats?.slice(0, 5).map((a, index) => (
-                  <div key={a.id} className="agence-stat-row" style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    padding: '12px 0',
-                    borderBottom: index === 4 ? 'none' : '1px solid #f0f0f0'
-                  }}>
-                    <Space>
-                      <Tag color={index === 0 ? 'gold' : index === 1 ? 'silver' : index === 2 ? 'orange' : 'default'}>
-                        #{index + 1}
-                      </Tag>
-                      <Text strong>{a.name}</Text>
-                    </Space>
-                    <Text type="secondary">{a.total_colis} colis</Text>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div style={{ padding: '20px 0', textAlign: 'center' }}>
-                <Text type="secondary">Aucune donnée disponible</Text>
-              </div>
-            )}
-          </Card>
+          {showAgenciesPerf ? (
+            <Card
+              title={<span><TrophyOutlined style={{ color: '#faad14', marginRight: 8 }} /> Agences les plus actives</span>}
+              className="dashboard-card"
+              loading={agencesStatsLoading}
+              style={{ marginBottom: 24 }}
+            >
+              {(agencesStats || []).length > 0 ? (
+                <div className="agences-stats-list">
+                  {agencesStats?.slice(0, 5).map((a, index) => (
+                    <div key={a.id} className="agence-stat-row" style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      padding: '12px 0',
+                      borderBottom: index === 4 ? 'none' : '1px solid #f0f0f0'
+                    }}>
+                      <Space>
+                        <Tag color={index === 0 ? 'gold' : index === 1 ? 'silver' : index === 2 ? 'orange' : 'default'}>
+                          #{index + 1}
+                        </Tag>
+                        <Text strong>{a.name}</Text>
+                      </Space>
+                      <Text type="secondary">{a.total_colis} colis</Text>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={{ padding: '20px 0', textAlign: 'center' }}>
+                  <Text type="secondary">Aucune donnée disponible</Text>
+                </div>
+              )}
+            </Card>
+          ) : null}
 
-          <AIIntelligencePanel
-            recommendations={recommendations}
-            loading={recommendationsLoading}
-            monitoring={aiMonitoring}
-            onActionClick={(action) => {
-              if (action.route) navigate(action.route)
-            }}
-          />
+          {showAiPanel ? (
+            <AIIntelligencePanel
+              recommendations={recommendations}
+              loading={recommendationsLoading}
+              monitoring={aiMonitoring}
+              onActionClick={(action) => {
+                if (action.route) navigate(action.route)
+              }}
+            />
+          ) : null}
         </Col>
       </Row>
     </div>

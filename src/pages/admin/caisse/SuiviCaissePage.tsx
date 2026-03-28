@@ -3,7 +3,7 @@
  */
 
 import React from 'react'
-import { Tabs, Button, Space, Card, Select, Modal, InputNumber, message, Typography } from 'antd'
+import { Tabs, Button, Space, Card, Select, Modal, InputNumber, message, Typography, Alert } from 'antd'
 import {
   WalletOutlined,
   ArrowUpOutlined,
@@ -18,6 +18,7 @@ import { EntreeCaisseForm } from '@components/caisse/EntreeCaisseForm'
 import { MouvementsCaisseList } from '@components/caisse/MouvementsCaisseList'
 import { RapportGrandesLignes } from '@components/caisse/RapportGrandesLignes'
 import { WithPermission } from '@components/common/WithPermission'
+import { TracedActionButton } from '@components/audit/TracedActionButton'
 import { PERMISSIONS } from '@constants/permissions'
 import { useCaisses, useSoldeCaisse } from '@hooks/useCaisse'
 import { caisseService } from '@services/caisse.service'
@@ -283,9 +284,13 @@ export const SuiviCaissePage: React.FC = () => {
                         Ouvrir caisse
                       </Button>
                     ) : (
-                      <Button danger onClick={() => setCloseModalVisible(true)}>
+                      <TracedActionButton
+                        danger
+                        onClick={() => setCloseModalVisible(true)}
+                        traceHint="La clôture de session est enregistrée dans le journal d’audit métier et dans l’historique caisse."
+                      >
                         Cloturer caisse
-                      </Button>
+                      </TracedActionButton>
                     )}
                   </WithPermission>
                 </Space>
@@ -356,6 +361,13 @@ export const SuiviCaissePage: React.FC = () => {
         confirmLoading={closeSessionMutation.isPending}
       >
         <Space direction="vertical" style={{ width: '100%' }}>
+          <Alert
+            type="info"
+            showIcon
+            message="Action tracée"
+            description="La fermeture de session génère une trace dans le journal d’audit (horodatage, utilisateur, solde saisi)."
+            style={{ marginBottom: 8 }}
+          />
           <Typography.Text>Solde reel a la fermeture</Typography.Text>
           <InputNumber
             value={closeAmount}

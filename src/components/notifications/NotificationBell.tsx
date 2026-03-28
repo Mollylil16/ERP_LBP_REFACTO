@@ -167,12 +167,7 @@ export const NotificationBell: React.FC = () => {
         overlayClassName="notification-popover-overlay"
       >
         <Badge count={unreadCount} offset={[-5, 5]}>
-          <Button
-            type="text"
-            icon={<BellOutlined />}
-            style={{ fontSize: 18 }}
-            onClick={() => setOpen(!open)}
-          />
+          <Button type="text" icon={<BellOutlined />} style={{ fontSize: 18 }} aria-label="Notifications" />
         </Badge>
       </Popover>
 

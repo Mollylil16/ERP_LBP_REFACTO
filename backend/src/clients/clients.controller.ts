@@ -1,43 +1,59 @@
-import { Controller, Get, Post, Body, Param, Put, UseGuards, Query } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  Put,
+  UseGuards,
+  Query,
+} from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { ClientsService } from './clients.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { PermissionsGuard } from '../auth/guards/permissions.guard';
+import { RequirePermission } from '../auth/decorators/permissions.decorator';
 import { Client } from './entities/client.entity';
 
 @ApiTags('clients')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('clients')
 export class ClientsController {
-    constructor(private readonly clientsService: ClientsService) { }
+  constructor(private readonly clientsService: ClientsService) {}
 
-    @Post()
-    @ApiOperation({ summary: 'Créer un nouveau client' })
-    create(@Body() clientData: Partial<Client>) {
-        return this.clientsService.create(clientData);
-    }
+  @Post()
+  @RequirePermission('clients.create')
+  @ApiOperation({ summary: 'Créer un nouveau client' })
+  create(@Body() clientData: Partial<Client>) {
+    return this.clientsService.create(clientData);
+  }
 
-    @Get()
-    @ApiOperation({ summary: 'Liste des clients' })
-    findAll() {
-        return this.clientsService.findAll();
-    }
+  @Get()
+  @RequirePermission('clients.read')
+  @ApiOperation({ summary: 'Liste des clients' })
+  findAll() {
+    return this.clientsService.findAll();
+  }
 
-    @Get('search')
-    @ApiOperation({ summary: 'Rechercher des clients' })
-    search(@Query('search') searchTerm: string) {
-        return this.clientsService.search(searchTerm);
-    }
+  @Get('search')
+  @RequirePermission('clients.read')
+  @ApiOperation({ summary: 'Rechercher des clients' })
+  search(@Query('search') searchTerm: string) {
+    return this.clientsService.search(searchTerm);
+  }
 
-    @Get(':id')
-    @ApiOperation({ summary: 'Détails d\'un client' })
-    findOne(@Param('id') id: string) {
-        return this.clientsService.findOne(+id);
-    }
+  @Get(':id')
+  @RequirePermission('clients.read')
+  @ApiOperation({ summary: "Détails d'un client" })
+  findOne(@Param('id') id: string) {
+    return this.clientsService.findOne(+id);
+  }
 
-    @Get(':id/history')
-    @ApiOperation({ summary: 'Historique des colis d\'un client' })
-    getHistory(@Param('id') id: string) {
-        return this.clientsService.getClientHistory(+id);
-    }
+  @Get(':id/history')
+  @RequirePermission('clients.read')
+  @ApiOperation({ summary: "Historique des colis d'un client" })
+  getHistory(@Param('id') id: string) {
+    return this.clientsService.getClientHistory(+id);
+  }
 }

@@ -91,7 +91,43 @@ export const PERMISSIONS = {
     UPDATE: 'config.update',
     SYSTEM: 'config.system',
   },
+
+  /** Liste / détail agences (sélecteurs, 1ère connexion) — sans accès écran paramètres société */
+  AGENCES: {
+    READ: 'agences.read',
+  },
+
+  // Module Litiges (aligné backend `litiges.*`)
+  LITIGES: {
+    VIEW: 'litiges.view',
+    CREATE: 'litiges.create',
+    MANAGE: 'litiges.manage',
+    ADMIN: 'litiges.admin',
+  },
+
+  // Call center / messagerie (aligné backend `callcenter.inbox`)
+  CALLCENTER: {
+    INBOX: 'callcenter.inbox',
+  },
 } as const
+
+/**
+ * Tous les codes déclarés sous `PERMISSIONS` (pour tests / scripts de cohérence).
+ */
+export function getDeclaredAppPermissionCodes(): string[] {
+  const out: string[] = []
+  const walk = (node: unknown): void => {
+    if (typeof node === 'string') {
+      if (node !== '*' && node.includes('.')) out.push(node)
+      return
+    }
+    if (node && typeof node === 'object' && !Array.isArray(node)) {
+      Object.values(node).forEach(walk)
+    }
+  }
+  walk(PERMISSIONS)
+  return [...new Set(out)].sort((a, b) => a.localeCompare(b))
+}
 
 /**
  * Mapping des CODEACCES STTINTER vers Permissions LBP
@@ -203,6 +239,11 @@ export const ROLES = {
       PERMISSIONS.RAPPORTS.EXPORT,
       PERMISSIONS.CAISSE.VIEW,
       PERMISSIONS.CAISSE.OPERATIONS,
+      PERMISSIONS.LITIGES.VIEW,
+      PERMISSIONS.LITIGES.CREATE,
+      PERMISSIONS.LITIGES.MANAGE,
+      PERMISSIONS.LITIGES.ADMIN,
+      PERMISSIONS.CALLCENTER.INBOX,
     ],
   },
   OPERATEUR_COLIS: {

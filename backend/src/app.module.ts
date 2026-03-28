@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import * as pg from 'pg';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { UsersModule } from './users/users.module';
@@ -21,6 +22,8 @@ import { RolesModule } from './roles/roles.module';
 import { PermissionsModule } from './permissions/permissions.module';
 import { ProduitsCatalogueModule } from './produits-catalogue/produits-catalogue.module';
 import { TrackingModule } from './tracking/tracking.module';
+import { LitigesModule } from './litiges/litiges.module';
+import { CallCenterModule } from './callcenter/callcenter.module';
 
 @Module({
   imports: [
@@ -49,8 +52,20 @@ import { TrackingModule } from './tracking/tracking.module';
           return fallback;
         };
 
+        const typeormLoggingRaw = configService.get('TYPEORM_LOGGING');
+        const typeormLogging =
+          typeormLoggingRaw !== undefined &&
+          typeormLoggingRaw !== null &&
+          !(
+            typeof typeormLoggingRaw === 'string' &&
+            typeormLoggingRaw.trim() === ''
+          )
+            ? parseBoolean(typeormLoggingRaw, false)
+            : process.env.NODE_ENV !== 'test';
+
         return {
           type: 'postgres' as const,
+          driver: pg,
           host: configService.get<string>('DB_HOST'),
           port: parseNumber(configService.get('DB_PORT'), 5432),
           username: configService.get<string>('DB_USERNAME'),
@@ -58,7 +73,7 @@ import { TrackingModule } from './tracking/tracking.module';
           database: configService.get<string>('DB_DATABASE'),
           entities: [__dirname + '/**/*.entity{.ts,.js}'],
           synchronize: parseBoolean(configService.get('DB_SYNCHRONIZE'), false),
-          logging: true,
+          logging: typeormLogging,
         };
       },
       inject: [ConfigService],
@@ -81,8 +96,10 @@ import { TrackingModule } from './tracking/tracking.module';
     PermissionsModule,
     ProduitsCatalogueModule,
     TrackingModule,
+    LitigesModule,
+    CallCenterModule,
   ],
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule { }
+export class AppModule {}

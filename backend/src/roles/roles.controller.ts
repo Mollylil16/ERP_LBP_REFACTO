@@ -1,55 +1,75 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  UseGuards,
+} from '@nestjs/common';
 import { RolesService } from './roles.service';
 import { CreateRoleDto } from './dto/create-role.dto';
 import { UpdateRoleDto } from './dto/update-role.dto';
 import { AssignPermissionsToRoleDto } from '../permissions/dto/create-permission.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { PermissionsGuard } from '../auth/guards/permissions.guard';
+import { RequirePermission } from '../auth/decorators/permissions.decorator';
 
 @Controller('roles')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 export class RolesController {
-    constructor(private readonly rolesService: RolesService) { }
+  constructor(private readonly rolesService: RolesService) {}
 
-    @Post()
-    create(@Body() createRoleDto: CreateRoleDto) {
-        return this.rolesService.create(createRoleDto);
-    }
+  @Post()
+  @RequirePermission('config.system')
+  create(@Body() createRoleDto: CreateRoleDto) {
+    return this.rolesService.create(createRoleDto);
+  }
 
-    @Get()
-    findAll() {
-        return this.rolesService.findAll();
-    }
+  @Get()
+  @RequirePermission('config.system')
+  findAll() {
+    return this.rolesService.findAll();
+  }
 
-    @Get(':id')
-    findOne(@Param('id') id: string) {
-        return this.rolesService.findOne(+id);
-    }
+  /** Doit rester avant @Get(':id') */
+  @Get('code/:code')
+  @RequirePermission('config.system')
+  findByCode(@Param('code') code: string) {
+    return this.rolesService.findByCode(code);
+  }
 
-    @Get('code/:code')
-    findByCode(@Param('code') code: string) {
-        return this.rolesService.findByCode(code);
-    }
+  @Get(':id/permissions')
+  @RequirePermission('config.system')
+  getPermissions(@Param('id') id: string) {
+    return this.rolesService.getPermissions(+id);
+  }
 
-    @Patch(':id')
-    update(@Param('id') id: string, @Body() updateRoleDto: UpdateRoleDto) {
-        return this.rolesService.update(+id, updateRoleDto);
-    }
+  @Get(':id')
+  @RequirePermission('config.system')
+  findOne(@Param('id') id: string) {
+    return this.rolesService.findOne(+id);
+  }
 
-    @Delete(':id')
-    remove(@Param('id') id: string) {
-        return this.rolesService.remove(+id);
-    }
+  @Patch(':id')
+  @RequirePermission('config.system')
+  update(@Param('id') id: string, @Body() updateRoleDto: UpdateRoleDto) {
+    return this.rolesService.update(+id, updateRoleDto);
+  }
 
-    @Post('assign-permissions')
-    assignPermissions(@Body() assignPermissionsDto: AssignPermissionsToRoleDto) {
-        return this.rolesService.assignPermissions(
-            assignPermissionsDto.roleId,
-            assignPermissionsDto.permissionIds,
-        );
-    }
+  @Delete(':id')
+  @RequirePermission('config.system')
+  remove(@Param('id') id: string) {
+    return this.rolesService.remove(+id);
+  }
 
-    @Get(':id/permissions')
-    getPermissions(@Param('id') id: string) {
-        return this.rolesService.getPermissions(+id);
-    }
+  @Post('assign-permissions')
+  @RequirePermission('config.system')
+  assignPermissions(@Body() assignPermissionsDto: AssignPermissionsToRoleDto) {
+    return this.rolesService.assignPermissions(
+      assignPermissionsDto.roleId,
+      assignPermissionsDto.permissionIds,
+    );
+  }
 }

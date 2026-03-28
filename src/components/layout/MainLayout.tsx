@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Outlet } from 'react-router-dom'
+import { Outlet, useNavigate } from 'react-router-dom'
 import { Layout, Avatar, Dropdown, Space } from 'antd'
 import {
   MenuFoldOutlined,
@@ -7,11 +7,15 @@ import {
   UserOutlined,
   LogoutOutlined,
   SettingOutlined,
+  CompassOutlined,
 } from '@ant-design/icons'
 import { useAuth } from '@hooks/useAuth'
+import { usePermissions } from '@hooks/usePermissions'
+import { ROUTE_ACCESS } from '@constants/routeAccess'
 import { useTheme } from '@contexts/ThemeContext'
 import { useKeyboardNav } from '@hooks/useKeyboardNav'
-import type { MenuProps } from 'antd'
+import type { ItemType } from 'antd/es/menu/interface'
+import type { MenuInfo } from 'rc-menu/lib/interface'
 import { SidebarMenu } from './SidebarMenu'
 import { SkipToMain } from '../common/SkipToMain'
 import { ThemeToggle } from '../common/ThemeToggle'
@@ -21,6 +25,7 @@ import { KeyboardShortcutsHelp } from '../common/KeyboardShortcutsHelp'
 import { Breadcrumbs } from '../common/Breadcrumbs'
 import { useServiceWorker } from '../../hooks/useServiceWorker'
 import { useMobileMenu } from '../../hooks/useMobileMenu'
+import { useOnboardingTour } from '../onboarding/AppOnboardingTour'
 import '../../styles/responsive.css'
 import './MainLayout.css'
 
@@ -28,23 +33,39 @@ const { Header, Sider, Content } = Layout
 
 export const MainLayout: React.FC = () => {
   const [collapsed, setCollapsed] = useState(false)
+  const navigate = useNavigate()
   const { user, logout } = useAuth()
+  const { hasPermission } = usePermissions()
+  const canOpenSettings =
+    hasPermission(ROUTE_ACCESS.settings) ||
+    hasPermission(ROUTE_ACCESS.settingsTarifs) ||
+    hasPermission(ROUTE_ACCESS.settingsAgences)
   const { isDark } = useTheme()
   const { isMobile, isMenuOpen, closeMenu, toggleMenu } = useMobileMenu()
+  const { startTour } = useOnboardingTour()
   useServiceWorker()    // Enregistre le service worker
   useKeyboardNav()      // Active les raccourcis clavier globaux
 
-  const userMenuItems: any[] = [
+  const userMenuItems: ItemType[] = [
     {
       key: 'profile',
       icon: <UserOutlined />,
       label: 'Mon profil',
     },
     {
-      key: 'settings',
-      icon: <SettingOutlined />,
-      label: 'Paramètres',
+      key: 'onboarding',
+      icon: <CompassOutlined />,
+      label: 'Visite guidée',
     },
+    ...(canOpenSettings
+      ? [
+          {
+            key: 'settings',
+            icon: <SettingOutlined />,
+            label: 'Paramètres',
+          } as const,
+        ]
+      : []),
     {
       type: 'divider',
     },
@@ -53,9 +74,28 @@ export const MainLayout: React.FC = () => {
       icon: <LogoutOutlined />,
       label: 'Déconnexion',
       danger: true,
-      onClick: logout,
     },
   ]
+
+  const onUserMenuClick = ({ key }: MenuInfo) => {
+    if (key === 'onboarding') {
+      startTour()
+      return
+    }
+    if (key === 'profile') {
+      navigate('/profile')
+      return
+    }
+    if (key === 'settings') {
+      if (hasPermission(ROUTE_ACCESS.settings)) navigate('/settings')
+      else if (hasPermission(ROUTE_ACCESS.settingsTarifs)) navigate('/settings/tarifs')
+      else if (hasPermission(ROUTE_ACCESS.settingsAgences)) navigate('/settings/agences')
+      return
+    }
+    if (key === 'logout') {
+      logout()
+    }
+  }
 
   const handleSidebarToggle = () => {
     if (isMobile) {
@@ -81,6 +121,7 @@ export const MainLayout: React.FC = () => {
         theme={isDark ? 'dark' : 'light'}
         width={280}
         className={`modern-sidebar ${isMobile && isMenuOpen ? 'mobile-open' : ''}`}
+        data-onboarding="sidebar"
       >
         <div className="sidebar-logo">
           <div className="logo-icon-container">
@@ -114,10 +155,16 @@ export const MainLayout: React.FC = () => {
 
           <Space size="large" className="header-right">
             <ThemeToggle />
-            <NotificationBell />
+            <span data-onboarding="notifications">
+              <NotificationBell />
+            </span>
 
-            <Dropdown menu={{ items: userMenuItems }} placement="bottomRight" trigger={['click']}>
-              <div className="user-menu-trigger">
+            <Dropdown
+              menu={{ items: userMenuItems, onClick: onUserMenuClick }}
+              placement="bottomRight"
+              trigger={['click']}
+            >
+              <div className="user-menu-trigger" data-onboarding="user-menu">
                 <Avatar
                   size={42}
                   icon={<UserOutlined />}
@@ -140,6 +187,7 @@ export const MainLayout: React.FC = () => {
 
         <Content
           id="main-content"
+          data-onboarding="main-content"
           className="modern-content"
           tabIndex={-1}
           role="main"

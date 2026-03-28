@@ -21,6 +21,34 @@
   <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
   [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
 
+## LBP — Droits (permissions), migrations et seed
+
+### Qui fait quoi ? (ce n’est pas automatique au démarrage de l’API)
+
+| Étape | Rôle | Lancé tout seul quand on fait `npm run start` ? |
+|--------|------|--------------------------------------------------|
+| **Migrations TypeORM** | Créent ou modifient les **tables** (schéma PostgreSQL). | **Non.** À exécuter selon votre procédure (script déploiement, CI, CLI). |
+| **`npm run seed`** | Insère les **données de référence** : rôles, `lbp_permissions`, associations `lbp_role_permissions`, actions spéciales (`src/database/seed.ts` → `runAllSeeders`). | **Non.** À lancer **après** les migrations, une fois la base joignable (variables `DB_*` dans `.env`). |
+
+Sans seed (ou sans lignes `lbp_role_permissions` pour un rôle), les utilisateurs **non** directeur/admin/super-admin reçoivent **`permissions: []`** au login : menus vides côté front, ce n’est pas un bug du frontend.
+
+Les permissions « app » (`litiges.view`, `callcenter.inbox`, …) sont insérées avec un **`module` PostgreSQL déjà autorisé par l’enum** (`EXPLOITATION`, `STRUCTURES`) pour rester compatible avec `lbp_permissions_module_enum` ; seul le champ **`code`** compte pour le mapping et les guards.
+
+### Comment s’y retrouver en recette
+
+1. Chercher dans les logs serveur la balise **`[LBP_PERMISSIONS]`** (login) : elle indique matrice vide, rôle inconnu, ou erreur SQL.
+2. En base : pour un `code` de rôle dans `lbp_roles`, vérifier qu’il existe des lignes dans **`lbp_role_permissions`** pointant vers des codes dans **`lbp_permissions`**.
+
+### Checklist nouvel environnement
+
+1. Appliquer les migrations sur la base vide.  
+2. `cd backend && npm run seed`  
+3. Se connecter avec un **utilisateur métier** (pas seulement admin) et vérifier que la réponse login contient des permissions non vides.
+
+4. (Depuis la **racine** du dépôt, front + backend) : `npm run verify:permissions` pour contrôler que les codes `@RequirePermission` du backend sont déclarés dans `src/constants/permissions.ts`.
+
+---
+
 ## Description
 
 [Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.

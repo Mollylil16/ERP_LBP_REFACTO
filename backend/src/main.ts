@@ -26,15 +26,17 @@ async function bootstrap() {
   app.setGlobalPrefix(apiPrefix);
 
   // ✅ Validation globale avec messages d'erreur détaillés
-  app.useGlobalPipes(new ValidationPipe({
-    whitelist: true,
-    transform: true,
-    forbidNonWhitelisted: true,
-    transformOptions: {
-      enableImplicitConversion: true,
-    },
-    errorHttpStatusCode: 400,
-  }));
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      transform: true,
+      forbidNonWhitelisted: true,
+      transformOptions: {
+        enableImplicitConversion: true,
+      },
+      errorHttpStatusCode: 400,
+    }),
+  );
 
   // ✅ Gestion globale des erreurs
   app.useGlobalFilters(new GlobalExceptionFilter());
@@ -64,7 +66,11 @@ async function bootstrap() {
         : 3001;
 
   await app.listen(port);
-  console.log(`Application is running on: http://localhost:${port}/${apiPrefix}`);
-  console.log(`Swagger documentation: http://localhost:${port}/${apiPrefix}/docs`);
+  console.log(
+    `Application is running on: http://localhost:${port}/${apiPrefix}`,
+  );
+  console.log(
+    `Swagger documentation: http://localhost:${port}/${apiPrefix}/docs`,
+  );
 }
 bootstrap();

@@ -3,14 +3,15 @@ import { useNavigate } from 'react-router-dom';
 import { rolesService } from '../../../services/roles.service';
 import { permissionsService } from '../../../services/permissions.service';
 import { Role, Permission, PermissionModule } from '../../../types/roles.types';
-import { usePermission } from '../../../hooks/usePermission';
+import { usePermissions } from '@hooks/usePermissions';
+import { PERMISSIONS } from '@constants/permissions';
 import { TableSkeleton } from '@components/common/SkeletonLoader';
 import { EmptyRolesList, EmptyErrorState } from '@components/common/EmptyState';
 import './RolesListPage.css';
 
 const RolesListPage: React.FC = () => {
     const navigate = useNavigate();
-    const { hasPermission } = usePermission();
+    const { hasPermission } = usePermissions();
     const [roles, setRoles] = useState<Role[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -70,7 +71,7 @@ const RolesListPage: React.FC = () => {
         <div className="roles-list-page">
             <div className="page-header">
                 <h1>Gestion des Rôles</h1>
-                {hasPermission('structures.utilisateurs.create') && (
+                {hasPermission(PERMISSIONS.USERS.CREATE) && (
                     <button
                         className="btn btn-primary"
                         onClick={() => navigate('/admin/roles/new')}
@@ -100,7 +101,7 @@ const RolesListPage: React.FC = () => {
                             <span className="niveau">Niveau {role.niveau_hierarchique}</span>
                         </div>
                         <div className="role-actions">
-                            {hasPermission('structures.utilisateurs.read') && (
+                            {hasPermission(PERMISSIONS.USERS.READ) && (
                                 <button
                                     className="btn btn-sm btn-secondary"
                                     onClick={() => navigate(`/admin/roles/${role.id}`)}
@@ -108,7 +109,7 @@ const RolesListPage: React.FC = () => {
                                     Voir
                                 </button>
                             )}
-                            {hasPermission('structures.utilisateurs.update') && (
+                            {hasPermission(PERMISSIONS.USERS.UPDATE) && (
                                 <button
                                     className="btn btn-sm btn-primary"
                                     onClick={() => navigate(`/admin/roles/${role.id}/edit`)}
@@ -116,7 +117,7 @@ const RolesListPage: React.FC = () => {
                                     Modifier
                                 </button>
                             )}
-                            {hasPermission('structures.utilisateurs.delete') && (
+                            {hasPermission(PERMISSIONS.USERS.DELETE) && (
                                 <button
                                     className="btn btn-sm btn-danger"
                                     onClick={() => handleDelete(role.id)}

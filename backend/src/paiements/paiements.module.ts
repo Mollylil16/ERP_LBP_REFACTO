@@ -10,14 +10,20 @@ import { LienPaiement } from './entities/lien-paiement.entity';
 import { PaiementLienService } from './paiements-lien.service';
 import { PaiementsLienController } from './paiements-lien.controller';
 import { CaisseModule } from '../caisse/caisse.module';
+import { RolesModule } from '../roles/roles.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Paiement, Facture, LienPaiement, Colis]),
     CaisseModule,
+    RolesModule,
   ],
   providers: [PaiementsService, PaiementLienService],
-  controllers: [PaiementsController, PaiementsLienController, PaiementsHistoryController], // ✅ AJOUT
+  controllers: [
+    PaiementsController,
+    PaiementsLienController,
+    PaiementsHistoryController,
+  ], // ✅ AJOUT
   exports: [PaiementsService, PaiementLienService, TypeOrmModule],
 })
-export class PaiementsModule { }
+export class PaiementsModule {}

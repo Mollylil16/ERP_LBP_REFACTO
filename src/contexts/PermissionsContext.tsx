@@ -60,7 +60,12 @@ export const PermissionsProvider: React.FC<{ children: React.ReactNode }> = ({ c
   const hasPermission = (permission: string): boolean => {
     // Debug permissions
     const role = user?.role;
-    const isSuperAdmin = (role as any) === 'SUPER_ADMIN' || (typeof role === 'object' && (role as any)?.code === 'SUPER_ADMIN') || (role as any) === 'admin' || user?.username === 'admin';
+    const isSuperAdmin =
+      (role as any) === 'SUPER_ADMIN' ||
+      (typeof role === 'object' && (role as any)?.code === 'SUPER_ADMIN') ||
+      (role as any) === 'admin' ||
+      (typeof role === 'object' && (role as any)?.code === 'ADMIN') ||
+      user?.username === 'admin';
 
     if (isSuperAdmin || permissions.includes('*')) {
       return true;
@@ -71,7 +76,11 @@ export const PermissionsProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
   const hasAnyPermission = (permissionList: string[]): boolean => {
     const role = user?.role;
-    const isSuperAdmin = (role as any) === 'SUPER_ADMIN' || (typeof role === 'object' && (role as any)?.code === 'SUPER_ADMIN') || (role as any) === 'admin';
+    const isSuperAdmin =
+      (role as any) === 'SUPER_ADMIN' ||
+      (typeof role === 'object' && (role as any)?.code === 'SUPER_ADMIN') ||
+      (role as any) === 'admin' ||
+      (typeof role === 'object' && (role as any)?.code === 'ADMIN');
 
     if (isSuperAdmin || permissions.includes('*')) {
       return true;
@@ -82,7 +91,11 @@ export const PermissionsProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
   const hasAllPermissions = (permissionList: string[]): boolean => {
     const role = user?.role;
-    const isSuperAdmin = (role as any) === 'SUPER_ADMIN' || (typeof role === 'object' && (role as any)?.code === 'SUPER_ADMIN') || (role as any) === 'admin';
+    const isSuperAdmin =
+      (role as any) === 'SUPER_ADMIN' ||
+      (typeof role === 'object' && (role as any)?.code === 'SUPER_ADMIN') ||
+      (role as any) === 'admin' ||
+      (typeof role === 'object' && (role as any)?.code === 'ADMIN');
 
     if (isSuperAdmin || permissions.includes('*')) {
       return true;

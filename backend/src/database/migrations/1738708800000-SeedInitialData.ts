@@ -2,9 +2,9 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 
 export class SeedInitialData1738708800000 implements MigrationInterface {
-    public async up(queryRunner: QueryRunner): Promise<void> {
-        // 1. Seed Roles
-        await queryRunner.query(`
+  public async up(queryRunner: QueryRunner): Promise<void> {
+    // 1. Seed Roles
+    await queryRunner.query(`
             INSERT INTO roles (code, nom, description) VALUES
             ('ADMIN', 'Administrateur', 'Accès complet au système'),
             ('GESTIONNAIRE', 'Gestionnaire', 'Gestion des colis et factures'),
@@ -13,8 +13,8 @@ export class SeedInitialData1738708800000 implements MigrationInterface {
             ('OPERATEUR', 'Opérateur', 'Saisie de colis uniquement')
         `);
 
-        // 2. Seed Permissions
-        await queryRunner.query(`
+    // 2. Seed Permissions
+    await queryRunner.query(`
             INSERT INTO permissions (code, nom, module, description) VALUES
             -- Colis
             ('COLIS_CREATE', 'Créer colis', 'colis', 'Créer un nouveau colis'),
@@ -59,68 +59,68 @@ export class SeedInitialData1738708800000 implements MigrationInterface {
             ('RAPPORT_CAISSE', 'Rapport caisse', 'rapports', 'Voir rapport de caisse')
         `);
 
-        // 3. Assign Permissions to Roles
-        // ADMIN - All permissions
-        await queryRunner.query(`
+    // 3. Assign Permissions to Roles
+    // ADMIN - All permissions
+    await queryRunner.query(`
             INSERT INTO role_permissions (role_id, permission_id)
             SELECT 1, id FROM permissions
         `);
 
-        // GESTIONNAIRE - Colis, Factures, Clients
-        await queryRunner.query(`
+    // GESTIONNAIRE - Colis, Factures, Clients
+    await queryRunner.query(`
             INSERT INTO role_permissions (role_id, permission_id)
             SELECT 2, id FROM permissions 
             WHERE module IN ('colis', 'factures', 'clients', 'rapports')
         `);
 
-        // CAISSIER - Paiements, Caisse
-        await queryRunner.query(`
+    // CAISSIER - Paiements, Caisse
+    await queryRunner.query(`
             INSERT INTO role_permissions (role_id, permission_id)
             SELECT 3, id FROM permissions 
             WHERE module IN ('paiements', 'caisse', 'rapports')
             OR code IN ('FACTURE_READ', 'COLIS_READ', 'CLIENT_READ')
         `);
 
-        // COMPTABLE - Read only + Rapports
-        await queryRunner.query(`
+    // COMPTABLE - Read only + Rapports
+    await queryRunner.query(`
             INSERT INTO role_permissions (role_id, permission_id)
             SELECT 4, id FROM permissions 
             WHERE code LIKE '%_READ' OR module = 'rapports'
         `);
 
-        // OPERATEUR - Colis create/read only
-        await queryRunner.query(`
+    // OPERATEUR - Colis create/read only
+    await queryRunner.query(`
             INSERT INTO role_permissions (role_id, permission_id)
             SELECT 5, id FROM permissions 
             WHERE code IN ('COLIS_CREATE', 'COLIS_READ', 'CLIENT_CREATE', 'CLIENT_READ')
         `);
 
-        // 4. Seed Agence par défaut
-        await queryRunner.query(`
+    // 4. Seed Agence par défaut
+    await queryRunner.query(`
             INSERT INTO agences (code, nom, pays, ville, adresse, telephone, actif) VALUES
             ('LBP', 'LBP Logistics - Siège', 'Côte d''Ivoire', 'Abidjan', 'Cocody, Abidjan', '+225 27 XX XX XX XX', true)
         `);
 
-        // 5. Seed Caisse par défaut
-        await queryRunner.query(`
+    // 5. Seed Caisse par défaut
+    await queryRunner.query(`
             INSERT INTO caisse (nom, id_agence, solde_initial, solde_minimum) VALUES
             ('Caisse Principale', 1, 0, 50000)
         `);
 
-        // 6. Seed Admin User (password: admin123)
-        const hashedPassword = await bcrypt.hash('admin123', 10);
-        await queryRunner.query(`
+    // 6. Seed Admin User (password: admin123)
+    const hashedPassword = await bcrypt.hash('admin123', 10);
+    await queryRunner.query(`
             INSERT INTO users (username, password, nom_complet, email, role_id, id_agence, actif) VALUES
             ('admin', '${hashedPassword}', 'Administrateur Système', 'admin@lbp.ci', 1, 1, true)
         `);
-    }
+  }
 
-    public async down(queryRunner: QueryRunner): Promise<void> {
-        await queryRunner.query(`DELETE FROM users`);
-        await queryRunner.query(`DELETE FROM caisse`);
-        await queryRunner.query(`DELETE FROM agences`);
-        await queryRunner.query(`DELETE FROM role_permissions`);
-        await queryRunner.query(`DELETE FROM permissions`);
-        await queryRunner.query(`DELETE FROM roles`);
-    }
+  public async down(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(`DELETE FROM users`);
+    await queryRunner.query(`DELETE FROM caisse`);
+    await queryRunner.query(`DELETE FROM agences`);
+    await queryRunner.query(`DELETE FROM role_permissions`);
+    await queryRunner.query(`DELETE FROM permissions`);
+    await queryRunner.query(`DELETE FROM roles`);
+  }
 }

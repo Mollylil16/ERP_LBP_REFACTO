@@ -1,5 +1,5 @@
 import React from 'react'
-import { Navigate } from 'react-router-dom'
+import { Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from '@hooks/useAuth'
 import { usePermissions } from '@hooks/usePermissions'
 import { Spin } from 'antd'
@@ -16,12 +16,8 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   requireAll = false,
 }) => {
   const { isAuthenticated, isLoading: isAuthLoading, user } = useAuth()
-  const { isLoading: isPermsLoading } = usePermissions()
-
-  // Debug logs
-  if (process.env.NODE_ENV === 'development') {
-    console.log('[ProtectedRoute]', { isAuthenticated, isLoading: isAuthLoading, hasUser: !!user, path: window.location.pathname })
-  }
+  const { isLoading: isPermsLoading, hasPermission, hasAnyPermission, hasAllPermissions } = usePermissions()
+  const location = useLocation()
 
   const isLoading = isAuthLoading || isPermsLoading
 
@@ -50,13 +46,11 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 
   // Rediriger vers login UNIQUEMENT si on n'a ni utilisateur ni token ET qu'on n'est pas en train de charger
   if (!shouldBeAuthenticated && !hasToken && !isLoading) {
-    console.warn('[ProtectedRoute] Not authenticated and no token, redirecting to login')
     return <Navigate to="/login" replace />
   }
 
   // Si on a un token mais pas d'utilisateur encore, attendre (cela peut arriver juste après le login)
   if (hasToken && !user && !isLoading) {
-    console.log('[ProtectedRoute] Has token but no user yet, showing loader (might be just after login)')
     return (
       <div style={{
         display: 'flex',
@@ -69,9 +63,17 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     )
   }
 
-  // Vérifier les permissions si nécessaire
-  // Note: La vérification des permissions sera implémentée avec usePermissions
-  // quand le backend sera prêt
+  if (requiredPermission && user) {
+    const list = Array.isArray(requiredPermission) ? requiredPermission : [requiredPermission]
+    const allowed = requireAll
+      ? hasAllPermissions(list)
+      : list.length === 1
+        ? hasPermission(list[0])
+        : hasAnyPermission(list)
+    if (!allowed) {
+      return <Navigate to="/forbidden" replace state={{ from: location.pathname }} />
+    }
+  }
 
   return <>{children}</>
 }
