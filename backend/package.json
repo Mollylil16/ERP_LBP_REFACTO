@@ -23,7 +23,9 @@
     "seed:produits": "ts-node -r tsconfig-paths/register src/database/run-seeds.ts",
     "seed:agences": "ts-node -r tsconfig-paths/register src/database/run-agences-seeds.ts",
     "sync:agences-pays-user-roles": "ts-node -r tsconfig-paths/register src/database/run-sync-agences-pays-user-roles.ts",
-    "clean-db": "ts-node -r tsconfig-paths/register src/database/clean-db.ts"
+    "clean-db": "ts-node -r tsconfig-paths/register src/database/clean-db.ts",
+    "migration:show": "npm run build && npx typeorm migration:show -d dist/src/database/data-source.js",
+    "migration:run": "npm run build && npx typeorm migration:run -d dist/src/database/data-source.js"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",

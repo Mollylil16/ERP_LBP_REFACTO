@@ -1,9 +1,10 @@
-import React, { useState } from 'react'
-import { Outlet, useNavigate } from 'react-router-dom'
+import React, { useState, useEffect } from 'react'
+import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { Layout, Avatar, Dropdown, Space } from 'antd'
 import {
   MenuFoldOutlined,
   MenuUnfoldOutlined,
+  MenuOutlined,
   UserOutlined,
   LogoutOutlined,
   SettingOutlined,
@@ -34,6 +35,7 @@ const { Header, Sider, Content } = Layout
 export const MainLayout: React.FC = () => {
   const [collapsed, setCollapsed] = useState(false)
   const navigate = useNavigate()
+  const location = useLocation()
   const { user, logout } = useAuth()
   const { hasPermission } = usePermissions()
   const canOpenSettings =
@@ -45,6 +47,28 @@ export const MainLayout: React.FC = () => {
   const { startTour } = useOnboardingTour()
   useServiceWorker()    // Enregistre le service worker
   useKeyboardNav()      // Active les raccourcis clavier globaux
+
+  useEffect(() => {
+    if (isMobile) closeMenu()
+  }, [location.pathname, isMobile, closeMenu])
+
+  useEffect(() => {
+    if (isMobile && isMenuOpen) {
+      document.body.classList.add('lbp-mobile-nav-open')
+      return () => document.body.classList.remove('lbp-mobile-nav-open')
+    }
+    document.body.classList.remove('lbp-mobile-nav-open')
+    return undefined
+  }, [isMobile, isMenuOpen])
+
+  useEffect(() => {
+    if (!isMobile || !isMenuOpen) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') closeMenu()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [isMobile, isMenuOpen, closeMenu])
 
   const userMenuItems: ItemType[] = [
     {
@@ -144,16 +168,29 @@ export const MainLayout: React.FC = () => {
       <Layout className="layout-content" style={{ marginLeft: collapsed ? 80 : 280 }}>
         <Header className="modern-header">
           <div className="header-left">
-            {React.createElement(collapsed ? MenuUnfoldOutlined : MenuFoldOutlined, {
-              className: 'sidebar-trigger',
-              onClick: handleSidebarToggle,
-              'aria-label': isMobile ? 'Ouvrir le menu' : 'Basculer la sidebar',
-              role: 'button',
-              tabIndex: 0,
-            })}
+            {React.createElement(
+              isMobile
+                ? isMenuOpen
+                  ? MenuFoldOutlined
+                  : MenuOutlined
+                : collapsed
+                  ? MenuUnfoldOutlined
+                  : MenuFoldOutlined,
+              {
+                className: 'sidebar-trigger',
+                onClick: handleSidebarToggle,
+                'aria-label': isMobile
+                  ? isMenuOpen
+                    ? 'Fermer le menu'
+                    : 'Ouvrir le menu'
+                  : 'Réduire ou agrandir le menu latéral',
+                role: 'button',
+                tabIndex: 0,
+              },
+            )}
           </div>
 
-          <Space size="large" className="header-right">
+          <Space size="middle" className="header-right header-actions">
             <ThemeToggle />
             <span data-onboarding="notifications">
               <NotificationBell />

@@ -3,7 +3,7 @@
  * Ouvre/ferme la sidebar sur mobile avec overlay
  */
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 
 interface UseMobileMenuOptions {
   defaultOpen?: boolean
@@ -14,7 +14,8 @@ interface UseMobileMenuOptions {
  * Hook pour gérer le menu mobile responsive
  */
 export function useMobileMenu(options: UseMobileMenuOptions = {}) {
-  const { defaultOpen = false, breakpoint = 768 } = options
+  /** ≤ breakpoint : navigation en tiroir (téléphone + tablette portrait / étroit) */
+  const { defaultOpen = false, breakpoint = 1023 } = options
   const [isMobile, setIsMobile] = useState(false)
   const [isMenuOpen, setIsMenuOpen] = useState(defaultOpen)
 
@@ -35,9 +36,9 @@ export function useMobileMenu(options: UseMobileMenuOptions = {}) {
     }
   }, [breakpoint])
 
-  const openMenu = () => setIsMenuOpen(true)
-  const closeMenu = () => setIsMenuOpen(false)
-  const toggleMenu = () => setIsMenuOpen((prev) => !prev)
+  const openMenu = useCallback(() => setIsMenuOpen(true), [])
+  const closeMenu = useCallback(() => setIsMenuOpen(false), [])
+  const toggleMenu = useCallback(() => setIsMenuOpen((prev) => !prev), [])
 
   return {
     isMobile,

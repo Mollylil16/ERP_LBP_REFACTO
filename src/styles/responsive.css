@@ -1,314 +1,248 @@
 /**
- * Styles responsive pour mobile, tablette et desktop
- * Mobile-first approach
+ * Styles responsive — alignés sur le layout actuel (.modern-sidebar, .layout-content, etc.)
+ * Mobile ≤768px · Tablette 769–1024px · Desktop ≥1025px
  */
 
-/* ============================================
-   BREAKPOINTS
-   ============================================ */
-/* Mobile : 0-768px (par défaut) */
-/* Tablette : 769px-1024px */
-/* Desktop : 1025px+ */
-
-/* ============================================
-   VARIABLES RESPONSIVE
-   ============================================ */
 :root {
-  /* Espacements responsive */
   --spacing-mobile: 12px;
   --spacing-tablet: 16px;
   --spacing-desktop: 24px;
-  
-  /* Tailles de police responsive */
   --font-mobile: 13px;
   --font-tablet: 14px;
   --font-desktop: 16px;
+  --lbp-sidebar-width: 280px;
+  --lbp-sidebar-collapsed: 80px;
 }
 
-/* ============================================
-   TABLETTE (769px - 1024px)
-   ============================================ */
+/* ─── Tablette ───────────────────────────────────────── */
 @media (min-width: 769px) and (max-width: 1024px) {
   body {
     font-size: var(--font-tablet);
   }
-  
-  /* Sidebar réduite sur tablette */
-  .main-sider {
-    width: 200px !important;
+
+  .page-content {
+    padding: var(--spacing-tablet) 20px !important;
   }
-  
-  .main-layout {
-    margin-left: 200px !important;
+
+  .modern-header {
+    padding: 0 20px !important;
   }
-  
-  .main-layout.collapsed {
-    margin-left: 80px !important;
+
+  .lbp-breadcrumbs {
+    padding-left: 20px !important;
+    padding-right: 20px !important;
   }
-  
-  /* Padding réduit */
-  .main-content {
-    padding: var(--spacing-tablet) !important;
+
+}
+
+/* ─── Vue étroite ≤1023px (shell aligné sur le tiroir menu) ─ */
+@media (max-width: 1023px) {
+  .main-layout > .layout-content {
+    margin-left: 0 !important;
   }
-  
-  /* Cards en 2 colonnes */
-  .dashboard-stats {
-    grid-template-columns: repeat(2, 1fr) !important;
+
+  .modern-header {
+    padding: 0 12px 0 14px !important;
+    height: 56px !important;
+    min-height: 56px;
+    gap: 8px;
+  }
+
+  .header-left {
+    flex: 0 1 auto;
+    min-width: 0;
+  }
+
+  .modern-header .header-actions.ant-space {
+    flex-wrap: nowrap !important;
+    flex-direction: row !important;
+  }
+
+  .modern-header .header-actions.ant-space .ant-space-item {
+    width: auto !important;
+  }
+
+  .modern-content {
+    min-height: calc(100vh - 56px);
+    min-height: calc(100dvh - 56px);
+  }
+
+  .page-content {
+    padding: var(--spacing-tablet) 16px !important;
+  }
+
+  .lbp-breadcrumbs {
+    padding: 8px 16px !important;
+    min-height: 38px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+  }
+
+  .lbp-breadcrumbs .ant-breadcrumb {
+    flex-wrap: nowrap;
+    white-space: nowrap;
+  }
+
+  .page-content .ant-table-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    max-width: 100%;
+  }
+
+  .page-content .ant-form {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .page-content .ant-form-item {
+    margin-bottom: 14px;
+  }
+
+  .page-content .ant-card {
+    margin-bottom: var(--spacing-tablet);
   }
 }
 
-/* ============================================
-   MOBILE (0 - 768px)
-   ============================================ */
+/* ─── Mobile ≤768px (densité et typo plus compactes) ─── */
 @media (max-width: 768px) {
   body {
     font-size: var(--font-mobile);
   }
-  
-  /* Sidebar mobile - Menu hamburger */
-  .main-sider {
-    position: fixed !important;
-    left: -260px;
-    z-index: 1000;
-    transition: left 0.3s ease;
-    height: 100vh;
+
+  .page-content {
+    padding: var(--spacing-mobile) 14px !important;
   }
-  
-  .main-sider.mobile-open {
-    left: 0;
+
+  .lbp-breadcrumbs {
+    padding: 8px 14px !important;
   }
-  
-  /* Overlay pour sidebar mobile */
-  .sidebar-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.5);
-    z-index: 999;
-    display: none;
-  }
-  
-  .sidebar-overlay.active {
-    display: block;
-  }
-  
-  .main-layout {
-    margin-left: 0 !important;
-  }
-  
-  .main-layout.collapsed {
-    margin-left: 0 !important;
-  }
-  
-  /* Header mobile */
-  .main-header {
-    padding: var(--spacing-mobile) !important;
-    height: 56px !important;
-  }
-  
-  .header-left {
-    flex: 1;
-  }
-  
-  /* Menu trigger plus grand sur mobile */
-  .trigger {
-    font-size: 20px !important;
-    padding: var(--spacing-sm);
-  }
-  
-  /* User menu simplifié sur mobile */
-  .user-menu-trigger span {
-    display: none; /* Cacher le nom sur mobile */
-  }
-  
-  /* Content mobile */
-  .main-content {
-    margin: var(--spacing-mobile) !important;
-    padding: var(--spacing-mobile) !important;
-    min-height: calc(100vh - 56px - 32px);
-  }
-  
-  /* Cards en 1 colonne sur mobile */
-  .dashboard-stats {
-    grid-template-columns: 1fr !important;
-    gap: var(--spacing-mobile) !important;
-  }
-  
-  .dashboard-section {
-    margin-bottom: var(--spacing-mobile) !important;
-  }
-  
-  /* Tables responsive - scroll horizontal */
-  .ant-table-wrapper {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-  
-  /* Forms responsive */
-  .ant-form {
-    width: 100%;
-  }
-  
-  .ant-form-item {
+
+  .page-content .ant-card {
     margin-bottom: var(--spacing-mobile);
   }
-  
-  /* Buttons full width sur mobile */
-  .ant-btn {
-    width: 100% !important;
-    margin-bottom: var(--spacing-sm);
-  }
-  
-  .ant-btn + .ant-btn {
-    margin-left: 0 !important;
-  }
-  
-  /* Space components - vertical sur mobile */
-  .ant-space {
-    flex-direction: column;
-    width: 100%;
-  }
-  
-  .ant-space-item {
-    width: 100%;
-  }
-  
-  /* Modals full screen sur mobile */
-  .ant-modal {
-    max-width: 100% !important;
-    margin: 0 !important;
-    top: 0 !important;
-    padding-bottom: 0 !important;
-    height: 100vh;
-    display: flex;
-    flex-direction: column;
-  }
-  
-  .ant-modal-content {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    border-radius: 0 !important;
-  }
-  
-  .ant-modal-body {
-    flex: 1;
-    overflow-y: auto;
-  }
-  
-  /* Cards responsive */
-  .ant-card {
-    margin-bottom: var(--spacing-mobile);
-  }
-  
-  /* Typography responsive */
+
   .ant-typography h1 {
     font-size: 20px !important;
   }
-  
+
   .ant-typography h2 {
     font-size: 18px !important;
   }
-  
+
   .ant-typography h3 {
     font-size: 16px !important;
   }
-  
-  /* Empty states responsive */
+
   .empty-state-container {
     padding: var(--spacing-mobile);
   }
-  
-  /* Skeleton loaders responsive */
+
   .dashboard-skeleton-stats,
   .dashboard-skeleton-charts {
     grid-template-columns: 1fr !important;
   }
 }
 
-/* ============================================
-   MOBILE SMALL (0 - 480px)
-   ============================================ */
-@media (max-width: 480px) {
-  /* Encore plus compact sur très petits écrans */
-  .main-content {
-    margin: var(--spacing-xs) !important;
-    padding: var(--spacing-xs) !important;
+/* Empilement vertical optionnel pour barres d’actions dans les pages */
+@media (max-width: 1023px) {
+  .page-content .lbp-actions-stack.ant-space-horizontal {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    width: 100%;
   }
-  
-  .ant-card {
-    padding: var(--spacing-xs) !important;
+
+  .page-content .lbp-actions-stack.ant-space-horizontal .ant-space-item {
+    width: 100% !important;
   }
-  
-  .ant-table {
-    font-size: 11px;
-  }
-  
-  /* Menu items plus compacts */
-  .ant-menu-item {
-    height: 40px !important;
-    line-height: 40px !important;
-    padding: 0 var(--spacing-sm) !important;
+
+  .page-content .lbp-actions-stack .ant-btn {
+    width: 100%;
   }
 }
 
-/* ============================================
-   TOUCH OPTIMIZATIONS
-   ============================================ */
+/* Modales : presque plein écran sur très petit écran, sans règles globales agressives */
+@media (max-width: 576px) {
+  .ant-modal-root .ant-modal {
+    max-width: calc(100vw - 16px) !important;
+    margin: 8px auto !important;
+    padding-bottom: 0 !important;
+    top: 8px !important;
+  }
+
+  .ant-modal-root .ant-modal-content {
+    max-height: calc(100dvh - 16px);
+    display: flex;
+    flex-direction: column;
+  }
+
+  .ant-modal-root .ant-modal-body {
+    flex: 1;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* ─── Très petit mobile ──────────────────────────────── */
+@media (max-width: 480px) {
+  .page-content {
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+  }
+
+  .ant-table {
+    font-size: 12px;
+  }
+
+  .modern-sidebar-menu .ant-menu-item,
+  .modern-sidebar-menu .ant-menu-submenu-title {
+    height: 44px !important;
+    line-height: 44px !important;
+  }
+}
+
+/* ─── Cibles tactiles (sans forcer tous les boutons de l’app) ─ */
 @media (hover: none) and (pointer: coarse) {
-  /* Zones tactiles minimales 44x44px */
-  .ant-btn,
-  .ant-menu-item,
-  .ant-menu-submenu-title,
-  button,
-  [role="button"] {
+  .modern-sidebar-menu .ant-menu-item,
+  .modern-sidebar-menu .ant-menu-submenu-title {
+    min-height: 44px;
+  }
+
+  .sidebar-trigger,
+  .user-menu-trigger {
     min-height: 44px;
     min-width: 44px;
   }
-  
-  /* Augmenter l'espacement pour éviter les erreurs de clic */
-  .ant-space-item {
-    margin-bottom: var(--spacing-md);
-  }
-  
-  /* Scroll snap pour les listes */
-  .ant-list {
-    scroll-snap-type: y mandatory;
-  }
-  
-  .ant-list-item {
-    scroll-snap-align: start;
+
+  .modern-header .header-actions .ant-btn.ant-btn-icon-only {
+    min-width: 44px;
+    min-height: 44px;
   }
 }
 
-/* ============================================
-   PRINT STYLES
-   ============================================ */
+/* ─── Impression ─────────────────────────────────────── */
 @media print {
-  .main-sider,
-  .main-header,
+  .modern-sidebar,
+  .modern-header,
   .sidebar-overlay,
-  .ant-btn,
-  .ant-modal,
+  .ant-layout-sider,
   .skip-to-main {
     display: none !important;
   }
-  
-  .main-layout {
+
+  .main-layout > .layout-content,
+  .layout-content {
     margin-left: 0 !important;
   }
-  
-  .main-content {
+
+  .modern-content,
+  .page-content {
     margin: 0 !important;
     padding: 0 !important;
   }
 }
 
-/* ============================================
-   UTILITAIRES RESPONSIVE
-   ============================================ */
+/* ─── Utilitaires ────────────────────────────────────── */
 .hide-mobile {
   display: block;
 }
@@ -317,24 +251,28 @@
   display: none;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1023px) {
   .hide-mobile {
     display: none !important;
   }
-  
+
   .hide-desktop {
     display: block !important;
   }
 }
 
-/* Flex direction responsive */
 .responsive-row {
   display: flex;
   flex-direction: row;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1023px) {
   .responsive-row {
     flex-direction: column;
   }
+}
+
+/* Fond défilant quand le tiroir menu est ouvert (mobile) */
+body.lbp-mobile-nav-open {
+  overflow: hidden;
 }
