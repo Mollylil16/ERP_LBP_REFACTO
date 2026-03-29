@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react'
-import { Row, Col, Typography, Card, Space, Tag } from 'antd'
+import { Row, Col, Typography, Card, Space, Tag, message } from 'antd'
 import { useQuery } from '@tanstack/react-query'
 import { dashboardService } from '@services/dashboard.service'
 import { StatsCards } from '@components/dashboard/StatsCards'
@@ -25,12 +25,38 @@ import { DashboardSkeleton } from '@components/common/SkeletonLoader'
 import { agencesService } from '@services/agences.service'
 import { TrophyOutlined } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
+import { usePermissions } from '@hooks/usePermissions'
+import { ROUTE_ACCESS, COLIS_READ_ANY } from '@constants/routeAccess'
 import './DashboardPage.css'
 
 const { Title, Text } = Typography
 
+/** Vérifie les droits avant de suivre un lien proposé par le panneau IA (évite une 403 systématique). */
+function canOpenIaRoute(
+  path: string,
+  hasPermission: (p: string) => boolean,
+  hasAnyPermission: (p: string[]) => boolean,
+): boolean {
+  if (!path || path.startsWith('/dashboard')) return true
+  if (path.startsWith('/statistiques')) return hasPermission(ROUTE_ACCESS.statistiques)
+  if (path.startsWith('/settings/tarifs')) return hasPermission(ROUTE_ACCESS.settingsTarifs)
+  if (path.startsWith('/settings')) return hasPermission(ROUTE_ACCESS.settings)
+  if (path.startsWith('/paiements')) return hasPermission(ROUTE_ACCESS.paiements)
+  if (path.startsWith('/factures')) return hasPermission(ROUTE_ACCESS.factures)
+  if (path.startsWith('/caisse')) return hasPermission(ROUTE_ACCESS.caisse)
+  if (path.startsWith('/users')) return hasPermission(ROUTE_ACCESS.users)
+  if (path.startsWith('/clients')) return hasPermission(ROUTE_ACCESS.clients)
+  if (path.startsWith('/litiges')) return hasPermission(ROUTE_ACCESS.litiges)
+  if (path.startsWith('/callcenter')) return hasPermission(ROUTE_ACCESS.callcenterInbox)
+  if (path.startsWith('/colis') || path.startsWith('/expeditions')) {
+    return hasAnyPermission([...COLIS_READ_ANY])
+  }
+  return true
+}
+
 export const DashboardPage: React.FC = () => {
   const { isAuthenticated, user } = useAuth()
+  const { hasPermission, hasAnyPermission } = usePermissions()
   const navigate = useNavigate()
   const persona = resolveDashboardPersona(user?.role?.code)
   const copy = DASHBOARD_PERSONA_COPY[persona]
@@ -259,7 +285,14 @@ export const DashboardPage: React.FC = () => {
               loading={recommendationsLoading}
               monitoring={aiMonitoring}
               onActionClick={(action) => {
-                if (action.route) navigate(action.route)
+                if (!action.route) return
+                if (!canOpenIaRoute(action.route, hasPermission, hasAnyPermission)) {
+                  message.warning(
+                    'Vous n’avez pas les droits pour cette page (ex. rapports, caisse, factures). Demandez l’accès à votre administrateur ou vérifiez le rôle en base (permission rapports.view, etc.).',
+                  )
+                  return
+                }
+                navigate(action.route)
               }}
             />
           ) : null}

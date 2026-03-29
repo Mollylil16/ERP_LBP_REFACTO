@@ -19,6 +19,8 @@ export interface User {
   roleEntity?: any // Ajouté pour usePermission
   actionsSpeciales?: any[] // Ajouté pour usePermission
   peut_voir_toutes_agences?: boolean // Ajouté pour usePermission
+  /** 2 = super admin (accès total), aligné backend */
+  code_acces?: number
   // ✅ Nouveaux champs pour le flux de gestion
   must_change_password?: boolean
   agence_selected?: boolean

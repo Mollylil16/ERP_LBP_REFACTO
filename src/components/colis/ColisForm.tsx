@@ -251,6 +251,10 @@ export const ColisForm: React.FC<ColisFormProps> = ({
         mode_envoi: data.mode_envoi,
         date_envoi: data.date_envoi,
 
+        ...(user?.agency_id != null && user.agency_id > 0
+          ? { id_agence: user.agency_id }
+          : {}),
+
         id_client: client.id,
 
         nom_dest: data.nom_destinataire,

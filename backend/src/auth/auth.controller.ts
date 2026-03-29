@@ -44,7 +44,7 @@ export class AuthController {
   @Get('me')
   @ApiOperation({ summary: 'Récupérer le profil utilisateur actuel' })
   async getProfile(@Request() req) {
-    return req.user;
+    return this.authService.toPublicUser(req.user);
   }
 
   @ApiBearerAuth()

@@ -31,6 +31,46 @@ export class ColisService {
     private dataSource: DataSource,
   ) {}
 
+  private hasGlobalAgencyRouting(user: any): boolean {
+    const r =
+      typeof user?.role === 'string'
+        ? user.role
+        : user?.role?.code ?? user?.roleEntity?.code;
+    return Boolean(
+      user?.peut_voir_toutes_agences ||
+        user?.code_acces === 2 ||
+        user?.code_acces === 1 ||
+        r === 'DIRECTEUR' ||
+        r === 'ADMIN' ||
+        r === 'SUPER_ADMIN',
+    );
+  }
+
+  async resolveAgenceIdForCreate(
+    explicitFromDto: number | undefined,
+    user: any,
+  ): Promise<number | undefined> {
+    if (
+      explicitFromDto != null &&
+      !Number.isNaN(Number(explicitFromDto)) &&
+      Number(explicitFromDto) > 0
+    ) {
+      return Number(explicitFromDto);
+    }
+    const fromUser = user?.agence?.id ?? user?.id_agence;
+    if (fromUser != null && Number(fromUser) > 0) {
+      return Number(fromUser);
+    }
+    if (!this.hasGlobalAgencyRouting(user)) {
+      return undefined;
+    }
+    const rows = await this.dataSource.query(
+      `SELECT id FROM agences WHERE actif = true AND (code = 'DG' OR code LIKE 'CI-%')
+       ORDER BY CASE WHEN code = 'DG' THEN 0 ELSE 1 END, id ASC LIMIT 1`,
+    );
+    return rows[0]?.id != null ? Number(rows[0].id) : undefined;
+  }
+
   async create(
     createColisDto: CreateColisDto,
     userId: string,
@@ -259,15 +299,24 @@ export class ColisService {
 
   private getPrefixFromAgencePays(pays?: string): string {
     const p = (pays || '').trim().toLowerCase();
-    // CI / Côte d'Ivoire
-    if (p.includes('ivoire') || p.includes('civ') || p.includes('ci'))
+    const norm = p.normalize('NFD').replace(/\p{M}/gu, '');
+    // CI / Côte d'Ivoire (éviter includes('ci') → "commercial", etc.)
+    if (
+      norm.includes('ivoire') ||
+      norm.includes('civ') ||
+      /^ci$/i.test(pays?.trim() || '') ||
+      /cote\s*d\s*ivoire/i.test(norm)
+    ) {
       return 'LB-CI';
-    // Sénégal
-    if (p.includes('senegal') || p.includes('sénégal') || p.includes('sen'))
+    }
+    // Sénégal (éviter includes('sen') → faux positifs)
+    if (norm.includes('senegal') || /^sn$/i.test(pays?.trim() || '')) {
       return 'LB-SEN';
-    // France
-    if (p.includes('france') || p.includes('fr')) return 'LB-FR';
-    // Fallback historique
+    }
+    // France (éviter includes('fr') → "freetown", etc.)
+    if (norm.includes('france') || /^fr$/i.test(pays?.trim() || '')) {
+      return 'LB-FR';
+    }
     return 'LBP';
   }
 
@@ -291,8 +340,12 @@ export class ColisService {
     if (lastColis) {
       const lastRef = lastColis.ref_colis;
       const parts = lastRef.split('-');
-      const lastNum = parseInt(parts[2], 10);
-      nextNumber = lastNum + 1;
+      // LBP-0326-001 → dernier segment = compteur ; LB-CI-0326-001 → idem (4 segments)
+      const seqStr = parts[parts.length - 1];
+      const lastNum = parseInt(seqStr, 10);
+      if (!Number.isNaN(lastNum)) {
+        nextNumber = lastNum + 1;
+      }
     }
 
     const numPart = String(nextNumber).padStart(3, '0');

@@ -57,51 +57,45 @@ export const PermissionsProvider: React.FC<{ children: React.ReactNode }> = ({ c
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated, user?.id]) // Utiliser user?.id au lieu de user pour éviter les re-renders
 
-  const hasPermission = (permission: string): boolean => {
-    // Debug permissions
-    const role = user?.role;
-    const isSuperAdmin =
-      (role as any) === 'SUPER_ADMIN' ||
-      (typeof role === 'object' && (role as any)?.code === 'SUPER_ADMIN') ||
-      (role as any) === 'admin' ||
-      (typeof role === 'object' && (role as any)?.code === 'ADMIN') ||
-      user?.username === 'admin';
+  /** Aligné backend : DIRECTEUR / ADMIN / code_acces 2 = accès total (évite 403 côté front). */
+  const hasFullAppAccess = useMemo(() => {
+    if (!user) return false
+    if (user.username === 'admin') return true
+    if (user.code_acces === 2) return true
+    const r = user.role as string | { code?: string } | undefined
+    const code =
+      typeof r === 'string' ? r : r && typeof r === 'object' ? r.code : undefined
+    if (!code) return false
+    return (
+      code === 'DIRECTEUR' ||
+      code === 'ADMIN' ||
+      code === 'SUPER_ADMIN' ||
+      code.toLowerCase() === 'admin'
+    )
+  }, [user])
 
-    if (isSuperAdmin || permissions.includes('*')) {
-      return true;
+  const hasPermission = (permission: string): boolean => {
+    if (hasFullAppAccess || permissions.includes('*')) {
+      return true
     }
 
-    return permissions.includes(permission);
+    return permissions.includes(permission)
   }
 
   const hasAnyPermission = (permissionList: string[]): boolean => {
-    const role = user?.role;
-    const isSuperAdmin =
-      (role as any) === 'SUPER_ADMIN' ||
-      (typeof role === 'object' && (role as any)?.code === 'SUPER_ADMIN') ||
-      (role as any) === 'admin' ||
-      (typeof role === 'object' && (role as any)?.code === 'ADMIN');
-
-    if (isSuperAdmin || permissions.includes('*')) {
-      return true;
+    if (hasFullAppAccess || permissions.includes('*')) {
+      return true
     }
 
-    return permissionList.some((p) => permissions.includes(p));
+    return permissionList.some((p) => permissions.includes(p))
   }
 
   const hasAllPermissions = (permissionList: string[]): boolean => {
-    const role = user?.role;
-    const isSuperAdmin =
-      (role as any) === 'SUPER_ADMIN' ||
-      (typeof role === 'object' && (role as any)?.code === 'SUPER_ADMIN') ||
-      (role as any) === 'admin' ||
-      (typeof role === 'object' && (role as any)?.code === 'ADMIN');
-
-    if (isSuperAdmin || permissions.includes('*')) {
-      return true;
+    if (hasFullAppAccess || permissions.includes('*')) {
+      return true
     }
 
-    return permissionList.every((p) => permissions.includes(p));
+    return permissionList.every((p) => permissions.includes(p))
   }
 
   // Debug log on change
@@ -109,10 +103,9 @@ export const PermissionsProvider: React.FC<{ children: React.ReactNode }> = ({ c
     if (user) {
       console.log('[Permissions] Current User Role:', user.role);
       console.log('[Permissions] Current Permissions:', permissions);
-      const isSA = (user.role as any) === 'SUPER_ADMIN' || (user.role as any) === 'admin';
-      console.log('[Permissions] Is SUPER_ADMIN?', isSA);
+      console.log('[Permissions] hasFullAppAccess?', hasFullAppAccess);
     }
-  }, [user, permissions]);
+  }, [user, permissions, hasFullAppAccess]);
 
   const value: PermissionsContextType = {
     permissions,

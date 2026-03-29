@@ -5,6 +5,7 @@ import { RolePermission } from '../../permissions/entities/role-permission.entit
 
 // Matrice des permissions par rôle basée sur l'analyse
 const rolePermissionsMatrix = {
+  ADMIN: '*',
   DIRECTEUR: '*', // Toutes les permissions
   MANAGER: [
     // EXPLOITATION

@@ -52,11 +52,15 @@ export class ColisController {
   @RequirePermission(...COLIS_CREATE)
   @ApiOperation({ summary: 'Créer un nouveau colis' })
   @ApiResponse({ status: 201, description: 'Colis créé avec succès' })
-  create(@Body() createColisDto: CreateColisDto, @Request() req) {
+  async create(@Body() createColisDto: CreateColisDto, @Request() req) {
+    const agenceId = await this.colisService.resolveAgenceIdForCreate(
+      createColisDto.id_agence,
+      req.user,
+    );
     return this.colisService.create(
       createColisDto,
       req.user.username,
-      req.user.id_agence,
+      agenceId,
     );
   }
 
@@ -78,16 +82,20 @@ export class ColisController {
   @RequirePermission(...COLIS_UPDATE)
   @ApiOperation({ summary: 'Mettre à jour un colis existant' })
   @ApiResponse({ status: 200, description: 'Colis mis à jour avec succès' })
-  update(
+  async update(
     @Param('id') id: string,
     @Body() updateColisDto: CreateColisDto,
     @Request() req,
   ) {
+    const agenceId = await this.colisService.resolveAgenceIdForCreate(
+      updateColisDto.id_agence,
+      req.user,
+    );
     return this.colisService.update(
       +id,
       updateColisDto,
       req.user.username,
-      req.user.id_agence,
+      agenceId,
     );
   }
 

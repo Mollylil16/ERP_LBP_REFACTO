@@ -111,6 +111,17 @@ export class CreateColisDto {
   )
   date_envoi: string;
 
+  @ApiProperty({
+    example: 1,
+    required: false,
+    description:
+      "Agence pour rattachement et préfixe de référence (LB-CI, LB-SEN, etc.).",
+  })
+  @IsOptional()
+  @IsNumber({}, { message: "L'ID de l'agence doit être un nombre" })
+  @IsPositive({ message: "L'ID de l'agence doit être positif" })
+  id_agence?: number;
+
   @ApiProperty({ example: 1 }) // ID du client
   @IsNotEmpty({ message: "L'ID du client est obligatoire" })
   @IsNumber({}, { message: "L'ID du client doit être un nombre" })

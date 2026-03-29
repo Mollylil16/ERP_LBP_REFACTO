@@ -2,6 +2,22 @@ import { Colis, ClientColis, PaginatedResponse, PaginationParams, CreateColisDto
 import { apiService } from './api.service'
 import { calculerTotalLigneMarchandise } from '@utils/calculations'
 
+/** Date SQL `YYYY-MM-DD` ou ISO → chaîne `YYYY-MM-DD` pour affichage (évite décalage fuseau). */
+function normalizeDateEnvoi(raw: unknown): string {
+  if (raw == null || raw === '') return ''
+  if (typeof raw === 'string') {
+    const m = raw.match(/^(\d{4}-\d{2}-\d{2})/)
+    if (m) return m[1]
+  }
+  try {
+    const d = new Date(raw as string | Date)
+    if (Number.isNaN(d.getTime())) return ''
+    return d.toISOString().split('T')[0]
+  } catch {
+    return ''
+  }
+}
+
 /**
  * Adapter la réponse backend vers le format attendu par le frontend
  * Le backend renvoie: { client, marchandises[], nom_dest, ... }
@@ -29,7 +45,7 @@ function adaptColisFromBackend(backendColis: any): Colis {
     id: backendColis.id,
     ref_colis: backendColis.ref_colis,
     mode_envoi: backendColis.mode_envoi || '',
-    date_envoi: backendColis.date_envoi ? new Date(backendColis.date_envoi).toISOString().split('T')[0] : '',
+    date_envoi: normalizeDateEnvoi(backendColis.date_envoi),
     nom_marchandise: premiereMarchandise.nom_marchandise || '',
     nbre_colis: premiereMarchandise.nbre_colis || 0,
     nbre_articles: premiereMarchandise.nbre_articles || 0,

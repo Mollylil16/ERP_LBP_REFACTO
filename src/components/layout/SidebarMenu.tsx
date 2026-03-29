@@ -1,5 +1,4 @@
-
-import React from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Menu } from "antd";
 import {
@@ -13,10 +12,15 @@ import {
   DollarOutlined,
   WalletOutlined,
   LineChartOutlined,
-  GlobalOutlined,
   ArrowUpOutlined,
   AlertOutlined,
   MessageOutlined,
+  ApartmentOutlined,
+  EnvironmentOutlined,
+  SendOutlined,
+  UserOutlined,
+  ClusterOutlined,
+  GlobalOutlined,
 } from "@ant-design/icons";
 import { usePermissions } from "@hooks/usePermissions";
 import { ROUTE_ACCESS, COLIS_READ_ANY } from "@constants/routeAccess";
@@ -42,9 +46,25 @@ export const SidebarMenu: React.FC<SidebarMenuProps> = ({ collapsed: _collapsed 
   const canColisRapports = hasPermission(ROUTE_ACCESS.colisRapports);
   const canColisMap = hasAnyPermission([...COLIS_READ_ANY]);
   const canExpeditions = hasAnyPermission([...ROUTE_ACCESS.expeditions]);
+  const canStatistiques = hasPermission(ROUTE_ACCESS.statistiques);
 
-  const showColisSection =
-    canColisGroupage || canColisAutres || canColisRapports || canColisMap;
+  const showExploitation =
+    canColisGroupage ||
+    canColisAutres ||
+    canColisMap ||
+    canExpeditions;
+
+  const showClientsSuivi =
+    hasPermission(ROUTE_ACCESS.clients) ||
+    hasPermission(ROUTE_ACCESS.litiges) ||
+    hasPermission(ROUTE_ACCESS.callcenterInbox);
+
+  const showRapportsAnalyse = canColisRapports || canStatistiques;
+
+  const showFacturationTresorerie =
+    hasPermission(ROUTE_ACCESS.factures) ||
+    hasPermission(ROUTE_ACCESS.paiements) ||
+    hasPermission(ROUTE_ACCESS.caisse);
 
   const settingsChildren = [
     ...(hasPermission(ROUTE_ACCESS.settings)
@@ -87,60 +107,22 @@ export const SidebarMenu: React.FC<SidebarMenuProps> = ({ collapsed: _collapsed 
         ]
       : [];
 
-  const menuItems: any[] = [
-    ...(hasPermission(ROUTE_ACCESS.dashboard)
+  const exploitationChildren: any[] = [
+    ...(canColisGroupage
       ? [
           {
-            key: "/dashboard",
-            icon: <DashboardOutlined />,
-            label: "Tableau de bord",
+            key: "/colis/groupage",
+            icon: <FolderOutlined />,
+            label: "Groupage",
           },
         ]
       : []),
-    ...(showColisSection
+    ...(canColisAutres
       ? [
           {
-            key: "colis",
+            key: "/colis/autres-envois",
             icon: <InboxOutlined />,
-            label: "Gestion Colis",
-            children: [
-              ...(canColisGroupage
-                ? [
-                    {
-                      key: "/colis/groupage",
-                      icon: <FolderOutlined />,
-                      label: "Groupage",
-                    },
-                  ]
-                : []),
-              ...(canColisAutres
-                ? [
-                    {
-                      key: "/colis/autres-envois",
-                      icon: <InboxOutlined />,
-                      label: "Autres Envois",
-                    },
-                  ]
-                : []),
-              ...(canColisRapports
-                ? [
-                    {
-                      key: "/colis/rapports",
-                      icon: <BarChartOutlined />,
-                      label: "Rapports",
-                    },
-                  ]
-                : []),
-              ...(canColisMap
-                ? [
-                    {
-                      key: "/colis/map",
-                      icon: <GlobalOutlined />,
-                      label: "Cartographie",
-                    },
-                  ]
-                : []),
-            ],
+            label: "Autres Envois",
           },
         ]
       : []),
@@ -148,11 +130,23 @@ export const SidebarMenu: React.FC<SidebarMenuProps> = ({ collapsed: _collapsed 
       ? [
           {
             key: "/expeditions",
-            icon: <GlobalOutlined />,
+            icon: <SendOutlined />,
             label: "Expéditions (Manifestes)",
           },
         ]
       : []),
+    ...(canColisMap
+      ? [
+          {
+            key: "/colis/map",
+            icon: <EnvironmentOutlined />,
+            label: "Cartographie",
+          },
+        ]
+      : []),
+  ];
+
+  const clientsSuiviChildren: any[] = [
     ...(hasPermission(ROUTE_ACCESS.clients)
       ? [
           {
@@ -180,6 +174,42 @@ export const SidebarMenu: React.FC<SidebarMenuProps> = ({ collapsed: _collapsed 
           },
         ]
       : []),
+  ];
+
+  const rapportsAnalyseChildren: any[] = [
+    ...(canColisRapports
+      ? [
+          {
+            key: "/colis/rapports",
+            icon: <BarChartOutlined />,
+            label: "Rapports",
+          },
+        ]
+      : []),
+    ...(canStatistiques
+      ? [
+          {
+            key: "stats_finance_sub",
+            icon: <LineChartOutlined />,
+            label: "Statistiques & Finance",
+            children: [
+              {
+                key: "/statistiques/historiques",
+                icon: <LineChartOutlined />,
+                label: "Statistiques Historiques",
+              },
+              {
+                key: "/statistiques/rentabilite",
+                icon: <BarChartOutlined />,
+                label: "Analyse Rentabilité",
+              },
+            ],
+          },
+        ]
+      : []),
+  ];
+
+  const facturationChildren: any[] = [
     ...(hasPermission(ROUTE_ACCESS.factures)
       ? [
           {
@@ -219,57 +249,162 @@ export const SidebarMenu: React.FC<SidebarMenuProps> = ({ collapsed: _collapsed 
           },
         ]
       : []),
-    ...(hasPermission(ROUTE_ACCESS.statistiques)
-      ? [
-          {
-            key: "/statistiques",
-            icon: <LineChartOutlined />,
-            label: "Statistiques & Finance",
-            children: [
-              {
-                key: "/statistiques/historiques",
-                icon: <LineChartOutlined />,
-                label: "Statistiques Historiques",
-              },
-              {
-                key: "/statistiques/rentabilite",
-                icon: <BarChartOutlined />,
-                label: "Analyse Rentabilité",
-              },
-            ],
-          },
-        ]
-      : []),
-    ...settingsMenuBlock,
+  ];
+
+  const administrationChildren: any[] = [
     ...(hasPermission(ROUTE_ACCESS.users)
       ? [
           {
             key: "/users",
-            icon: <TeamOutlined />,
+            icon: <UserOutlined />,
             label: "Gestion Utilisateurs",
           },
         ]
       : []),
   ];
 
+  const menuItems: any[] = [
+    ...(hasPermission(ROUTE_ACCESS.dashboard)
+      ? [
+          {
+            key: "/dashboard",
+            icon: <DashboardOutlined />,
+            label: "Tableau de bord",
+          },
+        ]
+      : []),
+    ...(showExploitation && exploitationChildren.length > 0
+      ? [
+          {
+            key: "exploitation_root",
+            icon: <ApartmentOutlined />,
+            label: "Exploitation",
+            children: exploitationChildren,
+          },
+        ]
+      : []),
+    ...(showClientsSuivi && clientsSuiviChildren.length > 0
+      ? [
+          {
+            key: "clients_suivi_root",
+            icon: <TeamOutlined />,
+            label: "Clients & suivi",
+            children: clientsSuiviChildren,
+          },
+        ]
+      : []),
+    ...(showRapportsAnalyse && rapportsAnalyseChildren.length > 0
+      ? [
+          {
+            key: "rapports_analyse_root",
+            icon: <BarChartOutlined />,
+            label: "Rapports & analyse",
+            children: rapportsAnalyseChildren,
+          },
+        ]
+      : []),
+    ...(showFacturationTresorerie && facturationChildren.length > 0
+      ? [
+          {
+            key: "facturation_tresorerie_root",
+            icon: <DollarOutlined />,
+            label: "Facturation & trésorerie",
+            children: facturationChildren,
+          },
+        ]
+      : []),
+    ...settingsMenuBlock,
+    ...(administrationChildren.length > 0
+      ? [
+          {
+            key: "administration_root",
+            icon: <ClusterOutlined />,
+            label: "Administration",
+            children: administrationChildren,
+          },
+        ]
+      : []),
+  ];
+
+  const parentKeysNoNavigate = useMemo(
+    () =>
+      new Set([
+        "exploitation_root",
+        "clients_suivi_root",
+        "rapports_analyse_root",
+        "stats_finance_sub",
+        "facturation_tresorerie_root",
+        "caisse_root",
+        "settings_root",
+        "administration_root",
+        "flux_auth",
+      ]),
+    [],
+  );
+
   const handleMenuClick: any = ({ key }: any) => {
-    if (key && !["colis", "/statistiques", "settings_root", "caisse_root", "flux_auth"].includes(key)) {
+    if (key && !parentKeysNoNavigate.has(String(key))) {
       navigate(key as string);
     }
   };
 
   const selectedKeys = [location.pathname];
-  const openKeys = location.pathname.startsWith("/colis") ? ["colis"] :
-    location.pathname.startsWith("/statistiques") ? ["/statistiques"] :
-      location.pathname.startsWith("/caisse") ? ["caisse_root"] :
-        location.pathname.startsWith("/settings") ? ["settings_root"] : [];
+
+  const openKeysForPath = useMemo(() => {
+    const p = location.pathname;
+    const keys: string[] = [];
+    if (
+      p.startsWith("/colis/groupage") ||
+      p.startsWith("/colis/autres-envois") ||
+      p.startsWith("/colis/map") ||
+      p.startsWith("/expeditions")
+    ) {
+      keys.push("exploitation_root");
+    }
+    if (
+      p.startsWith("/clients") ||
+      p.startsWith("/litiges") ||
+      p.startsWith("/callcenter")
+    ) {
+      keys.push("clients_suivi_root");
+    }
+    if (p.startsWith("/colis/rapports") || p.startsWith("/statistiques")) {
+      keys.push("rapports_analyse_root");
+      if (p.startsWith("/statistiques")) {
+        keys.push("stats_finance_sub");
+      }
+    }
+    if (
+      p.startsWith("/factures") ||
+      p.startsWith("/paiements") ||
+      p.startsWith("/caisse")
+    ) {
+      keys.push("facturation_tresorerie_root");
+      if (p.startsWith("/caisse")) {
+        keys.push("caisse_root");
+      }
+    }
+    if (p.startsWith("/settings")) {
+      keys.push("settings_root");
+    }
+    if (p.startsWith("/users")) {
+      keys.push("administration_root");
+    }
+    return keys;
+  }, [location.pathname]);
+
+  const [openKeys, setOpenKeys] = useState<string[]>(openKeysForPath);
+  useEffect(() => {
+    setOpenKeys(openKeysForPath);
+  }, [openKeysForPath]);
 
   return (
     <nav aria-label="Navigation principale">
       <Menu
         mode="inline"
         selectedKeys={selectedKeys}
-        defaultOpenKeys={openKeys}
+        openKeys={openKeys}
+        onOpenChange={(keys) => setOpenKeys(keys as string[])}
         items={menuItems}
         onClick={handleMenuClick}
         className="modern-sidebar-menu"

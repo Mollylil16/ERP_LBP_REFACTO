@@ -22,6 +22,7 @@
     "seed": "ts-node -r tsconfig-paths/register src/database/seed.ts",
     "seed:produits": "ts-node -r tsconfig-paths/register src/database/run-seeds.ts",
     "seed:agences": "ts-node -r tsconfig-paths/register src/database/run-agences-seeds.ts",
+    "sync:agences-pays-user-roles": "ts-node -r tsconfig-paths/register src/database/run-sync-agences-pays-user-roles.ts",
     "clean-db": "ts-node -r tsconfig-paths/register src/database/clean-db.ts"
   },
   "dependencies": {

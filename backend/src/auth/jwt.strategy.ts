@@ -24,6 +24,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     if (!user || !user.actif) {
       throw new UnauthorizedException('Utilisateur inactif ou introuvable');
     }
+    // L'entité User n'expose pas de colonne id_agence typée ; le code métier utilise req.user.id_agence partout.
+    (user as any).id_agence = user.agence?.id ?? null;
     return user;
   }
 }

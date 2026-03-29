@@ -6,6 +6,14 @@ export async function seedRoles(dataSource: DataSource): Promise<void> {
 
   const roles = [
     {
+      code: 'ADMIN',
+      nom: 'Super administrateur (technique)',
+      description:
+        'Compte technique — accès total, distinct du Directeur général métier',
+      niveau_hierarchique: 1,
+      est_actif: true,
+    },
+    {
       code: 'DIRECTEUR',
       nom: 'Directeur Général',
       description: 'Accès complet à tous les modules et fonctionnalités',

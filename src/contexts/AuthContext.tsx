@@ -37,10 +37,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     const allPermissions = Array.isArray(perms) ? perms.includes('*') : false;
     return Boolean(
       u.peut_voir_toutes_agences ||
-      u.filter_mode === 'all' ||
-      roleCode === 'DIRECTEUR' ||
-      roleCode === 'ADMIN' ||
-      allPermissions
+        u.code_acces === 2 ||
+        u.filter_mode === 'all' ||
+        roleCode === 'DIRECTEUR' ||
+        roleCode === 'ADMIN' ||
+        allPermissions
     );
   }, []);
 

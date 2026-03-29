@@ -3,6 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { UsersService } from '../users/users.service';
 import { RolesService } from '../roles/roles.service';
+import { UserRole } from '../users/entities/user.entity';
 
 @Injectable()
 export class AuthService {
@@ -36,45 +37,65 @@ export class AuthService {
     return result;
   }
 
-  async login(user: any) {
+  /**
+   * Même objet que dans la réponse login — obligatoire pour GET /auth/me
+   * (sinon le front reçoit role en string brute et casse affichage + permissions).
+   */
+  private resolveRoleCode(user: any): string {
+    return typeof user.role === 'string'
+      ? user.role
+      : user.role?.code ??
+          user.roleEntity?.code ??
+          UserRole.AGENT_EXPLOITATION;
+  }
+
+  toPublicUser(user: any) {
     const hasGlobalAgencyAccess = this.hasGlobalAgencyAccess(user);
+    const roleCode = this.resolveRoleCode(user);
 
-    const payload = {
-      username: user.username,
-      sub: user.id,
-      role: user.role,
-      code_acces: user.code_acces,
-      id_agence: user.agence?.id ?? null,
-    };
-
-    const formattedUser = {
+    return {
       id: user.id,
       code_user: `USER${user.id.toString().padStart(3, '0')}`,
       username: user.username,
+      nom_complet: user.nom_complet,
       full_name: user.nom_complet,
       email: user.email ?? null,
       phone: user.phone ?? null,
       role: {
-        id: this.getRoleId(user.role),
-        code: user.role,
-        name: this.getRoleName(user.role),
+        id: this.getRoleId(roleCode),
+        code: roleCode,
+        name: this.getRoleName(roleCode),
       },
+      code_acces: user.code_acces,
+      peut_voir_toutes_agences: Boolean(user.peut_voir_toutes_agences),
       agency_id: user.agence?.id ?? null,
       agency_name: user.agence?.nom ?? null,
       filter_mode: this.getFilterMode(user.code_acces),
       can_delete: user.code_acces === 2,
       can_modify: user.code_acces !== 2,
       status: user.actif ? 'active' : ('inactive' as 'active' | 'inactive'),
-      // ✅ Flags pour le flux de 1ère connexion
       must_change_password: user.must_change_password ?? false,
-      // Les profils globaux n'ont pas besoin de sélectionner une agence
       agence_selected: hasGlobalAgencyAccess
         ? true
         : (user.agence_selected ?? user.agence != null),
+      actif: user.actif,
       created_at: user.created_at
         ? new Date(user.created_at).toISOString()
         : new Date().toISOString(),
     };
+  }
+
+  async login(user: any) {
+    const roleCode = this.resolveRoleCode(user);
+    const payload = {
+      username: user.username,
+      sub: user.id,
+      role: roleCode,
+      code_acces: user.code_acces,
+      id_agence: user.agence?.id ?? null,
+    };
+
+    const formattedUser = this.toPublicUser(user);
 
     return {
       token: this.jwtService.sign(payload),
@@ -132,16 +153,15 @@ export class AuthService {
    * Si aucune permission en base pour le rôle : [] (exécuter `npm run seed` pour remplir la matrice).
    */
   async getPermissionsForUser(user: any): Promise<string[]> {
+    const roleCode = this.resolveRoleCode(user);
     if (
-      user.role === 'DIRECTEUR' ||
-      user.role === 'ADMIN' ||
+      roleCode === 'DIRECTEUR' ||
+      roleCode === 'ADMIN' ||
       user.code_acces === 2
     ) {
       return ['*'];
     }
 
-    const roleCode =
-      typeof user.role === 'string' ? user.role : user.role?.code;
     if (!roleCode) {
       this.logger.warn(
         `[LBP_PERMISSIONS] userId=${user?.id} login=${user?.username ?? '?'} : pas de code rôle — permissions=[]`,
@@ -170,12 +190,13 @@ export class AuthService {
   }
 
   private hasGlobalAgencyAccess(user: any): boolean {
+    const rc = this.resolveRoleCode(user);
     return Boolean(
       user?.peut_voir_toutes_agences ||
-      user?.code_acces === 2 ||
-      user?.code_acces === 1 ||
-      user?.role === 'DIRECTEUR' ||
-      user?.role === 'ADMIN',
+        user?.code_acces === 2 ||
+        user?.code_acces === 1 ||
+        rc === 'DIRECTEUR' ||
+        rc === 'ADMIN',
     );
   }
 }
