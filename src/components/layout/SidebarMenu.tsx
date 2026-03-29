@@ -404,7 +404,7 @@ export const SidebarMenu: React.FC<SidebarMenuProps> = ({ collapsed: _collapsed 
         mode="inline"
         selectedKeys={selectedKeys}
         openKeys={openKeys}
-        onOpenChange={(keys) => setOpenKeys(keys as string[])}
+        onOpenChange={(keys: string[]) => setOpenKeys(keys)}
         items={menuItems}
         onClick={handleMenuClick}
         className="modern-sidebar-menu"
