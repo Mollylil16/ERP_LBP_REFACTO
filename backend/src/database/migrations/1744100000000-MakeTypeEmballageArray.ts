@@ -13,8 +13,10 @@ export class MakeTypeEmballageArray1744100000000
       USING (
         CASE
           WHEN "type_emballage" IS NULL OR "type_emballage" = '' THEN NULL
-          WHEN jsonb_typeof("type_emballage"::jsonb) = 'array' THEN "type_emballage"::jsonb
-          ELSE jsonb_build_array("type_emballage")
+          -- Si c'est déjà du JSON (string qui commence par [ ou {), on le cast
+          WHEN left(btrim("type_emballage"), 1) IN ('[', '{') THEN "type_emballage"::jsonb
+          -- Sinon, valeur texte simple -> ["valeur"]
+          ELSE jsonb_build_array(to_jsonb("type_emballage"))
         END
       );
     `);
