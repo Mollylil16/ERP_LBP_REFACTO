@@ -30,6 +30,7 @@ import { tarifsService } from '@services/tarifs.service'
 import { message } from 'antd'
 import { useAuth } from '@/hooks/useAuth'
 import { useProduitsCatalogue } from '@hooks/useProduitsCatalogue'
+import { produitsCatalogueService } from '@services/produits-catalogue.service'
 
 const { Title, Text } = Typography
 const { Option } = Select
@@ -47,6 +48,8 @@ const marchandiseSchema = z.object({
   id_tarif: z.number().optional(),
   type_emballage: z.array(z.string()).optional().default([]),
   nbre_emballage: z.coerce.number().min(1, 'Le nombre d\'emballage doit être au moins 1'),
+  // interne UI: ids des produits sélectionnés dans le catalogue (pas envoyé au backend)
+  produits_catalogue_ids: z.array(z.number()).optional().default([]),
 })
 
 const colisFormSchema = z.object({
@@ -242,6 +245,44 @@ export const ColisForm: React.FC<ColisFormProps> = ({
             tel_exp: data.client_colis.tel_exp,
             email_exp: data.client_colis.email_exp || undefined,
           }))
+      }
+
+      // 2) Auto-enregistrer les produits non présents dans le catalogue
+      // Règle: si l'utilisateur a saisi un produit (nom + prix) sans le choisir dans le Select catalogue,
+      // on le crée automatiquement pour qu'il soit sélectionnable la prochaine fois.
+      const existingNames = new Set(
+        (produitsCatalogue || [])
+          .map((p) => (p?.nom ?? '').trim().toLowerCase())
+          .filter((n) => n.length > 0),
+      )
+
+      for (const m of data.marchandise || []) {
+        const ids = (m as any)?.produits_catalogue_ids as number[] | undefined
+        const hasCatalogueSelection = Array.isArray(ids) && ids.length > 0
+        if (hasCatalogueSelection) continue
+
+        const nameRaw = (m?.nom_marchandise ?? '').trim()
+        const price = Number(m?.prix_unit ?? 0)
+        // Si plusieurs produits du catalogue ont été concaténés "A, B", on ne crée pas un produit "A, B".
+        if (!nameRaw || nameRaw.includes(',')) continue
+        if (!(price > 0)) continue
+
+        const key = nameRaw.toLowerCase()
+        if (existingNames.has(key)) continue
+
+        try {
+          await produitsCatalogueService.create({
+            nom: nameRaw,
+            categorie: 'DIVERS',
+            nature: 'PRIX_UNITAIRE',
+            prix_unitaire: price,
+            actif: true,
+          } as any)
+          existingNames.add(key)
+        } catch (e) {
+          // On n'empêche pas l'enregistrement du colis si la création catalogue échoue (permissions, validation, etc.)
+          console.warn('[ColisForm] impossible de créer le produit catalogue:', nameRaw, e)
+        }
       }
 
       // 2) Mapper le modèle formulaire -> modèle backend
@@ -764,7 +805,10 @@ export const ColisForm: React.FC<ColisFormProps> = ({
             <Row gutter={16}>
               {/* NOUVEAU: Sélecteur de produit du catalogue */}
               <Col xs={24} md={12}>
-                <Form.Item label="Produit du catalogue (optionnel)" help="Sélectionnez un ou plusieurs produits pour remplir automatiquement la ligne">
+                <Form.Item
+                  label="Produit du catalogue (optionnel)"
+                  help="Sélectionnez dans la liste. Si un produit n’existe pas, saisis son nom + son prix unitaire ci-dessous: il sera ajouté automatiquement au catalogue."
+                >
                   <Select
                     mode="multiple"
                     placeholder="Rechercher des produits..."
@@ -776,6 +820,7 @@ export const ColisForm: React.FC<ColisFormProps> = ({
                       (option?.label ?? '').toString().toLowerCase().includes(input.toLowerCase())
                     }
                     onChange={(ids: number[]) => {
+                      setValue(`marchandise.${index}.produits_catalogue_ids`, Array.isArray(ids) ? ids : [])
                       if (ids && ids.length > 0) {
                         const selectedProds = produitsCatalogue.filter(p => ids.includes(p.id));
 
@@ -805,6 +850,7 @@ export const ColisForm: React.FC<ColisFormProps> = ({
 
                         message.success(`${selectedProds.length} produit(s) sélectionné(s) - Prix: ${sharedPrice} ${selectedProds[0]?.devise || 'FCFA'}`);
                       } else {
+                        setValue(`marchandise.${index}.produits_catalogue_ids`, [])
                         // Si on vide la sélection, on peut choisir de vider or non le nom. 
                         // Ici on laisse l'utilisateur décider s'il veut garder le texte ou non.
                       }
@@ -879,6 +925,13 @@ export const ColisForm: React.FC<ColisFormProps> = ({
                         allowClear
                         mode="multiple"
                         maxTagCount="responsive"
+                        value={
+                          Array.isArray(field.value)
+                            ? field.value
+                            : typeof field.value === 'string' && field.value.trim() !== ''
+                              ? [field.value]
+                              : []
+                        }
                         onChange={(vals) => field.onChange(Array.isArray(vals) ? vals : [])}
                       >
                         <Option value="petit_carton">📦 Petit Carton</Option>

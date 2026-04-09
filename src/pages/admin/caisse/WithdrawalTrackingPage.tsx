@@ -26,9 +26,7 @@ const WithdrawalTrackingPage: React.FC = () => {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const params: any = {
-                type: 'DECAISSEMENT',
-            };
+            const params: any = {};
             if (filters.dates) {
                 params.date_debut = filters.dates[0].format('YYYY-MM-DD');
                 params.date_fin = filters.dates[1].format('YYYY-MM-DD');
@@ -37,7 +35,9 @@ const WithdrawalTrackingPage: React.FC = () => {
                 params.id_caisse = filters.id_caisse;
             }
 
-            const response = await apiService.get<any[]>('/caisse/mouvements', params);
+            // Endpoint dédié: renvoie uniquement les décaissements (retraits/sorties).
+            // apiService.get attend une config Axios -> { params }
+            const response = await apiService.get<any[]>('/caisse/withdrawals', { params });
             setData(response);
         } catch (error) {
             console.error("Erreur lors du chargement des retraits:", error);
@@ -83,7 +83,7 @@ const WithdrawalTrackingPage: React.FC = () => {
             key: "montant",
             render: (amount: number) => (
                 <Text type="danger" strong style={{ fontSize: 16 }}>
-                    -{formatMontant(amount)}
+                    {formatMontant(amount)}
                 </Text>
             ),
             sorter: (a: any, b: any) => a.montant - b.montant,

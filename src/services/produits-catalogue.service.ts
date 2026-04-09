@@ -53,6 +53,13 @@ class ProduitsCatalogueService {
     async getHistoriqueUtilisation(): Promise<any[]> {
         return apiService.get<any[]>('/produits-catalogue/historique')
     }
+
+    /**
+     * Créer un produit dans le catalogue
+     */
+    async create(data: Partial<ProduitCatalogue>): Promise<ProduitCatalogue> {
+        return apiService.post<ProduitCatalogue>('/produits-catalogue', data)
+    }
 }
 
 export const produitsCatalogueService = new ProduitsCatalogueService()

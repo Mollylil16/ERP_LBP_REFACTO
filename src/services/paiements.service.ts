@@ -11,7 +11,18 @@ class PaiementsService {
     if (params?.limit) queryParams.append('limit', params.limit.toString())
     if (params?.search) queryParams.append('search', params.search)
 
-    return apiService.get<PaginatedResponse<Paiement>>(`/paiements?${queryParams.toString()}`)
+    const res = await apiService.get<any>(`/paiements?${queryParams.toString()}`)
+    // Compat: backend renvoie une liste simple (non paginée) sur /paiements.
+    if (Array.isArray(res)) {
+      return {
+        data: res,
+        total: res.length,
+        page: params?.page ?? 1,
+        limit: params?.limit ?? res.length,
+        totalPages: 1,
+      }
+    }
+    return res as PaginatedResponse<Paiement>
   }
 
   /**
