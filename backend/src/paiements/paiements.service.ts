@@ -16,6 +16,7 @@ import { MouvementType } from '../caisse/entities/mouvement-caisse.entity';
 @Injectable()
 export class PaiementsService {
   private readonly logger = new Logger(PaiementsService.name);
+  private readonly CAISSE_PRINCIPALE_ID = 1;
 
   constructor(
     @InjectRepository(Paiement)
@@ -30,7 +31,7 @@ export class PaiementsService {
 
   async create(
     createPaiementDto: CreatePaiementDto,
-    userId: string,
+    user: any,
   ): Promise<Paiement> {
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
@@ -39,6 +40,10 @@ export class PaiementsService {
     try {
       const { id_facture, ref_colis, ...paiementData } =
         createPaiementDto as any;
+
+      const mode = String(paiementData.mode_paiement || '').toLowerCase();
+      const isInstant = mode === 'especes' || mode === 'comptant';
+      const username = user?.username ?? 'unknown';
 
       // 1. Trouver la facture par id ou par ref_colis
       let facture: Facture | null = null;
@@ -104,51 +109,54 @@ export class PaiementsService {
         ...paiementData,
         facture,
         date_paiement: new Date(paiementData.date_paiement),
-        code_user: userId,
+        code_user: username,
+        // Cash = validé immédiatement. MM/banque = en attente de validation.
+        etat_validation: isInstant ? 1 : 0,
       });
 
       const savedPaiement = (await queryRunner.manager.save(
         paiement,
       )) as unknown as Paiement;
 
-      // 4. Update Facture totals
-      facture.montant_paye =
-        Number(facture.montant_paye) + Number(paiementData.montant);
+      // 4. Cash (immédiat) : mise à jour facture + mouvement caisse tout de suite.
+      // MM/Virement/Chèque : le paiement reste "en attente" (pas d'impact sur facture/caisse avant validation).
+      if (isInstant) {
+        facture.montant_paye =
+          Number(facture.montant_paye) + Number(paiementData.montant);
 
-      // ✅ AJOUT: Mise à jour du statut de paiement
-      if (Number(facture.montant_paye) >= Number(facture.montant_ttc)) {
-        facture.payment_status = 'paid';
-        facture.etat = 1; // Définitive
-        this.logger.log(
-          `Facture ${facture.num_facture} entièrement payée et validée`,
+        if (Number(facture.montant_paye) >= Number(facture.montant_ttc)) {
+          facture.payment_status = 'paid';
+          facture.etat = 1; // Définitive
+          this.logger.log(
+            `Facture ${facture.num_facture} entièrement payée et validée`,
+          );
+        } else if (Number(facture.montant_paye) > 0) {
+          facture.payment_status = 'partial';
+        } else {
+          facture.payment_status = 'unpaid';
+        }
+
+        await queryRunner.manager.save(facture);
+
+        const mouvementType = this.getMouvementTypeFromModePaiement(
+          paiementData.mode_paiement,
         );
-      } else if (Number(facture.montant_paye) > 0) {
-        facture.payment_status = 'partial';
-      } else {
-        facture.payment_status = 'unpaid';
+        await this.caisseService.createMovement(
+          {
+            montant: paiementData.montant,
+            libelle: `Paiement facture ${facture.num_facture} - ${facture.colis.ref_colis}`,
+            mode_reglement: paiementData.mode_paiement,
+            num_dossier: facture.colis.ref_colis,
+            nom_client: facture.colis.client.nom_exp,
+            date_mouvement: paiementData.date_paiement,
+          },
+          mouvementType,
+          username,
+          this.shouldUseCaissePrincipale(user)
+            ? undefined
+            : facture.colis?.agence?.id,
+        );
       }
-
-      // Si c'était une proforma, elle devient tacitement définitive ou on gère ça via validation manuelle ?
-      // Dans LBP, la validation est souvent manuelle avant paiement, mais on peut forcer ici.
-
-      await queryRunner.manager.save(facture);
-
-      // ✅ AJOUT: Créer automatiquement un mouvement de caisse
-      const mouvementType = this.getMouvementTypeFromModePaiement(
-        paiementData.mode_paiement,
-      );
-      await this.caisseService.createMovement(
-        {
-          montant: paiementData.montant,
-          libelle: `Paiement facture ${facture.num_facture} - ${facture.colis.ref_colis}`,
-          mode_reglement: paiementData.mode_paiement,
-          num_dossier: facture.colis.ref_colis,
-          nom_client: facture.colis.client.nom_exp,
-          date_mouvement: paiementData.date_paiement,
-        },
-        mouvementType,
-        userId,
-      );
 
       await queryRunner.commitTransaction();
       return savedPaiement;
@@ -353,10 +361,57 @@ export class PaiementsService {
     });
   }
 
-  async validate(id: number): Promise<Paiement> {
+  async validate(id: number, validator?: any): Promise<Paiement> {
     const paiement = await this.findOne(id);
-    paiement.etat_validation = 1; // Validé
-    return await this.paiementRepository.save(paiement);
+    if (paiement.etat_validation === 1) return paiement;
+
+    // Appliquer l'impact au moment de la validation (MM / banque / etc.)
+    const facture = paiement.facture;
+    facture.montant_paye = Number(facture.montant_paye) + Number(paiement.montant);
+    if (Number(facture.montant_paye) >= Number(facture.montant_ttc)) {
+      facture.payment_status = 'paid';
+      facture.etat = 1;
+    } else if (Number(facture.montant_paye) > 0) {
+      facture.payment_status = 'partial';
+    } else {
+      facture.payment_status = 'unpaid';
+    }
+    await this.factureRepository.save(facture);
+
+    paiement.etat_validation = 1;
+    const saved = await this.paiementRepository.save(paiement);
+
+    // Mouvement caisse créé uniquement à validation (pour éviter d'exiger session/justificatif au moment de la saisie).
+    const mouvementType = this.getMouvementTypeFromModePaiement(paiement.mode_paiement);
+    const validatorUsername = validator?.username ?? saved.code_user ?? 'system';
+    await this.caisseService.createMovement(
+      {
+        montant: paiement.montant,
+        libelle: `Paiement facture ${facture.num_facture} - ${facture.colis.ref_colis}`,
+        mode_reglement: paiement.mode_paiement,
+        num_dossier: facture.colis.ref_colis,
+        nom_client: facture.colis.client.nom_exp,
+        date_mouvement:
+          paiement.date_paiement instanceof Date
+            ? paiement.date_paiement.toISOString().split('T')[0]
+            : (paiement.date_paiement as any),
+      },
+      mouvementType,
+      validatorUsername,
+      this.shouldUseCaissePrincipale(validator)
+        ? undefined
+        : facture.colis?.agence?.id,
+    );
+
+    return saved;
+  }
+
+  private shouldUseCaissePrincipale(user: any): boolean {
+    if (!user) return false;
+    const role = String(user?.role?.code ?? user?.role ?? '').toUpperCase();
+    if (role === 'DIRECTEUR' || role === 'ADMIN' || role === 'SUPER_ADMIN') return true;
+    if (user?.code_acces === 2 || user?.code_acces === 1) return true;
+    return false;
   }
 
   /**

@@ -81,6 +81,13 @@ const rolePermissionsMatrix = {
     'litiges.manage',
     'litiges.admin',
     'callcenter.inbox',
+    // VALIDATIONS / ANNULATIONS (workflow)
+    'colis.groupage.validate',
+    'colis.autres-envois.validate',
+    'factures.validate',
+    'factures.cancel',
+    'paiements.validate',
+    'paiements.cancel',
   ],
   SUPERVISEUR_REGIONAL: [
     'exploitation.groupage_colis.read',

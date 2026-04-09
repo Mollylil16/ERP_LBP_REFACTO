@@ -29,7 +29,9 @@ class AuthService {
   }
 
   async refreshToken(): Promise<{ token: string; refresh_token?: string }> {
-    const refreshToken = localStorage.getItem('lbp_refresh_token')
+    const refreshToken =
+      sessionStorage.getItem('lbp_refresh_token') ??
+      localStorage.getItem('lbp_refresh_token')
     return apiService.post('/auth/refresh', { refresh_token: refreshToken })
   }
 }

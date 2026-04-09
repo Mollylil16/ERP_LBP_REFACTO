@@ -73,13 +73,15 @@ export class CreateMarchandiseDto {
   id_tarif?: number;
 
   @ApiProperty({
-    example: 'carton',
+    example: ['petit_carton', 'grand_carton'],
     required: false,
-    description: "Type d'emballage : carton | sac | valise | bôrô",
+    description:
+      "Types d'emballage (multi) : petit_carton | moyen_carton | grand_carton | sac | valise | bôrô",
   })
   @IsOptional()
-  @IsString()
-  type_emballage?: string;
+  @IsArray()
+  @IsString({ each: true })
+  type_emballage?: string[];
 
   @ApiProperty({ example: 1, description: "Nombre d'emballages utilisés" })
   @IsNumber({}, { message: "Le nombre d'emballage doit être un nombre" })

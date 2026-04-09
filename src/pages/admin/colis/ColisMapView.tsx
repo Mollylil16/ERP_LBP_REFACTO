@@ -97,7 +97,7 @@ export const ColisMapView: React.FC = () => {
     const socketRef = useRef<Socket | null>(null)
 
     useEffect(() => {
-        const token = localStorage.getItem('lbp_token')
+        const token = sessionStorage.getItem('lbp_token') ?? localStorage.getItem('lbp_token')
         const authHeaders: HeadersInit = token
             ? { Authorization: `Bearer ${token}` }
             : {}

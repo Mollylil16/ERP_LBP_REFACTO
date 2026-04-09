@@ -307,7 +307,7 @@ export class UsersService implements OnApplicationBootstrap {
   async findById(id: number): Promise<User | null> {
     return this.usersRepository.findOne({
       where: { id },
-      relations: ['agence'],
+      relations: ['agence', 'roleEntity'],
     });
   }
 

@@ -293,6 +293,7 @@ export interface CreateColisDto {
     prix_unit: number
     id_tarif?: number
     prix_emballage?: number
+    type_emballage?: string[]
     nbre_emballage?: number // Ajouté pour compatibilité
     prix_assurance?: number
     prix_agence?: number

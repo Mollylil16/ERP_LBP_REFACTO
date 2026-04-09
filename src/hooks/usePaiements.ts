@@ -50,7 +50,7 @@ export function useCreatePaiement() {
       toast.success('Paiement enregistré avec succès')
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Erreur lors de l\'enregistrement du paiement')
+      toast.error(error?.message || 'Erreur lors de l\'enregistrement du paiement')
     },
   })
 }

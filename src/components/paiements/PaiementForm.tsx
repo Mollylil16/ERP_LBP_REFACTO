@@ -159,6 +159,13 @@ export const PaiementForm: React.FC<PaiementFormProps> = ({
   }, [restantInfo, modePaiement, setValue, montant])
 
   const onFormSubmit = (data: PaiementFormData) => {
+    // Sécurité UX: éviter un dépassement (le backend bloque aussi)
+    if (restantInfo && data.montant > restantInfo.restant_a_payer) {
+      // eslint-disable-next-line no-alert
+      // On utilise antd message plus bas dans le composant, mais ici on reste simple.
+      // (Le toast global de l'API affichera le message backend si besoin.)
+      return
+    }
     const submitData: CreatePaiementDto = {
       ref_colis: refColis,
       montant: data.montant,

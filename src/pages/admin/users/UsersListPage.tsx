@@ -216,7 +216,18 @@ export const UsersListPage: React.FC = () => {
 
           <Popconfirm
             title="Supprimer cet utilisateur ?"
-            onConfirm={() => usersService.delete(record.id).then(() => refetch())}
+            description="L’utilisateur sera désactivé (compte inactif), comme avec le bouton Statut."
+            onConfirm={async () => {
+              try {
+                await usersService.delete(record.id);
+                message.success("Utilisateur désactivé");
+                await refetch();
+              } catch (err: any) {
+                message.error(
+                  err?.message || "Impossible de désactiver cet utilisateur",
+                );
+              }
+            }}
             okText="Oui"
             cancelText="Non"
           >

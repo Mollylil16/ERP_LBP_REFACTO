@@ -45,7 +45,7 @@ const marchandiseSchema = z.object({
   prix_assurance: z.coerce.number().min(0).optional().default(0),
   prix_agence: z.coerce.number().min(0).optional().default(0),
   id_tarif: z.number().optional(),
-  type_emballage: z.string().optional(),
+  type_emballage: z.array(z.string()).optional().default([]),
   nbre_emballage: z.coerce.number().min(1, 'Le nombre d\'emballage doit être au moins 1'),
 })
 
@@ -877,6 +877,9 @@ export const ColisForm: React.FC<ColisFormProps> = ({
                         placeholder="Sélectionner"
                         size="large"
                         allowClear
+                        mode="multiple"
+                        maxTagCount="responsive"
+                        onChange={(vals) => field.onChange(Array.isArray(vals) ? vals : [])}
                       >
                         <Option value="petit_carton">📦 Petit Carton</Option>
                         <Option value="moyen_carton">📦 Moyen Carton</Option>

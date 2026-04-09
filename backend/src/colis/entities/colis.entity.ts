@@ -146,8 +146,8 @@ export class Marchandise {
   @JoinColumn({ name: 'id_tarif' })
   tarif: Tarif;
 
-  @Column({ nullable: true, length: 20 })
-  type_emballage: string; // carton | sac | valise | bôrô
+  @Column({ type: 'jsonb', nullable: true })
+  type_emballage: string[] | null;
 
   @Column({ type: 'int', default: 1 })
   nbre_emballage: number;

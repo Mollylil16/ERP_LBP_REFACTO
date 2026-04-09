@@ -24,6 +24,7 @@ import { ProduitsCatalogueModule } from './produits-catalogue/produits-catalogue
 import { TrackingModule } from './tracking/tracking.module';
 import { LitigesModule } from './litiges/litiges.module';
 import { CallCenterModule } from './callcenter/callcenter.module';
+import { ThrottlerModule } from '@nestjs/throttler';
 
 @Module({
   imports: [
@@ -78,6 +79,13 @@ import { CallCenterModule } from './callcenter/callcenter.module';
       },
       inject: [ConfigService],
     }),
+    ThrottlerModule.forRoot([
+      {
+        // Anti brute-force global (valeurs réglables via env plus tard si besoin)
+        ttl: 60_000,
+        limit: 120,
+      },
+    ]),
     UsersModule,
     ClientsModule,
     ColisModule,

@@ -31,6 +31,16 @@ interface FactureTemplateProps {
       tel_exp?: string;
       email_exp?: string;
     };
+    marchandises?: Array<{
+      nom_marchandise?: string;
+      nbre_colis?: number;
+      poids_total?: number;
+      prix_unit?: number;
+      prix_emballage?: number;
+      prix_assurance?: number;
+      prix_agence?: number;
+      total_montant?: number;
+    }>;
     nom_destinataire?: string;
     lieu_dest?: string;
     tel_dest?: string;
@@ -67,6 +77,24 @@ export const FactureTemplate: React.FC<FactureTemplateProps> = ({
   const montantHT = colis?.total_montant || facture.montant_ttc || 0;
   const tva = 0; // Pas de TVA pour l'instant
   const montantTTC = facture.montant_ttc;
+
+  const items =
+    colis?.marchandises && colis.marchandises.length > 0
+      ? colis.marchandises
+      : colis
+        ? [
+          {
+            nom_marchandise: colis.nom_marchandise,
+            nbre_colis: colis.nbre_colis,
+            poids_total: colis.poids_total,
+            prix_unit: colis.prix_unit,
+            prix_emballage: colis.prix_emballage,
+            prix_assurance: colis.prix_assurance,
+            prix_agence: colis.prix_agence,
+            total_montant: colis.total_montant,
+          },
+        ]
+        : [];
 
   return (
     <div
@@ -199,20 +227,18 @@ export const FactureTemplate: React.FC<FactureTemplateProps> = ({
         {colis && (
           <div className="facture-items-table">
             <Table
-              dataSource={[
-                {
-                  key: "1",
-                  description: colis.nom_marchandise || "Marchandise",
-                  quantite: colis.nbre_colis || 1,
-                  unite: "Colis",
-                  poids: `${colis.poids_total || 0} Kg`,
-                  prix_unitaire: colis.prix_unit || 0,
-                  prix_emballage: colis.prix_emballage || 0,
-                  prix_assurance: colis.prix_assurance || 0,
-                  prix_agence: colis.prix_agence || 0,
-                  montant: colis.total_montant || 0,
-                },
-              ]}
+              dataSource={items.map((m, idx) => ({
+                key: String(idx + 1),
+                description: m.nom_marchandise || "Marchandise",
+                quantite: m.nbre_colis || 1,
+                unite: "Colis",
+                poids: `${m.poids_total || 0} Kg`,
+                prix_unitaire: m.prix_unit || 0,
+                prix_emballage: m.prix_emballage || 0,
+                prix_assurance: m.prix_assurance || 0,
+                prix_agence: m.prix_agence || 0,
+                montant: m.total_montant || 0,
+              }))}
               columns={[
                 {
                   title: "Description",

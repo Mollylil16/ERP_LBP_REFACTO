@@ -33,7 +33,7 @@ export class PaiementsController {
   @RequirePermission('paiements.create')
   @ApiOperation({ summary: 'Enregistrer un nouveau paiement' })
   create(@Body() createPaiementDto: CreatePaiementDto, @Request() req) {
-    return this.paiementsService.create(createPaiementDto, req.user.username);
+    return this.paiementsService.create(createPaiementDto, req.user);
   }
 
   @Get()
@@ -107,7 +107,7 @@ export class PaiementsController {
   @RequirePermission('paiements.validate')
   @ApiOperation({ summary: 'Valider un paiement' })
   @ApiResponse({ status: 200, description: 'Paiement validé avec succès' })
-  validate(@Param('id') id: string) {
-    return this.paiementsService.validate(+id);
+  validate(@Param('id') id: string, @Request() req) {
+    return this.paiementsService.validate(+id, req.user);
   }
 }

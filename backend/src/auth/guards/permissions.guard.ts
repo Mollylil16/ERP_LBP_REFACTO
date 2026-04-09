@@ -7,6 +7,7 @@ import {
 import { Reflector } from '@nestjs/core';
 import { PERMISSIONS_KEY } from '../decorators/permissions.decorator';
 import { RolesService } from '../../roles/roles.service';
+import { effectiveRoleCode } from '../../common/effective-role-code';
 
 /**
  * Vérifie les codes permission **app** (alignés login / frontend), via la matrice DB + permission-code-map.
@@ -37,8 +38,7 @@ export class PermissionsGuard implements CanActivate {
       return true;
     }
 
-    const roleCode =
-      typeof user.role === 'string' ? user.role : user.role?.code;
+    const roleCode = effectiveRoleCode(user);
     if (!roleCode) {
       throw new ForbiddenException('Rôle utilisateur indéfini');
     }
@@ -69,12 +69,11 @@ export class PermissionsGuard implements CanActivate {
   }
 
   private hasFullAccess(user: any): boolean {
-    const role = user?.role;
-    const roleStr = typeof role === 'string' ? role : role?.code;
-    if (roleStr === 'SUPER_ADMIN') {
+    const r = (effectiveRoleCode(user) || '').toUpperCase();
+    if (r === 'SUPER_ADMIN') {
       return true;
     }
-    if (roleStr === 'DIRECTEUR' || roleStr === 'ADMIN') {
+    if (r === 'DIRECTEUR' || r === 'ADMIN') {
       return true;
     }
     if (user?.code_acces === 2) {

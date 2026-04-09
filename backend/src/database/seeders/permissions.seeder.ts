@@ -507,6 +507,49 @@ export async function seedPermissions(dataSource: DataSource): Promise<void> {
       action: 'READ',
       description: 'Accéder à la boîte call center (conversations, envoi)',
     },
+    // ── Validations (codes "app" utilisés par les guards/controllers) ─────
+    {
+      code: 'colis.groupage.validate',
+      module: PermissionModule.EXPLOITATION,
+      fonctionnalite: 'colis_groupage_validation',
+      action: 'UPDATE',
+      description: 'Valider un colis (groupage)',
+    },
+    {
+      code: 'colis.autres-envois.validate',
+      module: PermissionModule.EXPLOITATION,
+      fonctionnalite: 'colis_autres_envois_validation',
+      action: 'UPDATE',
+      description: 'Valider un colis (autres envois)',
+    },
+    {
+      code: 'factures.validate',
+      module: PermissionModule.FACTURATION,
+      fonctionnalite: 'factures_validation',
+      action: 'UPDATE',
+      description: 'Valider une facture (proforma → définitive)',
+    },
+    {
+      code: 'factures.cancel',
+      module: PermissionModule.FACTURATION,
+      fonctionnalite: 'factures_annulation',
+      action: 'DELETE',
+      description: 'Annuler une facture',
+    },
+    {
+      code: 'paiements.validate',
+      module: PermissionModule.OPERATION_CAISSE,
+      fonctionnalite: 'paiements_validation',
+      action: 'UPDATE',
+      description: 'Valider un paiement (mobile money / virement / chèque)',
+    },
+    {
+      code: 'paiements.cancel',
+      module: PermissionModule.OPERATION_CAISSE,
+      fonctionnalite: 'paiements_annulation',
+      action: 'DELETE',
+      description: 'Annuler un paiement',
+    },
   ];
 
   for (const row of explicitAppPermissions) {

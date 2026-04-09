@@ -38,7 +38,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   }
 
   // Vérifier aussi le token dans localStorage comme fallback
-  const hasToken = !!localStorage.getItem('lbp_token');
+  const hasToken = !!(sessionStorage.getItem('lbp_token') ?? localStorage.getItem('lbp_token'));
 
   // Si on a un token, on considère qu'on est authentifié même si user n'est pas encore défini
   // (cela peut arriver juste après le login avant que React ne mette à jour l'état)

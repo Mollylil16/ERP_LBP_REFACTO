@@ -14,6 +14,7 @@ import {
   ensureDashboardPermissions,
   mapDbPermissionCodesToAppCodes,
 } from '../common/permission-code-map';
+import { BusinessAuditService } from '../audit/business-audit.service';
 
 @Injectable()
 export class RolesService {
@@ -24,6 +25,7 @@ export class RolesService {
     private permissionsRepository: Repository<Permission>,
     @InjectRepository(RolePermission)
     private rolePermissionsRepository: Repository<RolePermission>,
+    private readonly businessAudit: BusinessAuditService,
   ) {}
 
   async create(createRoleDto: CreateRoleDto): Promise<Role> {
@@ -126,6 +128,16 @@ export class RolesService {
 
       await this.rolePermissionsRepository.save(rolePermission);
     }
+
+    this.businessAudit.logEvent({
+      action: 'rbac.role_permissions.updated',
+      entity: 'role',
+      entityId: String(roleId),
+      details: {
+        roleCode: role.code,
+        permissionIds,
+      },
+    });
 
     return await this.findOne(roleId);
   }

@@ -20,7 +20,9 @@ class ApiService {
     // Intercepteur pour ajouter le token à chaque requête
     this.api.interceptors.request.use(
       (config: InternalAxiosRequestConfig) => {
-        const token = localStorage.getItem('lbp_token')
+        // sessionStorage = isolé par onglet (évite le “swap” de session entre comptes)
+        const token =
+          sessionStorage.getItem('lbp_token') ?? localStorage.getItem('lbp_token')
         if (token && config.headers) {
           config.headers.Authorization = `Bearer ${token}`
         }
@@ -60,7 +62,8 @@ class ApiService {
           // Ne pas déconnecter pour les requêtes d'authentification ou si on vient juste de se connecter
           if (!isLoginRequest && !isOnLoginPage && !isAuthMeRequest) {
             // Vérifier si on a un token valide (peut-être juste une requête qui a échoué)
-            const token = localStorage.getItem('lbp_token')
+            const token =
+              sessionStorage.getItem('lbp_token') ?? localStorage.getItem('lbp_token')
             if (token) {
               // Token expiré ou invalide
               console.warn('[API] 401 error, removing token and redirecting')
@@ -68,6 +71,10 @@ class ApiService {
               localStorage.removeItem('lbp_refresh_token')
               localStorage.removeItem('lbp_permissions')
               localStorage.removeItem('lbp_mock_user')
+              sessionStorage.removeItem('lbp_token')
+              sessionStorage.removeItem('lbp_refresh_token')
+              sessionStorage.removeItem('lbp_permissions')
+              sessionStorage.removeItem('lbp_mock_user')
 
               // Rediriger vers login si pas déjà sur la page de login
               toast.error('Votre session a expiré. Veuillez vous reconnecter.')

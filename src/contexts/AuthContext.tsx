@@ -53,7 +53,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     }
 
     try {
-      const token = localStorage.getItem("lbp_token");
+      const token =
+        sessionStorage.getItem("lbp_token") ?? localStorage.getItem("lbp_token");
       if (token) {
 
         // Vérifier la validité du token et récupérer l'utilisateur
@@ -68,6 +69,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
             localStorage.removeItem("lbp_refresh_token");
             localStorage.removeItem("lbp_mock_user");
             localStorage.removeItem("lbp_permissions");
+            sessionStorage.removeItem("lbp_token");
+            sessionStorage.removeItem("lbp_refresh_token");
+            sessionStorage.removeItem("lbp_mock_user");
+            sessionStorage.removeItem("lbp_permissions");
           } else {
             // Pour les autres erreurs (réseau, etc.), on garde le token et on réessayera plus tard
             console.warn("Erreur lors de la vérification du token:", error);
@@ -88,7 +93,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       return;
     }
 
-    const token = localStorage.getItem("lbp_token");
+    const token =
+      sessionStorage.getItem("lbp_token") ?? localStorage.getItem("lbp_token");
     if (!token) {
       console.log('[AuthContext] No token, stopping loading');
       setIsLoading(false);
@@ -108,16 +114,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       const response: AuthResponse = await authService.login(credentials);
 
       // Sauvegarder le token
-      localStorage.setItem("lbp_token", response.token);
+      sessionStorage.setItem("lbp_token", response.token);
+      // Cleanup localStorage pour éviter le mélange entre onglets/comptes
+      localStorage.removeItem("lbp_token");
       if (response.refresh_token) {
-        localStorage.setItem("lbp_refresh_token", response.refresh_token);
+        sessionStorage.setItem("lbp_refresh_token", response.refresh_token);
+        localStorage.removeItem("lbp_refresh_token");
       }
 
       // Sauvegarder les permissions
-      localStorage.setItem(
+      sessionStorage.setItem(
         "lbp_permissions",
         JSON.stringify(response.permissions)
       );
+      localStorage.removeItem("lbp_permissions");
 
 
       // Définir l'utilisateur directement depuis la réponse (pas besoin de vérifier à nouveau)
@@ -158,6 +168,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     localStorage.removeItem("lbp_refresh_token");
     localStorage.removeItem("lbp_permissions");
     localStorage.removeItem("lbp_mock_user");
+    sessionStorage.removeItem("lbp_token");
+    sessionStorage.removeItem("lbp_refresh_token");
+    sessionStorage.removeItem("lbp_permissions");
+    sessionStorage.removeItem("lbp_mock_user");
     setUser(null);
     hasCheckedAuth.current = false; // Réinitialiser pour permettre une nouvelle vérification
     navigate("/login");

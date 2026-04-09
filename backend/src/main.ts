@@ -14,6 +14,8 @@ import { initSentry } from './common/interceptors/sentry.interceptor';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const configService = app.get(ConfigService);
+  // Support proxy TLS (NGINX/Traefik) for redirect + IP
+  (app as any).set?.('trust proxy', 1);
 
   // ✅ Initialiser Sentry pour monitoring des erreurs
   const sentryDsn = configService.get<string>('SENTRY_DSN');
@@ -41,11 +43,41 @@ async function bootstrap() {
   // ✅ Gestion globale des erreurs
   app.useGlobalFilters(new GlobalExceptionFilter());
 
-  // CORS — accepter toutes les origines en développement (indispensable pour accès depuis téléphone via IP réseau)
+  // ── CORS strict en production ──────────────────────────────────────────
+  // Env: CORS_ORIGINS="https://app1.com,https://app2.com"
+  const corsOriginsRaw = configService.get<string>('CORS_ORIGINS') ?? '';
+  const corsOrigins = corsOriginsRaw
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  const isProd = (configService.get<string>('NODE_ENV') ?? process.env.NODE_ENV) === 'production';
   app.enableCors({
-    origin: true, // Accepte toutes les origines (à restreindre en production)
+    origin: (origin, cb) => {
+      // Pas d'Origin = appels serveur-à-serveur / curl
+      if (!origin) return cb(null, true);
+      if (!isProd) return cb(null, true);
+      if (corsOrigins.length === 0) return cb(new Error('CORS: origin not allowed'), false);
+      return corsOrigins.includes(origin)
+        ? cb(null, true)
+        : cb(new Error('CORS: origin not allowed'), false);
+    },
     credentials: true,
   });
+
+  // ── HTTPS enforcement derrière proxy (NGINX/Traefik) ────────────────────
+  // Activer si ton proxy termine TLS et envoie x-forwarded-proto=https
+  const forceHttps = (configService.get<string>('FORCE_HTTPS') ?? '').toLowerCase() === 'true';
+  if (isProd && forceHttps) {
+    app.use((req: any, res: any, next: any) => {
+      const proto = req.headers['x-forwarded-proto'];
+      if (proto && String(proto).toLowerCase() !== 'https') {
+        const host = req.headers.host;
+        return res.redirect(301, `https://${host}${req.originalUrl}`);
+      }
+      return next();
+    });
+  }
 
   // Swagger
   const config = new DocumentBuilder()

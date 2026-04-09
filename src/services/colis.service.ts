@@ -8,6 +8,9 @@ function normalizeDateEnvoi(raw: unknown): string {
   if (typeof raw === 'string') {
     const m = raw.match(/^(\d{4}-\d{2}-\d{2})/)
     if (m) return m[1]
+    // Support legacy format "DD/MM/YYYY"
+    const fr = raw.match(/^(\d{2})\/(\d{2})\/(\d{4})$/)
+    if (fr) return `${fr[3]}-${fr[2]}-${fr[1]}`
   }
   try {
     const d = new Date(raw as string | Date)

@@ -290,11 +290,32 @@ export class FacturesService {
           width: 200,
           color: { dark: NAVY, light: WHITE },
         });
-        // ✅ AJOUT: QR Code de Paiement (ouvre la page publique de paiement)
+        // ✅ QR Code de Paiement (ouvre la page publique de paiement)
         let paymentQrBuffer: Buffer | null = null;
         try {
-          // URL de paiement directe (Phase 1 : /#/invoice/:id/pay)
-          const paymentUrl = `${frontendBase}/#/invoice/${facture.id}/pay`;
+          // Générer un lien de paiement public (token) pour éviter les routes cassées.
+          const crypto = require('crypto');
+          const token = crypto.randomBytes(24).toString('hex');
+
+          const montantRestant =
+            Number(facture.montant_ttc) - Number(facture.montant_paye || 0);
+          const finalMontant =
+            montantRestant > 0 ? montantRestant : Number(facture.montant_ttc || 0);
+
+          const date_expiration = new Date();
+          date_expiration.setHours(date_expiration.getHours() + 24);
+
+          const lien = this.lienRepository.create({
+            token,
+            facture,
+            montant: finalMontant,
+            statut: LienPaiementStatut.EN_ATTENTE,
+            date_expiration,
+          });
+          await this.lienRepository.save(lien);
+
+          const base = String(frontendBase || '').replace(/\/+$/, '');
+          const paymentUrl = `${base}/#/pay/${token}`;
           paymentQrBuffer = await QRCode.toBuffer(paymentUrl, {
             errorCorrectionLevel: 'H',
             margin: 1,

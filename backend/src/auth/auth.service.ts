@@ -4,6 +4,12 @@ import * as bcrypt from 'bcrypt';
 import { UsersService } from '../users/users.service';
 import { RolesService } from '../roles/roles.service';
 import { UserRole } from '../users/entities/user.entity';
+import { effectiveRoleCode } from '../common/effective-role-code';
+import { InjectRepository } from '@nestjs/typeorm';
+import { RefreshToken } from './entities/refresh-token.entity';
+import { Repository } from 'typeorm';
+import * as crypto from 'crypto';
+import { BusinessAuditService } from '../audit/business-audit.service';
 
 @Injectable()
 export class AuthService {
@@ -13,6 +19,9 @@ export class AuthService {
     private usersService: UsersService,
     private jwtService: JwtService,
     private rolesService: RolesService,
+    @InjectRepository(RefreshToken)
+    private readonly refreshTokenRepo: Repository<RefreshToken>,
+    private readonly businessAudit: BusinessAuditService,
   ) {}
 
   async validateUser(username: string, pass: string): Promise<any> {
@@ -37,16 +46,32 @@ export class AuthService {
     return result;
   }
 
+  auditLoginAttempt(payload: {
+    ok: boolean;
+    username: string;
+    userId?: number;
+    ip?: string | null;
+    userAgent?: string | null;
+  }) {
+    this.businessAudit.logEvent({
+      action: payload.ok ? 'auth.login.success' : 'auth.login.failed',
+      entity: 'auth',
+      userId: payload.userId,
+      username: payload.username,
+      details: {
+        ip: payload.ip ?? null,
+        userAgent: payload.userAgent ?? null,
+      },
+    });
+  }
+
   /**
    * Même objet que dans la réponse login — obligatoire pour GET /auth/me
    * (sinon le front reçoit role en string brute et casse affichage + permissions).
    */
   private resolveRoleCode(user: any): string {
-    return typeof user.role === 'string'
-      ? user.role
-      : user.role?.code ??
-          user.roleEntity?.code ??
-          UserRole.AGENT_EXPLOITATION;
+    const code = effectiveRoleCode(user);
+    return code || UserRole.AGENT_EXPLOITATION;
   }
 
   toPublicUser(user: any) {
@@ -96,13 +121,139 @@ export class AuthService {
     };
 
     const formattedUser = this.toPublicUser(user);
+    const accessToken = this.jwtService.sign(payload);
+    const refresh = await this.issueRefreshToken(user, undefined, undefined);
 
     return {
-      token: this.jwtService.sign(payload),
-      refresh_token: this.jwtService.sign(payload, { expiresIn: '7d' }),
+      token: accessToken,
+      refresh_token: refresh.token,
       user: formattedUser,
       permissions: await this.getPermissionsForUser(user),
     };
+  }
+
+  /**
+   * Refresh token opaque, stocké en base en hash + rotation à chaque refresh.
+   * - `token` = valeur opaque envoyée au client
+   * - `token_id` = identifiant (jti) stocké et indexé
+   */
+  async issueRefreshToken(
+    user: any,
+    ip?: string,
+    userAgent?: string,
+  ): Promise<{ token: string; token_id: string; expires_at: Date }> {
+    const raw = crypto.randomBytes(48).toString('base64url');
+    const tokenId = crypto.randomBytes(16).toString('hex');
+    const hash = crypto.createHash('sha256').update(raw).digest('hex');
+
+    const ttlDaysRaw = process.env.REFRESH_TOKEN_TTL_DAYS ?? '7';
+    const ttlDays = Math.max(1, Math.min(30, Number(ttlDaysRaw) || 7));
+    const expiresAt = new Date(Date.now() + ttlDays * 24 * 60 * 60 * 1000);
+
+    const row = this.refreshTokenRepo.create({
+      user: { id: user.id } as any,
+      token_id: tokenId,
+      token_hash: hash,
+      expires_at: expiresAt,
+      revoked_at: null,
+      created_ip: ip ?? null,
+      created_user_agent: userAgent ?? null,
+    });
+    await this.refreshTokenRepo.save(row);
+
+    return { token: raw, token_id: tokenId, expires_at: expiresAt };
+  }
+
+  async refreshAccessToken(
+    refreshTokenRaw: string,
+    ip?: string,
+    userAgent?: string,
+  ): Promise<{ token: string; refresh_token: string }> {
+    if (!refreshTokenRaw || refreshTokenRaw.trim() === '') {
+      throw new Error('Refresh token manquant');
+    }
+    const hash = crypto
+      .createHash('sha256')
+      .update(refreshTokenRaw)
+      .digest('hex');
+
+    const existing = await this.refreshTokenRepo.findOne({
+      where: { token_hash: hash },
+      relations: ['user', 'user.agence', 'user.roleEntity'],
+    });
+    if (!existing) {
+      this.businessAudit.logEvent({
+        action: 'auth.refresh.failed',
+        entity: 'auth',
+        details: { reason: 'not_found' },
+      });
+      throw new Error('Refresh token invalide');
+    }
+    if (existing.revoked_at) {
+      this.businessAudit.logEvent({
+        action: 'auth.refresh.failed',
+        entity: 'auth',
+        userId: existing.user?.id,
+        details: { reason: 'revoked' },
+      });
+      throw new Error('Refresh token révoqué');
+    }
+    if (new Date() > new Date(existing.expires_at)) {
+      existing.revoked_at = new Date();
+      await this.refreshTokenRepo.save(existing);
+      this.businessAudit.logEvent({
+        action: 'auth.refresh.failed',
+        entity: 'auth',
+        userId: existing.user?.id,
+        details: { reason: 'expired' },
+      });
+      throw new Error('Refresh token expiré');
+    }
+
+    // Rotation: révoquer l'ancien et émettre un nouveau
+    existing.revoked_at = new Date();
+    existing.rotated_from_ip = ip ?? null;
+    existing.rotated_from_user_agent = userAgent ?? null;
+    await this.refreshTokenRepo.save(existing);
+
+    const user = existing.user;
+    const roleCode = this.resolveRoleCode(user);
+    const payload = {
+      username: user.username,
+      sub: user.id,
+      role: roleCode,
+      code_acces: user.code_acces,
+      id_agence: user.agence?.id ?? null,
+    };
+    const accessToken = this.jwtService.sign(payload);
+    const nextRefresh = await this.issueRefreshToken(user, ip, userAgent);
+
+    this.businessAudit.logEvent({
+      action: 'auth.refresh.success',
+      entity: 'auth',
+      userId: user.id,
+      username: user.username,
+      details: { rotated: true },
+    });
+
+    return { token: accessToken, refresh_token: nextRefresh.token };
+  }
+
+  async revokeAllRefreshTokensForUser(userId: number, reason?: string) {
+    await this.refreshTokenRepo
+      .createQueryBuilder()
+      .update(RefreshToken)
+      .set({ revoked_at: new Date() })
+      .where('user_id = :userId', { userId })
+      .andWhere('revoked_at IS NULL')
+      .execute();
+
+    this.businessAudit.logEvent({
+      action: 'auth.logout',
+      entity: 'auth',
+      userId,
+      details: { reason: reason ?? 'logout' },
+    });
   }
 
   private getRoleId(role: string): number {

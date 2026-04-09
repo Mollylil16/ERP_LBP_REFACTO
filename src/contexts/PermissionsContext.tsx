@@ -22,7 +22,9 @@ export const PermissionsProvider: React.FC<{ children: React.ReactNode }> = ({ c
       setIsLoading(true)
 
       // Vérifier d'abord le cache localStorage
-      const cachedPermissions = localStorage.getItem('lbp_permissions')
+      const cachedPermissions =
+        sessionStorage.getItem('lbp_permissions') ??
+        localStorage.getItem('lbp_permissions')
       if (cachedPermissions) {
         try {
           const parsed = JSON.parse(cachedPermissions)
@@ -38,7 +40,8 @@ export const PermissionsProvider: React.FC<{ children: React.ReactNode }> = ({ c
       setPermissions(userPermissions)
 
       // Mettre à jour le cache
-      localStorage.setItem('lbp_permissions', JSON.stringify(userPermissions))
+      sessionStorage.setItem('lbp_permissions', JSON.stringify(userPermissions))
+      localStorage.removeItem('lbp_permissions')
     } catch (error) {
       console.error('Error loading permissions:', error)
       setPermissions([])

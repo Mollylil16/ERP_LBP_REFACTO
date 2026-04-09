@@ -139,6 +139,7 @@ export const FacturePreviewPage: React.FC = () => {
             colisData
               ? {
                 client_colis: colisData.client_colis,
+                marchandises: (colisData as any).marchandises,
                 nom_destinataire: colisData.nom_destinataire,
                 lieu_dest: colisData.lieu_dest,
                 tel_dest: colisData.tel_dest,
@@ -172,6 +173,7 @@ export const FacturePreviewPage: React.FC = () => {
               colisData
                 ? {
                   client_colis: colisData.client_colis,
+                  marchandises: (colisData as any).marchandises,
                   nom_destinataire: colisData.nom_destinataire,
                   lieu_dest: colisData.lieu_dest,
                   tel_dest: colisData.tel_dest,

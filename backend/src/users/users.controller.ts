@@ -104,7 +104,7 @@ export class UsersController {
   }
 
   @Delete(':id')
-  @RequirePermission('users.delete')
+  @RequirePermission('users.delete', 'users.update')
   @ApiOperation({ summary: 'Supprimer (désactiver) un utilisateur (admin/DG)' })
   async delete(@Param('id', ParseIntPipe) id: number) {
     await this.usersService.deleteUser(id);

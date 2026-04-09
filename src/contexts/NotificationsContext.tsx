@@ -48,7 +48,8 @@ export const NotificationsProvider: React.FC<{
 
   // Charger les notifications depuis le backend
   const fetchNotifications = useCallback(async () => {
-    const token = localStorage.getItem("lbp_token");
+    const token =
+      sessionStorage.getItem("lbp_token") ?? localStorage.getItem("lbp_token");
     const hashPath = window.location.hash.replace(/^#/, "");
     const isOnLoginPage =
       window.location.pathname === "/login" ||
