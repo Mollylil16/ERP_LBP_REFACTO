@@ -919,12 +919,12 @@ export const ColisForm: React.FC<ColisFormProps> = ({
                   render={({ field }) => (
                     <Form.Item label="Type d'emballage">
                       <Select
-                        {...field}
                         placeholder="Sélectionner"
                         size="large"
                         allowClear
                         mode="multiple"
                         maxTagCount="responsive"
+                        onBlur={field.onBlur}
                         value={
                           Array.isArray(field.value)
                             ? field.value

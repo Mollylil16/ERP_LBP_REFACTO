@@ -54,7 +54,8 @@ export class ProduitsCatalogueController {
   }
 
   @Post()
-  @RequirePermission('factures.create')
+  // Permettre la création depuis l’exploitation (saisie rapide depuis ColisForm)
+  @RequirePermission('factures.create', 'exploitation.groupage_colis.create')
   create(@Body() createDto: CreateProduitCatalogueDto) {
     return this.produitsService.create(createDto);
   }

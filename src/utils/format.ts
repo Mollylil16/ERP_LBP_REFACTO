@@ -2,9 +2,35 @@
  * Utilitaires de formatage
  */
 
-import { format, parseISO } from 'date-fns'
+import { format, parse, parseISO, isValid } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { APP_CONFIG } from '@constants/application'
+
+function toDateSafe(input: string | Date): Date | null {
+  if (input instanceof Date) return isValid(input) ? input : null
+  const s = String(input).trim()
+  if (!s) return null
+
+  // 1) ISO / YYYY-MM-DD / ISO datetime
+  try {
+    const d = parseISO(s)
+    if (isValid(d)) return d
+  } catch {
+    // ignore
+  }
+
+  // 2) "DD/MM/YYYY"
+  try {
+    const d = parse(s, 'dd/MM/yyyy', new Date())
+    if (isValid(d)) return d
+  } catch {
+    // ignore
+  }
+
+  // 3) Fallback Date constructor (e.g. "2026-04-09 10:15:00")
+  const d = new Date(s)
+  return isValid(d) ? d : null
+}
 
 /**
  * Formate une date au format DD/MM/YYYY
@@ -13,7 +39,8 @@ export function formatDate(date: string | Date | null | undefined): string {
   if (!date) return '-'
 
   try {
-    const dateObj = typeof date === 'string' ? parseISO(date) : date
+    const dateObj = toDateSafe(date)
+    if (!dateObj) return '-'
     return format(dateObj, APP_CONFIG.dateFormat, { locale: fr })
   } catch {
     return '-'
@@ -27,7 +54,8 @@ export function formatDateTime(date: string | Date | null | undefined): string {
   if (!date) return '-'
 
   try {
-    const dateObj = typeof date === 'string' ? parseISO(date) : date
+    const dateObj = toDateSafe(date)
+    if (!dateObj) return '-'
     return format(dateObj, APP_CONFIG.dateTimeFormat, { locale: fr })
   } catch {
     return '-'
