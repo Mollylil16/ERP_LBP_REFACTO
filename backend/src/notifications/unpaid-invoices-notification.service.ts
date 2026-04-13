@@ -4,7 +4,14 @@ import { PaiementsService } from '../paiements/paiements.service';
 import { NotificationService } from './notification.service';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { User } from '../users/entities/user.entity';
+import { User, UserRole } from '../users/entities/user.entity';
+
+const UNPAID_INVOICE_NOTIFY_ROLES: UserRole[] = [
+  UserRole.CAISSIER,
+  UserRole.CAISSIER_GROUPAGE,
+  UserRole.MANAGER,
+  UserRole.ADMIN,
+];
 
 @Injectable()
 export class UnpaidInvoicesNotificationService {
@@ -59,7 +66,7 @@ export class UnpaidInvoicesNotificationService {
       const recipients = await this.userRepository
         .createQueryBuilder('user')
         .where('user.role IN (:...roles)', {
-          roles: ['caissiere', 'manager', 'admin'],
+          roles: UNPAID_INVOICE_NOTIFY_ROLES,
         })
         .andWhere('user.actif = true')
         .getMany();
@@ -142,7 +149,7 @@ export class UnpaidInvoicesNotificationService {
       const recipients = await this.userRepository
         .createQueryBuilder('user')
         .where('user.role IN (:...roles)', {
-          roles: ['caissiere', 'manager', 'admin'],
+          roles: UNPAID_INVOICE_NOTIFY_ROLES,
         })
         .andWhere('user.actif = true')
         .getMany();
