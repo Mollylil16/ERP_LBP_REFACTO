@@ -46,6 +46,36 @@ const CallCenterConversationPage = lazy(() =>
   import('../pages/admin/callcenter/CallCenterConversationPage').then(m => ({ default: m.CallCenterConversationPage })),
 )
 
+const ExploitationDashboardPage = lazy(() =>
+  import('../pages/admin/exploitation/ExploitationDashboardPage').then(m => ({ default: m.ExploitationDashboardPage })),
+)
+const ExploitationCreditsPage = lazy(() =>
+  import('../pages/admin/exploitation/ExploitationCreditsPage').then(m => ({ default: m.ExploitationCreditsPage })),
+)
+const ExploitationPointsJournaliersPage = lazy(() =>
+  import('../pages/admin/exploitation/ExploitationPointsJournaliersPage').then(m => ({
+    default: m.ExploitationPointsJournaliersPage,
+  })),
+)
+const AgencyCreditsRecapPage = lazy(() =>
+  import('../pages/admin/exploitation/AgencyCreditsRecapPage').then(m => ({ default: m.AgencyCreditsRecapPage })),
+)
+const AgencyPointJournalierNouveauPage = lazy(() =>
+  import('../pages/admin/exploitation/AgencyPointJournalierNouveauPage').then(m => ({
+    default: m.AgencyPointJournalierNouveauPage,
+  })),
+)
+const ExploitationFournituresPage = lazy(() =>
+  import('../pages/admin/exploitation/ExploitationFournituresPage').then(m => ({
+    default: m.ExploitationFournituresPage,
+  })),
+)
+const AgencyFournituresDemandePage = lazy(() =>
+  import('../pages/admin/exploitation/AgencyFournituresDemandePage').then(m => ({
+    default: m.AgencyFournituresDemandePage,
+  })),
+)
+
 // Pages - Factures (lazy loaded)
 const FacturesListPage = lazy(() => import('../pages/admin/factures/FacturesListPage').then(m => ({ default: m.FacturesListPage })))
 const FacturePreviewPage = lazy(() => import('../pages/admin/factures/FacturePreviewPage').then(m => ({ default: m.FacturePreviewPage })))
@@ -68,6 +98,16 @@ const WithdrawalTrackingPage = lazy(() => import('../pages/admin/caisse/Withdraw
 const StatistiquesHistoriquesPage = lazy(() => import('../pages/admin/statistiques/StatistiquesHistoriquesPage').then(m => ({ default: m.StatistiquesHistoriquesPage })))
 const RentabiliteTarifPage = lazy(() => import('../pages/admin/statistiques/RentabiliteTarifPage'))
 const TarifManagementPage = lazy(() => import('../pages/admin/settings/TarifManagementPage'))
+const CatalogueProduitsPage = lazy(() =>
+  import('../pages/admin/settings/CatalogueProduitsPage').then((m) => ({
+    default: m.CatalogueProduitsPage,
+  })),
+)
+const HistoriqueProduitsPage = lazy(() =>
+  import('../pages/admin/produits/HistoriqueProduitsPage').then((m) => ({
+    default: m.HistoriqueProduitsPage,
+  })),
+)
 
 // ✅ Flux Auth & Agences
 import { ChangePasswordPage, SelectAgencyPage, AgencesManagementPage } from './lazyPages'
@@ -323,6 +363,80 @@ export const AppRoutes: React.FC = () => {
           }
         />
 
+        {/* Agent exploitation — crédits & points journaliers */}
+        <Route
+          path="exploitation"
+          element={
+            <ProtectedRoute requiredPermission={[...ROUTE_ACCESS.exploitationDashboard]}>
+              <LazyPageLoader>
+                <ExploitationDashboardPage />
+              </LazyPageLoader>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="exploitation/credits"
+          element={
+            <ProtectedRoute requiredPermission={[...ROUTE_ACCESS.exploitationCredits]}>
+              <LazyPageLoader>
+                <ExploitationCreditsPage />
+              </LazyPageLoader>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="exploitation/points-journaliers"
+          element={
+            <ProtectedRoute
+              requiredPermission={[...ROUTE_ACCESS.exploitationPointsJournaliers]}
+            >
+              <LazyPageLoader>
+                <ExploitationPointsJournaliersPage />
+              </LazyPageLoader>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="exploitation/fournitures"
+          element={
+            <ProtectedRoute requiredPermission={[...ROUTE_ACCESS.exploitationFournitures]}>
+              <LazyPageLoader>
+                <ExploitationFournituresPage />
+              </LazyPageLoader>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="agence/credits-recap"
+          element={
+            <ProtectedRoute requiredPermission={ROUTE_ACCESS.agenceCreditsRecap}>
+              <LazyPageLoader>
+                <AgencyCreditsRecapPage />
+              </LazyPageLoader>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="agence/point-journalier/nouveau"
+          element={
+            <ProtectedRoute requiredPermission={[...ROUTE_ACCESS.agencePointJournalier]}>
+              <LazyPageLoader>
+                <AgencyPointJournalierNouveauPage />
+              </LazyPageLoader>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="agence/fournitures/demande"
+          element={
+            <ProtectedRoute requiredPermission={[...ROUTE_ACCESS.agenceFournituresDemande]}>
+              <LazyPageLoader>
+                <AgencyFournituresDemandePage />
+              </LazyPageLoader>
+            </ProtectedRoute>
+          }
+        />
+
         {/* Factures */}
         <Route path="factures">
           <Route
@@ -430,6 +544,26 @@ export const AppRoutes: React.FC = () => {
             <ProtectedRoute requiredPermission={ROUTE_ACCESS.settingsAgences}>
               <LazyPageLoader>
                 <AgencesManagementPage />
+              </LazyPageLoader>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="settings/catalogue-produits"
+          element={
+            <ProtectedRoute requiredPermission={ROUTE_ACCESS.settingsCatalogueProduits}>
+              <LazyPageLoader>
+                <CatalogueProduitsPage />
+              </LazyPageLoader>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="settings/produits-historique"
+          element={
+            <ProtectedRoute requiredPermission={ROUTE_ACCESS.settingsProduitsHistorique}>
+              <LazyPageLoader>
+                <HistoriqueProduitsPage />
               </LazyPageLoader>
             </ProtectedRoute>
           }

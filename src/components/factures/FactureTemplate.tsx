@@ -18,6 +18,7 @@ import {
   formatMontantWithDevise,
   formatRefColis,
 } from "@utils/format";
+import { APP_CONFIG } from "@constants/application";
 import dayjs from "dayjs";
 import "./FactureTemplate.css";
 
@@ -133,7 +134,9 @@ export const FactureTemplate: React.FC<FactureTemplateProps> = ({
 
       {/* Ligne agence + service client */}
       <div className="facture-agence-bar">
-        <span className="facture-agence-left">SERVICES CLIENT : +225 05 08 00 36 35</span>
+        <span className="facture-agence-left">
+          SERVICES CLIENT : {APP_CONFIG.company.callCenterPhones}
+        </span>
       </div>
 
       {/* === GRAND TITRE DETAILS COLIS === */}

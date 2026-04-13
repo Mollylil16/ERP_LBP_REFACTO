@@ -19,7 +19,7 @@ class PaiementsService {
         total: res.length,
         page: params?.page ?? 1,
         limit: params?.limit ?? res.length,
-        totalPages: 1,
+        total_pages: 1,
       }
     }
     return res as PaginatedResponse<Paiement>

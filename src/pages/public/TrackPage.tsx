@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom'
 import { Card, Input, Button, Typography, Space, Timeline, Empty, Descriptions, Tag, Divider, Alert } from 'antd'
 import { SearchOutlined, EnvironmentOutlined, GlobalOutlined } from '@ant-design/icons'
 import { colisService, ColisTrackingInfo } from '@services/colis.service'
+import { formatDateTime } from '@utils/format'
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
@@ -151,7 +152,7 @@ export const TrackPage: React.FC = () => {
                         <Text strong style={{ fontSize: 13 }}>{step.title}</Text>
                         <br />
                         <Text type="secondary" style={{ fontSize: 12 }}>
-                          {new Date(step.date).toLocaleString('fr-FR')} - {step.location || 'Agence LBP'}
+                          {formatDateTime(step.date)} - {step.location || 'Agence LBP'}
                         </Text>
                       </div>
                     ),

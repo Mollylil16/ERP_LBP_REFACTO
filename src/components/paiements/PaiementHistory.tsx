@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { paiementsService } from '../../services/paiements.service';
 import { Paiement } from '../../types';
 import type { ColumnsType } from 'antd/es/table';
+import { formatDate } from '@utils/format';
 
 interface PaiementHistoryProps {
     factureId: number;
@@ -30,7 +31,7 @@ export const PaiementHistory: React.FC<PaiementHistoryProps> = ({ factureId }) =
             title: 'Date',
             dataIndex: 'date_paiement',
             key: 'date_paiement',
-            render: (date: string) => new Date(date).toLocaleDateString('fr-FR'),
+            render: (date: string) => formatDate(date),
             sorter: (a: Paiement, b: Paiement) => new Date(a.date_paiement).getTime() - new Date(b.date_paiement).getTime(),
         },
         {

@@ -24,6 +24,8 @@ import { ProduitsCatalogueModule } from './produits-catalogue/produits-catalogue
 import { TrackingModule } from './tracking/tracking.module';
 import { LitigesModule } from './litiges/litiges.module';
 import { CallCenterModule } from './callcenter/callcenter.module';
+import { ExploitationModule } from './exploitation/exploitation.module';
+import { FournituresBureauModule } from './fournitures-bureau/fournitures-bureau.module';
 import { ThrottlerModule } from '@nestjs/throttler';
 
 @Module({
@@ -106,6 +108,8 @@ import { ThrottlerModule } from '@nestjs/throttler';
     TrackingModule,
     LitigesModule,
     CallCenterModule,
+    ExploitationModule,
+    FournituresBureauModule,
   ],
   controllers: [AppController],
   providers: [AppService],

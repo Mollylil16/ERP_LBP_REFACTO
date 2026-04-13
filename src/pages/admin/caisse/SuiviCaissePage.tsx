@@ -20,11 +20,19 @@ import { RapportGrandesLignes } from '@components/caisse/RapportGrandesLignes'
 import { WithPermission } from '@components/common/WithPermission'
 import { TracedActionButton } from '@components/audit/TracedActionButton'
 import { PERMISSIONS } from '@constants/permissions'
+import { usePermissions } from '@hooks/usePermissions'
+import { RecettesDuJourCard } from '@components/paiements/RecettesDuJourCard'
 import { useCaisses, useSoldeCaisse } from '@hooks/useCaisse'
 import { caisseService } from '@services/caisse.service'
 import { useQuery, useMutation } from '@tanstack/react-query'
 
 export const SuiviCaissePage: React.FC = () => {
+  const { hasPermission } = usePermissions()
+  const canSeeRecettesDuJour =
+    hasPermission(PERMISSIONS.CAISSE.VIEW) ||
+    hasPermission(PERMISSIONS.PAIEMENTS.READ) ||
+    hasPermission(PERMISSIONS.EXPLOITATION.CREDITS_MANAGE)
+
   const [activeTab, setActiveTab] = React.useState('appro')
   const [approFormVisible, setApproFormVisible] = React.useState(false)
   const [decaissementFormVisible, setDecaissementFormVisible] = React.useState(false)
@@ -297,6 +305,8 @@ export const SuiviCaissePage: React.FC = () => {
               </Card>
             )}
           </div>
+
+          {canSeeRecettesDuJour ? <RecettesDuJourCard /> : null}
 
           <Tabs activeKey={activeTab} onChange={setActiveTab} size="large" items={mainTabItems} />
         </Space>

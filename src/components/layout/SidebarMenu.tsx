@@ -21,6 +21,8 @@ import {
   UserOutlined,
   ClusterOutlined,
   GlobalOutlined,
+  ShoppingOutlined,
+  HistoryOutlined,
 } from "@ant-design/icons";
 import { usePermissions } from "@hooks/usePermissions";
 import { ROUTE_ACCESS, COLIS_READ_ANY } from "@constants/routeAccess";
@@ -53,6 +55,32 @@ export const SidebarMenu: React.FC<SidebarMenuProps> = ({ collapsed: _collapsed 
     canColisAutres ||
     canColisMap ||
     canExpeditions;
+
+  const canExploitationAgentDash = hasAnyPermission([
+    ...ROUTE_ACCESS.exploitationDashboard,
+  ]);
+  const canExploitationCredits = hasAnyPermission([
+    ...ROUTE_ACCESS.exploitationCredits,
+  ]);
+  const canExploitationPoints = hasAnyPermission([
+    ...ROUTE_ACCESS.exploitationPointsJournaliers,
+  ]);
+  const canAgenceRecap = hasPermission(ROUTE_ACCESS.agenceCreditsRecap);
+  const canAgencePJ = hasAnyPermission([...ROUTE_ACCESS.agencePointJournalier]);
+  const canExploitationFournitures = hasAnyPermission([
+    ...ROUTE_ACCESS.exploitationFournitures,
+  ]);
+  const canAgenceFournitures = hasAnyPermission([
+    ...ROUTE_ACCESS.agenceFournituresDemande,
+  ]);
+  const showExploitationAgentBlock =
+    canExploitationAgentDash ||
+    canExploitationCredits ||
+    canExploitationPoints ||
+    canAgenceRecap ||
+    canAgencePJ ||
+    canExploitationFournitures ||
+    canAgenceFournitures;
 
   const showClientsSuivi =
     hasPermission(ROUTE_ACCESS.clients) ||
@@ -94,6 +122,24 @@ export const SidebarMenu: React.FC<SidebarMenuProps> = ({ collapsed: _collapsed 
           },
         ]
       : []),
+    ...(hasPermission(ROUTE_ACCESS.settingsCatalogueProduits)
+      ? [
+          {
+            key: "/settings/catalogue-produits",
+            icon: <ShoppingOutlined />,
+            label: "Catalogue produits",
+          },
+        ]
+      : []),
+    ...(hasPermission(ROUTE_ACCESS.settingsProduitsHistorique)
+      ? [
+          {
+            key: "/settings/produits-historique",
+            icon: <HistoryOutlined />,
+            label: "Historique marchandises",
+          },
+        ]
+      : []),
   ];
   const settingsMenuBlock =
     settingsChildren.length > 0
@@ -108,6 +154,69 @@ export const SidebarMenu: React.FC<SidebarMenuProps> = ({ collapsed: _collapsed 
       : [];
 
   const exploitationChildren: any[] = [
+    ...(canExploitationAgentDash
+      ? [
+          {
+            key: "/exploitation",
+            icon: <BarChartOutlined />,
+            label: "Synthèse agent exploitation",
+          },
+        ]
+      : []),
+    ...(canExploitationCredits
+      ? [
+          {
+            key: "/exploitation/credits",
+            icon: <DollarOutlined />,
+            label: "Crédits inter-agences",
+          },
+        ]
+      : []),
+    ...(canExploitationPoints
+      ? [
+          {
+            key: "/exploitation/points-journaliers",
+            icon: <FileTextOutlined />,
+            label: "Points journaliers",
+          },
+        ]
+      : []),
+    ...(canExploitationFournitures
+      ? [
+          {
+            key: "/exploitation/fournitures",
+            icon: <ShoppingOutlined />,
+            label: "Fournitures bureau",
+          },
+        ]
+      : []),
+    ...(canAgenceRecap
+      ? [
+          {
+            key: "/agence/credits-recap",
+            icon: <GlobalOutlined />,
+            label: "Récap crédits (agence)",
+          },
+        ]
+      : []),
+    ...(canAgencePJ
+      ? [
+          {
+            key: "/agence/point-journalier/nouveau",
+            icon: <FileTextOutlined />,
+            label: "Nouveau point journalier",
+          },
+        ]
+      : []),
+    ...(canAgenceFournitures
+      ? [
+          {
+            key: "/agence/fournitures/demande",
+            icon: <ShoppingOutlined />,
+            label: "Demande fournitures",
+          },
+        ]
+      : []),
     ...(canColisGroupage
       ? [
           {
@@ -273,7 +382,8 @@ export const SidebarMenu: React.FC<SidebarMenuProps> = ({ collapsed: _collapsed 
           },
         ]
       : []),
-    ...(showExploitation && exploitationChildren.length > 0
+    ...((showExploitation || showExploitationAgentBlock) &&
+    exploitationChildren.length > 0
       ? [
           {
             key: "exploitation_root",
@@ -357,7 +467,9 @@ export const SidebarMenu: React.FC<SidebarMenuProps> = ({ collapsed: _collapsed 
       p.startsWith("/colis/groupage") ||
       p.startsWith("/colis/autres-envois") ||
       p.startsWith("/colis/map") ||
-      p.startsWith("/expeditions")
+      p.startsWith("/expeditions") ||
+      p.startsWith("/exploitation") ||
+      p.startsWith("/agence/")
     ) {
       keys.push("exploitation_root");
     }

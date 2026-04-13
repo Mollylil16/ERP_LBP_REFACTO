@@ -6,6 +6,7 @@ import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { useColisList } from '@hooks/useColis'
 import { Colis } from '@types'
+import { formatDateTime } from '@utils/format'
 import { io, Socket } from 'socket.io-client'
 
 // Fix Leaflet marker icon issue
@@ -260,7 +261,7 @@ export const ColisMapView: React.FC = () => {
                                                 {pos.batterie !== undefined && <Text type="secondary">Batterie : <b>{pos.batterie}%</b></Text>}
                                                 <Text type="secondary">Coordonnées : {lat.toFixed(4)}, {lon.toFixed(4)}</Text>
                                                 {pos.timestamp_gps && <Text type="secondary" style={{ fontSize: 10 }}>
-                                                    Dernière MAJ : {new Date(pos.timestamp_gps).toLocaleString('fr-FR')}
+                                                    Dernière MAJ : {formatDateTime(pos.timestamp_gps)}
                                                 </Text>}
                                             </div>
                                         </div>

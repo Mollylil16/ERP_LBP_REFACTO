@@ -4,14 +4,15 @@ export interface ProduitCatalogue {
     id: number
     code?: string
     nom: string
-    categorie: 'EMBALLAGE' | 'DENREE' | 'HUILE_ET_KARITE' | 'DIVERS' | 'COLIS_RAPIDE_EXPORT'
-    nature: 'PRIX_UNITAIRE' | 'PRIX_FORFAITAIRE' | 'PRIX_AU_POIDS'
+    categorie: 'DENREE' | 'HUILE_ET_KARITE' | 'DIVERS' | 'COLIS_RAPIDE_EXPORT'
+    nature?: 'PRIX_UNITAIRE' | 'PRIX_FORFAITAIRE' | null
     prix_unitaire?: number
     prix_forfaitaire?: number
     poids_min?: number
     poids_max?: number
     devise?: string
     description?: string
+    unite?: string
     actif: boolean
 }
 
@@ -21,6 +22,11 @@ class ProduitsCatalogueService {
      */
     async getAll(): Promise<ProduitCatalogue[]> {
         return apiService.get<ProduitCatalogue[]>('/produits-catalogue')
+    }
+
+    /** Actifs + inactifs (droits factures.create) */
+    async getAllForManagement(): Promise<ProduitCatalogue[]> {
+        return apiService.get<ProduitCatalogue[]>('/produits-catalogue/gestion')
     }
 
     /**
@@ -59,6 +65,14 @@ class ProduitsCatalogueService {
      */
     async create(data: Partial<ProduitCatalogue>): Promise<ProduitCatalogue> {
         return apiService.post<ProduitCatalogue>('/produits-catalogue', data)
+    }
+
+    async update(id: number, data: Partial<ProduitCatalogue>): Promise<ProduitCatalogue> {
+        return apiService.put<ProduitCatalogue>(`/produits-catalogue/${id}`, data)
+    }
+
+    async remove(id: number): Promise<void> {
+        return apiService.delete(`/produits-catalogue/${id}`)
     }
 }
 

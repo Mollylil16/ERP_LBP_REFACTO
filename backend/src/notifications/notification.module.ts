@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ScheduleModule } from '@nestjs/schedule';
 import { NotificationService } from './notification.service';
@@ -14,7 +14,7 @@ import { RolesModule } from '../roles/roles.module';
   imports: [
     TypeOrmModule.forFeature([Notification, User]),
     ScheduleModule.forRoot(),
-    PaiementsModule,
+    forwardRef(() => PaiementsModule),
     RolesModule,
   ],
   providers: [

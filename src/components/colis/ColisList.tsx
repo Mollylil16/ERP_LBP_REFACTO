@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import {
-  Table,
   Button,
   Space,
   Input,
@@ -12,6 +11,7 @@ import {
   Row,
   Col,
   DatePicker,
+  Grid,
 } from "antd";
 import {
   EditOutlined,
@@ -85,6 +85,9 @@ export const ColisList: React.FC<ColisListProps> = ({
     [Dayjs | null, Dayjs | null] | null
   >(null);
   const [exporting, setExporting] = useState(false);
+
+  const screens = Grid.useBreakpoint();
+  const tableCompact = screens.lg === false;
 
   const { hasPermission } = usePermissions();
   const { t } = useTranslation("colis");
@@ -225,88 +228,87 @@ export const ColisList: React.FC<ColisListProps> = ({
     }
   };
 
-  const columns: ColumnsType<Colis> = [
-    {
-      title: t("reference"),
-      dataIndex: "ref_colis",
-      key: "ref_colis",
-      fixed: "left",
-      width: 150,
-      render: (text: string) => (
-        <Tag color="blue" className="ref-tag">
-          {formatRefColis(text)}
-        </Tag>
-      ),
-    },
-    {
-      title: t("dateEnvoi"),
-      dataIndex: "date_envoi",
-      key: "date_envoi",
-      width: 120,
-      render: (date: string) => formatDate(date),
-      sorter: true,
-    },
-    {
-      title: t("trafic"),
-      dataIndex: "trafic_envoi",
-      key: "trafic_envoi",
-      width: 150,
-      render: (trafic: string) => <Tag>{trafic}</Tag>,
-      filters: APP_CONFIG.traficEnvoi.map(trafic => ({ text: trafic, value: trafic })),
-    },
-    {
-      title: "Statut Suivi",
-      dataIndex: "statut_suivi",
-      key: "statut_suivi",
-      width: 130,
-      render: (status: string) => (
-        <Tag color={getStatusColor(status)}>
-          {status || 'EMBALLE'}
-        </Tag>
-      ),
-    },
-    {
-      title: t("expediteur"),
-      key: "expediteur",
-      width: 200,
-      render: (_: unknown, record: Colis) => record.client_colis?.nom_exp || "-",
-    },
-    {
-      title: t("destinataire"),
-      dataIndex: "nom_destinataire",
-      key: "nom_destinataire",
-      width: 200,
-    },
-    {
-      title: t("marchandise"),
-      dataIndex: "nom_marchandise",
-      key: "nom_marchandise",
-      width: 200,
-      ellipsis: true,
-    },
-    {
-      title: t("poidsKg"),
-      dataIndex: "poids_total",
-      key: "poids_total",
-      width: 100,
-      render: (poids: number) => poids?.toFixed(2) || "0",
-      sorter: true,
-    },
-    {
-      title: t("montantTotal"),
-      dataIndex: "total_montant",
-      key: "total_montant",
-      width: 150,
-      render: (montant: number) => formatMontantWithDevise(montant),
-      sorter: true,
-    },
-    {
-      title: tCommon("actions"),
-      key: "actions",
-      fixed: "right",
-      width: 150,
-      render: (_: unknown, record: Colis) => (
-        <Space size="small">
+  const refCol: ColumnsType<Colis>[0] = {
+    title: t("reference"),
+    dataIndex: "ref_colis",
+    key: "ref_colis",
+    ...(tableCompact ? {} : { fixed: "left" as const }),
+    width: 140,
+    render: (text: string) => (
+      <Tag color="blue" className="ref-tag">
+        {formatRefColis(text)}
+      </Tag>
+    ),
+  };
+  const dateCol: ColumnsType<Colis>[0] = {
+    title: t("dateEnvoi"),
+    dataIndex: "date_envoi",
+    key: "date_envoi",
+    width: 108,
+    render: (date: string) => formatDate(date),
+    sorter: true,
+  };
+  const traficCol: ColumnsType<Colis>[0] = {
+    title: t("trafic"),
+    dataIndex: "trafic_envoi",
+    key: "trafic_envoi",
+    width: 130,
+    render: (trafic: string) => <Tag>{trafic}</Tag>,
+    filters: APP_CONFIG.traficEnvoi.map((trafic) => ({ text: trafic, value: trafic })),
+  };
+  const statutCol: ColumnsType<Colis>[0] = {
+    title: "Statut Suivi",
+    dataIndex: "statut_suivi",
+    key: "statut_suivi",
+    width: 118,
+    render: (status: string) => (
+      <Tag color={getStatusColor(status)}>{status || "EMBALLE"}</Tag>
+    ),
+  };
+  const expediteurCol: ColumnsType<Colis>[0] = {
+    title: t("expediteur"),
+    key: "expediteur",
+    width: tableCompact ? 160 : 200,
+    ellipsis: tableCompact,
+    render: (_: unknown, record: Colis) => record.client_colis?.nom_exp || "-",
+  };
+  const destCol: ColumnsType<Colis>[0] = {
+    title: t("destinataire"),
+    dataIndex: "nom_destinataire",
+    key: "nom_destinataire",
+    width: tableCompact ? 160 : 200,
+    ellipsis: true,
+  };
+  const marchCol: ColumnsType<Colis>[0] = {
+    title: t("marchandise"),
+    dataIndex: "nom_marchandise",
+    key: "nom_marchandise",
+    width: tableCompact ? 140 : 200,
+    ellipsis: true,
+  };
+  const poidsCol: ColumnsType<Colis>[0] = {
+    title: t("poidsKg"),
+    dataIndex: "poids_total",
+    key: "poids_total",
+    width: 88,
+    render: (poids: number) => poids?.toFixed(2) || "0",
+    sorter: true,
+  };
+  const montantCol: ColumnsType<Colis>[0] = {
+    title: t("montantTotal"),
+    dataIndex: "total_montant",
+    key: "total_montant",
+    width: 130,
+    render: (montant: number) => formatMontantWithDevise(montant),
+    sorter: true,
+  };
+  const actionsCol: ColumnsType<Colis>[0] = {
+    title: tCommon("actions"),
+    key: "actions",
+    ...(tableCompact ? {} : { fixed: "right" as const }),
+    width: tableCompact ? 168 : 150,
+    render: (_: unknown, record: Colis) => (
+        <Space size="small" wrap>
           {hasPermission(colisPermissions.UPDATE) && onEdit && (
             <Tooltip title={t("modifier")}>
               <Button
@@ -373,8 +375,22 @@ export const ColisList: React.FC<ColisListProps> = ({
           )}
         </Space>
       ),
-    },
-  ];
+  };
+
+  const columns: ColumnsType<Colis> = tableCompact
+    ? [refCol, dateCol, traficCol, expediteurCol, destCol, marchCol, poidsCol, montantCol, actionsCol]
+    : [
+        refCol,
+        dateCol,
+        traficCol,
+        statutCol,
+        expediteurCol,
+        destCol,
+        marchCol,
+        poidsCol,
+        montantCol,
+        actionsCol,
+      ];
 
   return (
     <div>
@@ -427,7 +443,7 @@ export const ColisList: React.FC<ColisListProps> = ({
           </Col>
 
           <Col xs={24} sm={24} md={4}>
-            <Space wrap style={{ width: '100%', justifyContent: 'flex-end' }}>
+            <Space wrap className="lbp-actions-stack" style={{ width: '100%', justifyContent: 'flex-end' }}>
               <Button
                 icon={<ReloadOutlined />}
                 onClick={() => refetch()}
@@ -488,7 +504,7 @@ export const ColisList: React.FC<ColisListProps> = ({
             dataSource={data.data}
             rowKey="id"
             className="premium-table"
-            scroll={{ x: 1200 }}
+            scroll={{ x: tableCompact ? 1320 : 1580 }}
             totalLabel="colis"
             pagination={{
               current: pagination.page,

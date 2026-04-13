@@ -6,6 +6,7 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { facturesService } from '../../services/factures.service';
 import { colisService } from '../../services/colis.service';
 import { useNavigate } from 'react-router-dom';
+import { formatDate } from '@utils/format';
 
 interface FactureGeneratorProps {
     colisId: number;
@@ -134,7 +135,7 @@ export const FactureGenerator: React.FC<FactureGeneratorProps> = ({ colisId, onS
                         <Descriptions.Item label="Téléphone">{colis.client?.tel_exp}</Descriptions.Item>
                         <Descriptions.Item label="Destination">{colis.nom_dest}</Descriptions.Item>
                         <Descriptions.Item label="Date d'envoi">
-                            {new Date(colis.date_envoi).toLocaleDateString('fr-FR')}
+                            {formatDate(colis.date_envoi)}
                         </Descriptions.Item>
                     </Descriptions>
 

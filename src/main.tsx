@@ -13,6 +13,11 @@ import { NotificationsProvider } from './contexts/NotificationsContext'
 import { ErrorBoundary } from './components/common/ErrorBoundary'
 import { queryClient, idbPersister } from './config/queryClient'
 
+import dayjs from 'dayjs'
+import 'dayjs/locale/fr'
+
+dayjs.locale('fr')
+
 import './index.css'
 import './styles/responsive.css'
 import './styles/dark-mode.css'

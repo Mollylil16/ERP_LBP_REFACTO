@@ -54,6 +54,10 @@ export class ProduitCatalogue {
   @Column({ type: 'text', nullable: true })
   description: string; // Description optionnelle du produit
 
+  /** Unité d’affichage / facturation : kg, unité, carton, etc. */
+  @Column({ type: 'varchar', length: 30, nullable: true })
+  unite: string | null;
+
   @Column({ default: true })
   actif: boolean; // Pour activer/désactiver un produit
 

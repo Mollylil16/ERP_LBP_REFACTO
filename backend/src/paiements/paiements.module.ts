@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { PaiementsService } from './paiements.service';
 import { PaiementsController } from './paiements.controller';
@@ -11,12 +11,14 @@ import { PaiementLienService } from './paiements-lien.service';
 import { PaiementsLienController } from './paiements-lien.controller';
 import { CaisseModule } from '../caisse/caisse.module';
 import { RolesModule } from '../roles/roles.module';
+import { ExploitationModule } from '../exploitation/exploitation.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Paiement, Facture, LienPaiement, Colis]),
     CaisseModule,
     RolesModule,
+    forwardRef(() => ExploitationModule),
   ],
   providers: [PaiementsService, PaiementLienService],
   controllers: [

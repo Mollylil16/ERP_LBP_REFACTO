@@ -550,6 +550,85 @@ export async function seedPermissions(dataSource: DataSource): Promise<void> {
       action: 'DELETE',
       description: 'Annuler un paiement',
     },
+    {
+      code: 'exploitation.credits.read',
+      module: PermissionModule.EXPLOITATION,
+      fonctionnalite: 'credits_inter_agences',
+      action: 'READ',
+      description: 'Consulter le tableau des crédits inter-agences',
+    },
+    {
+      code: 'exploitation.credits.manage',
+      module: PermissionModule.EXPLOITATION,
+      fonctionnalite: 'credits_inter_agences',
+      action: 'UPDATE',
+      description:
+        'Gérer les crédits (PAYE_CIV, validation récap France/Sénégal)',
+    },
+    {
+      code: 'exploitation.credits.export',
+      module: PermissionModule.EXPLOITATION,
+      fonctionnalite: 'credits_inter_agences',
+      action: 'CREATE',
+      description: 'Exporter le récapitulatif crédits en PDF',
+    },
+    {
+      code: 'exploitation.credits.submit_recap',
+      module: PermissionModule.EXPLOITATION,
+      fonctionnalite: 'credits_recap_agence',
+      action: 'CREATE',
+      description: 'Soumettre le récapitulatif crédits (France / Sénégal)',
+    },
+    {
+      code: 'exploitation.points_journaliers.read',
+      module: PermissionModule.EXPLOITATION,
+      fonctionnalite: 'points_journaliers',
+      action: 'READ',
+      description: 'Consulter les points journaliers',
+    },
+    {
+      code: 'exploitation.points_journaliers.create',
+      module: PermissionModule.EXPLOITATION,
+      fonctionnalite: 'points_journaliers',
+      action: 'CREATE',
+      description: 'Créer un point journalier (brouillon)',
+    },
+    {
+      code: 'exploitation.points_journaliers.submit',
+      module: PermissionModule.EXPLOITATION,
+      fonctionnalite: 'points_journaliers',
+      action: 'UPDATE',
+      description: 'Soumettre un point journalier à la validation CIV',
+    },
+    {
+      code: 'exploitation.points_journaliers.validate',
+      module: PermissionModule.EXPLOITATION,
+      fonctionnalite: 'points_journaliers',
+      action: 'DELETE',
+      description: 'Valider ou rejeter un point journalier (agent exploitation CIV)',
+    },
+    {
+      code: 'exploitation.fournitures.read',
+      module: PermissionModule.EXPLOITATION,
+      fonctionnalite: 'fournitures_bureau',
+      action: 'READ',
+      description: 'Consulter le stock et les demandes de fournitures de bureau',
+    },
+    {
+      code: 'exploitation.fournitures.manage',
+      module: PermissionModule.EXPLOITATION,
+      fonctionnalite: 'fournitures_bureau',
+      action: 'UPDATE',
+      description:
+        'Gérer le stock, valider, refuser et livrer les demandes de fournitures',
+    },
+    {
+      code: 'exploitation.fournitures.request',
+      module: PermissionModule.EXPLOITATION,
+      fonctionnalite: 'fournitures_bureau',
+      action: 'CREATE',
+      description: 'Créer et soumettre une demande de fournitures pour son agence',
+    },
   ];
 
   for (const row of explicitAppPermissions) {

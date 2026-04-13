@@ -15,6 +15,7 @@ import { Agence } from '../agences/entities/agence.entity';
 import { ActionSpeciale } from '../permissions/entities/action-speciale.entity';
 import { UserActionSpeciale } from './entities/user-action-speciale.entity';
 import { WhatsappService } from '../notifications/whatsapp.service';
+import { Role } from '../roles/entities/role.entity';
 
 export interface CreateUserDto {
   username: string;
@@ -50,8 +51,16 @@ export class UsersService implements OnApplicationBootstrap {
     private actionSpecialeRepository: Repository<ActionSpeciale>,
     @InjectRepository(UserActionSpeciale)
     private userActionSpecialeRepository: Repository<UserActionSpeciale>,
+    @InjectRepository(Role)
+    private roleRepository: Repository<Role>,
     private whatsappService: WhatsappService,
   ) {}
+
+  private async roleEntityForCode(
+    code: UserRole,
+  ): Promise<Role | null> {
+    return this.roleRepository.findOne({ where: { code } as any });
+  }
 
   async onApplicationBootstrap() {
     if (process.env.NODE_ENV === 'test') {
@@ -82,6 +91,8 @@ export class UsersService implements OnApplicationBootstrap {
       });
     }
 
+    const roleEntity = await this.roleEntityForCode(dto.role);
+
     const user = this.usersRepository.create({
       username: dto.username,
       password: hashedPassword,
@@ -92,6 +103,7 @@ export class UsersService implements OnApplicationBootstrap {
       role: dto.role,
       code_acces: dto.code_acces ?? (dto.role === UserRole.DIRECTEUR ? 2 : 1),
       agence,
+      roleEntity: roleEntity ?? undefined,
       phone: dto.phone ?? null,
       email: dto.email?.trim() ? dto.email.trim() : null,
       actif: true,
@@ -112,7 +124,7 @@ export class UsersService implements OnApplicationBootstrap {
   /** Liste tous les utilisateurs avec leur agence */
   async findAll(): Promise<User[]> {
     return this.usersRepository.find({
-      relations: ['agence'],
+      relations: ['agence', 'roleEntity'],
       order: { created_at: 'DESC' },
     });
   }
@@ -121,7 +133,7 @@ export class UsersService implements OnApplicationBootstrap {
   async findOne(id: number): Promise<User> {
     const user = await this.usersRepository.findOne({
       where: { id },
-      relations: ['agence'],
+      relations: ['agence', 'roleEntity'],
     });
     if (!user) throw new NotFoundException('Utilisateur introuvable');
     return user;
@@ -132,7 +144,11 @@ export class UsersService implements OnApplicationBootstrap {
     const user = await this.findOne(id);
 
     if (dto.nom_complet !== undefined) user.nom_complet = dto.nom_complet;
-    if (dto.role !== undefined) user.role = dto.role;
+    if (dto.role !== undefined) {
+      user.role = dto.role;
+      const re = await this.roleEntityForCode(dto.role);
+      user.roleEntity = re;
+    }
     if (dto.code_acces !== undefined) user.code_acces = dto.code_acces;
     if (dto.phone !== undefined) user.phone = dto.phone ?? null;
     if (dto.email !== undefined) user.email = dto.email ?? null;
@@ -300,6 +316,7 @@ export class UsersService implements OnApplicationBootstrap {
       .createQueryBuilder('user')
       .addSelect('user.password')
       .leftJoinAndSelect('user.agence', 'agence')
+      .leftJoinAndSelect('user.roleEntity', 'roleEntity')
       .where('user.username = :username', { username })
       .getOne();
   }

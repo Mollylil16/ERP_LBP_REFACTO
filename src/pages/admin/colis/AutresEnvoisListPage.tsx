@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Modal, Typography } from "antd";
+import { Modal, Typography, Grid } from "antd";
 import { ColisList } from "@components/colis/ColisList";
 import { ColisForm } from "@components/colis/ColisForm";
 import { ColisDetails } from "@components/colis/ColisDetails";
@@ -9,6 +9,9 @@ import { useCreateAutresEnvois, useUpdateColis } from "@hooks/useColis";
 const { Title } = Typography;
 
 export const ColisAutresEnvoisListPage: React.FC = () => {
+  const screens = Grid.useBreakpoint();
+  const modalFullBleed = screens.lg === false;
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedColis, setSelectedColis] = useState<Colis | null>(null);
   const [isViewMode, setIsViewMode] = useState(false);
@@ -79,8 +82,20 @@ export const ColisAutresEnvoisListPage: React.FC = () => {
         open={isModalOpen}
         onCancel={handleCancel}
         footer={null}
-        width="90%"
-        style={{ top: 20 }}
+        width={modalFullBleed ? "100%" : "90%"}
+        style={{ top: modalFullBleed ? 0 : 20, maxWidth: "100vw", paddingBottom: 0 }}
+        styles={
+          modalFullBleed
+            ? {
+                content: { margin: 0, maxWidth: "100vw" },
+                body: {
+                  maxHeight: "calc(100dvh - 108px)",
+                  overflowY: "auto",
+                  padding: "12px 14px",
+                },
+              }
+            : undefined
+        }
       >
         {isViewMode && selectedColis ? (
           <ColisDetails
@@ -110,6 +125,8 @@ export const ColisAutresEnvoisListPage: React.FC = () => {
                       prix_emballage: selectedColis.prix_emballage || 0,
                       prix_assurance: selectedColis.prix_assurance || 0,
                       prix_agence: selectedColis.prix_agence || 0,
+                      type_emballage: [],
+                      produits_catalogue_ids: [],
                       nbre_emballage: 1,
                     },
                   ],

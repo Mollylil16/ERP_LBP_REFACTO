@@ -24,6 +24,10 @@ export const ROUTE_ACCESS = {
   settings: PERMISSIONS.CONFIG.VIEW,
   /** Grilles tarifaires : nécessite droit de mise à jour config */
   settingsTarifs: PERMISSIONS.CONFIG.UPDATE,
+  /** Catalogue produits (CRUD tarifs catalogue) — même périmètre que création facture / colis */
+  settingsCatalogueProduits: PERMISSIONS.FACTURES.CREATE,
+  /** Stats d’usage des libellés marchandises (API historique catalogue) */
+  settingsProduitsHistorique: PERMISSIONS.FACTURES.READ,
   /** Gestion des agences (CRUD UI) */
   settingsAgences: PERMISSIONS.CONFIG.UPDATE,
   /** Liste agences (API) — souvent couvert par structures.agences.read → agences.read */
@@ -31,4 +35,33 @@ export const ROUTE_ACCESS = {
   users: PERMISSIONS.USERS.READ,
   litiges: PERMISSIONS.LITIGES.VIEW,
   callcenterInbox: PERMISSIONS.CALLCENTER.INBOX,
+  exploitationDashboard: [
+    PERMISSIONS.EXPLOITATION.CREDITS_READ,
+    PERMISSIONS.EXPLOITATION.CREDITS_MANAGE,
+  ],
+  exploitationCredits: [
+    PERMISSIONS.EXPLOITATION.CREDITS_READ,
+    PERMISSIONS.EXPLOITATION.CREDITS_MANAGE,
+    PERMISSIONS.EXPLOITATION.CREDITS_SUBMIT_RECAP,
+  ],
+  exploitationPointsJournaliers: [
+    PERMISSIONS.EXPLOITATION.POINTS_READ,
+    PERMISSIONS.EXPLOITATION.POINTS_CREATE,
+    PERMISSIONS.EXPLOITATION.POINTS_SUBMIT,
+    PERMISSIONS.EXPLOITATION.POINTS_VALIDATE,
+  ],
+  agenceCreditsRecap: PERMISSIONS.EXPLOITATION.CREDITS_SUBMIT_RECAP,
+  agencePointJournalier: [
+    PERMISSIONS.EXPLOITATION.POINTS_CREATE,
+    PERMISSIONS.EXPLOITATION.POINTS_SUBMIT,
+  ],
+  exploitationFournitures: [
+    PERMISSIONS.EXPLOITATION.FOURNITURES_READ,
+    PERMISSIONS.EXPLOITATION.FOURNITURES_MANAGE,
+    PERMISSIONS.EXPLOITATION.FOURNITURES_REQUEST,
+  ],
+  agenceFournituresDemande: [
+    PERMISSIONS.EXPLOITATION.FOURNITURES_REQUEST,
+    PERMISSIONS.EXPLOITATION.FOURNITURES_MANAGE,
+  ],
 } as const

@@ -709,6 +709,25 @@ export class CaisseService implements OnApplicationBootstrap {
     };
   }
 
+  /** Agrège entrées, sorties et nombre de mouvements sur toutes les caisses pour un jour donné. */
+  async summarizeAllCaissesForDate(date?: string): Promise<{
+    entrees: number;
+    sorties: number;
+    mouvementsCount: number;
+  }> {
+    const caisses = await this.caisseRepository.find();
+    let entrees = 0;
+    let sorties = 0;
+    let mouvementsCount = 0;
+    for (const c of caisses) {
+      const p = await this.getPointCaisse(date, c.id);
+      entrees += Number(p.entrees) || 0;
+      sorties += Number(p.sorties) || 0;
+      mouvementsCount += Number(p.mouvementsCount) || 0;
+    }
+    return { entrees, sorties, mouvementsCount };
+  }
+
   async findAllCaisses(agenceId?: number): Promise<any[]> {
     const caisses = agenceId
       ? await this.caisseRepository.find({

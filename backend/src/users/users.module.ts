@@ -9,6 +9,7 @@ import { UserActionSpeciale } from './entities/user-action-speciale.entity';
 import { WhatsappService } from '../notifications/whatsapp.service';
 import { NotificationModule } from '../notifications/notification.module';
 import { RolesModule } from '../roles/roles.module';
+import { Role } from '../roles/entities/role.entity';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { RolesModule } from '../roles/roles.module';
       Agence,
       ActionSpeciale,
       UserActionSpeciale,
+      Role,
     ]),
     NotificationModule,
     RolesModule,

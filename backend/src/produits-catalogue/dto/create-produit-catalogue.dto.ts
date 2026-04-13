@@ -48,6 +48,10 @@ export class CreateProduitCatalogueDto {
   description?: string;
 
   @IsOptional()
+  @IsString()
+  unite?: string;
+
+  @IsOptional()
   @IsBoolean()
   actif?: boolean;
 }

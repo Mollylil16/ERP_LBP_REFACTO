@@ -65,8 +65,9 @@ export const NotificationsProvider: React.FC<{
       const data = await notificationsService.getUnread();
       const formatted = data.map((n: any) => ({
         ...n,
+        actionUrl: n.action_url ?? n.actionUrl,
         timestamp: new Date(n.created_at),
-        id: String(n.id)
+        id: String(n.id),
       }));
       setNotifications(formatted);
     } catch (error) {

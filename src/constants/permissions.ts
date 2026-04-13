@@ -109,6 +109,21 @@ export const PERMISSIONS = {
   CALLCENTER: {
     INBOX: 'callcenter.inbox',
   },
+
+  /** Crédits inter-agences & points journaliers (codes `exploitation.*` côté API) */
+  EXPLOITATION: {
+    CREDITS_READ: 'exploitation.credits.read',
+    CREDITS_MANAGE: 'exploitation.credits.manage',
+    CREDITS_EXPORT: 'exploitation.credits.export',
+    CREDITS_SUBMIT_RECAP: 'exploitation.credits.submit_recap',
+    POINTS_READ: 'exploitation.points_journaliers.read',
+    POINTS_CREATE: 'exploitation.points_journaliers.create',
+    POINTS_SUBMIT: 'exploitation.points_journaliers.submit',
+    POINTS_VALIDATE: 'exploitation.points_journaliers.validate',
+    FOURNITURES_READ: 'exploitation.fournitures.read',
+    FOURNITURES_MANAGE: 'exploitation.fournitures.manage',
+    FOURNITURES_REQUEST: 'exploitation.fournitures.request',
+  },
 } as const
 
 /**

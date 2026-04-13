@@ -6,6 +6,7 @@ import { colisService } from '@services/colis.service';
 import { facturesService } from '@services/factures.service';
 import { useNavigate } from 'react-router-dom';
 import { FactureTemplate } from '../factures/FactureTemplate';
+import { formatDate } from '@utils/format';
 
 interface ColisDetailsProps {
     colisId: number;
@@ -185,7 +186,7 @@ export const ColisDetails: React.FC<ColisDetailsProps> = ({ colisId, onClose, on
                 <Descriptions.Item label="Forme">{colis.forme_envoi}</Descriptions.Item>
                 <Descriptions.Item label="Mode">{colis.mode_envoi || 'N/A'}</Descriptions.Item>
                 <Descriptions.Item label="Date d'envoi">
-                    {new Date(colis.date_envoi).toLocaleDateString('fr-FR')}
+                    {formatDate(colis.date_envoi)}
                 </Descriptions.Item>
             </Descriptions>
 

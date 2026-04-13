@@ -170,7 +170,7 @@
 
 /* ═══════════════ RESPONSIVE ═══════════════ */
 
-@media (max-width: 768px) {
+@media (max-width: 1023px) {
   .lbp-table .ant-table-thead > tr > th {
     font-size: 11px !important;
     padding: 10px 12px !important;

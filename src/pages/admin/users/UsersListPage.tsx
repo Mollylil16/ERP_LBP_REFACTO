@@ -14,6 +14,7 @@ import {
   Switch,
   message,
   Form,
+  Grid,
 } from "antd";
 import {
   EditOutlined,
@@ -36,12 +37,13 @@ import { WithPermission } from "@components/common/WithPermission";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { UsersListSkeleton } from "@components/common/SkeletonLoader";
 import { EmptyUsersList, EmptySearchState, EmptyErrorState } from "@components/common/EmptyState";
-import { VirtualTable } from "@components/common/VirtualTable";
-
 const { Title } = Typography;
 const { Option } = Select;
 
 export const UsersListPage: React.FC = () => {
+  const screens = Grid.useBreakpoint();
+  const tableCompact = screens.lg === false;
+
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
@@ -106,37 +108,45 @@ export const UsersListPage: React.FC = () => {
     {
       title: "Utilisateur",
       key: "user",
-      width: 250,
+      width: tableCompact ? 200 : 250,
+      ellipsis: tableCompact,
       render: (_: any, record: User) => (
         <Space direction="vertical" size={0}>
           <span style={{ fontWeight: 'bold' }}>{record.nom_complet}</span>
           <span style={{ fontSize: '12px', color: '#8c8c8c' }}>@{record.username}</span>
         </Space>
-      )
+      ),
     },
     {
       title: "Rôle",
       key: "role",
-      width: 150,
+      width: 130,
       render: (_: any, record: User) => (
         <Tag color={record.role.code === "DIRECTEUR" ? "volcano" : "blue"}>
           {record.role.name}
         </Tag>
       ),
     },
-    {
-      title: "Agence",
-      key: "agence",
-      width: 180,
-      render: (_: any, record: User) =>
-        (record.agency?.name || (record.agency as any)?.nom || record.agency?.code) || <Tag>Non assignée</Tag>,
-    },
+    ...(!tableCompact
+      ? ([
+          {
+            title: "Agence",
+            key: "agence",
+            width: 180,
+            ellipsis: true,
+            render: (_: any, record: User) =>
+              (record.agency?.name || (record.agency as any)?.nom || record.agency?.code) || (
+                <Tag>Non assignée</Tag>
+              ),
+          },
+        ] as ColumnsType<User>)
+      : []),
     {
       title: "Statut",
       key: "status",
       width: 120,
       render: (_: any, record: User) => (
-        <Space>
+        <Space wrap>
           <Switch
             size="small"
             checked={record.actif}
@@ -152,10 +162,10 @@ export const UsersListPage: React.FC = () => {
     {
       title: "Actions",
       key: "actions",
-      fixed: "right",
-      width: 260,
+      ...(tableCompact ? {} : { fixed: "right" as const }),
+      width: tableCompact ? 200 : 260,
       render: (_: any, record: User) => (
-        <Space size="small">
+        <Space size="small" wrap>
           <Tooltip title="Voir mdp temporaire">
             <Button
               size="small"
@@ -244,7 +254,7 @@ export const UsersListPage: React.FC = () => {
     <div className="page-container">
       <div className="page-header">
         <Title level={2}>Gestion des Utilisateurs</Title>
-        <Space>
+        <Space className="lbp-actions-stack" wrap>
           <Button icon={<ReloadOutlined />} onClick={() => refetch()} loading={isLoading}>
             Actualiser
           </Button>
@@ -282,7 +292,7 @@ export const UsersListPage: React.FC = () => {
           )}
           rowKey="id"
           pagination={{ pageSize: 15 }}
-          scroll={{ x: 1000 }}
+          scroll={{ x: tableCompact ? 720 : 1000 }}
         />
       </Card>
 
@@ -430,7 +440,7 @@ const UserForm: React.FC<{ user: any; onSuccess: () => void; onCancel: () => voi
       </Form.Item>
 
       <Form.Item>
-        <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
+        <Space className="lbp-actions-stack" style={{ width: '100%', justifyContent: 'flex-end' }} wrap>
           <Button onClick={onCancel}>Annuler</Button>
           <Button type="primary" htmlType="submit" loading={loading}>
             Enregistrer

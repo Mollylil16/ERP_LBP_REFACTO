@@ -22,8 +22,8 @@ export class MessagingGatewayService {
    * Variables d'env attendues:
    * - MESSAGING_BASE_URL: ex https://gateway.example.com
    * - MESSAGING_API_KEY: token/apiKey
-   * - MESSAGING_FROM_SMS: ex 0503467979
-   * - MESSAGING_FROM_WHATSAPP: ex 0503497979
+   * - MESSAGING_FROM_SMS: ex 0503497979
+   * - MESSAGING_FROM_WHATSAPP: ex 0509467979
    *
    * Contrat HTTP (à adapter au fournisseur):
    * POST {BASE_URL}/messages

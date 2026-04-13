@@ -13,6 +13,8 @@ import {
 } from '@ant-design/icons'
 import { WithPermission } from '@components/common/WithPermission'
 import { PERMISSIONS } from '@constants/permissions'
+import { usePermissions } from '@hooks/usePermissions'
+import { RecettesDuJourCard } from '@components/paiements/RecettesDuJourCard'
 import { useQuery } from '@tanstack/react-query'
 import { apiService } from '@services/api.service'
 import { formatMontantWithDevise } from '@utils/format'
@@ -226,6 +228,12 @@ const EncaissementTab: React.FC<{
 
 // ─── Page principale ─────────────────────────────────────────────────────────
 export const PaiementsListPage: React.FC = () => {
+  const { hasPermission } = usePermissions()
+  const canSeeRecettesDuJour =
+    hasPermission(PERMISSIONS.PAIEMENTS.READ) ||
+    hasPermission(PERMISSIONS.CAISSE.VIEW) ||
+    hasPermission(PERMISSIONS.EXPLOITATION.CREDITS_MANAGE)
+
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [refColis, setRefColis] = useState('')
 
@@ -282,6 +290,7 @@ export const PaiementsListPage: React.FC = () => {
   return (
     <div>
       <Title level={2}>Gestion des Paiements</Title>
+      {canSeeRecettesDuJour ? <RecettesDuJourCard /> : null}
 
       <Tabs defaultActiveKey="encaisser" items={tabItems} />
 

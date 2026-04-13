@@ -104,7 +104,7 @@ class UsersService {
     const roleMap: Record<string, number> = {
       'DIRECTEUR': 1, 'MANAGER': 2, 'SUPERVISEUR_REGIONAL': 3,
       'AGENT_EXPLOITATION': 4, 'AGENT_GROUPAGE': 5, 'CAISSIER': 6,
-      'CAISSIER_GROUPAGE': 7, 'AGENT_SUIVI': 8, 'ADMIN': 1,
+      'CAISSIER_GROUPAGE': 7, 'AGENT_SUIVI': 8, 'CALL_CENTER': 9, 'ADMIN': 1,
     }
     return roleMap[role] || 4
   }
@@ -114,7 +114,8 @@ class UsersService {
       'DIRECTEUR': 'Directeur Général', 'MANAGER': 'Manager / Superviseur',
       'SUPERVISEUR_REGIONAL': 'Superviseur Régional', 'AGENT_EXPLOITATION': 'Agent Exploitation',
       'AGENT_GROUPAGE': 'Agent Groupage', 'CAISSIER': 'Caissier Principal',
-      'CAISSIER_GROUPAGE': 'Caissier Groupage', 'AGENT_SUIVI': 'Agent Suivi',
+      'CAISSIER_GROUPAGE': 'Caissier Groupage',       'AGENT_SUIVI': 'Agent Suivi',
+      'CALL_CENTER': 'Call center',
       'ADMIN': 'Administrateur',
     }
     return nameMap[role] || 'Agent Exploitation'

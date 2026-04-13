@@ -38,6 +38,8 @@ const ROUTE_LABELS: Record<string, string> = {
   rentabilite: 'Rentabilité',
   settings: 'Paramètres',
   tarifs: 'Grilles tarifaires',
+  'catalogue-produits': 'Catalogue produits',
+  'produits-historique': 'Historique marchandises',
   users: 'Utilisateurs',
   roles: 'Rôles',
   admin: 'Administration',

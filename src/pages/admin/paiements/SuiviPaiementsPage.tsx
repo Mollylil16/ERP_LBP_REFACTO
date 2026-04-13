@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useMemo } from 'react'
 import {
   Card,
   Input,
@@ -13,6 +13,7 @@ import {
   DatePicker,
   Tooltip,
   Progress,
+  Grid,
 } from 'antd'
 // import type { RangePickerProps } from 'antd/es/date-picker'
 // import type { ColumnsType } from 'antd/es/table'
@@ -95,6 +96,10 @@ const getModeTag = (mode?: string) => {
 type TabKey = 'tous' | StatutPaiement
 
 export const SuiviPaiementsPage: React.FC = () => {
+  const screens = Grid.useBreakpoint()
+  /** Sous lg (<~992px) : moins de colonnes, pas de sticky — meilleure lecture au doigt */
+  const tableCompact = screens.lg === false
+
   const [activeTab, setActiveTab] = useState<TabKey>('tous')
   const [search, setSearch] = useState('')
   const [dateRange, setDateRange] = useState<[Dayjs | null, Dayjs | null] | null>(null)
@@ -123,12 +128,12 @@ export const SuiviPaiementsPage: React.FC = () => {
   const totalEncaissé = stats.totalEncaissé
   const totalRestant = stats.totalRestant
 
-  const columns: any[] = [
-    {
+  const columns = useMemo(() => {
+    const clientCol: any = {
       title: 'Client',
       key: 'client',
       width: 200,
-      fixed: 'left',
+      ...(!tableCompact ? { fixed: 'left' as const } : {}),
       render: (_: any, r: SuiviPaiementItem) => (
         <div>
           <div style={{ fontWeight: 600 }}>{r.nom_client}</div>
@@ -140,36 +145,36 @@ export const SuiviPaiementsPage: React.FC = () => {
           )}
         </div>
       ),
-    },
-    {
+    }
+    const refCol = {
       title: 'Réf. Colis',
       dataIndex: 'ref_colis',
       key: 'ref_colis',
-      width: 140,
+      width: 130,
       render: (ref: string) => (
         <span style={{ fontFamily: 'monospace', fontWeight: 600 }}>{ref}</span>
       ),
-    },
-    {
+    }
+    const factureCol = {
       title: 'N° Facture',
       dataIndex: 'facture_num',
       key: 'facture_num',
-      width: 140,
+      width: 130,
       render: (num: string) => num || <span style={{ color: '#bfbfbf' }}>—</span>,
-    },
-    {
+    }
+    const montantTotalCol = {
       title: 'Montant total',
       dataIndex: 'montant_total',
       key: 'montant_total',
-      width: 150,
+      width: 140,
       render: (v: number) => <strong>{formatMontantWithDevise(v)}</strong>,
       sorter: (a: SuiviPaiementItem, b: SuiviPaiementItem) => a.montant_total - b.montant_total,
-    },
-    {
+    }
+    const payeCol = {
       title: 'Payé',
       dataIndex: 'montant_paye',
       key: 'montant_paye',
-      width: 150,
+      width: 140,
       render: (v: number, r: SuiviPaiementItem) => (
         <div>
           <div style={{ color: '#52c41a', fontWeight: 600 }}>
@@ -185,35 +190,35 @@ export const SuiviPaiementsPage: React.FC = () => {
         </div>
       ),
       sorter: (a: SuiviPaiementItem, b: SuiviPaiementItem) => a.montant_paye - b.montant_paye,
-    },
-    {
+    }
+    const resteCol = {
       title: 'Reste à payer',
       dataIndex: 'restant_a_payer',
       key: 'restant_a_payer',
-      width: 150,
+      width: 130,
       render: (v: number) => (
         <strong style={{ color: v > 0 ? '#ff4d4f' : '#52c41a' }}>
           {v > 0 ? formatMontantWithDevise(v) : '✓ Soldé'}
         </strong>
       ),
       sorter: (a: SuiviPaiementItem, b: SuiviPaiementItem) => a.restant_a_payer - b.restant_a_payer,
-    },
-    {
+    }
+    const statutCol = {
       title: 'Statut',
       dataIndex: 'statut',
       key: 'statut',
-      width: 120,
+      width: 110,
       render: (statut: StatutPaiement) => <StatutTag statut={statut} />,
       filters: [
         { text: 'Payé', value: 'paye' },
         { text: 'Partiel', value: 'partiel' },
         { text: 'Non payé', value: 'impaye' },
       ],
-    },
-    {
+    }
+    const dernierCol = {
       title: 'Dernier paiement',
       key: 'dernier',
-      width: 180,
+      width: 160,
       render: (_: any, r: SuiviPaiementItem) => (
         <div>
           <div>{r.dernier_paiement_date ? formatDate(r.dernier_paiement_date) : '—'}</div>
@@ -224,26 +229,51 @@ export const SuiviPaiementsPage: React.FC = () => {
           )}
         </div>
       ),
-    },
-    {
+    }
+    const nbCol = {
       title: 'Paiements',
       dataIndex: 'nb_paiements',
       key: 'nb_paiements',
-      width: 100,
-      align: 'center',
+      width: 96,
+      align: 'center' as const,
       render: (nb: number) => (
         <Tag color={nb > 0 ? 'blue' : 'default'}>{nb} versement{nb > 1 ? 's' : ''}</Tag>
       ),
-    },
-    {
+    }
+    const dateColisCol = {
       title: 'Date colis',
       dataIndex: 'date_creation',
       key: 'date_creation',
-      width: 120,
+      width: 110,
       render: (d: string) => formatDate(d),
-      sorter: (a: SuiviPaiementItem, b: SuiviPaiementItem) => new Date(a.date_creation).getTime() - new Date(b.date_creation).getTime(),
-    },
-  ]
+      sorter: (a: SuiviPaiementItem, b: SuiviPaiementItem) =>
+        new Date(a.date_creation).getTime() - new Date(b.date_creation).getTime(),
+    }
+
+    if (tableCompact) {
+      return [
+        clientCol,
+        refCol,
+        montantTotalCol,
+        payeCol,
+        resteCol,
+        statutCol,
+        dernierCol,
+      ]
+    }
+    return [
+      clientCol,
+      refCol,
+      factureCol,
+      montantTotalCol,
+      payeCol,
+      resteCol,
+      statutCol,
+      dernierCol,
+      nbCol,
+      dateColisCol,
+    ]
+  }, [tableCompact])
 
   return (
     <div>
@@ -326,7 +356,7 @@ export const SuiviPaiementsPage: React.FC = () => {
               placeholder={['Date début', 'Date fin']}
             />
           </Col>
-          <Col xs={24} md={8} style={{ textAlign: 'right' }}>
+          <Col xs={24} md={8} className="lbp-filter-actions-col" style={{ textAlign: 'right' }}>
             <Tooltip title="Actualiser">
               <Button
                 icon={<ReloadOutlined />}
@@ -347,6 +377,7 @@ export const SuiviPaiementsPage: React.FC = () => {
       {/* ─── TABS + TABLEAU ─── */}
       <Card>
         <Tabs
+          className="lbp-tabs-responsive"
           activeKey={activeTab}
           onChange={(key: string) => { setActiveTab(key as TabKey); setPagination({ page: 1, limit: 20 }) }}
           items={[
@@ -362,7 +393,7 @@ export const SuiviPaiementsPage: React.FC = () => {
           dataSource={items}
           loading={isLoading}
           rowKey="id"
-          scroll={{ x: 1400 }}
+          scroll={{ x: tableCompact ? 1100 : 1400 }}
           totalLabel="enregistrements"
           rowClassName={(record) =>
             record.statut === 'impaye' ? 'row-impaye' :

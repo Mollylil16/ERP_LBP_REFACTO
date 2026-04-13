@@ -47,6 +47,12 @@ export class ProduitsCatalogueController {
     return this.produitsService.getHistoriqueUtilisation();
   }
 
+  @Get('gestion')
+  @RequirePermission('factures.create')
+  findAllForManagement() {
+    return this.produitsService.findAllForManagement();
+  }
+
   @Get(':id')
   @RequirePermission('factures.read')
   findOne(@Param('id', ParseIntPipe) id: number) {
@@ -70,7 +76,7 @@ export class ProduitsCatalogueController {
   }
 
   @Delete(':id')
-  @RequirePermission('factures.delete')
+  @RequirePermission('factures.create', 'factures.delete')
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.produitsService.remove(id);
   }

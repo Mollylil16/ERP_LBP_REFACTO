@@ -11,7 +11,14 @@ function toDateSafe(input: string | Date): Date | null {
   const s = String(input).trim()
   if (!s) return null
 
-  // 1) ISO / YYYY-MM-DD / ISO datetime
+  // Date calendrier seule (évite le décalage jour avec parseISO / UTC minuit)
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+    const [y, m, d] = s.split('-').map(Number)
+    const local = new Date(y, m - 1, d)
+    return isValid(local) ? local : null
+  }
+
+  // 1) ISO / ISO datetime
   try {
     const d = parseISO(s)
     if (isValid(d)) return d

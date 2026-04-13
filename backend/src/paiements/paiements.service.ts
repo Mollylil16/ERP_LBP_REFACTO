@@ -3,6 +3,8 @@ import {
   NotFoundException,
   BadRequestException,
   Logger,
+  Inject,
+  forwardRef,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
@@ -12,6 +14,7 @@ import { Facture } from '../factures/entities/facture.entity';
 import { Colis } from '../colis/entities/colis.entity';
 import { CaisseService } from '../caisse/caisse.service';
 import { MouvementType } from '../caisse/entities/mouvement-caisse.entity';
+import { CreditsColisService } from '../exploitation/credits-colis.service';
 
 @Injectable()
 export class PaiementsService {
@@ -27,6 +30,8 @@ export class PaiementsService {
     private colisRepository: Repository<Colis>,
     private dataSource: DataSource,
     private caisseService: CaisseService,
+    @Inject(forwardRef(() => CreditsColisService))
+    private readonly creditsColisService: CreditsColisService,
   ) {}
 
   async create(
@@ -159,6 +164,21 @@ export class PaiementsService {
       }
 
       await queryRunner.commitTransaction();
+
+      if (isInstant && facture.payment_status === 'paid') {
+        const factureFull = await this.factureRepository.findOne({
+          where: { id: facture.id },
+          relations: ['colis', 'colis.client', 'colis.agence'],
+        });
+        if (factureFull) {
+          await this.creditsColisService.onFactureFullyPaid(
+            factureFull,
+            savedPaiement as Paiement,
+            user,
+          );
+        }
+      }
+
       return savedPaiement;
     } catch (err) {
       await queryRunner.rollbackTransaction();
@@ -402,6 +422,20 @@ export class PaiementsService {
         ? undefined
         : facture.colis?.agence?.id,
     );
+
+    if (facture.payment_status === 'paid') {
+      const factureFull = await this.factureRepository.findOne({
+        where: { id: facture.id },
+        relations: ['colis', 'colis.client', 'colis.agence'],
+      });
+      if (factureFull) {
+        await this.creditsColisService.onFactureFullyPaid(
+          factureFull,
+          saved,
+          validator,
+        );
+      }
+    }
 
     return saved;
   }

@@ -21,6 +21,8 @@ export enum UserRole {
   CAISSIER = 'CAISSIER',
   CAISSIER_GROUPAGE = 'CAISSIER_GROUPAGE',
   AGENT_SUIVI = 'AGENT_SUIVI',
+  /** Service client : boîte d’appel, messagerie, litiges côté relation client */
+  CALL_CENTER = 'CALL_CENTER',
   ADMIN = 'ADMIN', // Conservé pour compatibilité technique
 }
 

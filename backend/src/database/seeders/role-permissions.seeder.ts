@@ -81,6 +81,13 @@ const rolePermissionsMatrix = {
     'litiges.manage',
     'litiges.admin',
     'callcenter.inbox',
+    'exploitation.credits.read',
+    'exploitation.credits.submit_recap',
+    'exploitation.points_journaliers.read',
+    'exploitation.points_journaliers.create',
+    'exploitation.points_journaliers.submit',
+    'exploitation.fournitures.read',
+    'exploitation.fournitures.request',
     // VALIDATIONS / ANNULATIONS (workflow)
     'colis.groupage.validate',
     'colis.autres-envois.validate',
@@ -136,6 +143,13 @@ const rolePermissionsMatrix = {
     'litiges.create',
     'litiges.manage',
     'callcenter.inbox',
+    'exploitation.credits.read',
+    'exploitation.credits.manage',
+    'exploitation.credits.export',
+    'exploitation.points_journaliers.read',
+    'exploitation.points_journaliers.validate',
+    'exploitation.fournitures.read',
+    'exploitation.fournitures.manage',
   ],
   AGENT_GROUPAGE: [
     'exploitation.groupage_colis.create',
@@ -217,6 +231,13 @@ const rolePermissionsMatrix = {
     'litiges.view',
     'litiges.create',
     'callcenter.inbox',
+  ],
+  CALL_CENTER: [
+    'callcenter.inbox',
+    'structures.clients.read',
+    'structures.agences.read',
+    'litiges.view',
+    'litiges.create',
   ],
 };
 

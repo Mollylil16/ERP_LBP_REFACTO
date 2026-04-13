@@ -41,7 +41,19 @@ export class NotificationService {
   }
 
   /**
-   * Récupérer les notifications non lues
+   * Notifications non lues : fil destinataire (user_id) + notifications globales legacy (user_id NULL).
+   */
+  async getUnreadForUser(userId: number): Promise<Notification[]> {
+    return await this.notificationRepository
+      .createQueryBuilder('n')
+      .where('n.read = :read', { read: false })
+      .andWhere('(n.user_id = :userId OR n.user_id IS NULL)', { userId })
+      .orderBy('n.created_at', 'DESC')
+      .getMany();
+  }
+
+  /**
+   * @deprecated Préférer getUnreadForUser — conservé pour scripts/tests.
    */
   async getUnread(): Promise<Notification[]> {
     return await this.notificationRepository.find({
@@ -51,14 +63,41 @@ export class NotificationService {
   }
 
   /**
-   * Marquer comme lu
+   * Marquer comme lu (uniquement si la notification est destinée à cet utilisateur ou globale).
+   */
+  async markAsReadForUser(id: number, userId: number): Promise<void> {
+    await this.notificationRepository
+      .createQueryBuilder()
+      .update(Notification)
+      .set({ read: true })
+      .where('id = :id', { id })
+      .andWhere('read = false')
+      .andWhere('(user_id = :userId OR user_id IS NULL)', { userId })
+      .execute();
+  }
+
+  /**
+   * Marquer comme lu (sans contrôle destinataire — usage interne / admin).
    */
   async markAsRead(id: number): Promise<void> {
     await this.notificationRepository.update(id, { read: true });
   }
 
   /**
-   * Marquer toutes comme lues
+   * Marque comme lues uniquement les notifications personnelles (user_id = userId).
+   */
+  async markAllAsReadForUser(userId: number): Promise<void> {
+    await this.notificationRepository
+      .createQueryBuilder()
+      .update(Notification)
+      .set({ read: true })
+      .where('read = false')
+      .andWhere('user_id = :userId', { userId })
+      .execute();
+  }
+
+  /**
+   * @deprecated Préférer markAllAsReadForUser.
    */
   async markAllAsRead(): Promise<void> {
     await this.notificationRepository.update({ read: false }, { read: true });
@@ -201,6 +240,32 @@ export class NotificationService {
       category,
       action_url: '/paiements/history',
       audit_data: data,
+      user: { id: userId } as any,
+    });
+  }
+
+  /**
+   * Notification in-app libre (titre/message/URL) pour un utilisateur précis.
+   */
+  async notifyUser(
+    userId: number,
+    payload: {
+      title: string;
+      message: string;
+      type?: NotificationType;
+      category?: NotificationCategory;
+      action_url?: string;
+      audit_data?: Record<string, unknown>;
+    },
+  ): Promise<Notification> {
+    return await this.createNotification({
+      title: payload.title,
+      message: payload.message,
+      type: payload.type ?? NotificationType.INFO,
+      category: payload.category ?? NotificationCategory.SYSTEM,
+      action_url: payload.action_url,
+      audit_data: payload.audit_data,
+      user: { id: userId } as any,
     });
   }
 }

@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import {
@@ -22,6 +26,13 @@ export class ProduitsCatalogueService {
     });
   }
 
+  /** Liste complète (actifs + inactifs) — écran gestion catalogue */
+  async findAllForManagement(): Promise<ProduitCatalogue[]> {
+    return this.produitRepository.find({
+      order: { categorie: 'ASC', nom: 'ASC' },
+    });
+  }
+
   async findByCategorie(
     categorie: CategoriesProduit,
   ): Promise<ProduitCatalogue[]> {
@@ -39,10 +50,46 @@ export class ProduitsCatalogueService {
     return produit;
   }
 
+  /** Si les deux bornes sont renseignées, min ≤ max */
+  private assertPoidsTrancheCoherent(
+    poidsMin?: number | string | null,
+    poidsMax?: number | string | null,
+  ): void {
+    if (poidsMin == null || poidsMax == null) {
+      return;
+    }
+    const a = Number(poidsMin);
+    const b = Number(poidsMax);
+    if (!Number.isFinite(a) || !Number.isFinite(b)) {
+      return;
+    }
+    if (a > b) {
+      throw new BadRequestException(
+        'Le poids minimum ne peut pas être supérieur au poids maximum.',
+      );
+    }
+  }
+
   async create(
     createDto: CreateProduitCatalogueDto,
   ): Promise<ProduitCatalogue> {
-    const produit = this.produitRepository.create(createDto);
+    const nom = createDto.nom?.trim();
+    if (!nom) {
+      throw new BadRequestException('Le nom du produit est obligatoire');
+    }
+    this.assertPoidsTrancheCoherent(createDto.poids_min, createDto.poids_max);
+    const existing = await this.produitRepository
+      .createQueryBuilder('p')
+      .where('LOWER(TRIM(p.nom)) = LOWER(TRIM(:nom))', { nom })
+      .getOne();
+    if (existing) {
+      return existing;
+    }
+    const produit = this.produitRepository.create({
+      ...createDto,
+      nom,
+      actif: createDto.actif ?? true,
+    });
     return this.produitRepository.save(produit);
   }
 
@@ -51,6 +98,8 @@ export class ProduitsCatalogueService {
     updateDto: UpdateProduitCatalogueDto,
   ): Promise<ProduitCatalogue> {
     const produit = await this.findOne(id);
+    const merged = { ...produit, ...updateDto };
+    this.assertPoidsTrancheCoherent(merged.poids_min, merged.poids_max);
     Object.assign(produit, updateDto);
     return this.produitRepository.save(produit);
   }

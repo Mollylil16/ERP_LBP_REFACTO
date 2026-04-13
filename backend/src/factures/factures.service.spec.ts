@@ -7,6 +7,7 @@ import { LienPaiement } from '../paiements/entities/lien-paiement.entity';
 import { DataSource } from 'typeorm';
 import { NotFoundException, BadRequestException } from '@nestjs/common';
 import { BusinessAuditService } from '../audit/business-audit.service';
+import { CreditsColisService } from '../exploitation/credits-colis.service';
 
 describe('FacturesService', () => {
   let service: FacturesService;
@@ -33,6 +34,10 @@ describe('FacturesService', () => {
     logEvent: jest.fn(),
   };
 
+  const mockCreditsColisService = {
+    ensureCreditAfterFactureValidated: jest.fn().mockResolvedValue(null),
+  };
+
   const mockDataSource = {
     // Mock datasource methods if needed
   };
@@ -47,6 +52,10 @@ describe('FacturesService', () => {
         { provide: getRepositoryToken(LienPaiement), useValue: mockLienRepo },
         { provide: DataSource, useValue: mockDataSource },
         { provide: BusinessAuditService, useValue: mockBusinessAudit },
+        {
+          provide: CreditsColisService,
+          useValue: mockCreditsColisService,
+        },
       ],
     }).compile();
 
@@ -114,6 +123,9 @@ describe('FacturesService', () => {
       const result = await service.validateProforma(1);
       expect(result.etat).toBe(1);
       expect(mockFactureRepo.save).toHaveBeenCalled();
+      expect(
+        mockCreditsColisService.ensureCreditAfterFactureValidated,
+      ).toHaveBeenCalled();
     });
 
     it('should throw NotFoundException if facture does not exist', async () => {

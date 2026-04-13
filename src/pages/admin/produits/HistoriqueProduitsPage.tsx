@@ -1,12 +1,16 @@
 import React from 'react'
-import { Card, Table, Typography, Tag, Statistic, Row, Col, Spin } from 'antd'
+import { Link } from 'react-router-dom'
+import { Card, Table, Typography, Tag, Statistic, Row, Col, Spin, Button, Space } from 'antd'
 import { ShoppingOutlined, DollarOutlined, RiseOutlined, FallOutlined } from '@ant-design/icons'
 import { useHistoriqueProduitsUtilisation } from '@hooks/useProduitsCatalogue'
+import { usePermissions } from '@hooks/usePermissions'
+import { ROUTE_ACCESS } from '@constants/routeAccess'
 import { formatMontantWithDevise } from '@utils/format'
 
 const { Title, Text } = Typography
 
 export const HistoriqueProduitsPage: React.FC = () => {
+    const { hasPermission } = usePermissions()
     const { data: historique = [], isLoading } = useHistoriqueProduitsUtilisation()
 
     const columns = [
@@ -81,12 +85,20 @@ export const HistoriqueProduitsPage: React.FC = () => {
         : 0
 
     return (
-        <div>
+        <div style={{ padding: 24 }}>
+            {hasPermission(ROUTE_ACCESS.settingsCatalogueProduits) && (
+                <Space style={{ marginBottom: 16 }}>
+                    <Link to="/settings/catalogue-produits">
+                        <Button type="link">← Catalogue produits</Button>
+                    </Link>
+                </Space>
+            )}
             <Title level={2}>
-                <ShoppingOutlined /> Historique d'Utilisation des Produits
+                <ShoppingOutlined /> Historique marchandises
             </Title>
             <Text type="secondary">
-                Consultez l'historique des produits utilisés dans les colis, leurs prix et les clients associés
+                Libellés de marchandise les plus utilisés sur les colis (agrégation par nom saisi), prix observés et
+                échantillon de clients
             </Text>
 
             {/* Statistiques globales */}

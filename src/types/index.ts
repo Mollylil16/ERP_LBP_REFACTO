@@ -10,6 +10,8 @@ export interface User {
   role: Role
   agency?: Agency
   agency_id?: number // ID agence (pour filtrage CODEACCES 9)
+  /** Pays d’agence (ex. France, Sénégal) — renvoyé par l’API auth */
+  agency_pays?: string | null
   filter_mode?: 'individual' | 'agency' | 'all' // Mode de filtrage (CODEACCES 8, 9, 14)
   can_delete?: boolean // Protection suppression (CODEACCES 5)
   can_modify?: boolean // Protection modification (CODEACCES 6)
@@ -37,6 +39,8 @@ export enum UserRole {
   CAISSIER = 'CAISSIER',
   CAISSIER_GROUPAGE = 'CAISSIER_GROUPAGE',
   AGENT_SUIVI = 'AGENT_SUIVI',
+  /** Service client (boîte d’appel, SMS/WhatsApp, litiges relation client) */
+  CALL_CENTER = 'CALL_CENTER',
 }
 
 

@@ -4,7 +4,10 @@ import {
   PrimaryGeneratedColumn,
   CreateDateColumn,
   UpdateDateColumn,
+  ManyToOne,
+  JoinColumn,
 } from 'typeorm';
+import { User } from '../../users/entities/user.entity';
 
 export enum NotificationType {
   INFO = 'INFO',
@@ -60,6 +63,11 @@ export class Notification {
 
   @Column({ nullable: true })
   action_url: string;
+
+  /** Destinataire : si null, notification historique « globale » (comportement legacy). */
+  @ManyToOne(() => User, { nullable: true, onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'user_id' })
+  user: User | null;
 
   @CreateDateColumn()
   created_at: Date;

@@ -95,6 +95,8 @@ export class AuthService {
       peut_voir_toutes_agences: Boolean(user.peut_voir_toutes_agences),
       agency_id: user.agence?.id ?? null,
       agency_name: user.agence?.nom ?? null,
+      /** Pays d’agence (récap crédits France / Sénégal, etc.) */
+      agency_pays: user.agence?.pays ?? null,
       filter_mode: this.getFilterMode(user.code_acces),
       can_delete: user.code_acces === 2,
       can_modify: user.code_acces !== 2,
@@ -266,6 +268,7 @@ export class AuthService {
       CAISSIER: 6,
       CAISSIER_GROUPAGE: 7,
       AGENT_SUIVI: 8,
+      CALL_CENTER: 9,
       ADMIN: 1,
     };
     return roleMap[role] || 4;
@@ -281,6 +284,7 @@ export class AuthService {
       CAISSIER: 'Caissier Principal',
       CAISSIER_GROUPAGE: 'Caissier Groupage',
       AGENT_SUIVI: 'Agent Suivi',
+      CALL_CENTER: 'Call center',
       ADMIN: 'Administrateur',
     };
     return nameMap[role] || 'Agent Exploitation';

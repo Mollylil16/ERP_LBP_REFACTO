@@ -1,4 +1,12 @@
-import { Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Post,
+  UseGuards,
+  Request,
+} from '@nestjs/common';
 import { NotificationService } from './notification.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
@@ -13,17 +21,20 @@ export class NotificationController {
   constructor(private readonly notificationService: NotificationService) {}
 
   @Get('unread')
-  getUnread() {
-    return this.notificationService.getUnread();
+  getUnread(@Request() req: { user: { id: number } }) {
+    return this.notificationService.getUnreadForUser(req.user.id);
   }
 
   @Patch(':id/read')
-  markAsRead(@Param('id') id: string) {
-    return this.notificationService.markAsRead(+id);
+  markAsRead(
+    @Param('id') id: string,
+    @Request() req: { user: { id: number } },
+  ) {
+    return this.notificationService.markAsReadForUser(+id, req.user.id);
   }
 
   @Post('read-all')
-  markAllAsRead() {
-    return this.notificationService.markAllAsRead();
+  markAllAsRead(@Request() req: { user: { id: number } }) {
+    return this.notificationService.markAllAsReadForUser(req.user.id);
   }
 }

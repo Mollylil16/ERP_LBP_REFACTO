@@ -2,6 +2,8 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  Inject,
+  forwardRef,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
@@ -12,6 +14,7 @@ import {
   LienPaiementStatut,
 } from '../paiements/entities/lien-paiement.entity';
 import { BusinessAuditService } from '../audit/business-audit.service';
+import { CreditsColisService } from '../exploitation/credits-colis.service';
 
 @Injectable()
 export class FacturesService {
@@ -24,6 +27,8 @@ export class FacturesService {
     private lienRepository: Repository<LienPaiement>,
     private dataSource: DataSource,
     private readonly businessAudit: BusinessAuditService,
+    @Inject(forwardRef(() => CreditsColisService))
+    private readonly creditsColisService: CreditsColisService,
   ) {}
 
   async createProforma(colis: Colis, userId: string): Promise<Facture> {
@@ -97,7 +102,7 @@ export class FacturesService {
     }
     return this.factureRepository.find({
       where,
-      relations: ['colis', 'colis.client'],
+      relations: ['colis', 'colis.client', 'colis.marchandises'],
       order: { created_at: 'DESC' },
     });
   }
@@ -105,7 +110,12 @@ export class FacturesService {
   async findOne(id: number): Promise<Facture> {
     const facture = await this.factureRepository.findOne({
       where: { id },
-      relations: ['colis', 'colis.client'],
+      relations: [
+        'colis',
+        'colis.client',
+        'colis.marchandises',
+        'colis.agence',
+      ],
     });
     if (!facture) {
       throw new NotFoundException(`Facture #${id} introuvable`);
@@ -165,13 +175,14 @@ export class FacturesService {
         etat_apres: saved.etat,
       },
     });
+    await this.creditsColisService.ensureCreditAfterFactureValidated(saved);
     return saved;
   }
 
   async findByColisRef(refColis: string): Promise<Facture | null> {
     return this.factureRepository.findOne({
       where: { colis: { ref_colis: refColis } },
-      relations: ['colis', 'colis.client'],
+      relations: ['colis', 'colis.client', 'colis.marchandises'],
     });
   }
 
@@ -425,7 +436,7 @@ export class FacturesService {
         doc.font('Helvetica').fillColor(MEDIUM).text(agencesInfo);
 
         const callCenterNumbers =
-          process.env.CALLCENTER_GLOBAL || '0503467979 / 0503497979';
+          process.env.CALLCENTER_GLOBAL || '0503497979 / 0509467979';
         doc
           .font('Helvetica-Bold')
           .fillColor(NAVY)

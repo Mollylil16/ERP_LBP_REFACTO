@@ -276,3 +276,55 @@
 body.lbp-mobile-nav-open {
   overflow: hidden;
 }
+
+/* ─── En-têtes de page (titre + actions) ───────────────── */
+.page-container .page-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+@media (max-width: 1023px) {
+  .page-container .page-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .page-container .page-header > .ant-typography {
+    margin-bottom: 0 !important;
+  }
+}
+
+/* Filtres : colonne « Actualiser » lisible sur étroit */
+@media (max-width: 1023px) {
+  .lbp-filter-actions-col {
+    text-align: left !important;
+  }
+
+  .lbp-filter-actions-col .ant-btn {
+    width: 100%;
+    max-width: 100%;
+  }
+}
+
+/* Onglets nombreux : défilement horizontal du libellé */
+.lbp-tabs-responsive .ant-tabs-nav {
+  margin: 0 0 12px;
+}
+
+.lbp-tabs-responsive .ant-tabs-nav::before {
+  border-bottom-width: 1px;
+}
+
+.lbp-tabs-responsive .ant-tabs-nav-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.lbp-tabs-responsive .ant-tabs-nav-list {
+  flex-wrap: nowrap;
+  min-width: min-content;
+}

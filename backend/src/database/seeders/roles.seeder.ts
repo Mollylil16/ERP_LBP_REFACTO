@@ -69,6 +69,14 @@ export async function seedRoles(dataSource: DataSource): Promise<void> {
       niveau_hierarchique: 8,
       est_actif: true,
     },
+    {
+      code: 'CALL_CENTER',
+      nom: 'Call center',
+      description:
+        'Service client : boîte SMS/WhatsApp, litiges, consultation clients / agences',
+      niveau_hierarchique: 5,
+      est_actif: true,
+    },
   ];
 
   for (const roleData of roles) {

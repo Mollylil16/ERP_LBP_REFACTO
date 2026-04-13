@@ -14,6 +14,8 @@ export const APP_CONFIG = {
   company: {
     name: 'LA BELLE PORTE',
     shortName: 'LBP',
+    /** Lignes service client / call center (CI) — aligné PDF facture & env `CALLCENTER_GLOBAL` */
+    callCenterPhones: '0503497979 / 0509467979',
     address: '', // À configurer
     phone: '', // À configurer
     email: '', // À configurer
