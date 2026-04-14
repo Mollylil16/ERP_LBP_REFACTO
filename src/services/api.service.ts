@@ -1,9 +1,20 @@
-import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from 'axios'
+import axios, {
+  AxiosError,
+  AxiosHeaders,
+  AxiosInstance,
+  InternalAxiosRequestConfig,
+} from 'axios'
 import { logger } from './logger.service'
-import { handleApiError, getUserFriendlyErrorMessage } from '@utils/errorHandler'
+import { handleApiError } from '@utils/errorHandler'
 import toast from 'react-hot-toast'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
+
+function isUsingHashRouter(): boolean {
+  // En prod, l'app utilise HashRouter (`/#/...`). Sur ce mode, rediriger vers `/login`
+  // casse la route (on veut `/#/login`).
+  return typeof window !== 'undefined' && window.location.hash.startsWith('#/')
+}
 
 class ApiService {
   private api: AxiosInstance
@@ -23,8 +34,16 @@ class ApiService {
         // sessionStorage = isolé par onglet (évite le “swap” de session entre comptes)
         const token =
           sessionStorage.getItem('lbp_token') ?? localStorage.getItem('lbp_token')
-        if (token && config.headers) {
-          config.headers.Authorization = `Bearer ${token}`
+        if (token) {
+          // Axios v1 utilise souvent AxiosHeaders (mutable via .set()).
+          // Et dans certains cas `config.headers` peut être undefined.
+          const headers = (config.headers ?? new AxiosHeaders()) as any
+          if (typeof headers.set === 'function') {
+            headers.set('Authorization', `Bearer ${token}`)
+          } else {
+            headers.Authorization = `Bearer ${token}`
+          }
+          config.headers = headers
         }
         return config
       },
@@ -79,7 +98,7 @@ class ApiService {
               // Rediriger vers login si pas déjà sur la page de login
               toast.error('Votre session a expiré. Veuillez vous reconnecter.')
               setTimeout(() => {
-                window.location.href = '/login'
+                window.location.href = isUsingHashRouter() ? '/#/login' : '/login'
               }, 1000)
             }
           } else {
