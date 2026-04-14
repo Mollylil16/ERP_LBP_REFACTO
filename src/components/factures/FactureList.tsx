@@ -213,7 +213,13 @@ export const FactureList: React.FC<FactureListProps> = ({ type, onView }) => {
       dataIndex: "date_facture",
       key: "date_facture",
       width: 120,
-      render: (date: string) => formatDate(date),
+      render: (_date: string, record: FactureColis) =>
+        formatDate(
+          (record as any).date_facture ??
+            (record as any).created_at ??
+            (record as any).date_facture ??
+            (record as any).createdAt,
+        ),
       sorter: true,
     },
     {

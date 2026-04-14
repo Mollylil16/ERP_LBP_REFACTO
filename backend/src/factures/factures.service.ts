@@ -633,7 +633,14 @@ export class FacturesService {
             ).toUpperCase(),
             26,
           );
-          const embTxt = truncate((m.type_emballage || '—').toLowerCase(), 10);
+          // `type_emballage` peut être string ou tableau (ex: ['CARTON','SAC']).
+          // On normalise pour éviter les crashs PDF.
+          const rawEmb: unknown = m.type_emballage ?? '—';
+          const embStr =
+            Array.isArray(rawEmb)
+              ? rawEmb.filter(Boolean).map(String).join(', ')
+              : String(rawEmb);
+          const embTxt = truncate((embStr || '—').toLowerCase(), 10);
 
           const rowData = [
             { val: String(i + 1), key: 'num', align: 'center', bold: false },

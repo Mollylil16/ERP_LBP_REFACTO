@@ -245,7 +245,13 @@ export const ColisList: React.FC<ColisListProps> = ({
     dataIndex: "date_envoi",
     key: "date_envoi",
     width: 108,
-    render: (date: string) => formatDate(date),
+    render: (_date: string, record: Colis) =>
+      formatDate(
+        (record as any).date_envoi ??
+          (record as any).date_enrg ??
+          (record as any).created_at ??
+          (record as any).createdAt,
+      ),
     sorter: true,
   };
   const traficCol: ColumnsType<Colis>[0] = {
