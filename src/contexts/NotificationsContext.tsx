@@ -38,6 +38,7 @@ const NotificationsContext = createContext<NotificationsContextType | undefined>
 );
 
 const MAX_NOTIFICATIONS = 50;
+const MAX_MESSAGE_CHARS = 500; // évite de saturer le stockage si payloads volumineux
 
 export const NotificationsProvider: React.FC<{
   children: React.ReactNode;
@@ -63,12 +64,34 @@ export const NotificationsProvider: React.FC<{
 
     try {
       const data = await notificationsService.getUnread();
-      const formatted = data.map((n: any) => ({
-        ...n,
-        actionUrl: n.action_url ?? n.actionUrl,
-        timestamp: new Date(n.created_at),
-        id: String(n.id),
-      }));
+      const formatted: Notification[] = (Array.isArray(data) ? data : [])
+        .map((n: any) => ({
+          ...n,
+          // Normaliser l’URL d’action
+          actionUrl: n.action_url ?? n.actionUrl,
+          // S’assurer que le timestamp est bien un Date (utilisé côté UI)
+          timestamp: new Date(n.created_at),
+          // Forcer id en string
+          id: String(n.id),
+          // Forcer read booléen si absent
+          read: Boolean(n.read),
+          // Défaut type
+          type: (n.type || 'info') as NotificationType,
+          // Défaut title/message
+          title: String(n.title ?? 'Notification'),
+          message: String(n.message ?? ''),
+        }))
+        // Limiter en mémoire (et donc UI + stockage)
+        .slice(0, MAX_NOTIFICATIONS)
+        // Tronquer les messages/payloads trop lourds (quota localStorage)
+        .map((n) => ({
+          ...n,
+          message:
+            n.message && n.message.length > MAX_MESSAGE_CHARS
+              ? `${n.message.slice(0, MAX_MESSAGE_CHARS)}…`
+              : n.message,
+        }));
+
       setNotifications(formatted);
     } catch (error) {
       console.error("Erreur lors du chargement des notifications:", error);
@@ -84,8 +107,32 @@ export const NotificationsProvider: React.FC<{
 
   // Sauvegarder les notifications dans localStorage (en backup)
   useEffect(() => {
-    if (notifications.length > 0) {
-      localStorage.setItem("lbp_notifications", JSON.stringify(notifications));
+    // IMPORTANT: localStorage a un quota. Ne jamais faire planter l’app si quota dépassé.
+    try {
+      if (notifications.length > 0) {
+        // Sauvegarder une version compacte (évite QuotaExceededError)
+        const compact = notifications.slice(0, MAX_NOTIFICATIONS).map((n) => ({
+          id: n.id,
+          type: n.type,
+          title: n.title,
+          message: n.message,
+          timestamp: n.timestamp instanceof Date ? n.timestamp.toISOString() : String(n.timestamp),
+          read: n.read,
+          actionUrl: n.actionUrl,
+          category: n.category,
+        }));
+        localStorage.setItem("lbp_notifications", JSON.stringify(compact));
+      } else {
+        localStorage.removeItem("lbp_notifications");
+      }
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.warn("[Notifications] localStorage quota exceeded, clearing cache", e);
+      try {
+        localStorage.removeItem("lbp_notifications");
+      } catch {
+        // ignore
+      }
     }
   }, [notifications]);
 
