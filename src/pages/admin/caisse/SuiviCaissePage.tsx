@@ -3,7 +3,7 @@
  */
 
 import React from 'react'
-import { Tabs, Button, Space, Card, Select, Modal, InputNumber, message, Typography, Alert } from 'antd'
+import { Tabs, Button, Space, Card, Select, Modal, InputNumber, message, Typography, Alert, Row, Col, Statistic, Divider, Tooltip, Tag } from 'antd'
 import {
   WalletOutlined,
   ArrowUpOutlined,
@@ -68,6 +68,19 @@ export const SuiviCaissePage: React.FC = () => {
     enabled: Boolean(idCaisse),
   })
 
+  const { data: pointDuJour, isLoading: pointLoading, refetch: refetchPoint } = useQuery({
+    queryKey: ['caisse-point', idCaisse],
+    queryFn: () => caisseService.getPointCaisse(),
+    enabled: Boolean(idCaisse) && hasPermission(PERMISSIONS.CAISSE.VIEW),
+    refetchInterval: 30000,
+  })
+
+  const { data: sessionHistory, isLoading: sessionHistoryLoading, refetch: refetchSessionHistory } = useQuery({
+    queryKey: ['caisse-session-history', idCaisse],
+    queryFn: () => caisseService.getSessionHistory(idCaisse, 20),
+    enabled: Boolean(idCaisse) && hasPermission(PERMISSIONS.CAISSE.VIEW),
+  })
+
   const openSessionMutation = useMutation({
     mutationFn: (amount: number) =>
       caisseService.openSession({ id_caisse: idCaisse, solde_ouverture_reel: amount }),
@@ -76,6 +89,7 @@ export const SuiviCaissePage: React.FC = () => {
       setOpenModalVisible(false);
       setOpenAmount(null);
       refetchSession();
+      refetchSessionHistory();
     },
     onError: (err: any) => message.error(err.message || "Erreur lors de l'ouverture de session"),
   })
@@ -90,9 +104,22 @@ export const SuiviCaissePage: React.FC = () => {
       refetchSession();
       refetchSolde();
       refetchCaisses();
+      refetchSessionHistory();
+      refetchPoint();
     },
     onError: (err: any) => message.error(err.message || 'Erreur lors de la cloture de session'),
   })
+
+  const isSessionOpen = Boolean(activeSession?.id)
+
+  const requireOpenSession = (action: () => void) => {
+    if (!isSessionOpen) {
+      message.warning('Veuillez ouvrir la caisse (session) avant d’enregistrer des opérations.')
+      setOpenModalVisible(true)
+      return
+    }
+    action()
+  }
 
   const handleSuccess = () => {
     setApproFormVisible(false)
@@ -101,6 +128,7 @@ export const SuiviCaissePage: React.FC = () => {
     setRefreshKey((prev) => prev + 1) // Force le rechargement des listes
     refetchSolde()
     refetchCaisses()
+    refetchPoint()
   }
 
   const handleOpenEntreeForm = (type: 'ENTREE_CHEQUE' | 'ENTREE_ESPECE' | 'ENTREE_VIREMENT') => {
@@ -161,11 +189,21 @@ export const SuiviCaissePage: React.FC = () => {
               <Button
                 type="primary"
                 icon={<PlusOutlined />}
-                onClick={() => setApproFormVisible(true)}
+                disabled={!isSessionOpen}
+                onClick={() => requireOpenSession(() => setApproFormVisible(true))}
               >
                 Nouvel Approvisionnement
               </Button>
             </WithPermission>
+            {!isSessionOpen ? (
+              <Alert
+                style={{ marginTop: 12 }}
+                type="warning"
+                showIcon
+                message="Session fermée"
+                description="Ouvrez la caisse pour enregistrer des approvisionnements, décaissements et entrées."
+              />
+            ) : null}
           </div>
 
           <MouvementsCaisseList
@@ -191,11 +229,21 @@ export const SuiviCaissePage: React.FC = () => {
                 type="primary"
                 danger
                 icon={<PlusOutlined />}
-                onClick={() => setDecaissementFormVisible(true)}
+                disabled={!isSessionOpen}
+                onClick={() => requireOpenSession(() => setDecaissementFormVisible(true))}
               >
                 Nouveau Décaissement
               </Button>
             </WithPermission>
+            {!isSessionOpen ? (
+              <Alert
+                style={{ marginTop: 12 }}
+                type="warning"
+                showIcon
+                message="Session fermée"
+                description="Ouvrez la caisse pour enregistrer des décaissements."
+              />
+            ) : null}
           </div>
 
           <MouvementsCaisseList
@@ -221,26 +269,38 @@ export const SuiviCaissePage: React.FC = () => {
                 <Button
                   type="primary"
                   icon={<PlusOutlined />}
-                  onClick={() => handleOpenEntreeForm('ENTREE_ESPECE')}
+                  disabled={!isSessionOpen}
+                  onClick={() => requireOpenSession(() => handleOpenEntreeForm('ENTREE_ESPECE'))}
                 >
                   Entrée Espèce
                 </Button>
                 <Button
                   type="primary"
                   icon={<PlusOutlined />}
-                  onClick={() => handleOpenEntreeForm('ENTREE_CHEQUE')}
+                  disabled={!isSessionOpen}
+                  onClick={() => requireOpenSession(() => handleOpenEntreeForm('ENTREE_CHEQUE'))}
                 >
                   Entrée Chèque
                 </Button>
                 <Button
                   type="primary"
                   icon={<PlusOutlined />}
-                  onClick={() => handleOpenEntreeForm('ENTREE_VIREMENT')}
+                  disabled={!isSessionOpen}
+                  onClick={() => requireOpenSession(() => handleOpenEntreeForm('ENTREE_VIREMENT'))}
                 >
                   Entrée Virement
                 </Button>
               </Space>
             </WithPermission>
+            {!isSessionOpen ? (
+              <Alert
+                style={{ marginTop: 12 }}
+                type="warning"
+                showIcon
+                message="Session fermée"
+                description="Ouvrez la caisse pour enregistrer des entrées."
+              />
+            ) : null}
           </div>
 
           <Tabs size="small" type="card" items={entreesTabItems} />
@@ -255,6 +315,56 @@ export const SuiviCaissePage: React.FC = () => {
         </span>
       ),
       children: <RapportGrandesLignes idCaisse={idCaisse} />,
+    },
+    {
+      key: 'sessions',
+      label: <span><WalletOutlined /> Sessions</span>,
+      children: (
+        <Card>
+          <Space direction="vertical" style={{ width: '100%' }}>
+            <Space style={{ justifyContent: 'space-between', width: '100%' }} wrap>
+              <Typography.Text strong>Historique des sessions (20 dernières)</Typography.Text>
+              <Button onClick={() => refetchSessionHistory()} loading={sessionHistoryLoading}>
+                Actualiser
+              </Button>
+            </Space>
+            {Array.isArray(sessionHistory) && sessionHistory.length > 0 ? (
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr>
+                      <th style={{ textAlign: 'left', padding: 8, borderBottom: '1px solid #f0f0f0' }}>Ouverture</th>
+                      <th style={{ textAlign: 'left', padding: 8, borderBottom: '1px solid #f0f0f0' }}>Fermeture</th>
+                      <th style={{ textAlign: 'right', padding: 8, borderBottom: '1px solid #f0f0f0' }}>Solde ouverture</th>
+                      <th style={{ textAlign: 'right', padding: 8, borderBottom: '1px solid #f0f0f0' }}>Solde fermeture</th>
+                      <th style={{ textAlign: 'left', padding: 8, borderBottom: '1px solid #f0f0f0' }}>Statut</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sessionHistory.map((s: any) => (
+                      <tr key={s.id}>
+                        <td style={{ padding: 8, borderBottom: '1px solid #fafafa' }}>{s.opened_at ?? '—'}</td>
+                        <td style={{ padding: 8, borderBottom: '1px solid #fafafa' }}>{s.closed_at ?? '—'}</td>
+                        <td style={{ padding: 8, borderBottom: '1px solid #fafafa', textAlign: 'right' }}>
+                          {(s.solde_ouverture_reel ?? s.solde_ouverture ?? 0).toLocaleString('fr-FR')} FCFA
+                        </td>
+                        <td style={{ padding: 8, borderBottom: '1px solid #fafafa', textAlign: 'right' }}>
+                          {s.solde_fermeture_reel != null ? `${Number(s.solde_fermeture_reel).toLocaleString('fr-FR')} FCFA` : '—'}
+                        </td>
+                        <td style={{ padding: 8, borderBottom: '1px solid #fafafa' }}>
+                          <Tag color={s.closed_at ? 'default' : 'green'}>{s.closed_at ? 'Clôturée' : 'Ouverte'}</Tag>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <Typography.Text type="secondary">Aucune session trouvée.</Typography.Text>
+            )}
+          </Space>
+        </Card>
+      ),
     },
   ]
 
@@ -305,6 +415,54 @@ export const SuiviCaissePage: React.FC = () => {
               </Card>
             )}
           </div>
+
+          <Row gutter={[16, 16]}>
+            <Col xs={24} md={8}>
+              <Card size="small">
+                <Statistic
+                  title="Solde actuel"
+                  value={soldeActuel}
+                  precision={0}
+                  suffix="FCFA"
+                  valueStyle={{ color: soldeActuel >= 0 ? '#52c41a' : '#ff4d4f' }}
+                  loading={caissesLoading}
+                />
+              </Card>
+            </Col>
+            <Col xs={24} md={8}>
+              <Card size="small">
+                <Statistic
+                  title="Entrées (jour)"
+                  value={pointDuJour?.entrees ?? 0}
+                  precision={0}
+                  suffix="FCFA"
+                  valueStyle={{ color: '#1677ff' }}
+                  loading={pointLoading}
+                />
+              </Card>
+            </Col>
+            <Col xs={24} md={8}>
+              <Card size="small">
+                <Statistic
+                  title="Sorties (jour)"
+                  value={pointDuJour?.sorties ?? 0}
+                  precision={0}
+                  suffix="FCFA"
+                  valueStyle={{ color: '#ff4d4f' }}
+                  loading={pointLoading}
+                />
+              </Card>
+            </Col>
+          </Row>
+
+          {!isSessionOpen ? (
+            <Alert
+              type="info"
+              showIcon
+              message="Caisse fermée"
+              description="Ouvrez une session pour enregistrer des opérations. Vous pouvez toujours consulter l’historique et les rapports."
+            />
+          ) : null}
 
           {canSeeRecettesDuJour ? <RecettesDuJourCard /> : null}
 

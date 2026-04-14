@@ -5,6 +5,8 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   OneToMany,
+  ManyToOne,
+  JoinColumn,
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
 import { Colis } from '../../colis/entities/colis.entity';
@@ -40,6 +42,14 @@ export class Agence {
 
   @Column({ length: 20, nullable: true })
   tel_responsable: string;
+
+  /**
+   * Chef d'agence (référence utilisateur).
+   * Utilisé pour restreindre la sélection d'agence et pour les workflows (points journaliers).
+   */
+  @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'id_chef_agence' })
+  chefAgence: User | null;
 
   @Column({ default: true })
   actif: boolean;

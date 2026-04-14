@@ -299,10 +299,51 @@ export class UsersService implements OnApplicationBootstrap {
    */
   async setAgence(userId: number, agenceId: number): Promise<User> {
     const user = await this.findOne(userId);
-    const agence = await this.agenceRepository.findOne({
-      where: { id: agenceId },
-    });
+    const agence = await this.agenceRepository.findOne({ where: { id: agenceId } });
     if (!agence) throw new NotFoundException('Agence introuvable');
+
+    // Une fois l'agence sélectionnée, on ne permet pas de la changer via ce flux,
+    // sauf pour accès total (code_acces=2) qui reste un cas admin/debug.
+    if (user.agence_selected && user.agence?.id && user.agence.id !== agenceId) {
+      if (user.code_acces !== 2) {
+        throw new ForbiddenException(
+          "Votre agence est déjà configurée. Contactez l'administrateur pour la modifier.",
+        );
+      }
+    }
+
+    // Si l'utilisateur est CHEF_AGENCE, il choisit son agence et devient automatiquement
+    // le chef officiel de cette agence (si elle n'en a pas déjà un).
+    if (user.role === UserRole.CHEF_AGENCE) {
+      // Empêcher qu'un même chef soit assigné à plusieurs agences.
+      const alreadyChefSomewhere = await this.agenceRepository.findOne({
+        where: { chefAgence: { id: userId } as any },
+      });
+      if (alreadyChefSomewhere && alreadyChefSomewhere.id !== agenceId) {
+        throw new ForbiddenException(
+          `Vous êtes déjà chef de l'agence "${alreadyChefSomewhere.nom}". Contactez l'administrateur pour changer.`,
+        );
+      }
+
+      const agenceWithChef = await this.agenceRepository.findOne({
+        where: { id: agenceId },
+        relations: ['chefAgence'],
+      });
+      if (!agenceWithChef) throw new NotFoundException('Agence introuvable');
+
+      // Si un autre chef est déjà assigné, on refuse (évite 2 chefs sur la même agence).
+      if (agenceWithChef.chefAgence?.id && agenceWithChef.chefAgence.id !== userId) {
+        throw new ForbiddenException(
+          "Cette agence a déjà un chef d'agence assigné. Contactez l'administrateur.",
+        );
+      }
+
+      // Auto-assign si pas encore de chef
+      if (!agenceWithChef.chefAgence?.id) {
+        agenceWithChef.chefAgence = user as any;
+        await this.agenceRepository.save(agenceWithChef);
+      }
+    }
 
     user.agence = agence;
     user.agence_selected = true;

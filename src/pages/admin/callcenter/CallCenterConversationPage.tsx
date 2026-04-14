@@ -7,6 +7,7 @@ import type { CallCenterConversationRow, CallCenterMessageRow } from '@types'
 import { callcenterService } from '@services/callcenter.service'
 import { formatDate } from '@utils/format'
 import { EmptyErrorState } from '@components/common/EmptyState'
+import { buildWhatsAppChatUrl } from '@utils/whatsapp'
 
 const { Title, Text } = Typography
 
@@ -89,6 +90,11 @@ export const CallCenterConversationPage: React.FC = () => {
     return t ? `${t.channel} · ${t.to}` : `Conversation #${id}`
   }, [row, messages, id])
 
+  const waUrl = useMemo(() => {
+    const t = inferRecipient(row, messages)
+    return t?.to ? buildWhatsAppChatUrl(t.to) : null
+  }, [row, messages])
+
   if (!Number.isFinite(id)) {
     return (
       <div>
@@ -112,9 +118,17 @@ export const CallCenterConversationPage: React.FC = () => {
       <Title level={2} style={{ marginBottom: 4 }}>
         Fil de messages
       </Title>
-      <Text type="secondary" style={{ display: 'block', marginBottom: 16 }}>
-        {headerSubtitle}
-      </Text>
+      <Space style={{ marginBottom: 16 }} wrap>
+        <Text type="secondary">{headerSubtitle}</Text>
+        {waUrl ? (
+          <Button
+            size="small"
+            onClick={() => window.open(waUrl, '_blank', 'noopener,noreferrer')}
+          >
+            Ouvrir WhatsApp
+          </Button>
+        ) : null}
+      </Space>
 
       <Card>
         {isLoading ? (

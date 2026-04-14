@@ -60,15 +60,13 @@ export const DashboardPage: React.FC = () => {
   const navigate = useNavigate()
   const persona = resolveDashboardPersona(user?.role?.code)
   const copy = DASHBOARD_PERSONA_COPY[persona]
-  const showAgenciesPerf = persona === 'direction' || persona === 'manager'
-  const showAiPanel = persona === 'direction'
-  const showCharts =
-    persona !== 'caissier' &&
-    (persona === 'direction' ||
-      persona === 'manager' ||
-      persona === 'agent' ||
-      persona === 'suivi' ||
-      persona === 'default')
+  // Les widgets doivent dépendre des permissions (pas seulement du rôle),
+  // pour éviter les 403 si l'utilisateur a un dashboard mais pas les accès aux endpoints.
+  const canViewDashboard = hasPermission(PERMISSIONS.DASHBOARD.VIEW)
+  const canViewCaisseWidget = hasPermission(PERMISSIONS.DASHBOARD.CAISSE)
+  const canViewAgenciesPerf = hasPermission(PERMISSIONS.DASHBOARD.ADMIN)
+  const canViewCharts = hasPermission(PERMISSIONS.RAPPORTS.VIEW)
+  const canViewAiPanel = hasPermission(PERMISSIONS.DASHBOARD.ADMIN) && canViewCharts
 
   // Activer les alertes automatiques
   useAlerts();
@@ -78,7 +76,7 @@ export const DashboardPage: React.FC = () => {
     queryKey: ['dashboard', 'stats'],
     queryFn: () => dashboardService.getStats(),
     refetchInterval: APP_CONFIG.refresh.dashboard,
-    enabled: isAuthenticated, // Ne faire la requête que si authentifié
+    enabled: isAuthenticated && canViewDashboard, // évite 403 si pas dashboard.view
   })
 
   // Récupérer le point caisse (seulement si authentifié)
@@ -86,7 +84,7 @@ export const DashboardPage: React.FC = () => {
     queryKey: ['dashboard', 'caisse'],
     queryFn: () => dashboardService.getPointCaisse(),
     refetchInterval: APP_CONFIG.refresh.widgets,
-    enabled: isAuthenticated, // Ne faire la requête que si authentifié
+    enabled: isAuthenticated && canViewCaisseWidget,
   })
 
   // Récupérer la performance par agence (seulement pour les directeurs/admin via permission)
@@ -94,7 +92,7 @@ export const DashboardPage: React.FC = () => {
     queryKey: ['dashboard', 'agencies-perf'],
     queryFn: () => dashboardService.getAgenciesPerformances(),
     refetchInterval: APP_CONFIG.refresh.dashboard,
-    enabled: isAuthenticated && showAgenciesPerf,
+    enabled: isAuthenticated && canViewAgenciesPerf,
   })
 
   // Récupérer les activités récentes (seulement si authentifié)
@@ -102,7 +100,7 @@ export const DashboardPage: React.FC = () => {
     queryKey: ['dashboard', 'activities'],
     queryFn: () => dashboardService.getRecentActivities(10),
     refetchInterval: APP_CONFIG.refresh.widgets,
-    enabled: isAuthenticated, // Ne faire la requête que si authentifié
+    enabled: isAuthenticated && canViewDashboard,
   })
 
   // Graphiques : requêtes uniquement si la persona affiche les graphiques (ex. pas les caissiers)
@@ -110,14 +108,14 @@ export const DashboardPage: React.FC = () => {
     queryKey: ['dashboard', 'charts'],
     queryFn: () => dashboardService.getChartData(),
     refetchInterval: APP_CONFIG.refresh.dashboard * 2,
-    enabled: isAuthenticated && showCharts,
+    enabled: isAuthenticated && canViewCharts,
   })
 
   const { data: trafficData, isLoading: trafficLoading } = useQuery({
     queryKey: ['dashboard', 'traffic'],
     queryFn: () => dashboardService.getTrafficRepartition(),
     refetchInterval: APP_CONFIG.refresh.dashboard * 2,
-    enabled: isAuthenticated && showCharts,
+    enabled: isAuthenticated && canViewCharts,
   })
 
   // Récupérer les recommandations IA
@@ -125,7 +123,7 @@ export const DashboardPage: React.FC = () => {
     queryKey: ['dashboard', 'recommendations'],
     queryFn: () => dashboardService.getAIRecommendations(),
     refetchInterval: APP_CONFIG.refresh.dashboard * 5,
-    enabled: isAuthenticated && showAiPanel,
+    enabled: isAuthenticated && canViewAiPanel,
   })
 
   // Monitoring IA V1 (drift + alertes)
@@ -133,14 +131,14 @@ export const DashboardPage: React.FC = () => {
     queryKey: ['dashboard', 'ai-monitoring'],
     queryFn: () => dashboardService.getAIMonitoring(),
     refetchInterval: APP_CONFIG.refresh.dashboard * 5,
-    enabled: isAuthenticated && showAiPanel,
+    enabled: isAuthenticated && canViewAiPanel,
   })
 
   // Récupérer les stats des agences (nouvelle feature)
   const { data: agencesStats, isLoading: agencesStatsLoading } = useQuery({
     queryKey: ['dashboard', 'agences-stats'],
     queryFn: () => agencesService.getStats(),
-    enabled: isAuthenticated && showAgenciesPerf,
+    enabled: isAuthenticated && canViewAgenciesPerf,
   })
 
   // Rafraîchir automatiquement toutes les données
@@ -187,8 +185,8 @@ export const DashboardPage: React.FC = () => {
       {/* STATISTIQUES */}
       {stats && <StatsCards stats={stats} loading={statsLoading} />}
 
-      {/* POINT CAISSE MULTI-AGENCES (direction / manager) */}
-      {showAgenciesPerf ? (
+      {/* POINT CAISSE MULTI-AGENCES (direction / manager / admin) */}
+      {canViewAgenciesPerf ? (
         <WithPermission permission={PERMISSIONS.DASHBOARD.CAISSE}>
           <AgenciesPerformanceGrid
             data={agenciesPerf || []}
@@ -206,8 +204,8 @@ export const DashboardPage: React.FC = () => {
         ) : null}
       </WithPermission>
 
-      {/* GRAPHIQUES */}
-      {showCharts ? (
+      {/* GRAPHIQUES (si rapports.view) */}
+      {canViewCharts ? (
         <Row gutter={[24, 24]} className="dashboard-section">
           <Col xs={24} lg={8}>
             <PredictionCard
@@ -221,7 +219,7 @@ export const DashboardPage: React.FC = () => {
         </Row>
       ) : null}
 
-      {showCharts ? (
+      {canViewCharts ? (
         <Row gutter={[24, 24]} className="dashboard-section">
           <Col xs={24} lg={12}>
             <ChartColisParMois data={chartData || []} loading={chartLoading} />
@@ -245,7 +243,7 @@ export const DashboardPage: React.FC = () => {
           <RecentActivities activities={activities || []} loading={activitiesLoading} />
         </Col>
         <Col xs={24} xl={8}>
-          {showAgenciesPerf ? (
+          {canViewAgenciesPerf ? (
             <Card
               title={<span><TrophyOutlined style={{ color: '#faad14', marginRight: 8 }} /> Agences les plus actives</span>}
               className="dashboard-card"
@@ -279,7 +277,7 @@ export const DashboardPage: React.FC = () => {
             </Card>
           ) : null}
 
-          {showAiPanel ? (
+          {canViewAiPanel ? (
             <AIIntelligencePanel
               recommendations={recommendations}
               loading={recommendationsLoading}

@@ -25,9 +25,19 @@ function getStoredPermissions(): string[] {
   }
 }
 
-function pickLandingRoute(perms: string[]): string {
+function pickLandingRoute(perms: string[], roleCode?: string): string {
   const has = (p: string) => perms.includes('*') || perms.includes(p)
   const hasAny = (ps: string[]) => perms.includes('*') || ps.some((p) => perms.includes(p))
+
+  // Si permissions non encore chargées (ex: refresh, cache vidé),
+  // on applique un fallback basé sur le rôle pour éviter `/dashboard` → 403.
+  if (perms.length === 0 && roleCode) {
+    const rc = roleCode.toUpperCase()
+    if (rc === 'AGENT_GROUPAGE' || rc === 'CAISSIER_GROUPAGE') return '/colis/groupage'
+    if (rc === 'AGENT_EXPLOITATION' || rc === 'SUPERVISEUR_REGIONAL') return '/exploitation'
+    if (rc === 'CALL_CENTER') return '/callcenter/inbox'
+    if (rc === 'CAISSIER') return '/caisse/suivi'
+  }
 
   if (has(ROUTE_ACCESS.dashboard)) return '/dashboard'
   if (has(ROUTE_ACCESS.callcenterInbox)) return '/callcenter/inbox'
@@ -186,7 +196,11 @@ export const AppRoutes: React.FC = () => {
           index
           element={
             <Navigate
-              to={isAuthenticated ? pickLandingRoute(getStoredPermissions()) : '/login'}
+              to={
+                isAuthenticated
+                  ? pickLandingRoute(getStoredPermissions(), user?.role?.code)
+                  : '/login'
+              }
               replace
             />
           }
@@ -618,7 +632,9 @@ export const AppRoutes: React.FC = () => {
         {/* Redirect 404 */}
         <Route
           path="*"
-          element={<Navigate to={pickLandingRoute(getStoredPermissions())} replace />}
+          element={
+            <Navigate to={pickLandingRoute(getStoredPermissions(), user?.role?.code)} replace />
+          }
         />
       </Route>
     </Routes>

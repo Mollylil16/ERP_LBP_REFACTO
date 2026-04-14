@@ -10,6 +10,7 @@ import { RefreshToken } from './entities/refresh-token.entity';
 import { Repository } from 'typeorm';
 import * as crypto from 'crypto';
 import { BusinessAuditService } from '../audit/business-audit.service';
+import { ensureDashboardPermissions } from '../common/permission-code-map';
 
 @Injectable()
 export class AuthService {
@@ -264,6 +265,7 @@ export class AuthService {
       MANAGER: 2,
       SUPERVISEUR_REGIONAL: 3,
       AGENT_EXPLOITATION: 4,
+      CHEF_AGENCE: 10,
       AGENT_GROUPAGE: 5,
       CAISSIER: 6,
       CAISSIER_GROUPAGE: 7,
@@ -280,6 +282,7 @@ export class AuthService {
       MANAGER: 'Manager / Superviseur',
       SUPERVISEUR_REGIONAL: 'Superviseur Régional',
       AGENT_EXPLOITATION: 'Agent Exploitation',
+      CHEF_AGENCE: "Chef d'agence",
       AGENT_GROUPAGE: 'Agent Groupage',
       CAISSIER: 'Caissier Principal',
       CAISSIER_GROUPAGE: 'Caissier Groupage',
@@ -321,7 +324,7 @@ export class AuthService {
       this.logger.warn(
         `[LBP_PERMISSIONS] userId=${user?.id} login=${user?.username ?? '?'} : pas de code rôle — permissions=[]`,
       );
-      return [];
+      return ensureDashboardPermissions([]);
     }
 
     try {
@@ -341,7 +344,7 @@ export class AuthService {
       );
     }
 
-    return [];
+    return ensureDashboardPermissions([]);
   }
 
   private hasGlobalAgencyAccess(user: any): boolean {

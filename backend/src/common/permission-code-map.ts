@@ -139,7 +139,8 @@ function mapOneDbCode(code: string): string[] {
 
 /** Le front attend toujours au moins dashboard.view ; la caisse ajoute dashboard.caisse. */
 export function ensureDashboardPermissions(codes: string[]): string[] {
-  if (codes.length === 0) return codes;
+  // Correctif "définitif" : tout utilisateur authentifié doit au minimum pouvoir ouvrir un dashboard.
+  // Même si la matrice RBAC en base est vide (role_permissions manquant), on évite les 403 post-login.
   const s = new Set(codes);
   s.add('dashboard.view');
   if ([...s].some((c) => c.startsWith('caisse.'))) {

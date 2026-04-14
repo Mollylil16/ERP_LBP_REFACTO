@@ -111,6 +111,7 @@ export const DashboardQuickActions: React.FC<DashboardQuickActionsProps> = ({
     )
   }
 
+  // Backward compat: ancienne persona "agent"
   if (persona === 'agent') {
     return (
       <Card size="small" className="dashboard-section" title="Flux colis">
@@ -133,6 +134,107 @@ export const DashboardQuickActions: React.FC<DashboardQuickActionsProps> = ({
           <WithPermission permission={[...ROUTE_ACCESS.colisMap]}>
             <Button icon={<GlobalOutlined />} onClick={() => navigate('/colis/map')}>
               Carte
+            </Button>
+          </WithPermission>
+        </Space>
+      </Card>
+    )
+  }
+
+  if (persona === 'agent_groupage') {
+    return (
+      <Card size="small" className="dashboard-section" title="Groupage">
+        <Space wrap>
+          <WithPermission permission={ROUTE_ACCESS.colisGroupage}>
+            <Button icon={<InboxOutlined />} onClick={() => navigate('/colis/groupage')}>
+              Colis groupage
+            </Button>
+          </WithPermission>
+          <WithPermission permission={ROUTE_ACCESS.factures}>
+            <Button icon={<FileTextOutlined />} onClick={() => navigate('/factures')}>
+              Factures
+            </Button>
+          </WithPermission>
+          <WithPermission permission={ROUTE_ACCESS.paiements}>
+            <Button icon={<InboxOutlined />} onClick={() => navigate('/paiements')}>
+              Paiements
+            </Button>
+          </WithPermission>
+        </Space>
+      </Card>
+    )
+  }
+
+  if (persona === 'agent_exploitation') {
+    return (
+      <Card size="small" className="dashboard-section" title="Exploitation">
+        <Space wrap>
+          <WithPermission permission={ROUTE_ACCESS.colisGroupage}>
+            <Button icon={<InboxOutlined />} onClick={() => navigate('/colis/groupage')}>
+              Groupage
+            </Button>
+          </WithPermission>
+          <WithPermission permission={[...ROUTE_ACCESS.exploitationDashboard]}>
+            <Button icon={<TeamOutlined />} onClick={() => navigate('/exploitation')}>
+              Exploitation
+            </Button>
+          </WithPermission>
+          <WithPermission permission={ROUTE_ACCESS.litiges}>
+            <Button icon={<AlertOutlined />} onClick={() => navigate('/litiges')}>
+              Litiges
+            </Button>
+          </WithPermission>
+        </Space>
+      </Card>
+    )
+  }
+
+  if (persona === 'chef_agence') {
+    return (
+      <Card size="small" className="dashboard-section" title="Pilotage agence">
+        <Space wrap>
+          <WithPermission permission={[...ROUTE_ACCESS.exploitationPointsJournaliers]}>
+            <Button icon={<TeamOutlined />} onClick={() => navigate('/exploitation/points-journaliers')}>
+              Points journaliers
+            </Button>
+          </WithPermission>
+          <WithPermission permission={ROUTE_ACCESS.caisse}>
+            <Button icon={<BankOutlined />} onClick={() => navigate('/caisse/suivi')}>
+              Caisse
+            </Button>
+          </WithPermission>
+          <WithPermission permission={ROUTE_ACCESS.colisGroupage}>
+            <Button icon={<InboxOutlined />} onClick={() => navigate('/colis/groupage')}>
+              Groupage
+            </Button>
+          </WithPermission>
+          <WithPermission permission={ROUTE_ACCESS.factures}>
+            <Button icon={<FileTextOutlined />} onClick={() => navigate('/factures')}>
+              Factures
+            </Button>
+          </WithPermission>
+        </Space>
+      </Card>
+    )
+  }
+
+  if (persona === 'callcenter') {
+    return (
+      <Card size="small" className="dashboard-section" title="Relation client">
+        <Space wrap>
+          <WithPermission permission={ROUTE_ACCESS.callcenterInbox}>
+            <Button icon={<PhoneOutlined />} onClick={() => navigate('/callcenter/inbox')}>
+              Boîte messages
+            </Button>
+          </WithPermission>
+          <WithPermission permission={ROUTE_ACCESS.litiges}>
+            <Button icon={<AlertOutlined />} onClick={() => navigate('/litiges')}>
+              Litiges
+            </Button>
+          </WithPermission>
+          <WithPermission permission={ROUTE_ACCESS.clients}>
+            <Button icon={<TeamOutlined />} onClick={() => navigate('/clients')}>
+              Clients
             </Button>
           </WithPermission>
         </Space>

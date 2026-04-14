@@ -16,6 +16,8 @@ export enum UserRole {
   DIRECTEUR = 'DIRECTEUR',
   MANAGER = 'MANAGER',
   SUPERVISEUR_REGIONAL = 'SUPERVISEUR_REGIONAL',
+  /** Chef d'agence (périmètre agence, sans multi-agences par défaut) */
+  CHEF_AGENCE = 'CHEF_AGENCE',
   AGENT_EXPLOITATION = 'AGENT_EXPLOITATION',
   AGENT_GROUPAGE = 'AGENT_GROUPAGE',
   CAISSIER = 'CAISSIER',

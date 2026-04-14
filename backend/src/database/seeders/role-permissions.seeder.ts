@@ -113,6 +113,41 @@ const rolePermissionsMatrix = {
     'litiges.manage',
     'callcenter.inbox',
   ],
+  CHEF_AGENCE: [
+    // Colis (opérationnel agence)
+    'exploitation.groupage_colis.create',
+    'exploitation.groupage_colis.read',
+    'exploitation.groupage_colis.update',
+    'exploitation.autres_envois.create',
+    'exploitation.autres_envois.read',
+    'exploitation.autres_envois.update',
+    'exploitation.rapports_envois.read',
+    // Facturation (émission / consultation)
+    'facturation.facturer.create',
+    'facturation.facturer.read',
+    // Structures (lecture)
+    'structures.clients.read',
+    'structures.agences.read',
+    // Caisse (lecture)
+    'operation_caisse.gestion_caisses.read',
+    // Workflow / validation
+    'colis.groupage.validate',
+    'colis.autres-envois.validate',
+    'factures.validate',
+    // Litiges / call center (utile terrain)
+    'litiges.view',
+    'litiges.create',
+    'callcenter.inbox',
+    // Exploitation (chef agence : soumission des points/recaps)
+    'exploitation.points_journaliers.read',
+    'exploitation.points_journaliers.create',
+    'exploitation.points_journaliers.submit',
+    'exploitation.credits.read',
+    'exploitation.credits.submit_recap',
+    // Fournitures (demandes agence)
+    'exploitation.fournitures.read',
+    'exploitation.fournitures.request',
+  ],
   AGENT_EXPLOITATION: [
     'exploitation.groupage_colis.create',
     'exploitation.groupage_colis.read',

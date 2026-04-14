@@ -37,8 +37,8 @@ export class AgencesController {
   @Get()
   @RequirePermission('agences.read', 'config.view')
   @ApiOperation({ summary: 'Liste des agences actives (lecture métier ou admin config)' })
-  findAll() {
-    return this.agencesService.findAll();
+  findAll(@Request() req: any) {
+    return this.agencesService.findAll(req.user);
   }
 
   @Get('stats')

@@ -35,6 +35,14 @@ export async function seedRoles(dataSource: DataSource): Promise<void> {
       est_actif: true,
     },
     {
+      code: 'CHEF_AGENCE',
+      nom: "Chef d'agence",
+      description:
+        "Responsable d'une agence : accès opérationnel sur son agence (pas de multi-agences par défaut)",
+      niveau_hierarchique: 4,
+      est_actif: true,
+    },
+    {
       code: 'AGENT_EXPLOITATION',
       nom: 'Agent Exploitation',
       description: 'Création et suivi des envois de colis',

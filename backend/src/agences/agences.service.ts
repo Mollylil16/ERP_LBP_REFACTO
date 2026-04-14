@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Agence } from './entities/agence.entity';
+import { UserRole } from '../users/entities/user.entity';
 
 export interface CreateAgenceDto {
   code: string;
@@ -17,6 +18,8 @@ export interface CreateAgenceDto {
   latitude?: number;
   longitude?: number;
   place_id?: string;
+  /** Assigner un chef d'agence (userId) */
+  id_chef_agence?: number;
 }
 
 @Injectable()
@@ -26,11 +29,9 @@ export class AgencesService {
     private agencesRepository: Repository<Agence>,
   ) {}
 
-  async findAll(): Promise<Agence[]> {
-    return this.agencesRepository.find({
-      where: { actif: true },
-      order: { nom: 'ASC' },
-    });
+  async findAll(user?: any): Promise<Agence[]> {
+    // Le CHEF_AGENCE doit pouvoir voir toutes les agences pour choisir la sienne
+    return this.agencesRepository.find({ where: { actif: true }, order: { nom: 'ASC' } });
   }
 
   async findOne(id: number): Promise<Agence> {

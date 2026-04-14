@@ -7,6 +7,7 @@ import type { CallCenterConversationRow } from '@types'
 import { callcenterService } from '@services/callcenter.service'
 import { formatDate } from '@utils/format'
 import { EmptyErrorState } from '@components/common/EmptyState'
+import { buildWhatsAppChatUrl } from '@utils/whatsapp'
 
 const { Title } = Typography
 
@@ -27,7 +28,32 @@ export const CallCenterInboxPage: React.FC = () => {
       width: 100,
       render: (c: string) => <Tag color={c === 'whatsapp' ? 'green' : 'blue'}>{c}</Tag>,
     },
-    { title: 'Téléphone client', dataIndex: 'customer_phone', key: 'customer_phone', width: 160 },
+    {
+      title: 'Téléphone client',
+      dataIndex: 'customer_phone',
+      key: 'customer_phone',
+      width: 220,
+      render: (p: string) => {
+        const url = buildWhatsAppChatUrl(p)
+        return (
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <span>{p}</span>
+            {url ? (
+              <Button
+                size="small"
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  window.open(url, '_blank', 'noopener,noreferrer')
+                }}
+              >
+                WhatsApp
+              </Button>
+            ) : null}
+          </div>
+        )
+      },
+    },
     {
       title: 'Ligne / WhatsApp Business',
       dataIndex: 'callcenter_phone',

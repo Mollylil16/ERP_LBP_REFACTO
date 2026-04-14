@@ -96,6 +96,6 @@ describe('ensureDashboardPermissions', () => {
   });
 
   it('ne modifie pas un tableau vide', () => {
-    expect(ensureDashboardPermissions([])).toEqual([]);
+    expect(ensureDashboardPermissions([])).toEqual(['dashboard.view']);
   });
 });
