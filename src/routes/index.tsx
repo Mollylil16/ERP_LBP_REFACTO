@@ -13,6 +13,35 @@ import { OnboardingTourProvider } from '../components/onboarding/AppOnboardingTo
 import { PublicLayout } from '../components/layout/PublicLayout'
 import { LazyPageLoader } from '../components/common/LazyPageLoader'
 
+function getStoredPermissions(): string[] {
+  try {
+    const raw =
+      sessionStorage.getItem('lbp_permissions') ?? localStorage.getItem('lbp_permissions')
+    if (!raw) return []
+    const parsed = JSON.parse(raw)
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
+
+function pickLandingRoute(perms: string[]): string {
+  const has = (p: string) => perms.includes('*') || perms.includes(p)
+  const hasAny = (ps: string[]) => perms.includes('*') || ps.some((p) => perms.includes(p))
+
+  if (has(ROUTE_ACCESS.dashboard)) return '/dashboard'
+  if (has(ROUTE_ACCESS.callcenterInbox)) return '/callcenter/inbox'
+  if (has(ROUTE_ACCESS.colisGroupage)) return '/colis/groupage'
+  if (has(ROUTE_ACCESS.colisAutresEnvois)) return '/colis/autres-envois'
+  if (has(ROUTE_ACCESS.litiges)) return '/litiges'
+  if (has(ROUTE_ACCESS.factures)) return '/factures'
+  if (has(ROUTE_ACCESS.paiements)) return '/paiements'
+  if (hasAny(Array.isArray(ROUTE_ACCESS.caisse) ? ROUTE_ACCESS.caisse : [ROUTE_ACCESS.caisse])) {
+    return '/caisse/suivi'
+  }
+  return '/dashboard'
+}
+
 // Layouts - Chargés immédiatement (nécessaires partout)
 // MainLayout et PublicLayout sont déjà importés statiquement
 
@@ -121,7 +150,7 @@ export const AppRoutes: React.FC = () => {
 
   const hasGlobalAgencyAccess = (() => {
     if (!user) return false
-    const storedPermissions = JSON.parse(localStorage.getItem('lbp_permissions') || '[]') as string[]
+    const storedPermissions = getStoredPermissions()
     const allPermissions = Array.isArray(storedPermissions) && storedPermissions.includes('*')
     return Boolean(
       user.peut_voir_toutes_agences ||
@@ -155,7 +184,12 @@ export const AppRoutes: React.FC = () => {
       <Route path="/" element={<PublicLayout />}>
         <Route
           index
-          element={<Navigate to={isAuthenticated ? '/dashboard' : '/login'} replace />}
+          element={
+            <Navigate
+              to={isAuthenticated ? pickLandingRoute(getStoredPermissions()) : '/login'}
+              replace
+            />
+          }
         />
         <Route
           path="track/:ref?"
@@ -582,7 +616,10 @@ export const AppRoutes: React.FC = () => {
         />
 
         {/* Redirect 404 */}
-        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        <Route
+          path="*"
+          element={<Navigate to={pickLandingRoute(getStoredPermissions())} replace />}
+        />
       </Route>
     </Routes>
   )
