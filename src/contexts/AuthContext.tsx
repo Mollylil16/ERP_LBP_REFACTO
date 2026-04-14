@@ -15,6 +15,7 @@ interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  permissions: string[];
   login: (credentials: LoginCredentials) => Promise<void>;
   logout: () => void;
   refreshUser: () => Promise<void>;
@@ -28,6 +29,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [permissions, setPermissions] = useState<string[]>([]);
   const navigate = useNavigate();
   const hasCheckedAuth = useRef(false);
 
@@ -127,6 +129,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       const token =
         sessionStorage.getItem("lbp_token") ?? localStorage.getItem("lbp_token");
       if (token) {
+        // Charger permissions immédiatement depuis le cache pour éviter tout délai post-login
+        const cachedPerms =
+          sessionStorage.getItem("lbp_permissions") ??
+          localStorage.getItem("lbp_permissions");
+        if (cachedPerms) {
+          try {
+            const parsed = JSON.parse(cachedPerms);
+            if (Array.isArray(parsed)) setPermissions(parsed);
+          } catch {
+            // ignore
+          }
+        }
 
         // Vérifier la validité du token et récupérer l'utilisateur
         try {
@@ -144,6 +158,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
             sessionStorage.removeItem("lbp_refresh_token");
             sessionStorage.removeItem("lbp_mock_user");
             sessionStorage.removeItem("lbp_permissions");
+            setPermissions([]);
           } else {
             // Pour les autres erreurs (réseau, etc.), on garde le token et on réessayera plus tard
             console.warn("Erreur lors de la vérification du token:", error);
@@ -199,6 +214,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         JSON.stringify(response.permissions)
       );
       localStorage.removeItem("lbp_permissions");
+      // Source unique en mémoire (instantané)
+      setPermissions(Array.isArray(response.permissions) ? response.permissions : []);
 
 
       // Définir l'utilisateur directement depuis la réponse (pas besoin de vérifier à nouveau)
@@ -245,6 +262,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     sessionStorage.removeItem("lbp_refresh_token");
     sessionStorage.removeItem("lbp_permissions");
     sessionStorage.removeItem("lbp_mock_user");
+    setPermissions([]);
     setUser(null);
     hasCheckedAuth.current = false; // Réinitialiser pour permettre une nouvelle vérification
     navigate("/login");
@@ -281,6 +299,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     user,
     isAuthenticated: !!user,
     isLoading,
+    permissions,
     login,
     logout,
     refreshUser,

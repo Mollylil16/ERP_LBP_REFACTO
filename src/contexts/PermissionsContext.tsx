@@ -13,7 +13,7 @@ interface PermissionsContextType {
 export const PermissionsContext = createContext<PermissionsContextType | undefined>(undefined)
 
 export const PermissionsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user, isAuthenticated } = useAuth()
+  const { user, isAuthenticated, permissions: authPermissions } = useAuth()
   const [permissions, setPermissions] = useState<string[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
@@ -21,25 +21,30 @@ export const PermissionsProvider: React.FC<{ children: React.ReactNode }> = ({ c
     try {
       setIsLoading(true)
 
-      // Vérifier d'abord le cache localStorage
-      const cachedPermissions =
-        sessionStorage.getItem('lbp_permissions') ??
-        localStorage.getItem('lbp_permissions')
-      if (cachedPermissions) {
+      // Source unique: AuthContext (rempli dès le login, ou depuis le cache au refresh)
+      if (Array.isArray(authPermissions) && authPermissions.length > 0) {
+        setPermissions(authPermissions)
+        return
+      }
+
+      // Fallback (rare): cache storage
+      const cached =
+        sessionStorage.getItem('lbp_permissions') ?? localStorage.getItem('lbp_permissions')
+      if (cached) {
         try {
-          const parsed = JSON.parse(cachedPermissions)
-          setPermissions(parsed)
-          setIsLoading(false)
-        } catch (e) {
-          // Cache invalide, charger depuis l'API
+          const parsed = JSON.parse(cached)
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setPermissions(parsed)
+            return
+          }
+        } catch {
+          // ignore
         }
       }
 
-      // Charger depuis l'API
+      // Fallback ultime: API (si vraiment rien en mémoire)
       const userPermissions = await authService.getPermissions()
       setPermissions(userPermissions)
-
-      // Mettre à jour le cache
       sessionStorage.setItem('lbp_permissions', JSON.stringify(userPermissions))
       localStorage.removeItem('lbp_permissions')
     } catch (error) {
@@ -48,7 +53,7 @@ export const PermissionsProvider: React.FC<{ children: React.ReactNode }> = ({ c
     } finally {
       setIsLoading(false)
     }
-  }, [])
+  }, [authPermissions])
 
   useEffect(() => {
     if (isAuthenticated && user) {
@@ -58,7 +63,7 @@ export const PermissionsProvider: React.FC<{ children: React.ReactNode }> = ({ c
       setIsLoading(false)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAuthenticated, user?.id]) // Utiliser user?.id au lieu de user pour éviter les re-renders
+  }, [isAuthenticated, user?.id, authPermissions?.length]) // Utiliser user?.id au lieu de user pour éviter les re-renders
 
   /** Aligné backend : DIRECTEUR / ADMIN / code_acces 2 = accès total (évite 403 côté front). */
   const hasFullAppAccess = useMemo(() => {

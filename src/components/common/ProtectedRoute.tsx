@@ -65,6 +65,14 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 
   if (requiredPermission && user) {
     const list = Array.isArray(requiredPermission) ? requiredPermission : [requiredPermission]
+
+    // Correctif "définitif" : tout utilisateur authentifié peut ouvrir le Dashboard.
+    // Côté backend on garantit dashboard.view au minimum (même si RBAC vide),
+    // mais côté front il peut y avoir un délai/cache permissions → évite un 403 post-login.
+    if (list.length === 1 && list[0] === 'dashboard.view' && shouldBeAuthenticated) {
+      return <>{children}</>
+    }
+
     const allowed = requireAll
       ? hasAllPermissions(list)
       : list.length === 1

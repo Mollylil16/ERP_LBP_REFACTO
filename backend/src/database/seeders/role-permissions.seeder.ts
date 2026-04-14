@@ -195,11 +195,7 @@ const rolePermissionsMatrix = {
     'exploitation.autres_envois.read',
     'exploitation.autres_envois.update',
     'exploitation.autres_envois.delete',
-    'exploitation.rapports_envois.read',
-    'operation_caisse.gestion_caisses.read',
-    'gestion_fonds.demandes_fonds.create',
-    'gestion_fonds.demandes_fonds.read',
-    'gestion_fonds.recap_demandes.read',
+    // NB: pas de rapports/analyses ni trésorerie pour AGENT_GROUPAGE
     'structures.clients.read',
     'structures.agences.read',
     'litiges.view',

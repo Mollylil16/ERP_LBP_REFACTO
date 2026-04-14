@@ -106,7 +106,13 @@ class ApiService {
           }
         } else if (error.response?.status === 403) {
           // Permission refusée
-          toast.error('Vous n\'avez pas les permissions nécessaires pour cette action.')
+          // Éviter le spam: beaucoup de GET "background" (widgets, polling, alertes)
+          // peuvent légitimement être interdits selon le rôle.
+          const method = (error.config?.method || 'get').toLowerCase()
+          const isBackgroundGet = method === 'get'
+          if (!isBackgroundGet) {
+            toast.error('Vous n\'avez pas les permissions nécessaires pour cette action.')
+          }
         } else if (error.response?.status === 404) {
           // Resource non trouvée - ne pas afficher de toast, gérer dans le composant
           // toast.error('La ressource demandée n\'a pas été trouvée.')

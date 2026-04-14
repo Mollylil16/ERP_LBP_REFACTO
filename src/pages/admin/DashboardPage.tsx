@@ -69,7 +69,28 @@ export const DashboardPage: React.FC = () => {
   const canViewAiPanel = hasPermission(PERMISSIONS.DASHBOARD.ADMIN) && canViewCharts
 
   // Activer les alertes automatiques
-  useAlerts();
+  useAlerts({
+    colisNonValides: {
+      enabled: hasAnyPermission([...COLIS_READ_ANY]),
+      interval: 60,
+    },
+    facturesProforma: {
+      enabled: hasPermission(PERMISSIONS.FACTURES.READ),
+      interval: 120,
+    },
+    soldeCaisseFaible: {
+      enabled: hasPermission(PERMISSIONS.CAISSE.VIEW),
+      threshold: 1000000,
+      interval: 30,
+    },
+    // IA anomalies: utile surtout si rapports.view (sinon ça 403 et ça spam)
+    rappelsFactures: {
+      enabled: hasPermission(PERMISSIONS.FACTURES.READ),
+      interval: 1440,
+    },
+    // Champ optionnel interne du hook useAlerts (non typé dans AlertRules)
+    ...( { iaAnomalies: { enabled: hasAnyPermission([...COLIS_READ_ANY]), interval: 360 } } as any ),
+  });
 
   // Récupérer les statistiques (seulement si authentifié)
   const { data: stats, isLoading: statsLoading, refetch: refetchStats } = useQuery({
