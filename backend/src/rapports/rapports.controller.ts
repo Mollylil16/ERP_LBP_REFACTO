@@ -12,6 +12,22 @@ import { RequirePermission } from '../auth/decorators/permissions.decorator';
 export class RapportsController {
   constructor(private readonly rapportsService: RapportsService) {}
 
+  @Get('historique')
+  @RequirePermission('rapports.view')
+  @ApiOperation({
+    summary: 'Données historiques (comparaison multi-années) par mois',
+  })
+  getHistorique(@Query('annees') annees?: string) {
+    return this.rapportsService.getHistoriqueMultiAnnees(annees);
+  }
+
+  @Get('tendances')
+  @RequirePermission('rapports.view')
+  @ApiOperation({ summary: 'Analyse des tendances mensuelles (multi-années)' })
+  getTendances(@Query('annees') annees?: string) {
+    return this.rapportsService.getTendancesMensuelles(annees);
+  }
+
   @Get('colis')
   @RequirePermission('rapports.view')
   @ApiOperation({ summary: 'Générer un rapport de colis' })
