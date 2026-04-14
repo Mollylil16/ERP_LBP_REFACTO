@@ -39,6 +39,13 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    // Toujours exposer l'erreur dans la console pour diagnostic rapide,
+    // même en production (l'écran "Oups" est sinon aveugle).
+    // eslint-disable-next-line no-console
+    console.error('[ErrorBoundary] Unhandled UI error:', error)
+    // eslint-disable-next-line no-console
+    if (errorInfo?.componentStack) console.error('[ErrorBoundary] Component stack:', errorInfo.componentStack)
+
     // Logger l'erreur
     logger.error('Erreur capturée par ErrorBoundary', error, {
       componentStack: errorInfo.componentStack,
@@ -77,6 +84,10 @@ export class ErrorBoundary extends Component<Props, State> {
 
       // Sinon, afficher l'UI d'erreur par défaut
       const isDevelopment = import.meta.env.DEV
+      const url = new URL(window.location.href)
+      const debugEnabled =
+        url.searchParams.get('debug') === '1' ||
+        localStorage.getItem('lbp_debug_errors') === '1'
 
       return (
         <div className="error-boundary-container">
@@ -89,9 +100,9 @@ export class ErrorBoundary extends Component<Props, State> {
                   L'application a rencontré une erreur inattendue. 
                   Veuillez réessayer ou contacter le support si le problème persiste.
                 </p>
-                {isDevelopment && this.state.error && (
+                {(isDevelopment || debugEnabled) && this.state.error && (
                   <details className="error-boundary-details">
-                    <summary>Détails techniques (développement)</summary>
+                    <summary>Détails techniques</summary>
                     <div className="error-boundary-stack">
                       <p><strong>Erreur:</strong> {this.state.error.message}</p>
                       {this.state.error.stack && (
@@ -124,6 +135,24 @@ export class ErrorBoundary extends Component<Props, State> {
               >
                 Retour à l'accueil
               </Button>,
+              ...(debugEnabled
+                ? [
+                    <Button
+                      key="copy"
+                      onClick={() => {
+                        const payload = {
+                          message: this.state.error?.message,
+                          stack: this.state.error?.stack,
+                          componentStack: this.state.errorInfo?.componentStack,
+                          url: window.location.href,
+                        }
+                        void navigator.clipboard?.writeText(JSON.stringify(payload, null, 2))
+                      }}
+                    >
+                      Copier détails
+                    </Button>,
+                  ]
+                : []),
             ]}
           />
         </div>

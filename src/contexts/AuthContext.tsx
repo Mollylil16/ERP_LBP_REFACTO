@@ -31,6 +31,77 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const navigate = useNavigate();
   const hasCheckedAuth = useRef(false);
 
+  /**
+   * Normalise la forme du user retourné par l’API.
+   * Côté backend, `user.role` est souvent un enum string (ex: "ADMIN") alors que le front attend un objet `Role`.
+   * On force donc `user.role` à devenir un objet { code, ... } pour éviter les crashs (ErrorBoundary/Oups).
+   */
+  const normalizeUser = useCallback((u: any): User => {
+    if (!u) return u as User;
+
+    const out: any = { ...u };
+
+    // Normaliser l'agence: backend renvoie souvent `agence`, front attend `agency`
+    if (!out.agency && out.agence) {
+      out.agency = out.agence;
+    }
+
+    // Normaliser le rôle: front attend `role.code`
+    const roleIsString = typeof out.role === "string";
+    const roleEntityCode =
+      out.roleEntity && typeof out.roleEntity === "object"
+        ? out.roleEntity.code
+        : undefined;
+
+    if (roleIsString) {
+      if (roleEntityCode) {
+        // Le backend nous fournit déjà l'objet rôle dans roleEntity
+        out.role = out.roleEntity;
+      } else {
+        // Fallback minimal
+        out.role = {
+          id: out.role_id ?? 0,
+          code: out.role,
+          name: out.role,
+          description: "",
+        };
+      }
+    }
+
+    return out as User;
+  }, []);
+
+  /** Choisit une page d'atterrissage autorisée en fonction des permissions. */
+  const pickLandingRoute = useCallback((perms: string[]): string => {
+    const has = (p: string) => perms.includes("*") || perms.includes(p);
+    const hasAny = (ps: string[]) => perms.includes("*") || ps.some((p) => perms.includes(p));
+
+    // Dashboard si autorisé
+    if (has("dashboard.view") || has("dashboard.admin") || has("dashboard.caisse")) {
+      return "/dashboard";
+    }
+    // Call center (relation client)
+    if (has("callcenter.inbox")) return "/callcenter/inbox";
+    // Colis
+    if (has("colis.groupage.read") || has("colis.groupage.create") || has("colis.groupage.update")) {
+      return "/colis/groupage";
+    }
+    if (has("colis.autres-envois.read") || has("colis.autres-envois.create") || has("colis.autres-envois.update")) {
+      return "/colis/autres-envois";
+    }
+    // Litiges
+    if (has("litiges.view") || has("litiges.create") || has("litiges.manage") || has("litiges.admin")) {
+      return "/litiges";
+    }
+    // Factures / Paiements / Caisse
+    if (has("factures.read")) return "/factures";
+    if (has("paiements.read")) return "/paiements";
+    if (hasAny(["caisse.view", "caisse.operations", "caisse.view-all"])) return "/caisse/suivi";
+
+    // Par défaut, tenter dashboard (ProtectedRoute gérera)
+    return "/dashboard";
+  }, []);
+
   const hasGlobalAgencyAccess = useCallback((u: User | null, perms?: string[]) => {
     if (!u) return false;
     const roleCode = u.role?.code;
@@ -60,7 +131,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         // Vérifier la validité du token et récupérer l'utilisateur
         try {
           const userData = await authService.getCurrentUser();
-          setUser(userData);
+          setUser(normalizeUser(userData));
         } catch (error: any) {
           // Si l'erreur est 401, le token est invalide
           if (error.response?.status === 401 || error.response?.status === 403) {
@@ -137,21 +208,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       hasCheckedAuth.current = true;
 
       // Définir l'utilisateur et arrêter le loading
-      setUser(response.user);
+      const normalizedUser = normalizeUser(response.user as any);
+      setUser(normalizedUser);
       setIsLoading(false);
 
-      toast.success(`Bienvenue ${response.user.nom_complet || response.user.username} !`);
+      toast.success(`Bienvenue ${normalizedUser.nom_complet || normalizedUser.username} !`);
 
       // ✅ Logique de redirection selon les flags de 1ère connexion
-      if (response.user.must_change_password) {
+      if (normalizedUser.must_change_password) {
         console.log('[Auth] Redirecting to change-password');
         navigate("/auth/change-password", { replace: true });
-      } else if (!response.user.agence_selected && !hasGlobalAgencyAccess(response.user, response.permissions)) {
+      } else if (!normalizedUser.agence_selected && !hasGlobalAgencyAccess(normalizedUser, response.permissions)) {
         console.log('[Auth] Redirecting to select-agency');
         navigate("/auth/select-agency", { replace: true });
       } else {
-        console.log('[Auth] Navigating to dashboard');
-        navigate("/dashboard", { replace: true });
+        const target = pickLandingRoute(Array.isArray(response.permissions) ? response.permissions : []);
+        console.log('[Auth] Navigating to landing route:', target);
+        navigate(target, { replace: true });
       }
     } catch (error: any) {
       const message =
