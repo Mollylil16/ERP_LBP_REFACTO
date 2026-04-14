@@ -46,6 +46,15 @@ export class ErrorBoundary extends Component<Props, State> {
     // eslint-disable-next-line no-console
     if (errorInfo?.componentStack) console.error('[ErrorBoundary] Component stack:', errorInfo.componentStack)
 
+    // Expose aussi l'erreur dans un emplacement global pour support (debug rapide via DevTools).
+    ;(window as any).__LBP_LAST_UI_ERROR__ = {
+      message: error?.message,
+      stack: error?.stack,
+      componentStack: errorInfo?.componentStack,
+      url: window.location.href,
+      ts: new Date().toISOString(),
+    }
+
     // Logger l'erreur
     logger.error('Erreur capturée par ErrorBoundary', error, {
       componentStack: errorInfo.componentStack,
@@ -84,10 +93,23 @@ export class ErrorBoundary extends Component<Props, State> {
 
       // Sinon, afficher l'UI d'erreur par défaut
       const isDevelopment = import.meta.env.DEV
-      const url = new URL(window.location.href)
-      const debugEnabled =
-        url.searchParams.get('debug') === '1' ||
-        localStorage.getItem('lbp_debug_errors') === '1'
+      const debugEnabled = (() => {
+        // Support BrowserRouter (?debug=1) + HashRouter (/#/route?debug=1)
+        try {
+          const url = new URL(window.location.href)
+          if (url.searchParams.get('debug') === '1') return true
+        } catch {
+          // ignore
+        }
+        const hash = window.location.hash || ''
+        // hash example: "#/dashboard?debug=1"
+        const hashQuery = hash.includes('?') ? hash.split('?').slice(1).join('?') : ''
+        if (hashQuery) {
+          const params = new URLSearchParams(hashQuery)
+          if (params.get('debug') === '1') return true
+        }
+        return localStorage.getItem('lbp_debug_errors') === '1'
+      })()
 
       return (
         <div className="error-boundary-container">
