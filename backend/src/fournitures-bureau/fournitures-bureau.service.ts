@@ -40,7 +40,11 @@ export class FournituresBureauService {
   ) {}
 
   private async appCodesFor(user: any): Promise<string[]> {
-    const roleCode = effectiveRoleCode(user);
+    const roleCode = (effectiveRoleCode(user) || '').toUpperCase();
+    // Aligné avec AuthService.getPermissionsForUser : DIRECTEUR / ADMIN / code_acces=2 => accès total.
+    if (user?.code_acces === 2 || roleCode === 'DIRECTEUR' || roleCode === 'ADMIN') {
+      return ['*'];
+    }
     try {
       const fromDb = await this.rolesService.getAppPermissionCodesForRole(
         roleCode,
