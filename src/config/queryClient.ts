@@ -56,16 +56,52 @@ export const queryClient = new QueryClient({
 const IDB_CACHE_KEY = 'tanstack_query_cache';
 const IDB_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 h
 
+function isIdbClosingError(err: unknown): boolean {
+    const e = err as any;
+    const name = String(e?.name || '');
+    const message = String(e?.message || '');
+    // Cas observé: InvalidStateError: Failed to execute 'transaction' on 'IDBDatabase': The database connection is closing.
+    return (
+        name === 'InvalidStateError' ||
+        message.includes('IDBDatabase') ||
+        message.includes('database connection is closing') ||
+        message.includes('Failed to execute') && message.includes('transaction')
+    );
+}
+
 export const idbPersister: Persister = {
     persistClient: async (client: PersistedClient) => {
-        await persistentCache.set(IDB_CACHE_KEY, client, IDB_CACHE_TTL);
+        try {
+            await persistentCache.set(IDB_CACHE_KEY, client, IDB_CACHE_TTL);
+        } catch (e) {
+            // Ne jamais casser l’app si IndexedDB est en train de se fermer (reload / SW / navigation).
+            if (!isIdbClosingError(e)) {
+                // eslint-disable-next-line no-console
+                console.warn('[QueryPersist] persistClient failed:', e);
+            }
+        }
     },
     restoreClient: async (): Promise<PersistedClient | undefined> => {
-        const cached = await persistentCache.get<PersistedClient>(IDB_CACHE_KEY);
-        return cached ?? undefined;
+        try {
+            const cached = await persistentCache.get<PersistedClient>(IDB_CACHE_KEY);
+            return cached ?? undefined;
+        } catch (e) {
+            if (!isIdbClosingError(e)) {
+                // eslint-disable-next-line no-console
+                console.warn('[QueryPersist] restoreClient failed:', e);
+            }
+            return undefined;
+        }
     },
     removeClient: async () => {
-        await persistentCache.delete(IDB_CACHE_KEY);
+        try {
+            await persistentCache.delete(IDB_CACHE_KEY);
+        } catch (e) {
+            if (!isIdbClosingError(e)) {
+                // eslint-disable-next-line no-console
+                console.warn('[QueryPersist] removeClient failed:', e);
+            }
+        }
     },
 };
 
