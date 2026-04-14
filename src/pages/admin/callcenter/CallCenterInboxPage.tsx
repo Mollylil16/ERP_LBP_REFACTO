@@ -41,7 +41,7 @@ export const CallCenterInboxPage: React.FC = () => {
             {url ? (
               <Button
                 size="small"
-                onClick={(e) => {
+                onClick={(e: React.MouseEvent<HTMLElement>) => {
                   e.preventDefault()
                   e.stopPropagation()
                   window.open(url, '_blank', 'noopener,noreferrer')

@@ -111,36 +111,6 @@ export const DashboardQuickActions: React.FC<DashboardQuickActionsProps> = ({
     )
   }
 
-  // Backward compat: ancienne persona "agent"
-  if (persona === 'agent') {
-    return (
-      <Card size="small" className="dashboard-section" title="Flux colis">
-        <Space wrap>
-          <WithPermission permission={ROUTE_ACCESS.colisGroupage}>
-            <Button icon={<InboxOutlined />} onClick={() => navigate('/colis/groupage')}>
-              Groupage
-            </Button>
-          </WithPermission>
-          <WithPermission permission={ROUTE_ACCESS.colisAutresEnvois}>
-            <Button icon={<TruckOutlined />} onClick={() => navigate('/colis/autres-envois')}>
-              Autres envois
-            </Button>
-          </WithPermission>
-          <WithPermission permission={[...ROUTE_ACCESS.expeditions]}>
-            <Button icon={<GlobalOutlined />} onClick={() => navigate('/expeditions')}>
-              Expéditions
-            </Button>
-          </WithPermission>
-          <WithPermission permission={[...ROUTE_ACCESS.colisMap]}>
-            <Button icon={<GlobalOutlined />} onClick={() => navigate('/colis/map')}>
-              Carte
-            </Button>
-          </WithPermission>
-        </Space>
-      </Card>
-    )
-  }
-
   if (persona === 'agent_groupage') {
     return (
       <Card size="small" className="dashboard-section" title="Groupage">
