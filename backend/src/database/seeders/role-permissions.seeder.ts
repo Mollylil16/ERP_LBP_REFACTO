@@ -302,12 +302,7 @@ const rolePermissionsMatrix = {
     'facturation.facturer.create',
     'facturation.facturer.read',
     'facturation.facturer.update',
-    // Points & récap crédits remis au caissier siège (pas rapports stats globaux ni trésorerie)
-    'exploitation.points_journaliers.read',
-    'exploitation.points_journaliers.create',
-    'exploitation.points_journaliers.submit',
-    'exploitation.credits.read',
-    'exploitation.credits.submit_recap',
+    // NB: Les points journaliers / récap crédits sont gérés par le CHEF_AGENCE (pas AGENT_GROUPAGE)
     'structures.clients.read',
     'structures.agences.read',
     'litiges.view',
