@@ -4,7 +4,6 @@
 
 import React from "react";
 import {
-  Table,
   Tag,
   Space,
   Button,
@@ -12,6 +11,8 @@ import {
   Select,
   Input,
   Card,
+  Modal,
+  message,
 } from "antd";
 import type { ChangeEvent } from "react";
 import { EmptyCaisseList } from "@components/common/EmptyState";
@@ -25,14 +26,46 @@ import dayjs from "dayjs";
 import { formatMontantWithDevise } from "@utils/format";
 import type { MouvementCaisse } from "@types";
 import { VirtualTable } from "@components/common/VirtualTable";
-import { getMouvementsCaisse } from "@services/caisse.service";
+import {
+  getMouvementsCaisse,
+  submitMouvement,
+  validateMouvement,
+} from "@services/caisse.service";
+import { useAuth } from "@hooks/useAuth";
+import { usePermissions } from "@hooks/usePermissions";
+import { PERMISSIONS } from "@constants/permissions";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 const { RangePicker } = DatePicker;
 const { Option } = Select;
 
+const WORKFLOW_LABELS: Record<string, string> = {
+  DRAFT: "Brouillon",
+  SUBMITTED: "Soumis",
+  VALIDATED: "Validé",
+  REJECTED: "Rejeté",
+};
+
+const WORKFLOW_TAG_COLOR: Record<string, string> = {
+  DRAFT: "default",
+  SUBMITTED: "processing",
+  VALIDATED: "success",
+  REJECTED: "error",
+};
+
+const VALIDATE_MOVEMENT_ROLES = new Set([
+  "ADMIN",
+  "DIRECTEUR",
+  "SUPER_ADMIN",
+  "MANAGER",
+]);
+
 interface MouvementsCaisseListProps {
   type?: MouvementCaisse["type"];
   idCaisse?: number;
+  /** Si faux : consultation seule (ex. caissière sur caisse d’agence). */
+  operationsEnabled?: boolean;
   onEdit?: (mouvement: MouvementCaisse) => void;
   onDelete?: (id: number) => void;
 }
@@ -40,11 +73,21 @@ interface MouvementsCaisseListProps {
 export const MouvementsCaisseList: React.FC<MouvementsCaisseListProps> = ({
   type,
   idCaisse,
+  operationsEnabled = true,
   onEdit,
   onDelete,
 }) => {
+  const { user } = useAuth();
+  const { hasPermission } = usePermissions();
+  const canCaisseOps = hasPermission(PERMISSIONS.CAISSE.OPERATIONS);
+  const roleCode = (user?.role?.code || "").toUpperCase();
+  const canValidateMouvement =
+    canCaisseOps && VALIDATE_MOVEMENT_ROLES.has(roleCode);
+
   const [mouvements, setMouvements] = React.useState<MouvementCaisse[]>([]);
   const [loading, setLoading] = React.useState(false);
+  const [rejectModalId, setRejectModalId] = React.useState<number | null>(null);
+  const [rejectReason, setRejectReason] = React.useState("");
   const [dateRange, setDateRange] = React.useState<
     [dayjs.Dayjs, dayjs.Dayjs] | null
   >(null);
@@ -75,7 +118,7 @@ export const MouvementsCaisseList: React.FC<MouvementsCaisseListProps> = ({
     loadMouvements();
   }, [loadMouvements]);
 
-  const columns: ColumnsType<MouvementCaisse> = [
+  const columns: ColumnsType<MouvementCaisse> = React.useMemo(() => [
     {
       title: "Date",
       dataIndex: "date",
@@ -155,6 +198,29 @@ export const MouvementsCaisseList: React.FC<MouvementsCaisseListProps> = ({
       sorter: (a: MouvementCaisse, b: MouvementCaisse) => a.montant - b.montant,
     },
     {
+      title: "Validation",
+      dataIndex: "workflow_status",
+      key: "workflow_status",
+      width: 120,
+      render: (st: string | null | undefined) => {
+        if (st == null || st === "") return <span>—</span>;
+        return (
+          <Tag color={WORKFLOW_TAG_COLOR[st] || "default"}>
+            {WORKFLOW_LABELS[st] || st}
+          </Tag>
+        );
+      },
+    },
+    {
+      title: "Motif rejet",
+      dataIndex: "rejection_reason",
+      key: "rejection_reason",
+      width: 160,
+      ellipsis: true,
+      render: (t: string | null | undefined) =>
+        t ? <span title={t}>{t}</span> : <span>—</span>,
+    },
+    {
       title: "Solde",
       dataIndex: "solde",
       key: "solde",
@@ -170,31 +236,106 @@ export const MouvementsCaisseList: React.FC<MouvementsCaisseListProps> = ({
     {
       title: "Actions",
       key: "actions",
-      width: 120,
+      width: 280,
       fixed: "right",
-      render: (_: any, record: MouvementCaisse) => (
-        <Space>
-          {onEdit && (
-            <Button
-              type="link"
-              icon={<EditOutlined />}
-              onClick={() => onEdit(record)}
-              size="small"
-            />
-          )}
-          {onDelete && (
-            <Button
-              type="link"
-              danger
-              icon={<DeleteOutlined />}
-              onClick={() => record.id && onDelete(record.id)}
-              size="small"
-            />
-          )}
-        </Space>
-      ),
+      render: (_: any, record: MouvementCaisse) => {
+        const mid = record.id;
+        const st = record.workflow_status;
+        const canSubmit =
+          operationsEnabled &&
+          canCaisseOps &&
+          mid != null &&
+          (st === "DRAFT" || st === "REJECTED");
+        const canReview =
+          operationsEnabled &&
+          canValidateMouvement &&
+          mid != null &&
+          (st === "SUBMITTED" || st === "REJECTED");
+        return (
+          <Space wrap size="small">
+            {canSubmit ? (
+              <Button
+                type="link"
+                size="small"
+                onClick={async () => {
+                  try {
+                    await submitMouvement(mid);
+                    message.success("Mouvement soumis pour validation");
+                    void loadMouvements();
+                  } catch (e: unknown) {
+                    const msg =
+                      e &&
+                      typeof e === "object" &&
+                      "message" in e &&
+                      typeof (e as { message?: string }).message === "string"
+                        ? (e as { message: string }).message
+                        : "Soumission impossible";
+                    message.error(msg);
+                  }
+                }}
+              >
+                Soumettre
+              </Button>
+            ) : null}
+            {canReview ? (
+              <>
+                <Button
+                  type="link"
+                  size="small"
+                  onClick={async () => {
+                    try {
+                      await validateMouvement(mid, { approve: true });
+                      message.success("Mouvement validé");
+                      void loadMouvements();
+                    } catch (e: unknown) {
+                      const msg =
+                        e &&
+                        typeof e === "object" &&
+                        "message" in e &&
+                        typeof (e as { message?: string }).message === "string"
+                          ? (e as { message: string }).message
+                          : "Validation impossible";
+                      message.error(msg);
+                    }
+                  }}
+                >
+                  Valider
+                </Button>
+                <Button
+                  type="link"
+                  danger
+                  size="small"
+                  onClick={() => {
+                    setRejectReason("");
+                    setRejectModalId(mid);
+                  }}
+                >
+                  Rejeter
+                </Button>
+              </>
+            ) : null}
+            {onEdit && (
+              <Button
+                type="link"
+                icon={<EditOutlined />}
+                onClick={() => onEdit(record)}
+                size="small"
+              />
+            )}
+            {onDelete && (
+              <Button
+                type="link"
+                danger
+                icon={<DeleteOutlined />}
+                onClick={() => record.id && onDelete(record.id)}
+                size="small"
+              />
+            )}
+          </Space>
+        );
+      },
     },
-  ];
+  ], [operationsEnabled, canCaisseOps, canValidateMouvement, loadMouvements, onEdit, onDelete]);
 
   // Filtrer les mouvements par recherche
   const filteredMouvements = React.useMemo(() => {
@@ -206,7 +347,11 @@ export const MouvementsCaisseList: React.FC<MouvementsCaisseListProps> = ({
         m.libelle?.toLowerCase().includes(searchLower) ||
         m.numero_dossier?.toLowerCase().includes(searchLower) ||
         m.nom_client?.toLowerCase().includes(searchLower) ||
-        m.nom_demandeur?.toLowerCase().includes(searchLower)
+        m.nom_demandeur?.toLowerCase().includes(searchLower) ||
+        (m.workflow_status &&
+          m.workflow_status.toLowerCase().includes(searchLower)) ||
+        (m.rejection_reason &&
+          m.rejection_reason.toLowerCase().includes(searchLower))
     );
   }, [mouvements, searchText]);
 
@@ -224,6 +369,64 @@ export const MouvementsCaisseList: React.FC<MouvementsCaisseListProps> = ({
       { entrees: 0, sorties: 0 }
     );
   }, [filteredMouvements]);
+
+  const exportPdf = React.useCallback(() => {
+    try {
+      const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
+      const title = "Mouvements de caisse";
+      const subtitleParts: string[] = [];
+      if (type) subtitleParts.push(`Type: ${type}`);
+      if (idCaisse) subtitleParts.push(`Caisse: #${idCaisse}`);
+      if (dateRange) {
+        subtitleParts.push(
+          `Période: ${dateRange[0].format("DD/MM/YYYY")} → ${dateRange[1].format("DD/MM/YYYY")}`,
+        );
+      }
+      if (searchText.trim()) subtitleParts.push(`Recherche: "${searchText.trim()}"`);
+      subtitleParts.push(`Export: ${new Date().toLocaleString("fr-FR")}`);
+
+      doc.setFontSize(14);
+      doc.text(title, 40, 40);
+      doc.setFontSize(10);
+      doc.text(subtitleParts.join(" — "), 40, 60);
+
+      const body = filteredMouvements.map((m) => [
+        m.date ? dayjs(m.date).format("DD/MM/YYYY") : "—",
+        m.type ?? "—",
+        m.libelle ?? "—",
+        m.numero_dossier ?? "—",
+        (type === "DECAISSEMENT" ? m.nom_demandeur : m.nom_client) ?? "—",
+        formatMontantWithDevise(Number(m.montant || 0)),
+        m.workflow_status ?? "—",
+        m.rejection_reason ?? "—",
+      ]);
+
+      autoTable(doc, {
+        startY: 80,
+        head: [[
+          "Date",
+          "Type",
+          "Libellé",
+          "N° dossier",
+          "Client/Demandeur",
+          "Montant",
+          "Workflow",
+          "Motif rejet",
+        ]],
+        body,
+        styles: { fontSize: 8, cellPadding: 4, overflow: "linebreak" },
+        headStyles: { fillColor: [22, 119, 255] },
+        columnStyles: {
+          2: { cellWidth: 220 },
+          7: { cellWidth: 220 },
+        },
+      });
+
+      doc.save(`mouvements_caisse_${idCaisse ?? "all"}_${new Date().toISOString().slice(0, 10)}.pdf`);
+    } catch {
+      message.error("Export PDF impossible");
+    }
+  }, [filteredMouvements, type, idCaisse, dateRange, searchText]);
 
   return (
     <Card>
@@ -252,6 +455,9 @@ export const MouvementsCaisseList: React.FC<MouvementsCaisseListProps> = ({
             loading={loading}
           >
             Actualiser
+          </Button>
+          <Button onClick={exportPdf} disabled={filteredMouvements.length === 0}>
+            Exporter PDF
           </Button>
         </Space>
 
@@ -295,8 +501,56 @@ export const MouvementsCaisseList: React.FC<MouvementsCaisseListProps> = ({
             showSizeChanger: true,
             showTotal: (total: number) => `Total : ${total} mouvements`,
           }}
-          scroll={{ x: 1200 }}
+          scroll={{ x: 1480 }}
         />
+
+        <Modal
+          title="Motif du rejet"
+          open={rejectModalId != null}
+          onCancel={() => {
+            setRejectModalId(null);
+            setRejectReason("");
+          }}
+          onOk={() => {
+            if (rejectModalId == null) {
+              return Promise.resolve();
+            }
+            if (!rejectReason.trim()) {
+              message.warning("Motif obligatoire");
+              return Promise.reject(new Error("missing reason"));
+            }
+            return validateMouvement(rejectModalId, {
+              approve: false,
+              reason: rejectReason.trim(),
+            })
+              .then(() => {
+                message.success("Mouvement rejeté");
+                setRejectModalId(null);
+                setRejectReason("");
+                void loadMouvements();
+              })
+              .catch((e: unknown) => {
+                const msg =
+                  e &&
+                  typeof e === "object" &&
+                  "message" in e &&
+                  typeof (e as { message?: string }).message === "string"
+                    ? (e as { message: string }).message
+                    : "Rejet impossible";
+                message.error(msg);
+                return Promise.reject(e);
+              });
+          }}
+        >
+          <Input.TextArea
+            rows={3}
+            value={rejectReason}
+            onChange={(e: ChangeEvent<HTMLTextAreaElement>) =>
+              setRejectReason(e.target.value)
+            }
+            placeholder="Précisez la raison du rejet…"
+          />
+        </Modal>
       </Space>
     </Card>
   );

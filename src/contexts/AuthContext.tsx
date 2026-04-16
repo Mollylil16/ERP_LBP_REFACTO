@@ -74,9 +74,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   }, []);
 
   /** Choisit une page d'atterrissage autorisée en fonction des permissions. */
-  const pickLandingRoute = useCallback((perms: string[]): string => {
+  const pickLandingRoute = useCallback((perms: string[], roleCode?: string): string => {
     const has = (p: string) => perms.includes("*") || perms.includes(p);
     const hasAny = (ps: string[]) => perms.includes("*") || ps.some((p) => perms.includes(p));
+
+    // Si permissions non encore disponibles, fallback par rôle (évite `/dashboard` → 403 sur certaines pages).
+    if (perms.length === 0 && roleCode) {
+      const rc = roleCode.toUpperCase()
+      if (rc === "AGENT_GROUPAGE") return "/colis/groupage"
+      if (rc === "AGENT_EXPLOITATION" || rc === "SUPERVISEUR_REGIONAL") return "/exploitation"
+      if (rc === "CALL_CENTER") return "/callcenter/inbox"
+      if (rc === "CAISSIER") return "/caisse/suivi"
+      if (rc === "CHEF_AGENCE") return "/exploitation"
+    }
 
     // Dashboard si autorisé
     if (has("dashboard.view") || has("dashboard.admin") || has("dashboard.caisse")) {
@@ -239,7 +249,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         console.log('[Auth] Redirecting to select-agency');
         navigate("/auth/select-agency", { replace: true });
       } else {
-        const target = pickLandingRoute(Array.isArray(response.permissions) ? response.permissions : []);
+        const target = pickLandingRoute(
+          Array.isArray(response.permissions) ? response.permissions : [],
+          normalizedUser?.role?.code,
+        );
         console.log('[Auth] Navigating to landing route:', target);
         navigate(target, { replace: true });
       }

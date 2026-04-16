@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ForbiddenException,
   Inject,
   forwardRef,
 } from '@nestjs/common';
@@ -184,6 +185,93 @@ export class FacturesService {
       where: { colis: { ref_colis: refColis } },
       relations: ['colis', 'colis.client', 'colis.marchandises'],
     });
+  }
+
+  /** Recherche par numéro de facture (ex. FCO-0426-001) — même périmètre agence que la liste. */
+  /**
+   * Recherche rapide caisse / encaissement : n° facture exact, réf. colis, ou téléphone (client expéditeur).
+   */
+  async findForEncaissementLookup(q: string, user: any): Promise<Facture | null> {
+    const t = (q || '').trim();
+    if (!t) {
+      throw new BadRequestException('Paramètre de recherche requis');
+    }
+    const roleCode =
+      typeof user?.role === 'string'
+        ? user.role
+        : (user?.role as { code?: string } | undefined)?.code;
+    const canSeeAll = ['ADMIN', 'DIRECTEUR'].includes(
+      String(roleCode || '').toUpperCase(),
+    );
+
+    let facture =
+      (await this.factureRepository.findOne({
+        where: { num_facture: t },
+        relations: ['colis', 'colis.client', 'colis.agence'],
+      })) ?? null;
+
+    if (!facture) {
+      facture = await this.factureRepository.findOne({
+        where: { colis: { ref_colis: t } },
+        relations: ['colis', 'colis.client', 'colis.agence'],
+        order: { created_at: 'DESC' } as any,
+      });
+    }
+
+    const digits = t.replace(/[^\d+]/g, '');
+    if (!facture && digits.length >= 6) {
+      facture = await this.factureRepository
+        .createQueryBuilder('f')
+        .leftJoinAndSelect('f.colis', 'colis')
+        .leftJoinAndSelect('colis.client', 'client')
+        .leftJoinAndSelect('colis.agence', 'agence')
+        .where(
+          '(client.tel_exp ILIKE :tel OR colis.tel_dest ILIKE :tel OR colis.tel_recup ILIKE :tel)',
+          { tel: `%${digits}%` },
+        )
+        .orderBy('f.created_at', 'DESC')
+        .getOne();
+    }
+
+    if (!facture) {
+      return null;
+    }
+
+    if (!canSeeAll && user?.id_agence && facture.colis?.agence?.id !== user.id_agence) {
+      throw new ForbiddenException('Accès refusé pour cette facture.');
+    }
+
+    return facture;
+  }
+
+  async findByNumFacture(numFacture: string, user: any): Promise<Facture> {
+    const num = (numFacture || '').trim();
+    if (!num) {
+      throw new BadRequestException('Numéro de facture requis');
+    }
+    const facture = await this.factureRepository.findOne({
+      where: { num_facture: num },
+      relations: [
+        'colis',
+        'colis.client',
+        'colis.marchandises',
+        'colis.agence',
+      ],
+    });
+    if (!facture) {
+      throw new NotFoundException(`Facture « ${num} » introuvable`);
+    }
+    const roleCode =
+      typeof user?.role === 'string'
+        ? user.role
+        : (user?.role as { code?: string } | undefined)?.code;
+    const canSeeAll = ['ADMIN', 'DIRECTEUR'].includes(
+      String(roleCode || '').toUpperCase(),
+    );
+    if (!canSeeAll && user?.id_agence && facture.colis?.agence?.id !== user.id_agence) {
+      throw new ForbiddenException('Accès à cette facture refusé');
+    }
+    return facture;
   }
 
   async cancelFacture(

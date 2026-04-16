@@ -36,6 +36,10 @@ export class CallCenterConversation {
   @Column({ type: 'int', default: 0 })
   unread_count: number;
 
+  /** open | in_progress | resolved — suivi relationnel côté call center */
+  @Column({ type: 'varchar', length: 20, default: 'open' })
+  case_status: string;
+
   @Column({ type: 'timestamp', nullable: true })
   last_message_at: Date | null;
 

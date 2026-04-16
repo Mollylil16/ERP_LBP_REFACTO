@@ -32,13 +32,13 @@ export interface User {
 export enum UserRole {
   ADMIN = 'ADMIN',
   DIRECTEUR = 'DIRECTEUR',
+  ASSISTANT_DG = 'ASSISTANT_DG',
   MANAGER = 'MANAGER',
   SUPERVISEUR_REGIONAL = 'SUPERVISEUR_REGIONAL',
   CHEF_AGENCE = 'CHEF_AGENCE',
   AGENT_EXPLOITATION = 'AGENT_EXPLOITATION',
   AGENT_GROUPAGE = 'AGENT_GROUPAGE',
   CAISSIER = 'CAISSIER',
-  CAISSIER_GROUPAGE = 'CAISSIER_GROUPAGE',
   AGENT_SUIVI = 'AGENT_SUIVI',
   /** Service client (boîte d’appel, SMS/WhatsApp, litiges relation client) */
   CALL_CENTER = 'CALL_CENTER',
@@ -221,6 +221,11 @@ export interface MouvementCaisse {
   etat?: number // 0 = Brouillon, 1 = Validé
   created_at?: string
   updated_at?: string
+  workflow_status?: string | null
+  validation_level_required?: number
+  validation_level_current?: number
+  justificatif_url?: string | null
+  rejection_reason?: string | null
 }
 
 export interface Caisse {
@@ -230,7 +235,10 @@ export interface Caisse {
   montant_initial: number
   solde_actuel: number
   autorise: boolean
+  seuil_alerte?: number
   id_agence?: number
+  /** Faux pour la caissière sur les caisses d’agence (consultation seule). */
+  peut_operer?: boolean
   code_user?: string
   created_at?: string
   updated_at?: string
@@ -414,6 +422,51 @@ export interface CallCenterConversationRow {
   last_message_at: string | null
   unread_count: number
   client_id: number | null
+  last_facture_id?: number | null
+  last_litige_id?: number | null
+  /** open | in_progress | resolved */
+  case_status?: string
+  /** Renseigné par l’API liste (jointure clients) */
+  client_nom?: string | null
+}
+
+/** GET /callcenter/conversations/:id/summary */
+export interface CallCenterConversationSummary {
+  conversation_id: number
+  found: boolean
+  case_status?: string
+  channel?: string
+  customer_phone?: string
+  callcenter_phone?: string | null
+  unread_count?: number
+  last_message_at?: string | null
+  client?: {
+    id: number
+    nom_exp: string
+    tel_exp: string
+    email_exp: string | null
+  } | null
+  last_colis?: {
+    id: number
+    ref_colis: string
+    date_envoi?: string | null
+    forme_envoi?: string | null
+    trafic_envoi?: string | null
+  } | null
+  last_facture?: {
+    id: number
+    num_facture: string
+    etat?: string
+    payment_status?: string | null
+    montant_ttc?: number
+    devise?: string | null
+  } | null
+  last_litige?: {
+    id: number
+    num_litige: string
+    statut?: string
+    created_at?: string
+  } | null
 }
 
 /** Messages d’une conversation (GET /callcenter/conversations/:id/messages) */

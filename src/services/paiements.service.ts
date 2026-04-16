@@ -119,6 +119,8 @@ class PaiementsService {
 export interface CreatePaiementDto {
   colis_id?: number
   facture_id?: number
+  /** Alias backend `CreatePaiementDto.id_facture` */
+  id_facture?: number
   ref_colis?: string
   montant: number
   mode_paiement: string // 'Comptant', '30 jours', etc.

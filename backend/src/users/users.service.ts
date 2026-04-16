@@ -490,7 +490,7 @@ export class UsersService implements OnApplicationBootstrap {
         username: 'ouedraogo',
         password: 'password123',
         nom_complet: 'Ouedraogo Mondesire',
-        role: UserRole.CAISSIER_GROUPAGE,
+        role: UserRole.CAISSIER,
         code_acces: 1,
         agence_code: 'SN-DAKAR',
       },

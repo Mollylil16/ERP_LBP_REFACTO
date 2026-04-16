@@ -63,8 +63,20 @@ class FacturesService {
    * Récupérer une facture par numéro
    */
   async getFactureByNum(numFacture: string): Promise<FactureColis> {
-    const data = await apiService.get<any>(`/factures/num/${numFacture}`)
+    const data = await apiService.get<any>(
+      `/factures/num/${encodeURIComponent(numFacture.trim())}`,
+    )
     return adaptFactureFromBackend(data)
+  }
+
+  /** Recherche encaissement : n° facture, ref colis ou téléphone client */
+  async getEncaissementLookup(q: string): Promise<FactureColis | null> {
+    const t = (q || '').trim()
+    if (!t) return null
+    const data = await apiService.get<any | null>(
+      `/factures/encaissement-lookup?q=${encodeURIComponent(t)}`,
+    )
+    return data ? adaptFactureFromBackend(data) : null
   }
 
   /**

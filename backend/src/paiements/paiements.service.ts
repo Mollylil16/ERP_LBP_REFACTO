@@ -160,6 +160,7 @@ export class PaiementsService {
           this.shouldUseCaissePrincipale(user)
             ? undefined
             : facture.colis?.agence?.id,
+          this.userRoleCode(user),
         );
       }
 
@@ -421,6 +422,7 @@ export class PaiementsService {
       this.shouldUseCaissePrincipale(validator)
         ? undefined
         : facture.colis?.agence?.id,
+      this.userRoleCode(validator),
     );
 
     if (facture.payment_status === 'paid') {
@@ -440,10 +442,21 @@ export class PaiementsService {
     return saved;
   }
 
+  private userRoleCode(user: any): string {
+    return String(
+      user?.roleEntity?.code ?? user?.role?.code ?? user?.role ?? '',
+    ).toUpperCase();
+  }
+
   private shouldUseCaissePrincipale(user: any): boolean {
     if (!user) return false;
-    const role = String(user?.role?.code ?? user?.role ?? '').toUpperCase();
-    if (role === 'DIRECTEUR' || role === 'ADMIN' || role === 'SUPER_ADMIN') return true;
+    const role = String(
+      user?.roleEntity?.code ?? user?.role?.code ?? user?.role ?? '',
+    ).toUpperCase();
+    if (role === 'DIRECTEUR' || role === 'ADMIN' || role === 'SUPER_ADMIN')
+      return true;
+    /** Encaissements siège : tout est versé sur la caisse principale. */
+    if (role === 'CAISSIER') return true;
     if (user?.code_acces === 2 || user?.code_acces === 1) return true;
     return false;
   }

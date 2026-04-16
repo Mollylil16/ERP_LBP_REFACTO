@@ -14,6 +14,8 @@ import { UserActionSpeciale } from './user-action-speciale.entity';
 
 export enum UserRole {
   DIRECTEUR = 'DIRECTEUR',
+  /** Assistant du Directeur Général : accès très large, sans administration sensible */
+  ASSISTANT_DG = 'ASSISTANT_DG',
   MANAGER = 'MANAGER',
   SUPERVISEUR_REGIONAL = 'SUPERVISEUR_REGIONAL',
   /** Chef d'agence (périmètre agence, sans multi-agences par défaut) */
@@ -21,7 +23,6 @@ export enum UserRole {
   AGENT_EXPLOITATION = 'AGENT_EXPLOITATION',
   AGENT_GROUPAGE = 'AGENT_GROUPAGE',
   CAISSIER = 'CAISSIER',
-  CAISSIER_GROUPAGE = 'CAISSIER_GROUPAGE',
   AGENT_SUIVI = 'AGENT_SUIVI',
   /** Service client : boîte d’appel, messagerie, litiges côté relation client */
   CALL_CENTER = 'CALL_CENTER',

@@ -4,6 +4,7 @@ import {
   Post,
   Param,
   Patch,
+  Query,
   UseGuards,
   Request,
   Response,
@@ -47,6 +48,22 @@ export class FacturesController {
   @ApiOperation({ summary: "Récupérer la facture d'un colis par sa référence" })
   findByColis(@Param('ref') ref: string) {
     return this.facturesService.findByColisRef(ref);
+  }
+
+  @Get('num/:num')
+  @RequirePermission('factures.read')
+  @ApiOperation({ summary: 'Récupérer une facture par son numéro (FCO-…)' })
+  findByNum(@Param('num') num: string, @Request() req) {
+    return this.facturesService.findByNumFacture(num, req.user);
+  }
+
+  @Get('encaissement-lookup')
+  @RequirePermission('factures.read')
+  @ApiOperation({
+    summary: 'Recherche facture pour encaissement (n°, ref colis, téléphone)',
+  })
+  encaissementLookup(@Query('q') q: string, @Request() req) {
+    return this.facturesService.findForEncaissementLookup(q ?? '', req.user);
   }
 
   @Get(':id/pdf')

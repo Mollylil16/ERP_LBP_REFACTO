@@ -111,12 +111,6 @@ export async function seedLitigesPermissions(dataSource: DataSource) {
     // CAISSIER - Voir et créer (pour litiges de facturation)
     { roleCode: 'CAISSIER', permissions: ['litiges.view', 'litiges.create'] },
 
-    // CAISSIER_GROUPAGE - Voir et créer
-    {
-      roleCode: 'CAISSIER_GROUPAGE',
-      permissions: ['litiges.view', 'litiges.create'],
-    },
-
     // AGENT_SUIVI - Voir et créer (pour litiges de livraison)
     {
       roleCode: 'AGENT_SUIVI',

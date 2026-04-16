@@ -124,8 +124,15 @@ export const validateNumeroDossier = async (numero: string): Promise<{ valid: bo
 /**
  * Récupérer le point de caisse (entrées, sorties, solde)
  */
-export const getPointCaisse = async (date?: string): Promise<PointCaisse> => {
-  const url = date ? `${BASE_URL}/point?date=${date}` : `${BASE_URL}/point`
+export const getPointCaisse = async (
+  date?: string,
+  id_caisse?: number,
+): Promise<PointCaisse> => {
+  const params = new URLSearchParams()
+  if (date) params.set('date', date)
+  if (id_caisse != null) params.set('id_caisse', String(id_caisse))
+  const qs = params.toString()
+  const url = qs ? `${BASE_URL}/point?${qs}` : `${BASE_URL}/point`
   return apiService.get<PointCaisse>(url)
 }
 

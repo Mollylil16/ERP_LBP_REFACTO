@@ -43,8 +43,41 @@ export class CallCenterController {
     @Query('page') page?: number,
     @Query('limit') limit?: number,
     @Query('channel') channel?: 'sms' | 'whatsapp',
+    @Query('q') q?: string,
+    @Query('unread_only') unread_only?: string,
+    @Query('date_from') date_from?: string,
+    @Query('date_to') date_to?: string,
+    @Query('read_status') read_status?: 'all' | 'unread' | 'read',
+    @Query('case_status') case_status?: 'all' | 'open' | 'in_progress' | 'resolved',
+    @Query('agence_id') agence_id?: string,
   ) {
-    return this.callCenterService.listConversations({ page, limit, channel });
+    const unreadOnly =
+      unread_only === '1' ||
+      unread_only === 'true' ||
+      unread_only === 'yes' ||
+      unread_only === 'on';
+    const aid = agence_id ? Number.parseInt(agence_id, 10) : NaN;
+    return this.callCenterService.listConversations({
+      page,
+      limit,
+      channel,
+      q,
+      unreadOnly,
+      dateFrom: date_from,
+      dateTo: date_to,
+      readStatus: read_status,
+      caseStatus: case_status,
+      agenceId: Number.isFinite(aid) ? aid : undefined,
+    });
+  }
+
+  @Get('conversations/:id/summary')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermission('callcenter.inbox')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: "Résumé dossier (client, dernier colis, liens facture/litige)" })
+  async getSummary(@Param('id', ParseIntPipe) id: number) {
+    return this.callCenterService.getConversationSummary(id);
   }
 
   @Get('conversations/:id/messages')
@@ -70,6 +103,21 @@ export class CallCenterController {
   @ApiOperation({ summary: 'Marquer conversation comme lue' })
   async markRead(@Param('id', ParseIntPipe) id: number) {
     return this.callCenterService.markConversationRead(id);
+  }
+
+  @Patch('conversations/:id/case-status')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermission('callcenter.inbox')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Statut dossier relationnel (open / in_progress / resolved)' })
+  async setCaseStatus(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: { case_status: string },
+  ) {
+    return this.callCenterService.setConversationCaseStatus(
+      id,
+      body?.case_status ?? '',
+    );
   }
 
   @Post('send')

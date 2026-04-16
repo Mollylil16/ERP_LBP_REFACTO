@@ -21,6 +21,14 @@ export async function seedRoles(dataSource: DataSource): Promise<void> {
       est_actif: true,
     },
     {
+      code: 'ASSISTANT_DG',
+      nom: 'Assistant DG',
+      description:
+        'Accès très large proche DG, sans administration sensible (config, gestion utilisateurs/permissions, suppressions critiques).',
+      niveau_hierarchique: 2,
+      est_actif: true,
+    },
+    {
       code: 'MANAGER',
       nom: 'Manager/Superviseur',
       description: 'Gestion opérationnelle complète, validation des opérations',
@@ -61,13 +69,6 @@ export async function seedRoles(dataSource: DataSource): Promise<void> {
       nom: 'Caissier',
       description: 'Gestion complète de la caisse',
       niveau_hierarchique: 6,
-      est_actif: true,
-    },
-    {
-      code: 'CAISSIER_GROUPAGE',
-      nom: 'Caissier Groupage',
-      description: 'Encaissement spécifique au groupage',
-      niveau_hierarchique: 7,
       est_actif: true,
     },
     {

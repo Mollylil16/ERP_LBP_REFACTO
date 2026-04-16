@@ -14,6 +14,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { RequirePermission } from '../auth/decorators/permissions.decorator';
 import { MouvementType } from './entities/mouvement-caisse.entity';
+import { effectiveRoleCode } from '../common/effective-role-code';
 
 @ApiTags('caisse')
 @ApiBearerAuth()
@@ -21,6 +22,10 @@ import { MouvementType } from './entities/mouvement-caisse.entity';
 @Controller('caisse')
 export class CaisseController {
   constructor(private readonly caisseService: CaisseService) {}
+
+  private reqRole(req: any): string {
+    return effectiveRoleCode(req.user).toUpperCase();
+  }
 
   @Post('appro')
   @RequirePermission('caisse.operations')
@@ -31,6 +36,7 @@ export class CaisseController {
       MouvementType.APPRO,
       req.user.username,
       req.user.id_agence,
+      this.reqRole(req),
     );
   }
 
@@ -43,6 +49,7 @@ export class CaisseController {
       MouvementType.DECAISSEMENT,
       req.user.username,
       req.user.id_agence,
+      this.reqRole(req),
     );
   }
 
@@ -65,6 +72,7 @@ export class CaisseController {
       type,
       req.user.username,
       req.user.id_agence,
+      this.reqRole(req),
     );
   }
 
@@ -72,10 +80,10 @@ export class CaisseController {
   @RequirePermission('caisse.view')
   @ApiOperation({ summary: 'Liste des mouvements de caisse' })
   getMouvements(@Query() query: any, @Request() req) {
-    const canSeeAll = ['ADMIN', 'DIRECTEUR', 'SUPER_ADMIN'].includes(
-      req.user.role,
-    );
-    const agenceId = canSeeAll ? undefined : req.user.id_agence;
+    const rc = this.reqRole(req);
+    const canSeeAll = ['ADMIN', 'DIRECTEUR', 'SUPER_ADMIN'].includes(rc);
+    const agenceId =
+      canSeeAll || rc === 'CAISSIER' ? undefined : req.user.id_agence;
     return this.caisseService.getMouvements(query, agenceId);
   }
 
@@ -84,37 +92,57 @@ export class CaisseController {
   @ApiOperation({ summary: 'Récupérer le solde actuel' })
   async getSolde(@Query('id_caisse') id_caisse?: string, @Request() req?) {
     let finalCaisseId = id_caisse ? +id_caisse : undefined;
-    if (!finalCaisseId && req?.user?.id_agence) {
-      const canSeeAll = ['ADMIN', 'DIRECTEUR', 'SUPER_ADMIN'].includes(
-        req.user.role,
-      );
-      const agenceId = canSeeAll ? undefined : req.user.id_agence;
-      const caisses = await this.caisseService.findAllCaisses(agenceId);
-      finalCaisseId = caisses[0]?.id;
+    if (!finalCaisseId && req?.user) {
+      const rc = this.reqRole(req);
+      if (rc === 'CAISSIER') {
+        finalCaisseId = await this.caisseService.resolveHubPrincipalCaisseId();
+      } else if (req.user.id_agence) {
+        const canSeeAll = ['ADMIN', 'DIRECTEUR', 'SUPER_ADMIN'].includes(rc);
+        const agenceId = canSeeAll ? undefined : req.user.id_agence;
+        const caisses = await this.caisseService.findAllCaisses(agenceId);
+        finalCaisseId = caisses[0]?.id;
+      }
     }
-    const solde = await this.caisseService.getSolde(finalCaisseId || 1);
+    if (!finalCaisseId) {
+      finalCaisseId = await this.caisseService.resolveHubPrincipalCaisseId();
+    }
+    const solde = await this.caisseService.getSolde(finalCaisseId);
     return { solde };
   }
 
   @Get('point')
   @RequirePermission('caisse.view')
   @ApiOperation({ summary: 'Point de caisse journalier' })
-  getPoint(
+  async getPoint(
     @Query('date') date?: string,
     @Query('id_caisse') id_caisse?: string,
+    @Request() req?,
   ) {
-    return this.caisseService.getPointCaisse(date, id_caisse ? +id_caisse : 1);
+    let id = id_caisse ? +id_caisse : undefined;
+    if (!id && req?.user && this.reqRole(req) === 'CAISSIER') {
+      id = await this.caisseService.resolveHubPrincipalCaisseId();
+    }
+    if (!id) {
+      id = 1;
+    }
+    return this.caisseService.getPointCaisse(date, id);
   }
 
   @Get('caisses')
   @RequirePermission('caisse.view')
   @ApiOperation({ summary: 'Liste des caisses' })
-  getCaisses(@Request() req) {
-    const canSeeAll = ['ADMIN', 'DIRECTEUR', 'SUPER_ADMIN'].includes(
-      req.user.role ?? req.user.role?.code,
-    );
-    const agenceId = canSeeAll ? undefined : req.user.id_agence;
-    return this.caisseService.findAllCaisses(agenceId);
+  async getCaisses(@Request() req) {
+    const rc = this.reqRole(req);
+    const canSeeAll = ['ADMIN', 'DIRECTEUR', 'SUPER_ADMIN'].includes(rc);
+    const agenceId =
+      canSeeAll || rc === 'CAISSIER' ? undefined : req.user.id_agence;
+    const rows = await this.caisseService.findAllCaisses(agenceId);
+    const hubId = await this.caisseService.resolveHubPrincipalCaisseId();
+    return rows.map((c: any) => ({
+      ...c,
+      peut_operer:
+        canSeeAll || rc !== 'CAISSIER' ? true : Number(c.id) === Number(hubId),
+    }));
   }
 
   @Get('rapport-grandes-lignes')
@@ -127,11 +155,18 @@ export class CaisseController {
   @Get('withdrawals')
   @RequirePermission('caisse.view')
   @ApiOperation({ summary: 'Liste spécifique des retraits (décaissements)' })
-  getWithdrawals(@Query() query: any) {
-    return this.caisseService.getMouvements({
-      ...query,
-      type: MouvementType.DECAISSEMENT,
-    });
+  getWithdrawals(@Query() query: any, @Request() req) {
+    const rc = this.reqRole(req);
+    const canSeeAll = ['ADMIN', 'DIRECTEUR', 'SUPER_ADMIN'].includes(rc);
+    const agenceId =
+      canSeeAll || rc === 'CAISSIER' ? undefined : req.user.id_agence;
+    return this.caisseService.getMouvements(
+      {
+        ...query,
+        type: MouvementType.DECAISSEMENT,
+      },
+      agenceId,
+    );
   }
 
   @Post('sessions/open')
@@ -145,6 +180,7 @@ export class CaisseController {
       req.user.username,
       Number(body.solde_ouverture_reel ?? 0),
       body.note,
+      this.reqRole(req),
     );
   }
 
@@ -158,6 +194,7 @@ export class CaisseController {
       Number(body.solde_fermeture_reel ?? 0),
       body.note,
       req.user?.id,
+      this.reqRole(req),
     );
   }
 
@@ -185,7 +222,11 @@ export class CaisseController {
   @RequirePermission('caisse.operations')
   @ApiOperation({ summary: 'Soumettre un mouvement pour validation' })
   submitMovement(@Param('id') id: string, @Request() req) {
-    return this.caisseService.submitMouvement(Number(id), req.user.username);
+    return this.caisseService.submitMouvement(
+      Number(id),
+      req.user.username,
+      this.reqRole(req),
+    );
   }
 
   @Post('mouvements/:id/validate')
@@ -195,7 +236,7 @@ export class CaisseController {
     return this.caisseService.validateMouvement(
       Number(id),
       req.user.username,
-      req.user.role,
+      this.reqRole(req),
       Boolean(body.approve),
       body.reason,
     );
@@ -220,6 +261,7 @@ export class CaisseController {
       Number(id),
       justificatifUrl,
       req.user.username,
+      this.reqRole(req),
     );
   }
 

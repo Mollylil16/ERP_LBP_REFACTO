@@ -1,11 +1,17 @@
-import { Injectable, Logger } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Brackets, In, Repository } from 'typeorm';
 import { CallCenterConversation } from './entities/callcenter-conversation.entity';
 import { CallCenterMessage } from './entities/callcenter-message.entity';
 import { Client } from '../clients/entities/client.entity';
 import { Facture } from '../factures/entities/facture.entity';
 import { Litige } from '../litiges/entities/litige.entity';
+import { Colis } from '../colis/entities/colis.entity';
 
 function normalizePhone(input: string): string {
   return (input || '').replace(/[^\d+]/g, '').trim();
@@ -26,6 +32,8 @@ export class CallCenterService {
     private readonly factureRepo: Repository<Facture>,
     @InjectRepository(Litige)
     private readonly litigeRepo: Repository<Litige>,
+    @InjectRepository(Colis)
+    private readonly colisRepo: Repository<Colis>,
   ) {}
 
   async upsertConversation(params: {
@@ -194,20 +202,181 @@ export class CallCenterService {
     page?: number;
     limit?: number;
     channel?: 'sms' | 'whatsapp';
+    q?: string;
+    unreadOnly?: boolean;
+    dateFrom?: string;
+    dateTo?: string;
+    readStatus?: 'all' | 'unread' | 'read';
+    caseStatus?: 'all' | 'open' | 'in_progress' | 'resolved';
+    agenceId?: number;
   }) {
     const page = Math.max(1, Number(params.page || 1));
     const limit = Math.min(100, Math.max(1, Number(params.limit || 20)));
-    const where: any = {};
-    if (params.channel) where.channel = params.channel;
+    const qb = this.convRepo
+      .createQueryBuilder('c')
+      .leftJoin(Client, 'cl', 'cl.id = c.client_id');
 
-    const [data, total] = await this.convRepo.findAndCount({
-      where,
-      order: { last_message_at: 'DESC', updated_at: 'DESC' } as any,
-      skip: (page - 1) * limit,
-      take: limit,
-    });
+    if (params.channel) {
+      qb.andWhere('c.channel = :channel', { channel: params.channel });
+    }
+    if (params.unreadOnly) {
+      qb.andWhere('c.unread_count > 0');
+    }
+    if (params.readStatus === 'unread') {
+      qb.andWhere('c.unread_count > 0');
+    } else if (params.readStatus === 'read') {
+      qb.andWhere('c.unread_count = 0');
+    }
+    if (params.caseStatus && params.caseStatus !== 'all') {
+      qb.andWhere('c.case_status = :cs', { cs: params.caseStatus });
+    }
+    if (params.agenceId && Number.isFinite(Number(params.agenceId))) {
+      qb.andWhere(
+        `EXISTS (
+          SELECT 1 FROM lbp_colis co
+          WHERE co.id_client = c.client_id AND co.id_agence = :ccAgence
+        )`,
+        { ccAgence: params.agenceId },
+      );
+    }
+    if (params.dateFrom) {
+      const d = new Date(params.dateFrom);
+      if (!Number.isNaN(d.getTime())) {
+        qb.andWhere('c.last_message_at >= :df', { df: d.toISOString() });
+      }
+    }
+    if (params.dateTo) {
+      const d = new Date(params.dateTo);
+      if (!Number.isNaN(d.getTime())) {
+        qb.andWhere('c.last_message_at <= :dt', { dt: d.toISOString() });
+      }
+    }
+
+    const rawQ = (params.q || '').trim();
+    if (rawQ) {
+      const phoneQ = normalizePhone(rawQ);
+      qb.andWhere(
+        new Brackets((w) => {
+          w.where('c.customer_phone ILIKE :q', { q: `%${rawQ}%` })
+            .orWhere('c.callcenter_phone ILIKE :q', { q: `%${rawQ}%` })
+            .orWhere('cl.nom_exp ILIKE :q', { q: `%${rawQ}%` });
+          if (phoneQ) {
+            w.orWhere('c.customer_phone ILIKE :pq', { pq: `%${phoneQ}%` }).orWhere(
+              'cl.tel_exp ILIKE :pq',
+              { pq: `%${phoneQ}%` },
+            );
+          }
+          const asInt = Number(rawQ);
+          if (Number.isFinite(asInt)) {
+            w.orWhere('c.client_id = :cid', { cid: asInt });
+          }
+          // Recherche dans le fil de messages (réf colis, num facture, etc.)
+          w.orWhere(
+            `EXISTS (
+              SELECT 1 FROM callcenter_messages m
+              WHERE m.conversation_id = c.id AND m.message ILIKE :mq
+            )`,
+            { mq: `%${rawQ}%` },
+          );
+        }),
+      );
+    }
+
+    const total = await qb.clone().getCount();
+    const entities = await qb
+      .clone()
+      .orderBy('c.last_message_at', 'DESC')
+      .addOrderBy('c.updated_at', 'DESC')
+      .skip((page - 1) * limit)
+      .take(limit)
+      .getMany();
+
+    const ids = [
+      ...new Set(
+        entities
+          .map((e) => e.client_id)
+          .filter((x): x is number => typeof x === 'number' && x > 0),
+      ),
+    ];
+    const nomByClientId = new Map<number, string>();
+    if (ids.length) {
+      const clients = await this.clientRepo.find({
+        where: { id: In(ids) } as any,
+        select: ['id', 'nom_exp'] as any,
+      });
+      for (const cl of clients) {
+        nomByClientId.set(cl.id, cl.nom_exp);
+      }
+    }
+
+    const data = entities.map((e) => ({
+      ...e,
+      client_nom: e.client_id ? nomByClientId.get(e.client_id) ?? null : null,
+    }));
 
     return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
+  }
+
+  async getConversationSummary(conversationId: number): Promise<any> {
+    const conv = await this.convRepo.findOne({ where: { id: conversationId } });
+    if (!conv) return { conversation_id: conversationId, found: false };
+
+    // Client
+    const clientId =
+      conv.client_id ?? (await this.guessClientIdByPhone(conv.customer_phone));
+    const client = clientId
+      ? await this.clientRepo.findOne({ where: { id: clientId } as any })
+      : null;
+
+    // Dernier colis du client (si possible)
+    const lastColis = clientId
+      ? await this.colisRepo
+          .createQueryBuilder('colis')
+          .select(['colis.id', 'colis.ref_colis', 'colis.date_envoi', 'colis.forme_envoi', 'colis.trafic_envoi'])
+          .where('colis.id_client = :cid', { cid: clientId })
+          .orderBy('colis.created_at', 'DESC')
+          .limit(1)
+          .getOne()
+      : null;
+
+    const lastFacture = conv.last_facture_id
+      ? await this.factureRepo.findOne({
+          where: { id: conv.last_facture_id } as any,
+          select: ['id', 'num_facture', 'etat', 'payment_status', 'montant_ttc', 'devise'] as any,
+        })
+      : null;
+
+    const lastLitige = conv.last_litige_id
+      ? await this.litigeRepo.findOne({
+          where: { id: conv.last_litige_id } as any,
+          select: ['id', 'num_litige', 'statut', 'created_at'] as any,
+        })
+      : null;
+
+    return {
+      conversation_id: conv.id,
+      found: true,
+      case_status: (conv as any).case_status ?? 'open',
+      channel: conv.channel,
+      customer_phone: conv.customer_phone,
+      callcenter_phone: conv.callcenter_phone,
+      unread_count: conv.unread_count,
+      last_message_at: conv.last_message_at,
+      client: client
+        ? { id: client.id, nom_exp: client.nom_exp, tel_exp: client.tel_exp, email_exp: client.email_exp ?? null }
+        : null,
+      last_colis: lastColis
+        ? {
+            id: lastColis.id,
+            ref_colis: (lastColis as any).ref_colis,
+            date_envoi: (lastColis as any).date_envoi,
+            forme_envoi: (lastColis as any).forme_envoi,
+            trafic_envoi: (lastColis as any).trafic_envoi,
+          }
+        : null,
+      last_facture: lastFacture ?? null,
+      last_litige: lastLitige ?? null,
+    };
   }
 
   async getConversationMessages(
@@ -229,5 +398,24 @@ export class CallCenterService {
   async markConversationRead(conversationId: number) {
     await this.convRepo.update(conversationId, { unread_count: 0 } as any);
     return { ok: true };
+  }
+
+  async setConversationCaseStatus(
+    conversationId: number,
+    caseStatus: string,
+  ): Promise<CallCenterConversation> {
+    const allowed = new Set(['open', 'in_progress', 'resolved']);
+    const cs = String(caseStatus || '').trim();
+    if (!allowed.has(cs)) {
+      throw new BadRequestException(
+        'case_status invalide (open | in_progress | resolved)',
+      );
+    }
+    const conv = await this.convRepo.findOne({ where: { id: conversationId } });
+    if (!conv) {
+      throw new NotFoundException('Conversation introuvable');
+    }
+    await this.convRepo.update(conversationId, { case_status: cs } as any);
+    return (await this.convRepo.findOne({ where: { id: conversationId } }))!;
   }
 }

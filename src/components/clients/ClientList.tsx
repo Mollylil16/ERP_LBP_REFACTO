@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import {
   Table,
   Button,
@@ -30,15 +30,25 @@ interface ClientListProps {
   onEdit?: (client: ClientColis) => void
   onView?: (client: ClientColis) => void
   onCreate?: () => void
+  /** Pré-remplissage (ex: depuis Call center : `?search=...`) */
+  initialSearch?: string
 }
 
 export const ClientList: React.FC<ClientListProps> = ({
   onEdit,
   onView,
   onCreate,
+  initialSearch,
 }) => {
   const [pagination, setPagination] = useState({ page: 1, limit: 20 })
-  const [searchTerm, setSearchTerm] = useState('')
+  const [searchTerm, setSearchTerm] = useState(initialSearch ?? '')
+
+  useEffect(() => {
+    if (typeof initialSearch === 'string') {
+      setSearchTerm(initialSearch)
+      setPagination((p) => ({ ...p, page: 1 }))
+    }
+  }, [initialSearch])
 
   const { data, isLoading, refetch } = useClientsList({
     ...pagination,

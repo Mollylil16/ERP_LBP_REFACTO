@@ -7,6 +7,82 @@ import { RolePermission } from '../../permissions/entities/role-permission.entit
 const rolePermissionsMatrix = {
   ADMIN: '*',
   DIRECTEUR: '*', // Toutes les permissions
+  /**
+   * Assistant DG : périmètre DG (lecture & opérations), sans administration sensible.
+   * Choix de restriction :
+   * - pas de gestion utilisateurs / permissions
+   * - pas de paramètres société (structures.parametres_application.*) ni gestion agences (create/update/delete)
+   * - pas de suppressions critiques (delete sur colis/factures/paiements/caisse/fonds)
+   * - pas d’annulation/validation workflow (factures/paiements/colis validation)
+   */
+  ASSISTANT_DG: [
+    // EXPLOITATION (opérations)
+    'exploitation.groupage_colis.create',
+    'exploitation.groupage_colis.read',
+    'exploitation.groupage_colis.update',
+    'exploitation.autres_envois.create',
+    'exploitation.autres_envois.read',
+    'exploitation.autres_envois.update',
+    'exploitation.rapports_envois.read',
+    'exploitation.livraison.create',
+    'exploitation.livraison.read',
+    'exploitation.livraison.update',
+
+    // FACTURATION (opérations)
+    'facturation.cotation.create',
+    'facturation.cotation.read',
+    'facturation.cotation.update',
+    'facturation.facturer.create',
+    'facturation.facturer.read',
+    'facturation.facturer.update',
+
+    // CAISSE (lecture + opérations, sans suppression caisse/mouvements)
+    'operation_caisse.gestion_caisses.read',
+    'operation_caisse.mouvements_caisses.create',
+    'operation_caisse.mouvements_caisses.read',
+    'operation_caisse.mouvements_caisses.update',
+    'operation_caisse.journal.read',
+    'operation_caisse.reglement_client.create',
+    'operation_caisse.reglement_client.read',
+    'operation_caisse.reglement_client.update',
+
+    // GESTION FONDS (lecture + demandes, pas de paiement/suppression)
+    'gestion_fonds.demandes_fonds.create',
+    'gestion_fonds.demandes_fonds.read',
+    'gestion_fonds.demandes_fonds.update',
+    'gestion_fonds.recap_demandes.read',
+
+    // RAPPORTS (lecture)
+    'rapports.suivi_envois.read',
+    'rapports.statistiques.read',
+    'rapports.ca_detaille.read',
+    'rapports.business_analyst.read',
+
+    // STRUCTURES (opérations terrain, sans admin système)
+    'structures.clients.create',
+    'structures.clients.read',
+    'structures.clients.update',
+    'structures.zones_livraison.create',
+    'structures.zones_livraison.read',
+    'structures.zones_livraison.update',
+    'structures.agences.read',
+
+    // Litiges / call center
+    'litiges.view',
+    'litiges.create',
+    'litiges.manage',
+    'callcenter.inbox',
+
+    // Exploitation : crédits / points / fournitures (pilotage)
+    'exploitation.credits.read',
+    'exploitation.credits.submit_recap',
+    'exploitation.points_journaliers.read',
+    'exploitation.points_journaliers.create',
+    'exploitation.points_journaliers.submit',
+    'exploitation.fournitures.read',
+    'exploitation.fournitures.manage',
+    'exploitation.fournitures.request',
+  ],
   MANAGER: [
     // EXPLOITATION
     'exploitation.groupage_colis.create',
@@ -97,21 +173,48 @@ const rolePermissionsMatrix = {
     'paiements.cancel',
   ],
   SUPERVISEUR_REGIONAL: [
+    // Superviseur régional = mêmes capacités qu'AGENT_EXPLOITATION (opérations),
+    // avec lecture multi-agences et rapports consolidés.
+    'exploitation.groupage_colis.create',
     'exploitation.groupage_colis.read',
+    'exploitation.groupage_colis.update',
+    'exploitation.groupage_colis.delete',
+    'exploitation.autres_envois.create',
     'exploitation.autres_envois.read',
+    'exploitation.autres_envois.update',
+    'exploitation.autres_envois.delete',
     'exploitation.rapports_envois.read',
+    'exploitation.livraison.create',
     'exploitation.livraison.read',
+    'exploitation.livraison.update',
+    'exploitation.livraison.delete',
+    'facturation.cotation.create',
+    'facturation.cotation.read',
+    'facturation.cotation.update',
+    'facturation.cotation.delete',
+    'facturation.facturer.create',
+    'facturation.facturer.read',
+    'facturation.facturer.update',
+    'gestion_fonds.demandes_fonds.create',
     'gestion_fonds.demandes_fonds.read',
-    'gestion_fonds.recap_demandes.read',
-    'rapports.suivi_envois.read',
-    'rapports.statistiques.read',
-    'rapports.ca_detaille.read',
     'structures.clients.read',
     'structures.zones_livraison.read',
     'structures.agences.read',
     'litiges.view',
+    'litiges.create',
     'litiges.manage',
     'callcenter.inbox',
+    'exploitation.credits.read',
+    'exploitation.credits.manage',
+    'exploitation.credits.export',
+    'exploitation.points_journaliers.read',
+    'exploitation.points_journaliers.validate',
+    'exploitation.fournitures.read',
+    'exploitation.fournitures.manage',
+    // Rapports consolidés
+    'rapports.suivi_envois.read',
+    'rapports.statistiques.read',
+    'rapports.ca_detaille.read',
   ],
   CHEF_AGENCE: [
     // Colis (opérationnel agence)
@@ -195,7 +298,16 @@ const rolePermissionsMatrix = {
     'exploitation.autres_envois.read',
     'exploitation.autres_envois.update',
     'exploitation.autres_envois.delete',
-    // NB: pas de rapports/analyses ni trésorerie pour AGENT_GROUPAGE
+    // Facturation client (émission / suivi factures groupage)
+    'facturation.facturer.create',
+    'facturation.facturer.read',
+    'facturation.facturer.update',
+    // Points & récap crédits remis au caissier siège (pas rapports stats globaux ni trésorerie)
+    'exploitation.points_journaliers.read',
+    'exploitation.points_journaliers.create',
+    'exploitation.points_journaliers.submit',
+    'exploitation.credits.read',
+    'exploitation.credits.submit_recap',
     'structures.clients.read',
     'structures.agences.read',
     'litiges.view',
@@ -204,7 +316,7 @@ const rolePermissionsMatrix = {
   ],
   CAISSIER: [
     'operation_caisse.gestion_caisses.create',
-    'operation_caisse.gestion_caisses.read',
+    // Pas de gestion_caisses.read : la liste multi-agences est réservée admin/directeur (API filtre par rôle).
     'operation_caisse.gestion_caisses.update',
     'operation_caisse.gestion_caisses.delete',
     'operation_caisse.mouvements_caisses.create',
@@ -225,28 +337,11 @@ const rolePermissionsMatrix = {
     'structures.agences.read',
     'litiges.view',
     'callcenter.inbox',
-  ],
-  CAISSIER_GROUPAGE: [
-    'exploitation.groupage_colis.read',
-    'operation_caisse.gestion_caisses.create',
-    'operation_caisse.gestion_caisses.read',
-    'operation_caisse.gestion_caisses.update',
-    'operation_caisse.gestion_caisses.delete',
-    'operation_caisse.mouvements_caisses.create',
-    'operation_caisse.mouvements_caisses.read',
-    'operation_caisse.mouvements_caisses.update',
-    'operation_caisse.mouvements_caisses.delete',
-    'operation_caisse.journal.read',
-    'operation_caisse.reglement_client.create',
-    'operation_caisse.reglement_client.read',
-    'operation_caisse.reglement_client.update',
-    'operation_caisse.reglement_client.delete',
-    'gestion_fonds.demandes_fonds.create',
-    'gestion_fonds.demandes_fonds.read',
-    'gestion_fonds.recap_demandes.read',
-    'structures.agences.read',
-    'litiges.view',
-    'callcenter.inbox',
+    // Consolidation des points journaliers soumis par les agences
+    'exploitation.points_journaliers.read',
+    'exploitation.points_journaliers.validate',
+    // Lecture des crédits / récaps remis par les agences
+    'exploitation.credits.read',
   ],
   AGENT_SUIVI: [
     'exploitation.groupage_colis.read',

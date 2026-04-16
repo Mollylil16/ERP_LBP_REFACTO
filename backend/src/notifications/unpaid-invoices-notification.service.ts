@@ -8,7 +8,6 @@ import { User, UserRole } from '../users/entities/user.entity';
 
 const UNPAID_INVOICE_NOTIFY_ROLES: UserRole[] = [
   UserRole.CAISSIER,
-  UserRole.CAISSIER_GROUPAGE,
   UserRole.MANAGER,
   UserRole.ADMIN,
 ];

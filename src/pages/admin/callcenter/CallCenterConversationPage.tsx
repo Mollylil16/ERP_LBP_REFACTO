@@ -1,13 +1,32 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { Link, useLocation, useParams } from 'react-router-dom'
-import { Button, Card, Input, Space, Spin, Tag, Typography } from 'antd'
+import {
+  Button,
+  Card,
+  Descriptions,
+  Dropdown,
+  Input,
+  Select,
+  Space,
+  Spin,
+  Tag,
+  Typography,
+  message,
+} from 'antd'
 import { ArrowLeftOutlined } from '@ant-design/icons'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { CallCenterConversationRow, CallCenterMessageRow } from '@types'
 import { callcenterService } from '@services/callcenter.service'
 import { formatDate } from '@utils/format'
 import { EmptyErrorState } from '@components/common/EmptyState'
+import { WithPermission } from '@components/common/WithPermission'
+import { PERMISSIONS } from '@constants/permissions'
 import { buildWhatsAppChatUrl } from '@utils/whatsapp'
+import {
+  CALLCENTER_MESSAGE_TEMPLATES,
+  applyCallcenterTemplate,
+  type CallcenterTemplateVars,
+} from '@utils/callcenter-templates'
 
 const { Title, Text } = Typography
 
@@ -63,6 +82,23 @@ export const CallCenterConversationPage: React.FC = () => {
     enabled: Number.isFinite(id),
   })
 
+  const { data: summary, isLoading: summaryLoading } = useQuery({
+    queryKey: ['callcenter-summary', id],
+    queryFn: () => callcenterService.getConversationSummary(id),
+    enabled: Number.isFinite(id),
+  })
+
+  const caseStatusMutation = useMutation({
+    mutationFn: (case_status: 'open' | 'in_progress' | 'resolved') =>
+      callcenterService.setConversationCaseStatus(id, case_status),
+    onSuccess: () => {
+      message.success('Statut dossier enregistré')
+      void queryClient.invalidateQueries({ queryKey: ['callcenter-summary', id] })
+      void queryClient.invalidateQueries({ queryKey: ['callcenter-conversations'] })
+    },
+    onError: () => message.error('Mise à jour impossible'),
+  })
+
   const sendMutation = useMutation({
     mutationFn: async () => {
       const target = inferRecipient(row, data?.data ?? [])
@@ -77,10 +113,34 @@ export const CallCenterConversationPage: React.FC = () => {
       setReply('')
       void queryClient.invalidateQueries({ queryKey: ['callcenter-messages', id] })
       void queryClient.invalidateQueries({ queryKey: ['callcenter-conversations'] })
+      void queryClient.invalidateQueries({ queryKey: ['callcenter-summary', id] })
     },
   })
 
   const messages = useMemo(() => data?.data ?? [], [data?.data])
+
+  const templateVars: CallcenterTemplateVars = useMemo(
+    () => ({
+      nom_client: summary?.client?.nom_exp,
+      tel_client: summary?.client?.tel_exp ?? summary?.customer_phone,
+      ref_colis: summary?.last_colis?.ref_colis,
+      num_facture: summary?.last_facture?.num_facture,
+    }),
+    [summary],
+  )
+
+  const templateMenuItems = useMemo(
+    () =>
+      CALLCENTER_MESSAGE_TEMPLATES.map((t) => ({
+        key: t.id,
+        label: t.label,
+        onClick: () => {
+          const text = applyCallcenterTemplate(t.body, templateVars)
+          setReply((prev) => (prev ? `${prev.trim()}\n\n${text}` : text))
+        },
+      })),
+    [templateVars],
+  )
 
   const headerSubtitle = useMemo(() => {
     if (row) {
@@ -94,6 +154,23 @@ export const CallCenterConversationPage: React.FC = () => {
     const t = inferRecipient(row, messages)
     return t?.to ? buildWhatsAppChatUrl(t.to) : null
   }, [row, messages])
+
+  const clientSearch =
+    summary?.client?.nom_exp?.trim() ||
+    summary?.customer_phone ||
+    summary?.client?.tel_exp ||
+    (summary?.client?.id != null ? String(summary.client.id) : '')
+
+  const litigeCreateHref = useMemo(() => {
+    if (summary?.client?.id == null) return null
+    const qs = new URLSearchParams()
+    qs.set('client_id', String(summary.client.id))
+    qs.set('phone', summary.customer_phone || summary.client.tel_exp || '')
+    if (summary.last_facture?.id != null) qs.set('facture_id', String(summary.last_facture.id))
+    if (summary.last_colis?.ref_colis) qs.set('colis_ref', summary.last_colis.ref_colis)
+    qs.set('from', 'callcenter')
+    return `/litiges?${qs.toString()}`
+  }, [summary])
 
   if (!Number.isFinite(id)) {
     return (
@@ -128,7 +205,82 @@ export const CallCenterConversationPage: React.FC = () => {
             Ouvrir WhatsApp
           </Button>
         ) : null}
+        <WithPermission permission={PERMISSIONS.CLIENTS.READ}>
+          {clientSearch ? (
+            <Link to={`/clients?search=${encodeURIComponent(clientSearch)}`}>
+              <Button size="small">Fiche clients</Button>
+            </Link>
+          ) : null}
+        </WithPermission>
+        <WithPermission permission={PERMISSIONS.LITIGES.CREATE}>
+          {litigeCreateHref ? (
+            <Link to={litigeCreateHref}>
+              <Button size="small">Nouveau litige</Button>
+            </Link>
+          ) : null}
+        </WithPermission>
+        <WithPermission permission={PERMISSIONS.LITIGES.VIEW}>
+          {summary?.last_litige?.id != null ? (
+            <Link to={`/litiges/${summary.last_litige.id}`}>
+              <Button size="small">Litige lié</Button>
+            </Link>
+          ) : null}
+        </WithPermission>
+        <WithPermission permission={PERMISSIONS.FACTURES.READ}>
+          {summary?.last_facture?.id != null ? (
+            <Link to={`/factures/${summary.last_facture.id}/preview`}>
+              <Button size="small">Facture liée</Button>
+            </Link>
+          ) : null}
+        </WithPermission>
       </Space>
+
+      <Card title="Résumé dossier" style={{ marginBottom: 16 }} loading={summaryLoading}>
+        {!summary?.found ? (
+          <Text type="secondary">Conversation introuvable.</Text>
+        ) : (
+          <Space direction="vertical" style={{ width: '100%' }} size="middle">
+            <Space wrap align="center">
+              <Text strong>Statut dossier :</Text>
+              <Select<'open' | 'in_progress' | 'resolved'>
+                style={{ width: 200 }}
+                value={(summary.case_status as 'open' | 'in_progress' | 'resolved') ?? 'open'}
+                loading={caseStatusMutation.isPending}
+                onChange={(v: 'open' | 'in_progress' | 'resolved') =>
+                  caseStatusMutation.mutate(v)
+                }
+                options={[
+                  { value: 'open', label: 'Ouvert' },
+                  { value: 'in_progress', label: 'En cours' },
+                  { value: 'resolved', label: 'Résolu' },
+                ]}
+              />
+            </Space>
+            <Descriptions size="small" column={{ xs: 1, sm: 2 }} bordered>
+              <Descriptions.Item label="Client">
+                {summary.client
+                  ? `${summary.client.nom_exp} (${summary.client.tel_exp})`
+                  : '—'}
+              </Descriptions.Item>
+              <Descriptions.Item label="Dernier colis">
+                {summary.last_colis
+                  ? `${summary.last_colis.ref_colis}${
+                      summary.last_colis.date_envoi
+                        ? ` · ${formatDate(summary.last_colis.date_envoi)}`
+                        : ''
+                    }`
+                  : '—'}
+              </Descriptions.Item>
+              <Descriptions.Item label="Dernière facture (liée)">
+                {summary.last_facture?.num_facture ?? '—'}
+              </Descriptions.Item>
+              <Descriptions.Item label="Dernier litige (lié)">
+                {summary.last_litige?.num_litige ?? '—'}
+              </Descriptions.Item>
+            </Descriptions>
+          </Space>
+        )}
+      </Card>
 
       <Card>
         {isLoading ? (
@@ -183,6 +335,11 @@ export const CallCenterConversationPage: React.FC = () => {
         )}
 
         <div style={{ marginTop: 24 }}>
+          <Space style={{ marginBottom: 8 }} wrap>
+            <Dropdown menu={{ items: templateMenuItems }} trigger={['click']}>
+              <Button>Modèles de message</Button>
+            </Dropdown>
+          </Space>
           <Input.TextArea
             rows={3}
             value={reply}

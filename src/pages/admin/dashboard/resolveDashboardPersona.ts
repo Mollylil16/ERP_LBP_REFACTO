@@ -12,14 +12,13 @@ export type DashboardPersona =
   | 'default'
 
 const DIRECTION = new Set<string>([UserRole.DIRECTEUR, UserRole.ADMIN])
+// Assistant DG : même persona "direction" (vue stratégique), mais permissions RBAC filtrent les actions.
+DIRECTION.add(UserRole.ASSISTANT_DG)
 const MANAGER = new Set<string>([
   UserRole.MANAGER,
   UserRole.SUPERVISEUR_REGIONAL,
 ])
-const CAISSIER = new Set<string>([
-  UserRole.CAISSIER,
-  UserRole.CAISSIER_GROUPAGE,
-])
+const CAISSIER = new Set<string>([UserRole.CAISSIER])
 const CHEF_AGENCE = new Set<string>([UserRole.CHEF_AGENCE])
 
 /**

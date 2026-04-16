@@ -66,28 +66,70 @@ export class CaisseService implements OnApplicationBootstrap {
     }
   }
 
+  /**
+   * Caisse « principale » (centralisation siège) : nom contenant « principal »,
+   * sinon première caisse par id (rétrocompatibilité).
+   */
+  async resolveHubPrincipalCaisseId(): Promise<number> {
+    const byName = await this.caisseRepository
+      .createQueryBuilder('c')
+      .where('LOWER(c.nom) LIKE :p', { p: '%principal%' })
+      .orderBy('c.id', 'ASC')
+      .getOne();
+    if (byName) return byName.id;
+    const first = await this.caisseRepository.find({
+      order: { id: 'ASC' },
+      take: 1,
+    });
+    if (!first.length) {
+      throw new NotFoundException('Aucune caisse configurée');
+    }
+    return first[0].id;
+  }
+
+  /** Le rôle caissier n’opère que sur la caisse hub (consultation des autres caisses côté UI). */
+  async assertCashierOperatesOnlyOnHub(
+    roleCode: string | undefined,
+    idCaisse: number,
+  ): Promise<void> {
+    const rc = (roleCode || '').toUpperCase();
+    if (rc !== 'CAISSIER' || !idCaisse) return;
+    const hub = await this.resolveHubPrincipalCaisseId();
+    if (Number(idCaisse) !== Number(hub)) {
+      throw new ForbiddenException(
+        'Les opérations caisse (sessions, mouvements, encaissements) sont réservées à la caisse principale (versements centralisés).',
+      );
+    }
+  }
+
   async createMovement(
     data: any,
     type: MouvementType,
     userId: string,
     agenceId?: number,
+    operatorRole?: string,
   ): Promise<MouvementCaisse> {
     let caisseId = data.id_caisse;
 
     if (!caisseId && agenceId) {
-      const caisse = await this.caisseRepository.findOne({
+      const cAg = await this.caisseRepository.findOne({
         where: { agence: { id: agenceId } },
       });
-      caisseId = caisse?.id;
+      caisseId = cAg?.id;
+    }
+    if (!caisseId) {
+      caisseId = await this.resolveHubPrincipalCaisseId();
     }
 
     const caisse = await this.caisseRepository.findOne({
-      where: { id: caisseId || 1 },
+      where: { id: caisseId },
     });
 
     if (!caisse) {
       throw new NotFoundException(`Caisse #${caisseId} not found`);
     }
+
+    await this.assertCashierOperatesOnlyOnHub(operatorRole, caisse.id);
 
     const activeSession = await this.getActiveSession(caisse.id);
     if (!activeSession) {
@@ -204,6 +246,7 @@ export class CaisseService implements OnApplicationBootstrap {
         validation_level_required: wf?.validation_level_required ?? 1,
         validation_level_current: wf?.validation_level_current ?? 0,
         justificatif_url: wf?.justificatif_url ?? null,
+        rejection_reason: wf?.rejection_reason ?? null,
       };
     });
   }
@@ -213,7 +256,9 @@ export class CaisseService implements OnApplicationBootstrap {
     openedBy: string,
     soldeOuvertureReel: number,
     note?: string,
+    operatorRole?: string,
   ) {
+    await this.assertCashierOperatesOnlyOnHub(operatorRole, idCaisse);
     const caisse = await this.caisseRepository.findOne({
       where: { id: idCaisse },
     });
@@ -265,12 +310,17 @@ export class CaisseService implements OnApplicationBootstrap {
     soldeFermetureReel: number,
     note?: string,
     closedByUserId?: number,
+    operatorRole?: string,
   ) {
     const session = await this.sessionRepository.findOne({
       where: { id: sessionId },
       relations: ['caisse'],
     });
     if (!session) throw new NotFoundException('Session de caisse introuvable');
+    await this.assertCashierOperatesOnlyOnHub(
+      operatorRole,
+      session.caisse?.id ?? 0,
+    );
     if (session.status !== CaisseSessionStatus.OPEN) {
       throw new BadRequestException('Cette session est déjà clôturée.');
     }
@@ -312,7 +362,11 @@ export class CaisseService implements OnApplicationBootstrap {
     return saved;
   }
 
-  async submitMouvement(mouvementId: number, username: string) {
+  async submitMouvement(
+    mouvementId: number,
+    username: string,
+    operatorRole?: string,
+  ) {
     const workflow = await this.workflowRepository.findOne({
       where: { mouvement_id: mouvementId },
     });
@@ -323,8 +377,13 @@ export class CaisseService implements OnApplicationBootstrap {
     }
     const mouvement = await this.mouvementRepository.findOne({
       where: { id: mouvementId },
+      relations: ['caisse'],
     });
     if (!mouvement) throw new NotFoundException('Mouvement introuvable');
+    await this.assertCashierOperatesOnlyOnHub(
+      operatorRole,
+      mouvement.caisse?.id ?? 0,
+    );
     if (
       this.isJustificatifRequired(mouvement.type, Number(mouvement.montant)) &&
       !workflow.justificatif_url
@@ -355,10 +414,22 @@ export class CaisseService implements OnApplicationBootstrap {
     mouvementId: number,
     justificatifUrl: string,
     username: string,
+    operatorRole?: string,
   ) {
     if (!justificatifUrl || !justificatifUrl.trim()) {
       throw new BadRequestException('URL ou chemin du justificatif requis.');
     }
+    const mouvementForCaisse = await this.mouvementRepository.findOne({
+      where: { id: mouvementId },
+      relations: ['caisse'],
+    });
+    if (!mouvementForCaisse)
+      throw new NotFoundException('Mouvement introuvable');
+    await this.assertCashierOperatesOnlyOnHub(
+      operatorRole,
+      mouvementForCaisse.caisse?.id ?? 0,
+    );
+
     const workflow = await this.workflowRepository.findOne({
       where: { mouvement_id: mouvementId },
     });
@@ -732,8 +803,9 @@ export class CaisseService implements OnApplicationBootstrap {
     const caisses = agenceId
       ? await this.caisseRepository.find({
           where: { agence: { id: agenceId } },
+          relations: ['agence'],
         })
-      : await this.caisseRepository.find();
+      : await this.caisseRepository.find({ relations: ['agence'] });
 
     const results: any[] = [];
     for (const caisse of caisses) {
@@ -743,6 +815,7 @@ export class CaisseService implements OnApplicationBootstrap {
         libelle: caisse.nom,
         montant_initial: caisse.solde_initial,
         solde_actuel: solde_actuel,
+        id_agence: caisse.agence?.id ?? null,
       });
     }
     return results;

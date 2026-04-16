@@ -160,7 +160,7 @@ Voir **`src/constants/permissions.ts`** pour la liste structurée côté front e
 |---------------|---------|-------------|----------------------------------|---------------|
 | **DIRECTEUR**, **ADMIN** | `direction` | Tableau de bord stratégique | Utilisateurs, Paramètres, Statistiques, Litiges | Tout : stats, perf multi-agences (si `dashboard.caisse`), point caisse, **graphiques**, activités, classement agences, **panneau IA** |
 | **MANAGER**, **SUPERVISEUR_REGIONAL** | `manager` | Espace manager | Litiges, Factures, Rapports, Clients | Comme direction **sans** panneau IA ; perf agences + graphiques + reste |
-| **CAISSIER**, **CAISSIER_GROUPAGE** | `caissier` | Caisse du jour | Suivi caisse, Paiements, Factures | Stats cartes, **point caisse en haut**, activités ; **pas** de graphiques, **pas** de perf multi-agences / IA / widget classement |
+| **CAISSIER** | `caissier` | Caisse du jour | Suivi caisse, Paiements, Factures | Stats cartes, **point caisse en haut**, activités ; **pas** de graphiques, **pas** de perf multi-agences / IA / widget classement |
 | **AGENT_EXPLOITATION**, **AGENT_GROUPAGE** | `agent` | Activité colis | Groupage, Autres envois, Expéditions, Carte | Stats, graphiques, point caisse (si droit), activités ; pas perf multi-agences ni IA |
 | **AGENT_SUIVI** | `suivi` | Suivi & relation client | Litiges, Boîte messages, Suivi public | Stats, graphiques, point caisse (si droit), activités |
 | **Autre** / rôle inconnu | `default` | Tableau de bord générique | Groupage, Caisse, Factures (selon droits) | Comme agent côté graphiques |

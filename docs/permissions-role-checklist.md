@@ -52,7 +52,7 @@ WHERE rp.id IS NULL;
 
 ## Rôles seedés (`lbp_roles`)
 
-`DIRECTEUR`, `MANAGER`, `SUPERVISEUR_REGIONAL`, `AGENT_EXPLOITATION`, `AGENT_GROUPAGE`, `CAISSIER`, `CAISSIER_GROUPAGE`, `AGENT_SUIVI`.
+`DIRECTEUR`, `MANAGER`, `SUPERVISEUR_REGIONAL`, `AGENT_EXPLOITATION`, `AGENT_GROUPAGE`, `CAISSIER`, `AGENT_SUIVI`.
 
 - **DIRECTEUR** : `*` (toutes les permissions app).
 - **ADMIN** (utilisateur) : traité comme accès complet côté `auth.service` + `PermissionsContext` (aligné JWT).

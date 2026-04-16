@@ -1,5 +1,5 @@
-import React, { useState } from 'react'
-import { Link } from 'react-router-dom'
+import React, { useEffect, useState } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import { Card, Table, Typography, Tag, Pagination, Space, Select, Button } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { useQuery } from '@tanstack/react-query'
@@ -7,6 +7,9 @@ import type { LitigeListItem } from '@types'
 import { litigesService } from '@services/litiges.service'
 import { formatDate } from '@utils/format'
 import { EmptyErrorState } from '@components/common/EmptyState'
+import { LitigeQuickCreateModal } from '@components/litiges/LitigeQuickCreateModal'
+import { WithPermission } from '@components/common/WithPermission'
+import { PERMISSIONS } from '@constants/permissions'
 
 const { Title } = Typography
 
@@ -19,9 +22,39 @@ const STATUT_OPTIONS = [
 ]
 
 export const LitigesListPage: React.FC = () => {
+  const [searchParams, setSearchParams] = useSearchParams()
   const [page, setPage] = useState(1)
   const [limit] = useState(20)
   const [statut, setStatut] = useState<string | undefined>(undefined)
+  const [litigeModalOpen, setLitigeModalOpen] = useState(false)
+
+  const clientIdParam = searchParams.get('client_id')
+  const phoneParam = searchParams.get('phone') ?? undefined
+  const factureIdParam = searchParams.get('facture_id')
+  const colisRefParam = searchParams.get('colis_ref') ?? undefined
+  const fromCallcenter = searchParams.get('from') === 'callcenter'
+
+  useEffect(() => {
+    if (clientIdParam && fromCallcenter) {
+      setLitigeModalOpen(true)
+    }
+  }, [clientIdParam, fromCallcenter])
+
+  const closeLitigeModal = () => {
+    setLitigeModalOpen(false)
+    setSearchParams(
+      (prev) => {
+        const n = new URLSearchParams(prev)
+        n.delete('client_id')
+        n.delete('phone')
+        n.delete('facture_id')
+        n.delete('colis_ref')
+        n.delete('from')
+        return n
+      },
+      { replace: true },
+    )
+  }
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['litiges', page, limit, statut],
@@ -81,11 +114,21 @@ export const LitigesListPage: React.FC = () => {
     return <EmptyErrorState onRetry={() => refetch()} />
   }
 
+  const prefClientIdRaw = clientIdParam ? Number.parseInt(clientIdParam, 10) : NaN
+  const prefClientId = Number.isFinite(prefClientIdRaw) ? prefClientIdRaw : undefined
+  const prefFactureIdRaw = factureIdParam ? Number.parseInt(factureIdParam, 10) : NaN
+  const prefFactureId = Number.isFinite(prefFactureIdRaw) ? prefFactureIdRaw : undefined
+
   return (
     <div>
       <Title level={2}>Litiges</Title>
       <Card>
         <Space style={{ marginBottom: 16 }} wrap>
+          <WithPermission permission={PERMISSIONS.LITIGES.CREATE}>
+            <Button type="primary" onClick={() => setLitigeModalOpen(true)}>
+              Nouveau litige
+            </Button>
+          </WithPermission>
           <span>Filtrer par statut :</span>
           <Select
             allowClear
@@ -117,6 +160,15 @@ export const LitigesListPage: React.FC = () => {
           />
         ) : null}
       </Card>
+
+      <LitigeQuickCreateModal
+        open={litigeModalOpen}
+        onClose={closeLitigeModal}
+        defaultClientId={prefClientId}
+        defaultPhone={phoneParam}
+        defaultFactureId={prefFactureId}
+        defaultColisRef={colisRefParam}
+      />
     </div>
   )
 }

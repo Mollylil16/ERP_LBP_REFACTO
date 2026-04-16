@@ -11,6 +11,7 @@ import {
   DollarOutlined,
   FileTextOutlined,
   PlusOutlined,
+  CheckCircleOutlined,
 } from '@ant-design/icons'
 import { ApproForm } from '@components/caisse/ApproForm'
 import { DecaissementForm } from '@components/caisse/DecaissementForm'
@@ -22,12 +23,19 @@ import { TracedActionButton } from '@components/audit/TracedActionButton'
 import { PERMISSIONS } from '@constants/permissions'
 import { usePermissions } from '@hooks/usePermissions'
 import { RecettesDuJourCard } from '@components/paiements/RecettesDuJourCard'
+import { EncaissementRapideCard } from '@components/caisse/EncaissementRapideCard'
+import { PointsSoumisCaisseTab } from '@components/caisse/PointsSoumisCaisseTab'
 import { useCaisses, useSoldeCaisse } from '@hooks/useCaisse'
 import { caisseService } from '@services/caisse.service'
 import { useQuery, useMutation } from '@tanstack/react-query'
+import jsPDF from 'jspdf'
+import autoTable from 'jspdf-autotable'
 
 export const SuiviCaissePage: React.FC = () => {
   const { hasPermission } = usePermissions()
+  const canValidatePointsJournaliers = hasPermission(
+    PERMISSIONS.EXPLOITATION.POINTS_VALIDATE,
+  )
   const canSeeRecettesDuJour =
     hasPermission(PERMISSIONS.CAISSE.VIEW) ||
     hasPermission(PERMISSIONS.PAIEMENTS.READ) ||
@@ -49,18 +57,21 @@ export const SuiviCaissePage: React.FC = () => {
 
   const { data: caisses, isLoading: caissesLoading, refetch: refetchCaisses } = useCaisses()
 
-  // Initialisation de la caisse sélectionnée au premier chargement
+  // Première caisse : priorité à celle sur laquelle les opérations sont autorisées (caisse principale siège pour la caissière).
   React.useEffect(() => {
-    if (caisses && caisses.length > 0 && !selectedCaisseId) {
-      setSelectedCaisseId(caisses[0].id)
-    }
+    if (!caisses?.length || selectedCaisseId != null) return
+    const op = caisses.find((c) => c.peut_operer === true)
+    setSelectedCaisseId((op ?? caisses[0]).id)
   }, [caisses, selectedCaisseId])
 
   const selectedCaisse = caisses?.find(c => c.id === selectedCaisseId) || caisses?.[0]
   const idCaisse = selectedCaisseId || selectedCaisse?.id || 1
+  const canOperateOnSelectedCaisse = selectedCaisse?.peut_operer !== false
 
   const { data: soldeActuelRealtime, refetch: refetchSolde } = useSoldeCaisse(idCaisse)
   const soldeActuel = soldeActuelRealtime ?? selectedCaisse?.solde_actuel ?? 0
+  const seuilAlerte = Number(selectedCaisse?.seuil_alerte ?? 0)
+  const isSoldeSousSeuil = seuilAlerte > 0 && soldeActuel < seuilAlerte
 
   const { data: activeSession, refetch: refetchSession } = useQuery({
     queryKey: ['caisse-active-session', idCaisse],
@@ -70,10 +81,49 @@ export const SuiviCaissePage: React.FC = () => {
 
   const { data: pointDuJour, isLoading: pointLoading, refetch: refetchPoint } = useQuery({
     queryKey: ['caisse-point', idCaisse],
-    queryFn: () => caisseService.getPointCaisse(),
+    queryFn: () => caisseService.getPointCaisse(undefined, idCaisse),
     enabled: Boolean(idCaisse) && hasPermission(PERMISSIONS.CAISSE.VIEW),
     refetchInterval: 30000,
   })
+
+  const exportPointPdf = React.useCallback(() => {
+    try {
+      const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' })
+      const title = 'Point de caisse (journée)'
+      const caisseLabel = selectedCaisse?.libelle || selectedCaisse?.code || `#${idCaisse}`
+      const dateLabel = new Date().toLocaleDateString('fr-FR')
+
+      doc.setFontSize(14)
+      doc.text(title, 40, 40)
+      doc.setFontSize(10)
+      doc.text(`Caisse: ${caisseLabel} — Date: ${dateLabel}`, 40, 60)
+
+      const entrees = Number(pointDuJour?.entrees ?? 0)
+      const sorties = Number(pointDuJour?.sorties ?? 0)
+      const soldeNet = Number(entrees) - Number(sorties)
+
+      autoTable(doc, {
+        startY: 90,
+        head: [['Indicateur', 'Valeur']],
+        body: [
+          ['Entrées (jour)', `${entrees.toLocaleString('fr-FR')} FCFA`],
+          ['Sorties (jour)', `${sorties.toLocaleString('fr-FR')} FCFA`],
+          ['Solde net (jour)', `${soldeNet.toLocaleString('fr-FR')} FCFA`],
+          ['Solde actuel', `${Number(soldeActuel ?? 0).toLocaleString('fr-FR')} FCFA`],
+          [
+            'Seuil alerte',
+            seuilAlerte > 0 ? `${seuilAlerte.toLocaleString('fr-FR')} FCFA` : '—',
+          ],
+        ],
+        styles: { fontSize: 10, cellPadding: 6 },
+        headStyles: { fillColor: [22, 119, 255] },
+      })
+
+      doc.save(`point-caisse_${idCaisse}_${new Date().toISOString().slice(0, 10)}.pdf`)
+    } catch {
+      message.error('Export PDF impossible')
+    }
+  }, [selectedCaisse, idCaisse, pointDuJour, soldeActuel, seuilAlerte])
 
   const { data: sessionHistory, isLoading: sessionHistoryLoading, refetch: refetchSessionHistory } = useQuery({
     queryKey: ['caisse-session-history', idCaisse],
@@ -113,6 +163,12 @@ export const SuiviCaissePage: React.FC = () => {
   const isSessionOpen = Boolean(activeSession?.id)
 
   const requireOpenSession = (action: () => void) => {
+    if (!canOperateOnSelectedCaisse) {
+      message.warning(
+        'Cette caisse est en consultation seule. Sélectionnez la caisse principale siège pour enregistrer des opérations.',
+      )
+      return
+    }
     if (!isSessionOpen) {
       message.warning('Veuillez ouvrir la caisse (session) avant d’enregistrer des opérations.')
       setOpenModalVisible(true)
@@ -146,6 +202,7 @@ export const SuiviCaissePage: React.FC = () => {
           key={`entree-espece-${refreshKey}`}
           type="ENTREE_ESPECE"
           idCaisse={idCaisse}
+          operationsEnabled={canOperateOnSelectedCaisse}
         />
       ),
     },
@@ -157,6 +214,7 @@ export const SuiviCaissePage: React.FC = () => {
           key={`entree-cheque-${refreshKey}`}
           type="ENTREE_CHEQUE"
           idCaisse={idCaisse}
+          operationsEnabled={canOperateOnSelectedCaisse}
         />
       ),
     },
@@ -168,6 +226,7 @@ export const SuiviCaissePage: React.FC = () => {
           key={`entree-virement-${refreshKey}`}
           type="ENTREE_VIREMENT"
           idCaisse={idCaisse}
+          operationsEnabled={canOperateOnSelectedCaisse}
         />
       ),
     },
@@ -189,7 +248,7 @@ export const SuiviCaissePage: React.FC = () => {
               <Button
                 type="primary"
                 icon={<PlusOutlined />}
-                disabled={!isSessionOpen}
+                disabled={!canOperateOnSelectedCaisse || !isSessionOpen}
                 onClick={() => requireOpenSession(() => setApproFormVisible(true))}
               >
                 Nouvel Approvisionnement
@@ -210,6 +269,7 @@ export const SuiviCaissePage: React.FC = () => {
             key={`appro-${refreshKey}`}
             type="APPRO"
             idCaisse={idCaisse}
+            operationsEnabled={canOperateOnSelectedCaisse}
           />
         </Space>
       ),
@@ -229,7 +289,7 @@ export const SuiviCaissePage: React.FC = () => {
                 type="primary"
                 danger
                 icon={<PlusOutlined />}
-                disabled={!isSessionOpen}
+                disabled={!canOperateOnSelectedCaisse || !isSessionOpen}
                 onClick={() => requireOpenSession(() => setDecaissementFormVisible(true))}
               >
                 Nouveau Décaissement
@@ -250,6 +310,7 @@ export const SuiviCaissePage: React.FC = () => {
             key={`decaissement-${refreshKey}`}
             type="DECAISSEMENT"
             idCaisse={idCaisse}
+            operationsEnabled={canOperateOnSelectedCaisse}
           />
         </Space>
       ),
@@ -269,7 +330,7 @@ export const SuiviCaissePage: React.FC = () => {
                 <Button
                   type="primary"
                   icon={<PlusOutlined />}
-                  disabled={!isSessionOpen}
+                  disabled={!canOperateOnSelectedCaisse || !isSessionOpen}
                   onClick={() => requireOpenSession(() => handleOpenEntreeForm('ENTREE_ESPECE'))}
                 >
                   Entrée Espèce
@@ -277,7 +338,7 @@ export const SuiviCaissePage: React.FC = () => {
                 <Button
                   type="primary"
                   icon={<PlusOutlined />}
-                  disabled={!isSessionOpen}
+                  disabled={!canOperateOnSelectedCaisse || !isSessionOpen}
                   onClick={() => requireOpenSession(() => handleOpenEntreeForm('ENTREE_CHEQUE'))}
                 >
                   Entrée Chèque
@@ -285,7 +346,7 @@ export const SuiviCaissePage: React.FC = () => {
                 <Button
                   type="primary"
                   icon={<PlusOutlined />}
-                  disabled={!isSessionOpen}
+                  disabled={!canOperateOnSelectedCaisse || !isSessionOpen}
                   onClick={() => requireOpenSession(() => handleOpenEntreeForm('ENTREE_VIREMENT'))}
                 >
                   Entrée Virement
@@ -307,6 +368,24 @@ export const SuiviCaissePage: React.FC = () => {
         </Space>
       ),
     },
+    ...(canValidatePointsJournaliers
+      ? [
+          {
+            key: 'points-soumis',
+            label: (
+              <span>
+                <CheckCircleOutlined /> Points soumis
+              </span>
+            ),
+            children: (
+              <PointsSoumisCaisseTab
+                idAgence={selectedCaisse?.id_agence}
+                refreshKey={refreshKey}
+              />
+            ),
+          },
+        ]
+      : []),
     {
       key: 'rapport',
       label: (
@@ -385,7 +464,9 @@ export const SuiviCaissePage: React.FC = () => {
                     onChange={(val: number) => setSelectedCaisseId(val)}
                     style={{ minWidth: 200 }}
                     options={caisses.map((c) => ({
-                      label: c.libelle || c.code,
+                      label:
+                        (c.libelle || c.code) +
+                        (c.peut_operer === false ? ' (consultation)' : ''),
                       value: c.id,
                     }))}
                   />
@@ -398,12 +479,17 @@ export const SuiviCaissePage: React.FC = () => {
                   </Typography.Text>
                   <WithPermission permission={PERMISSIONS.CAISSE.OPERATIONS}>
                     {!activeSession?.id ? (
-                      <Button type="primary" onClick={() => setOpenModalVisible(true)}>
+                      <Button
+                        type="primary"
+                        disabled={!canOperateOnSelectedCaisse}
+                        onClick={() => setOpenModalVisible(true)}
+                      >
                         Ouvrir caisse
                       </Button>
                     ) : (
                       <TracedActionButton
                         danger
+                        disabled={!canOperateOnSelectedCaisse}
                         onClick={() => setCloseModalVisible(true)}
                         traceHint="La clôture de session est enregistrée dans le journal d’audit métier et dans l’historique caisse."
                       >
@@ -455,6 +541,30 @@ export const SuiviCaissePage: React.FC = () => {
             </Col>
           </Row>
 
+          <Space wrap>
+            <Button onClick={exportPointPdf} disabled={!pointDuJour}>
+              Exporter point (PDF)
+            </Button>
+          </Space>
+
+          {isSoldeSousSeuil ? (
+            <Alert
+              type="error"
+              showIcon
+              message="Solde sous le seuil d’alerte"
+              description={`Solde actuel : ${soldeActuel.toLocaleString('fr-FR')} FCFA — Seuil : ${seuilAlerte.toLocaleString('fr-FR')} FCFA`}
+            />
+          ) : null}
+
+          {selectedCaisse?.peut_operer === false ? (
+            <Alert
+              type="warning"
+              showIcon
+              message="Caisse en consultation seule"
+              description="Vous visualisez une caisse d’agence. Les encaissements, sessions et mouvements sont réservés à la caisse principale siège (versements centralisés)."
+            />
+          ) : null}
+
           {!isSessionOpen ? (
             <Alert
               type="info"
@@ -465,6 +575,12 @@ export const SuiviCaissePage: React.FC = () => {
           ) : null}
 
           {canSeeRecettesDuJour ? <RecettesDuJourCard /> : null}
+
+          <EncaissementRapideCard
+            isSessionOpen={isSessionOpen}
+            onEncaissementSuccess={handleSuccess}
+            readOnly={!canOperateOnSelectedCaisse}
+          />
 
           <Tabs activeKey={activeTab} onChange={setActiveTab} size="large" items={mainTabItems} />
         </Space>

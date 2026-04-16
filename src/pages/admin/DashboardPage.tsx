@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react'
-import { Row, Col, Typography, Card, Space, Tag, message } from 'antd'
+import { Row, Col, Typography, Card, Space, Tag, message, Alert } from 'antd'
 import { useQuery } from '@tanstack/react-query'
 import { dashboardService } from '@services/dashboard.service'
 import { StatsCards } from '@components/dashboard/StatsCards'
@@ -67,29 +67,30 @@ export const DashboardPage: React.FC = () => {
   const canViewAgenciesPerf = hasPermission(PERMISSIONS.DASHBOARD.ADMIN)
   const canViewCharts = hasPermission(PERMISSIONS.RAPPORTS.VIEW)
   const canViewAiPanel = hasPermission(PERMISSIONS.DASHBOARD.ADMIN) && canViewCharts
+  const canRunDashboardData = isAuthenticated && canViewDashboard && canViewCharts
 
   // Activer les alertes automatiques
   useAlerts({
     colisNonValides: {
-      enabled: hasAnyPermission([...COLIS_READ_ANY]),
+      enabled: canRunDashboardData && hasAnyPermission([...COLIS_READ_ANY]),
       interval: 60,
     },
     facturesProforma: {
-      enabled: hasPermission(PERMISSIONS.FACTURES.READ),
+      enabled: canRunDashboardData && hasPermission(PERMISSIONS.FACTURES.READ),
       interval: 120,
     },
     soldeCaisseFaible: {
-      enabled: hasPermission(PERMISSIONS.CAISSE.VIEW),
+      enabled: canRunDashboardData && hasPermission(PERMISSIONS.CAISSE.VIEW),
       threshold: 1000000,
       interval: 30,
     },
     // IA anomalies: utile surtout si rapports.view (sinon ça 403 et ça spam)
     rappelsFactures: {
-      enabled: hasPermission(PERMISSIONS.FACTURES.READ),
+      enabled: canRunDashboardData && hasPermission(PERMISSIONS.FACTURES.READ),
       interval: 1440,
     },
     // Champ optionnel interne du hook useAlerts (non typé dans AlertRules)
-    ...( { iaAnomalies: { enabled: hasAnyPermission([...COLIS_READ_ANY]), interval: 360 } } as any ),
+    ...( { iaAnomalies: { enabled: canRunDashboardData && hasAnyPermission([...COLIS_READ_ANY]), interval: 360 } } as any ),
   });
 
   // Récupérer les statistiques (seulement si authentifié)
@@ -97,7 +98,7 @@ export const DashboardPage: React.FC = () => {
     queryKey: ['dashboard', 'stats'],
     queryFn: () => dashboardService.getStats(),
     refetchInterval: APP_CONFIG.refresh.dashboard,
-    enabled: isAuthenticated && canViewDashboard, // évite 403 si pas dashboard.view
+    enabled: canRunDashboardData,
   })
 
   // Récupérer le point caisse (seulement si authentifié)
@@ -105,7 +106,7 @@ export const DashboardPage: React.FC = () => {
     queryKey: ['dashboard', 'caisse'],
     queryFn: () => dashboardService.getPointCaisse(),
     refetchInterval: APP_CONFIG.refresh.widgets,
-    enabled: isAuthenticated && canViewCaisseWidget,
+    enabled: canRunDashboardData && canViewCaisseWidget,
   })
 
   // Récupérer la performance par agence (seulement pour les directeurs/admin via permission)
@@ -113,7 +114,7 @@ export const DashboardPage: React.FC = () => {
     queryKey: ['dashboard', 'agencies-perf'],
     queryFn: () => dashboardService.getAgenciesPerformances(),
     refetchInterval: APP_CONFIG.refresh.dashboard,
-    enabled: isAuthenticated && canViewAgenciesPerf,
+    enabled: canRunDashboardData && canViewAgenciesPerf,
   })
 
   // Récupérer les activités récentes (seulement si authentifié)
@@ -121,7 +122,7 @@ export const DashboardPage: React.FC = () => {
     queryKey: ['dashboard', 'activities'],
     queryFn: () => dashboardService.getRecentActivities(10),
     refetchInterval: APP_CONFIG.refresh.widgets,
-    enabled: isAuthenticated && canViewDashboard,
+    enabled: canRunDashboardData,
   })
 
   // Graphiques : requêtes uniquement si la persona affiche les graphiques (ex. pas les caissiers)
@@ -159,7 +160,7 @@ export const DashboardPage: React.FC = () => {
   const { data: agencesStats, isLoading: agencesStatsLoading } = useQuery({
     queryKey: ['dashboard', 'agences-stats'],
     queryFn: () => agencesService.getStats(),
-    enabled: isAuthenticated && canViewAgenciesPerf,
+    enabled: canRunDashboardData && canViewAgenciesPerf,
   })
 
   // Rafraîchir automatiquement toutes les données
@@ -176,7 +177,7 @@ export const DashboardPage: React.FC = () => {
     }
   }, [refetchStats, refetchCaisse, refetchAgenciesPerf, refetchActivities])
 
-  const isInitialLoading = statsLoading && !stats
+  const isInitialLoading = canRunDashboardData && statsLoading && !stats
 
   if (isInitialLoading) {
     return (
@@ -202,6 +203,16 @@ export const DashboardPage: React.FC = () => {
       </div>
 
       <DashboardQuickActions persona={persona} />
+
+      {!canViewCharts ? (
+        <Alert
+          type="info"
+          showIcon
+          style={{ marginBottom: 16 }}
+          message="Dashboard limité"
+          description="Les widgets et analytics ne sont pas chargés sans la permission rapports.view."
+        />
+      ) : null}
 
       {/* STATISTIQUES */}
       {stats && <StatsCards stats={stats} loading={statsLoading} />}

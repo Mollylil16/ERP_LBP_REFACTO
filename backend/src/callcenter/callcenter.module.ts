@@ -7,6 +7,7 @@ import { CallCenterMessage } from './entities/callcenter-message.entity';
 import { Client } from '../clients/entities/client.entity';
 import { Facture } from '../factures/entities/facture.entity';
 import { Litige } from '../litiges/entities/litige.entity';
+import { Colis } from '../colis/entities/colis.entity';
 import { NotificationModule } from '../notifications/notification.module';
 import { RolesModule } from '../roles/roles.module';
 
@@ -18,6 +19,7 @@ import { RolesModule } from '../roles/roles.module';
       Client,
       Facture,
       Litige,
+      Colis,
     ]),
     NotificationModule,
     RolesModule,

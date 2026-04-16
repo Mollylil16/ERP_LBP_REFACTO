@@ -33,7 +33,7 @@ function pickLandingRoute(perms: string[], roleCode?: string): string {
   // on applique un fallback basé sur le rôle pour éviter `/dashboard` → 403.
   if (perms.length === 0 && roleCode) {
     const rc = roleCode.toUpperCase()
-    if (rc === 'AGENT_GROUPAGE' || rc === 'CAISSIER_GROUPAGE') return '/colis/groupage'
+    if (rc === 'AGENT_GROUPAGE') return '/colis/groupage'
     if (rc === 'AGENT_EXPLOITATION' || rc === 'SUPERVISEUR_REGIONAL') return '/exploitation'
     if (rc === 'CALL_CENTER') return '/callcenter/inbox'
     if (rc === 'CAISSIER') return '/caisse/suivi'

@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { Modal, Typography, Descriptions } from 'antd'
+import { useSearchParams } from 'react-router-dom'
 import { ClientList } from '@components/clients/ClientList'
 import { ClientForm } from '@components/clients/ClientForm'
 import { ClientColis, CreateClientDto, UpdateClientDto } from '@services/clients.service'
@@ -9,6 +10,8 @@ import { formatDate, formatPhone } from '@utils/format'
 const { Title } = Typography
 
 export const ClientsListPage: React.FC = () => {
+  const [searchParams] = useSearchParams()
+  const initialSearch = searchParams.get('search') ?? undefined
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [selectedClient, setSelectedClient] = useState<ClientColis | null>(null)
   const [isViewMode, setIsViewMode] = useState(false)
@@ -66,6 +69,7 @@ export const ClientsListPage: React.FC = () => {
         onCreate={handleCreate}
         onEdit={handleEdit}
         onView={handleView}
+        initialSearch={initialSearch}
       />
 
       <Modal

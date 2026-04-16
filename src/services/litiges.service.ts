@@ -1,6 +1,20 @@
 import type { LitigeDetail, LitigeMessageItem, LitigesListResponse } from '@types'
 import { apiService } from './api.service'
 
+export type CreateLitigePayload = {
+  type: string
+  objet: string
+  description: string
+  id_client: number
+  id_agence: number
+  id_colis?: number
+  id_facture?: number
+  contact_telephone?: string
+  contact_nom?: string
+  contact_email?: string
+  priorite?: string
+}
+
 class LitigesService {
   async list(params?: { page?: number; limit?: number; statut?: string }): Promise<LitigesListResponse> {
     const q = new URLSearchParams()
@@ -13,6 +27,10 @@ class LitigesService {
 
   async getById(id: number): Promise<LitigeDetail> {
     return apiService.get<LitigeDetail>(`/litiges/${id}`)
+  }
+
+  async create(body: CreateLitigePayload): Promise<{ id: number } & Record<string, unknown>> {
+    return apiService.post('/litiges', body)
   }
 
   async addMessage(
