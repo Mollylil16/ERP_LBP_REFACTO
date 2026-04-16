@@ -41,6 +41,8 @@ import {
   type ProduitCatalogue,
 } from '@services/produits-catalogue.service'
 import { useQueryClient } from '@tanstack/react-query'
+import { WithPermission } from '@components/common/WithPermission'
+import { PERMISSIONS } from '@constants/permissions'
 
 const { Title, Text } = Typography
 const { Option } = Select
@@ -654,8 +656,8 @@ export const ColisForm: React.FC<ColisFormProps> = ({
     const tel = watch('client_colis.tel_exp')?.trim()
     const email = watch('client_colis.email_exp')
 
-    if (!nom || !type_piece || !num_piece || !tel) {
-      message.warning('Veuillez remplir tous les champs obligatoires avant de créer le client (Nom, Type pièce, N° pièce, Téléphone)')
+    if (!nom || !tel) {
+      message.warning("Veuillez remplir au minimum le nom et le téléphone avant de créer le client")
       return
     }
 
@@ -663,8 +665,8 @@ export const ColisForm: React.FC<ColisFormProps> = ({
       setCreatingClient(true)
       const newClient = await clientsService.createClient({
         nom_exp: nom,
-        type_piece_exp: type_piece,
-        num_piece_exp: num_piece,
+        type_piece_exp: type_piece?.trim() || undefined,
+        num_piece_exp: num_piece || undefined,
         tel_exp: tel,
         email_exp: email || undefined,
       })
@@ -871,17 +873,19 @@ export const ColisForm: React.FC<ColisFormProps> = ({
                       notFoundContent={searching ? 'Recherche...' : null}
                     />
                     {!savedClient && (
-                      <Button
-                        size="large"
-                        type="primary"
-                        icon={<UserAddOutlined />}
-                        loading={creatingClient}
-                        onClick={handleCreateClient}
-                        title="Créer et enregistrer ce client"
-                        style={{ whiteSpace: 'nowrap' }}
-                      >
-                        Créer et enregistrer
-                      </Button>
+                      <WithPermission permission={PERMISSIONS.CLIENTS.CREATE}>
+                        <Button
+                          size="large"
+                          type="primary"
+                          icon={<UserAddOutlined />}
+                          loading={creatingClient}
+                          onClick={handleCreateClient}
+                          title="Créer et enregistrer ce client"
+                          style={{ whiteSpace: 'nowrap' }}
+                        >
+                          Créer et enregistrer
+                        </Button>
+                      </WithPermission>
                     )}
                     {savedClient && (
                       <Button
@@ -944,7 +948,6 @@ export const ColisForm: React.FC<ColisFormProps> = ({
               render={({ field }) => (
                 <Form.Item
                   label="Type de pièce d'identité"
-                  required
                   validateStatus={errors.client_colis?.type_piece_exp ? 'error' : ''}
                   help={errors.client_colis?.type_piece_exp?.message}
                 >
@@ -967,7 +970,6 @@ export const ColisForm: React.FC<ColisFormProps> = ({
               render={({ field }) => (
                 <Form.Item
                   label="N° Pièce d'identité"
-                  required
                   validateStatus={errors.client_colis?.num_piece_exp ? 'error' : ''}
                   help={errors.client_colis?.num_piece_exp?.message}
                 >

@@ -119,11 +119,19 @@ export class CaisseController {
     @Request() req?,
   ) {
     let id = id_caisse ? +id_caisse : undefined;
-    if (!id && req?.user && this.reqRole(req) === 'CAISSIER') {
-      id = await this.caisseService.resolveHubPrincipalCaisseId();
+    if (!id && req?.user) {
+      const rc = this.reqRole(req);
+      if (rc === 'CAISSIER') {
+        id = await this.caisseService.resolveHubPrincipalCaisseId();
+      } else if (req.user.id_agence) {
+        const canSeeAll = ['ADMIN', 'DIRECTEUR', 'SUPER_ADMIN'].includes(rc);
+        const agenceId = canSeeAll ? undefined : req.user.id_agence;
+        const caisses = await this.caisseService.findAllCaisses(agenceId);
+        id = caisses[0]?.id;
+      }
     }
     if (!id) {
-      id = 1;
+      id = await this.caisseService.resolveHubPrincipalCaisseId();
     }
     return this.caisseService.getPointCaisse(date, id);
   }
@@ -181,6 +189,7 @@ export class CaisseController {
       Number(body.solde_ouverture_reel ?? 0),
       body.note,
       this.reqRole(req),
+      req.user.id_agence,
     );
   }
 
@@ -195,6 +204,7 @@ export class CaisseController {
       body.note,
       req.user?.id,
       this.reqRole(req),
+      req.user.id_agence,
     );
   }
 
@@ -226,6 +236,7 @@ export class CaisseController {
       Number(id),
       req.user.username,
       this.reqRole(req),
+      req.user.id_agence,
     );
   }
 
@@ -262,6 +273,7 @@ export class CaisseController {
       justificatifUrl,
       req.user.username,
       this.reqRole(req),
+      req.user.id_agence,
     );
   }
 

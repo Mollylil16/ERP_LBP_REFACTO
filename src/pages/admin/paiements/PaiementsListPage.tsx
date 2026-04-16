@@ -3,8 +3,8 @@ import { Modal, Typography, Tabs } from 'antd'
 import { PaiementList } from '@components/paiements/PaiementList'
 import { PaiementForm } from '@components/paiements/PaiementForm'
 import { SuiviPaiementsPage } from './SuiviPaiementsPage'
-import { CreatePaiementDto } from '@services/paiements.service'
-import { useCreatePaiement } from '@hooks/usePaiements'
+import { CreateEncaissementDto, CreatePaiementDto, paiementsService } from '@services/paiements.service'
+import { useCreateEncaissement, useCreatePaiement } from '@hooks/usePaiements'
 import {
   Input, Button, Table, Tag, Space, Tooltip, Badge,
 } from 'antd'
@@ -238,6 +238,7 @@ export const PaiementsListPage: React.FC = () => {
   const [refColis, setRefColis] = useState('')
 
   const createMutation = useCreatePaiement()
+  const createEncaissementMutation = useCreateEncaissement()
 
   const handleEncaisser = (ref: string) => {
     setRefColis(ref)
@@ -251,6 +252,20 @@ export const PaiementsListPage: React.FC = () => {
       setRefColis('')
     } catch (error) {
       console.error('Error submitting payment:', error)
+    }
+  }
+
+  const handleSubmitEncaissement = async (data: CreateEncaissementDto) => {
+    try {
+      const res = await createEncaissementMutation.mutateAsync(data)
+      // Télécharger le reçu encaissement (mix) automatiquement
+      if (res?.encaissement_ref) {
+        await paiementsService.downloadEncaissementReceipt(res.encaissement_ref)
+      }
+      setIsModalOpen(false)
+      setRefColis('')
+    } catch (error) {
+      console.error('Error submitting encaissement:', error)
     }
   }
 
@@ -308,8 +323,9 @@ export const PaiementsListPage: React.FC = () => {
           <PaiementForm
             refColis={refColis}
             onSubmit={handleSubmit}
+            onSubmitEncaissement={handleSubmitEncaissement}
             onCancel={handleCancel}
-            loading={createMutation.isPending}
+            loading={createMutation.isPending || createEncaissementMutation.isPending}
           />
         )}
       </Modal>

@@ -72,6 +72,14 @@ export async function seedRoles(dataSource: DataSource): Promise<void> {
       est_actif: true,
     },
     {
+      code: 'CAISSIER_AGENCE',
+      nom: "Caissier d'agence",
+      description:
+        "Caissier rattaché à une agence : encaissements et caisse sur son agence uniquement",
+      niveau_hierarchique: 6,
+      est_actif: true,
+    },
+    {
       code: 'AGENT_SUIVI',
       nom: 'Agent Suivi',
       description: 'Consultation et rapports uniquement',

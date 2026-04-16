@@ -23,6 +23,8 @@ export enum UserRole {
   AGENT_EXPLOITATION = 'AGENT_EXPLOITATION',
   AGENT_GROUPAGE = 'AGENT_GROUPAGE',
   CAISSIER = 'CAISSIER',
+  /** Caissier rattaché à une agence : opère sur la caisse de son agence */
+  CAISSIER_AGENCE = 'CAISSIER_AGENCE',
   AGENT_SUIVI = 'AGENT_SUIVI',
   /** Service client : boîte d’appel, messagerie, litiges côté relation client */
   CALL_CENTER = 'CALL_CENTER',

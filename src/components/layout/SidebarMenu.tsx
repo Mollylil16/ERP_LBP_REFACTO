@@ -6,6 +6,7 @@ import {
   InboxOutlined,
   FolderOutlined,
   FileTextOutlined,
+  FileDoneOutlined,
   TeamOutlined,
   BarChartOutlined,
   SettingOutlined,
@@ -23,6 +24,7 @@ import {
   GlobalOutlined,
   ShoppingOutlined,
   HistoryOutlined,
+  SwapOutlined,
 } from "@ant-design/icons";
 import { usePermissions } from "@hooks/usePermissions";
 import { ROUTE_ACCESS, COLIS_READ_ANY } from "@constants/routeAccess";
@@ -70,6 +72,9 @@ export const SidebarMenu: React.FC<SidebarMenuProps> = ({ collapsed: _collapsed 
   const canExploitationFournitures = hasAnyPermission([
     ...ROUTE_ACCESS.exploitationFournitures,
   ]);
+  const canExploitationPrestataires = hasAnyPermission([
+    ...ROUTE_ACCESS.exploitationPrestataires,
+  ]);
   const canAgenceFournitures = hasAnyPermission([
     ...ROUTE_ACCESS.agenceFournituresDemande,
   ]);
@@ -80,6 +85,7 @@ export const SidebarMenu: React.FC<SidebarMenuProps> = ({ collapsed: _collapsed 
     canAgenceRecap ||
     canAgencePJ ||
     canExploitationFournitures ||
+    canExploitationPrestataires ||
     canAgenceFournitures;
 
   const showClientsSuivi =
@@ -187,6 +193,20 @@ export const SidebarMenu: React.FC<SidebarMenuProps> = ({ collapsed: _collapsed 
             key: "/exploitation/fournitures",
             icon: <ShoppingOutlined />,
             label: "Fournitures bureau",
+          },
+        ]
+      : []),
+    ...(canExploitationPrestataires
+      ? [
+          {
+            key: "/prestataires/factures",
+            icon: <FileDoneOutlined />,
+            label: "Factures prestataires",
+          },
+          {
+            key: "/prestataires/retraits-hub",
+            icon: <SwapOutlined />,
+            label: "Retraits hub (prestataires)",
           },
         ]
       : []),

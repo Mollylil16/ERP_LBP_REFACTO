@@ -57,6 +57,13 @@ export class Paiement {
   @Column({ nullable: true })
   code_user: string;
 
+  /**
+   * Référence d’encaissement (regroupe plusieurs paiements d’une même opération : mix espèces + Wave, etc.)
+   * Ex: ENC-20260416-8f3c2a...
+   */
+  @Column({ type: 'varchar', length: 80, nullable: true })
+  encaissement_ref: string | null;
+
   @CreateDateColumn()
   created_at: Date;
 

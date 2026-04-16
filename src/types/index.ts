@@ -39,6 +39,7 @@ export enum UserRole {
   AGENT_EXPLOITATION = 'AGENT_EXPLOITATION',
   AGENT_GROUPAGE = 'AGENT_GROUPAGE',
   CAISSIER = 'CAISSIER',
+  CAISSIER_AGENCE = 'CAISSIER_AGENCE',
   AGENT_SUIVI = 'AGENT_SUIVI',
   /** Service client (boîte d’appel, SMS/WhatsApp, litiges relation client) */
   CALL_CENTER = 'CALL_CENTER',

@@ -9,6 +9,70 @@ export async function seedPermissions(dataSource: DataSource): Promise<void> {
   const permissionRepository = dataSource.getRepository(Permission);
 
   const permissions = [
+    // ───────────────────────── Prestataires (superviseur régional) ─────────────────────────
+    {
+      module: PermissionModule.EXPLOITATION,
+      fonctionnalite: 'prestataires',
+      action: PermissionAction.CREATE,
+      description: 'Créer un prestataire (compagnie)',
+    },
+    {
+      module: PermissionModule.EXPLOITATION,
+      fonctionnalite: 'prestataires',
+      action: PermissionAction.READ,
+      description: 'Consulter les prestataires (compagnies)',
+    },
+    {
+      module: PermissionModule.EXPLOITATION,
+      fonctionnalite: 'prestataires',
+      action: PermissionAction.UPDATE,
+      description: 'Modifier un prestataire (compagnie)',
+    },
+    {
+      module: PermissionModule.EXPLOITATION,
+      fonctionnalite: 'prestataires_factures',
+      action: PermissionAction.CREATE,
+      description: 'Enregistrer une facture prestataire',
+    },
+    {
+      module: PermissionModule.EXPLOITATION,
+      fonctionnalite: 'prestataires_factures',
+      action: PermissionAction.READ,
+      description: 'Consulter les factures prestataires',
+    },
+    {
+      module: PermissionModule.EXPLOITATION,
+      fonctionnalite: 'prestataires_factures',
+      action: PermissionAction.UPDATE,
+      description: 'Modifier une facture prestataire',
+    },
+    {
+      module: PermissionModule.EXPLOITATION,
+      fonctionnalite: 'prestataires_reglements',
+      action: PermissionAction.CREATE,
+      description: 'Enregistrer un règlement prestataire (partiel/total)',
+    },
+    {
+      module: PermissionModule.EXPLOITATION,
+      fonctionnalite: 'prestataires_reglements',
+      action: PermissionAction.READ,
+      description: 'Consulter les règlements prestataires',
+    },
+    {
+      module: PermissionModule.EXPLOITATION,
+      fonctionnalite: 'prestataires_retraits_hub',
+      action: PermissionAction.READ,
+      description:
+        'Consulter la liste “Retraits à faire (caisse principale)” (paiements espèces en agence)',
+    },
+    {
+      module: PermissionModule.EXPLOITATION,
+      fonctionnalite: 'prestataires_retraits_hub',
+      action: PermissionAction.UPDATE,
+      description:
+        'Marquer un retrait hub comme effectué (trace) (caissier/directeur)',
+    },
+
     // EXPLOITATION - COLIS
     {
       module: PermissionModule.EXPLOITATION,
@@ -628,6 +692,22 @@ export async function seedPermissions(dataSource: DataSource): Promise<void> {
       fonctionnalite: 'fournitures_bureau',
       action: 'CREATE',
       description: 'Créer et soumettre une demande de fournitures pour son agence',
+    },
+    // Prestataires : codes “app” spécifiques au workflow d’approbation ASSISTANT_DG
+    {
+      code: 'exploitation.prestataires_retraits_hub.request_approval',
+      module: PermissionModule.EXPLOITATION,
+      fonctionnalite: 'prestataires_retraits_hub_approval',
+      action: 'CREATE',
+      description:
+        'Demander l’approbation du directeur pour marquer un retrait hub (assistante DG)',
+    },
+    {
+      code: 'exploitation.prestataires_retraits_hub.approve',
+      module: PermissionModule.EXPLOITATION,
+      fonctionnalite: 'prestataires_retraits_hub_approval',
+      action: 'UPDATE',
+      description: 'Approuver/rejeter une demande de marquage retrait hub (directeur)',
     },
   ];
 

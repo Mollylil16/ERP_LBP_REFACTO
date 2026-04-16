@@ -16,72 +16,53 @@ const rolePermissionsMatrix = {
    * - pas d’annulation/validation workflow (factures/paiements/colis validation)
    */
   ASSISTANT_DG: [
-    // EXPLOITATION (opérations)
-    'exploitation.groupage_colis.create',
+    // Objectif: visibilité "complète" sur le système, mais STRICTEMENT en lecture seule.
+    // Colis / exploitation (lecture)
     'exploitation.groupage_colis.read',
-    'exploitation.groupage_colis.update',
-    'exploitation.autres_envois.create',
     'exploitation.autres_envois.read',
-    'exploitation.autres_envois.update',
     'exploitation.rapports_envois.read',
-    'exploitation.livraison.create',
     'exploitation.livraison.read',
-    'exploitation.livraison.update',
 
-    // FACTURATION (opérations)
-    'facturation.cotation.create',
+    // Facturation (lecture)
     'facturation.cotation.read',
-    'facturation.cotation.update',
-    'facturation.facturer.create',
     'facturation.facturer.read',
-    'facturation.facturer.update',
 
-    // CAISSE (lecture + opérations, sans suppression caisse/mouvements)
+    // Caisse (lecture)
     'operation_caisse.gestion_caisses.read',
-    'operation_caisse.mouvements_caisses.create',
     'operation_caisse.mouvements_caisses.read',
-    'operation_caisse.mouvements_caisses.update',
     'operation_caisse.journal.read',
-    'operation_caisse.reglement_client.create',
     'operation_caisse.reglement_client.read',
-    'operation_caisse.reglement_client.update',
 
-    // GESTION FONDS (lecture + demandes, pas de paiement/suppression)
-    'gestion_fonds.demandes_fonds.create',
+    // Gestion fonds (lecture)
     'gestion_fonds.demandes_fonds.read',
-    'gestion_fonds.demandes_fonds.update',
     'gestion_fonds.recap_demandes.read',
 
-    // RAPPORTS (lecture)
+    // Rapports (lecture)
     'rapports.suivi_envois.read',
     'rapports.statistiques.read',
     'rapports.ca_detaille.read',
     'rapports.business_analyst.read',
 
-    // STRUCTURES (opérations terrain, sans admin système)
-    'structures.clients.create',
+    // Structures (lecture)
     'structures.clients.read',
-    'structures.clients.update',
-    'structures.zones_livraison.create',
     'structures.zones_livraison.read',
-    'structures.zones_livraison.update',
     'structures.agences.read',
+    'structures.parametres_application.read',
 
-    // Litiges / call center
+    // Litiges / call center (lecture)
     'litiges.view',
-    'litiges.create',
-    'litiges.manage',
     'callcenter.inbox',
 
-    // Exploitation : crédits / points / fournitures (pilotage)
+    // Pilotage exploitation (lecture)
     'exploitation.credits.read',
-    'exploitation.credits.submit_recap',
     'exploitation.points_journaliers.read',
-    'exploitation.points_journaliers.create',
-    'exploitation.points_journaliers.submit',
     'exploitation.fournitures.read',
-    'exploitation.fournitures.manage',
-    'exploitation.fournitures.request',
+    // Prestataires: lecture + demande d’approbation (pas d’exécution sans accord)
+    'exploitation.prestataires.read',
+    'exploitation.prestataires_factures.read',
+    'exploitation.prestataires_reglements.read',
+    'exploitation.prestataires_retraits_hub.read',
+    'exploitation.prestataires_retraits_hub.request_approval',
   ],
   MANAGER: [
     // EXPLOITATION
@@ -211,6 +192,17 @@ const rolePermissionsMatrix = {
     'exploitation.points_journaliers.validate',
     'exploitation.fournitures.read',
     'exploitation.fournitures.manage',
+    // Prestataires (compagnies) + factures + règlements
+    'exploitation.prestataires.create',
+    'exploitation.prestataires.read',
+    'exploitation.prestataires.update',
+    'exploitation.prestataires_factures.create',
+    'exploitation.prestataires_factures.read',
+    'exploitation.prestataires_factures.update',
+    'exploitation.prestataires_reglements.create',
+    'exploitation.prestataires_reglements.read',
+    // Retraits hub (lecture) : suivi interne des paiements espèces en agence
+    'exploitation.prestataires_retraits_hub.read',
     // Rapports consolidés
     'rapports.suivi_envois.read',
     'rapports.statistiques.read',
@@ -292,17 +284,17 @@ const rolePermissionsMatrix = {
   AGENT_GROUPAGE: [
     'exploitation.groupage_colis.create',
     'exploitation.groupage_colis.read',
-    'exploitation.groupage_colis.update',
-    'exploitation.groupage_colis.delete',
+    // Pas de modification/suppression après enregistrement (réservé chef/manager)
     'exploitation.autres_envois.create',
     'exploitation.autres_envois.read',
-    'exploitation.autres_envois.update',
-    'exploitation.autres_envois.delete',
+    // Pas de modification/suppression après enregistrement (réservé chef/manager)
     // Facturation client (émission / suivi factures groupage)
     'facturation.facturer.create',
     'facturation.facturer.read',
     'facturation.facturer.update',
     // NB: Les points journaliers / récap crédits sont gérés par le CHEF_AGENCE (pas AGENT_GROUPAGE)
+    // Création client depuis saisie colis (certains clients sans pièce)
+    'structures.clients.create',
     'structures.clients.read',
     'structures.agences.read',
     'litiges.view',
@@ -335,8 +327,34 @@ const rolePermissionsMatrix = {
     // Consolidation des points journaliers soumis par les agences
     'exploitation.points_journaliers.read',
     'exploitation.points_journaliers.validate',
+    // Le caissier principal (Abobo-Dokui) fait aussi son PJ (sur son agence)
+    'exploitation.points_journaliers.create',
+    'exploitation.points_journaliers.submit',
     // Lecture des crédits / récaps remis par les agences
     'exploitation.credits.read',
+    // Prestataires: retraits hub (caisse principale)
+    'exploitation.prestataires_retraits_hub.read',
+    'exploitation.prestataires_retraits_hub.update',
+  ],
+  CAISSIER_AGENCE: [
+    // Caisse agence : opérations et lecture sur sa caisse (API filtre par id_agence)
+    'operation_caisse.gestion_caisses.read',
+    'operation_caisse.mouvements_caisses.create',
+    'operation_caisse.mouvements_caisses.read',
+    'operation_caisse.mouvements_caisses.update',
+    'operation_caisse.journal.read',
+    // Encaissements clients
+    'operation_caisse.reglement_client.create',
+    'operation_caisse.reglement_client.read',
+    'operation_caisse.reglement_client.update',
+    // Consultation factures (facture auto-générée au colis)
+    'facturation.facturer.read',
+    // Structures (lecture)
+    'structures.agences.read',
+    'structures.clients.read',
+    // Litiges / call center (utile terrain)
+    'litiges.view',
+    'callcenter.inbox',
   ],
   AGENT_SUIVI: [
     'exploitation.groupage_colis.read',

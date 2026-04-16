@@ -15,6 +15,7 @@ import { Colis } from '../colis/entities/colis.entity';
 import { CaisseService } from '../caisse/caisse.service';
 import { MouvementType } from '../caisse/entities/mouvement-caisse.entity';
 import { CreditsColisService } from '../exploitation/credits-colis.service';
+import * as crypto from 'crypto';
 
 @Injectable()
 export class PaiementsService {
@@ -47,7 +48,12 @@ export class PaiementsService {
         createPaiementDto as any;
 
       const mode = String(paiementData.mode_paiement || '').toLowerCase();
-      const isInstant = mode === 'especes' || mode === 'comptant';
+      const isInstant =
+        mode === 'especes' ||
+        mode === 'comptant' ||
+        mode === 'wave' ||
+        mode === 'om' ||
+        mode === 'orange_money';
       const username = user?.username ?? 'unknown';
 
       // 1. Trouver la facture par id ou par ref_colis
@@ -115,6 +121,7 @@ export class PaiementsService {
         facture,
         date_paiement: new Date(paiementData.date_paiement),
         code_user: username,
+        encaissement_ref: null,
         // Cash = validé immédiatement. MM/banque = en attente de validation.
         etat_validation: isInstant ? 1 : 0,
       });
@@ -157,9 +164,7 @@ export class PaiementsService {
           },
           mouvementType,
           username,
-          this.shouldUseCaissePrincipale(user)
-            ? undefined
-            : facture.colis?.agence?.id,
+          facture.colis?.agence?.id,
           this.userRoleCode(user),
         );
       }
@@ -357,9 +362,11 @@ export class PaiementsService {
         doc.moveDown();
 
         doc.fontSize(10).font('Helvetica');
-        const montantRestant =
+        const montantRestant = Math.max(
+          0,
           Number(paiement.facture.montant_ttc) -
-          Number(paiement.facture.montant_paye);
+            Number(paiement.facture.montant_paye),
+        );
         doc.text(`Montant total facture: ${paiement.facture.montant_ttc} FCFA`);
         doc.text(`Montant déjà payé: ${paiement.facture.montant_paye} FCFA`);
         doc.text(`Reste à payer: ${montantRestant} FCFA`, {
@@ -419,9 +426,7 @@ export class PaiementsService {
       },
       mouvementType,
       validatorUsername,
-      this.shouldUseCaissePrincipale(validator)
-        ? undefined
-        : facture.colis?.agence?.id,
+      facture.colis?.agence?.id,
       this.userRoleCode(validator),
     );
 
@@ -456,9 +461,271 @@ export class PaiementsService {
     if (role === 'DIRECTEUR' || role === 'ADMIN' || role === 'SUPER_ADMIN')
       return true;
     /** Encaissements siège : tout est versé sur la caisse principale. */
-    if (role === 'CAISSIER') return true;
     if (user?.code_acces === 2 || user?.code_acces === 1) return true;
     return false;
+  }
+
+  /**
+   * Encaissement "mix" : plusieurs lignes de paiement sur une seule facture (espèces + Wave, etc.)
+   * Retourne les paiements créés + la référence d'encaissement pour éditer un reçu unique.
+   */
+  async createEncaissement(
+    params: {
+      id_facture?: number;
+      ref_colis?: string;
+      date_paiement: string;
+      lignes: Array<{
+        montant: number;
+        mode_paiement: string;
+        reference?: string;
+        monnaie_rendue?: number;
+      }>;
+    },
+    user: any,
+  ): Promise<{ encaissement_ref: string; paiements: Paiement[] }> {
+    if (!params?.lignes?.length) {
+      throw new BadRequestException('Aucune ligne de paiement fournie');
+    }
+    const date_paiement = String(params.date_paiement || '').trim();
+    if (!date_paiement) {
+      throw new BadRequestException('Date de paiement requise');
+    }
+
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      // 1) Résoudre facture
+      const dto: any = {
+        ...(params.id_facture ? { id_facture: params.id_facture } : {}),
+        ...(params.ref_colis ? { ref_colis: params.ref_colis } : {}),
+        montant: 1,
+        mode_paiement: 'especes',
+        date_paiement,
+      };
+
+      // Reprendre la logique de create() pour lookup (sans dupliquer tout) :
+      const { id_facture, ref_colis } = dto;
+      let facture: Facture | null = null;
+      if (id_facture) {
+        facture = await this.factureRepository.findOne({
+          where: { id: id_facture },
+          relations: ['colis', 'colis.client', 'colis.agence'],
+        });
+      } else if (ref_colis) {
+        const colis = await this.colisRepository.findOne({ where: { ref_colis } });
+        if (!colis) {
+          throw new NotFoundException(`Colis "${ref_colis}" introuvable`);
+        }
+        facture = await this.factureRepository.findOne({
+          where: { colis: { id: colis.id } },
+          relations: ['colis', 'colis.client', 'colis.agence'],
+          order: { created_at: 'DESC' },
+        });
+      }
+      if (!facture) throw new NotFoundException('Aucune facture trouvée');
+
+      const restantAvant =
+        Number(facture.montant_ttc) - Number(facture.montant_paye);
+      if (restantAvant <= 0) {
+        throw new BadRequestException('Cette facture est déjà entièrement payée');
+      }
+
+      // 2) Validation lignes + somme
+      const lignes = params.lignes.map((l, idx) => {
+        const montant = Number(l.montant);
+        if (!montant || montant <= 0) {
+          throw new BadRequestException(`Ligne #${idx + 1}: montant invalide`);
+        }
+        const mode = String(l.mode_paiement || '').toLowerCase();
+        if (!mode) {
+          throw new BadRequestException(`Ligne #${idx + 1}: mode de paiement requis`);
+        }
+        return {
+          montant,
+          mode_paiement: mode,
+          reference: l.reference,
+          monnaie_rendue: l.monnaie_rendue,
+        };
+      });
+      const totalEncaisse = lignes.reduce((s, l) => s + Number(l.montant), 0);
+      if (totalEncaisse > restantAvant) {
+        throw new BadRequestException(
+          `Total encaissement (${totalEncaisse}) dépasse le restant (${restantAvant})`,
+        );
+      }
+
+      const encaissement_ref = `ENC-${new Date()
+        .toISOString()
+        .slice(0, 10)
+        .replace(/-/g, '')}-${crypto.randomBytes(6).toString('hex')}`;
+      const username = user?.username ?? 'unknown';
+
+      const savedPaiements: Paiement[] = [];
+      for (const l of lignes) {
+        const mode = String(l.mode_paiement || '').toLowerCase();
+        const isInstant =
+          mode === 'especes' ||
+          mode === 'comptant' ||
+          mode === 'wave' ||
+          mode === 'om' ||
+          mode === 'orange_money';
+
+        const paiement = this.paiementRepository.create({
+          montant: l.montant,
+          mode_paiement: l.mode_paiement as any,
+          reference_paiement: l.reference as any,
+          monnaie_rendue: l.monnaie_rendue ?? 0,
+          date_paiement: new Date(date_paiement),
+          etat_validation: isInstant ? 1 : 0,
+          code_user: username,
+          encaissement_ref,
+          facture,
+        } as any);
+
+        const saved = (await queryRunner.manager.save(paiement)) as any as Paiement;
+        savedPaiements.push(saved);
+
+        if (isInstant) {
+          facture.montant_paye =
+            Number(facture.montant_paye) + Number(l.montant);
+        }
+      }
+
+      // 3) Statut facture + mouvement caisse (uniquement pour les lignes instant)
+      const newPaye = Number(facture.montant_paye);
+      if (newPaye >= Number(facture.montant_ttc)) {
+        facture.payment_status = 'paid';
+        facture.etat = 1;
+      } else if (newPaye > 0) {
+        facture.payment_status = 'partial';
+      } else {
+        facture.payment_status = 'unpaid';
+      }
+      await queryRunner.manager.save(facture);
+
+      for (const p of savedPaiements.filter((p) => p.etat_validation === 1)) {
+        const mouvementType = this.getMouvementTypeFromModePaiement(
+          String(p.mode_paiement),
+        );
+        await this.caisseService.createMovement(
+          {
+            montant: p.montant,
+            libelle: `Encaissement ${encaissement_ref} - facture ${facture.num_facture} - ${facture.colis.ref_colis}`,
+            mode_reglement: p.mode_paiement,
+            num_dossier: facture.colis.ref_colis,
+            nom_client: facture.colis.client.nom_exp,
+            date_mouvement: date_paiement,
+          },
+          mouvementType,
+          username,
+          facture.colis?.agence?.id,
+          this.userRoleCode(user),
+        );
+      }
+
+      await queryRunner.commitTransaction();
+
+      return { encaissement_ref, paiements: savedPaiements };
+    } catch (err) {
+      await queryRunner.rollbackTransaction();
+      throw err;
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
+  async generateEncaissementReceipt(encaissementRef: string): Promise<Buffer> {
+    const ref = String(encaissementRef || '').trim();
+    if (!ref) throw new BadRequestException('Référence encaissement requise');
+
+    const rows = await this.paiementRepository.find({
+      where: { encaissement_ref: ref },
+      relations: ['facture', 'facture.colis', 'facture.colis.client'],
+      order: { created_at: 'ASC' },
+    });
+    if (!rows.length) {
+      throw new NotFoundException("Encaissement introuvable");
+    }
+    const paiement0 = rows[0];
+    const facture = paiement0.facture;
+
+    const PDFDocument = require('pdfkit');
+    return new Promise((resolve, reject) => {
+      try {
+        const doc = new PDFDocument({ margin: 45, size: 'A5' });
+        const chunks: Buffer[] = [];
+        doc.on('data', (chunk: Buffer) => chunks.push(chunk));
+        doc.on('end', () => resolve(Buffer.concat(chunks)));
+        doc.on('error', reject);
+
+        doc.fontSize(16).text('LBP LOGISTICS', { align: 'center' });
+        doc.moveDown(0.5);
+        doc.fontSize(12).text("REÇU D'ENCAISSEMENT", {
+          align: 'center',
+          underline: true,
+        });
+        doc.moveDown();
+
+        doc.fontSize(9);
+        doc.text(`Réf encaissement: ${ref}`);
+        doc.text(
+          `Date: ${new Date(rows[0].date_paiement).toLocaleDateString('fr-FR')}`,
+        );
+        doc.text(`Facture: ${facture.num_facture}`);
+        doc.text(`Colis: ${facture.colis.ref_colis}`);
+        doc.moveDown();
+
+        doc.fontSize(10).text('CLIENT:', { underline: true });
+        doc.fontSize(9);
+        doc.text(`Nom: ${facture.colis.client.nom_exp}`);
+        doc.text(`Téléphone: ${facture.colis.client.tel_exp}`);
+        doc.moveDown();
+
+        doc.fontSize(10).text('DÉTAILS:', { underline: true });
+        doc.moveDown(0.3);
+
+        const total = rows.reduce((s, p) => s + Number(p.montant), 0);
+        rows.forEach((p) => {
+          doc
+            .fontSize(9)
+            .text(
+              `- ${String(p.mode_paiement)} : ${Number(p.montant).toLocaleString(
+                'fr-FR',
+              )} FCFA${p.reference_paiement ? ` (ref ${p.reference_paiement})` : ''}`,
+            );
+        });
+        doc.moveDown(0.6);
+        doc.font('Helvetica-Bold')
+          .fontSize(10)
+          .text(`TOTAL ENCAISSÉ: ${total.toLocaleString('fr-FR')} FCFA`, {
+            align: 'center',
+          });
+        doc.font('Helvetica').moveDown(0.6);
+
+        const restant = Math.max(
+          0,
+          Number(facture.montant_ttc) - Number(facture.montant_paye),
+        );
+        doc.fontSize(9).text(`Montant total facture: ${Number(facture.montant_ttc).toLocaleString('fr-FR')} FCFA`);
+        doc.fontSize(9).text(`Montant déjà payé: ${Number(facture.montant_paye).toLocaleString('fr-FR')} FCFA`);
+        doc
+          .fontSize(9)
+          .fillColor(restant > 0 ? 'red' : 'green')
+          .text(`Reste à payer: ${restant.toLocaleString('fr-FR')} FCFA`);
+
+        doc.fillColor('black')
+          .fontSize(8)
+          .text('Merci de votre confiance - LBP Logistics', 45, doc.page.height - 45, {
+            align: 'center',
+          });
+
+        doc.end();
+      } catch (e) {
+        reject(e);
+      }
+    });
   }
 
   /**

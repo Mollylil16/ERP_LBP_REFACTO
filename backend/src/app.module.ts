@@ -27,6 +27,7 @@ import { CallCenterModule } from './callcenter/callcenter.module';
 import { ExploitationModule } from './exploitation/exploitation.module';
 import { FournituresBureauModule } from './fournitures-bureau/fournitures-bureau.module';
 import { ThrottlerModule } from '@nestjs/throttler';
+import { PrestatairesModule } from './prestataires/prestataires.module';
 
 @Module({
   imports: [
@@ -110,6 +111,7 @@ import { ThrottlerModule } from '@nestjs/throttler';
     CallCenterModule,
     ExploitationModule,
     FournituresBureauModule,
+    PrestatairesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

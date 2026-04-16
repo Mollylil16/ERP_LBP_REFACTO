@@ -3,8 +3,8 @@ import { apiService } from './api.service'
 import { calculerTotalLigneMarchandise } from '@utils/calculations'
 
 /** Date SQL `YYYY-MM-DD` ou ISO → chaîne `YYYY-MM-DD` pour affichage (évite décalage fuseau). */
-function normalizeDateEnvoi(raw: unknown): string {
-  if (raw == null || raw === '') return ''
+function normalizeDateEnvoi(raw: unknown): string | undefined {
+  if (raw == null || raw === '') return undefined
   if (typeof raw === 'string') {
     const m = raw.match(/^(\d{4}-\d{2}-\d{2})/)
     if (m) return m[1]
@@ -14,10 +14,10 @@ function normalizeDateEnvoi(raw: unknown): string {
   }
   try {
     const d = new Date(raw as string | Date)
-    if (Number.isNaN(d.getTime())) return ''
+    if (Number.isNaN(d.getTime())) return undefined
     return d.toISOString().split('T')[0]
   } catch {
-    return ''
+    return undefined
   }
 }
 
@@ -48,6 +48,8 @@ function adaptColisFromBackend(backendColis: any): Colis {
     id: backendColis.id,
     ref_colis: backendColis.ref_colis,
     mode_envoi: backendColis.mode_envoi || '',
+    // Important: si date_envoi est absente, la laisser à undefined pour permettre
+    // au rendu (table) de fallback sur created_at au lieu d'afficher "-"
     date_envoi: normalizeDateEnvoi(backendColis.date_envoi),
     nom_marchandise: premiereMarchandise.nom_marchandise || '',
     nbre_colis: premiereMarchandise.nbre_colis || 0,

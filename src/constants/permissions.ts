@@ -123,6 +123,21 @@ export const PERMISSIONS = {
     FOURNITURES_READ: 'exploitation.fournitures.read',
     FOURNITURES_MANAGE: 'exploitation.fournitures.manage',
     FOURNITURES_REQUEST: 'exploitation.fournitures.request',
+
+    // Prestataires (compagnies) / factures / règlements / retraits hub
+    PRESTATAIRES_READ: 'exploitation.prestataires.read',
+    PRESTATAIRES_CREATE: 'exploitation.prestataires.create',
+    PRESTATAIRES_UPDATE: 'exploitation.prestataires.update',
+    PRESTATAIRES_FACTURES_READ: 'exploitation.prestataires_factures.read',
+    PRESTATAIRES_FACTURES_CREATE: 'exploitation.prestataires_factures.create',
+    PRESTATAIRES_FACTURES_UPDATE: 'exploitation.prestataires_factures.update',
+    PRESTATAIRES_REGLEMENTS_READ: 'exploitation.prestataires_reglements.read',
+    PRESTATAIRES_REGLEMENTS_CREATE: 'exploitation.prestataires_reglements.create',
+    PRESTATAIRES_RETRAITS_HUB_READ: 'exploitation.prestataires_retraits_hub.read',
+    PRESTATAIRES_RETRAITS_HUB_UPDATE: 'exploitation.prestataires_retraits_hub.update',
+    PRESTATAIRES_RETRAITS_HUB_REQUEST_APPROVAL:
+      'exploitation.prestataires_retraits_hub.request_approval',
+    PRESTATAIRES_RETRAITS_HUB_APPROVE: 'exploitation.prestataires_retraits_hub.approve',
   },
 } as const
 

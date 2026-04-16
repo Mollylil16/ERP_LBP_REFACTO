@@ -54,6 +54,30 @@ class PaiementsService {
   }
 
   /**
+   * Encaissement mix (plusieurs lignes) — retourne la référence d'encaissement + paiements créés
+   */
+  async createEncaissement(data: CreateEncaissementDto): Promise<EncaissementResponse> {
+    return apiService.post<EncaissementResponse>('/paiements/encaissement', data as any)
+  }
+
+  /**
+   * Télécharger le reçu d'un encaissement (mix)
+   */
+  async downloadEncaissementReceipt(encaissementRef: string, filename?: string): Promise<void> {
+    const response = await apiService.instance.get(`/paiements/encaissement/${encodeURIComponent(encaissementRef)}/receipt`, {
+      responseType: 'blob',
+    })
+    const url = window.URL.createObjectURL(new Blob([response.data]))
+    const link = document.createElement('a')
+    link.href = url
+    link.download = filename || `recu-encaissement-${encaissementRef}.pdf`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(url)
+  }
+
+  /**
    * Mettre à jour un paiement
    */
   async updatePaiement(id: number, data: UpdatePaiementDto): Promise<Paiement> {
@@ -127,6 +151,23 @@ export interface CreatePaiementDto {
   date_paiement: string
   reference?: string
   monnaie_rendue?: number // Pour paiement comptant
+}
+
+export interface CreateEncaissementDto {
+  id_facture?: number
+  ref_colis?: string
+  date_paiement: string
+  lignes: Array<{
+    montant: number
+    mode_paiement: string
+    reference?: string
+    monnaie_rendue?: number
+  }>
+}
+
+export interface EncaissementResponse {
+  encaissement_ref: string
+  paiements: Paiement[]
 }
 
 export interface UpdatePaiementDto extends Partial<CreatePaiementDto> { }

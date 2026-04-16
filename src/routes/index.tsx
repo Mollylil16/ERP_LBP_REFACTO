@@ -36,7 +36,7 @@ function pickLandingRoute(perms: string[], roleCode?: string): string {
     if (rc === 'AGENT_GROUPAGE') return '/colis/groupage'
     if (rc === 'AGENT_EXPLOITATION' || rc === 'SUPERVISEUR_REGIONAL') return '/exploitation'
     if (rc === 'CALL_CENTER') return '/callcenter/inbox'
-    if (rc === 'CAISSIER') return '/caisse/suivi'
+    if (rc === 'CAISSIER' || rc === 'CAISSIER_AGENCE') return '/caisse/suivi'
   }
 
   if (has(ROUTE_ACCESS.dashboard)) return '/dashboard'
@@ -107,6 +107,16 @@ const AgencyPointJournalierNouveauPage = lazy(() =>
 const ExploitationFournituresPage = lazy(() =>
   import('../pages/admin/exploitation/ExploitationFournituresPage').then(m => ({
     default: m.ExploitationFournituresPage,
+  })),
+)
+const PrestatairesFacturesPage = lazy(() =>
+  import('../pages/admin/exploitation/PrestatairesFacturesPage').then(m => ({
+    default: m.PrestatairesFacturesPage,
+  })),
+)
+const PrestatairesRetraitsHubPage = lazy(() =>
+  import('../pages/admin/exploitation/PrestatairesRetraitsHubPage').then(m => ({
+    default: m.PrestatairesRetraitsHubPage,
   })),
 )
 const AgencyFournituresDemandePage = lazy(() =>
@@ -480,6 +490,28 @@ export const AppRoutes: React.FC = () => {
             <ProtectedRoute requiredPermission={[...ROUTE_ACCESS.agenceFournituresDemande]}>
               <LazyPageLoader>
                 <AgencyFournituresDemandePage />
+              </LazyPageLoader>
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Prestataires — factures / règlements / retraits hub */}
+        <Route
+          path="prestataires/factures"
+          element={
+            <ProtectedRoute requiredPermission={[...ROUTE_ACCESS.exploitationPrestataires]}>
+              <LazyPageLoader>
+                <PrestatairesFacturesPage />
+              </LazyPageLoader>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="prestataires/retraits-hub"
+          element={
+            <ProtectedRoute requiredPermission={[...ROUTE_ACCESS.exploitationPrestataires]}>
+              <LazyPageLoader>
+                <PrestatairesRetraitsHubPage />
               </LazyPageLoader>
             </ProtectedRoute>
           }

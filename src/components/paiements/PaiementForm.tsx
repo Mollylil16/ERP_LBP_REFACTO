@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import {
   Form,
   Input,
@@ -24,32 +24,42 @@ import {
   CalendarOutlined,
 } from '@ant-design/icons'
 import { useForm, Controller } from 'react-hook-form'
+import { useFieldArray } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { APP_CONFIG } from '@constants/application'
-import { CreatePaiementDto, RestantAPayerInfo } from '@services/paiements.service'
+import { CreateEncaissementDto, CreatePaiementDto, RestantAPayerInfo } from '@services/paiements.service'
 import { calculerMonnaieRendue } from '@utils/calculations'
 import { formatMontantWithDevise } from '@utils/format'
 import { paiementsService } from '@services/paiements.service'
 import { useQuery } from '@tanstack/react-query'
+import { Alert as AntAlert, message } from 'antd'
 
 const { Title, Text } = Typography
 const { Option } = Select
 
-const paiementFormSchema = z.object({
+const ligneSchema = z.object({
   montant: z.number().min(0.01, 'Le montant doit être supérieur à 0'),
   mode_paiement: z.string().min(1, 'Le mode de paiement est obligatoire'),
+  reference: z.string().optional(),
+})
+
+const paiementFormSchema = z.object({
   date_paiement: z.string().min(1, 'La date de paiement est obligatoire'),
   heure_paiement: z.string().optional(),
-  reference: z.string().optional(),
-  nom_client: z.string().optional(),
+  lignes: z.array(ligneSchema).min(1, 'Ajoutez au moins une ligne de paiement'),
 })
 
 type PaiementFormData = z.infer<typeof paiementFormSchema>
 
 interface PaiementFormProps {
   refColis: string
+  /**
+   * Compat : si tu passes l’ancien handler (paiement simple), ça marchera toujours.
+   * Si tu veux gérer le mix au parent, passe un handler encaissement.
+   */
   onSubmit: (data: CreatePaiementDto) => void | Promise<void>
+  onSubmitEncaissement?: (data: CreateEncaissementDto) => void | Promise<void>
   onCancel?: () => void
   loading?: boolean
 }
@@ -94,7 +104,7 @@ const getReferenceIcon = (mode: string) => {
 }
 
 const isModeImmédiat = (mode: string) =>
-  ['especes', 'comptant', 'wave', 'om'].includes(mode)
+  ['especes', 'comptant', 'wave', 'om', 'orange_money'].includes(mode)
 
 const isModeNécessitantRef = (mode: string) =>
   ['wave', 'om', 'cheque', 'virement'].includes(mode)
@@ -105,6 +115,7 @@ const isModeCredit = (mode: string) =>
 export const PaiementForm: React.FC<PaiementFormProps> = ({
   refColis,
   onSubmit,
+  onSubmitEncaissement,
   onCancel,
   loading = false,
 }) => {
@@ -126,62 +137,95 @@ export const PaiementForm: React.FC<PaiementFormProps> = ({
   } = useForm<PaiementFormData>({
     resolver: zodResolver(paiementFormSchema),
     defaultValues: {
-      montant: 0,
-      mode_paiement: 'especes',
       date_paiement: new Date().toISOString().split('T')[0],
       heure_paiement: new Date().toTimeString().slice(0, 5),
-      reference: '',
-      nom_client: '',
+      lignes: [{ montant: 0, mode_paiement: 'especes', reference: '' }],
     },
   })
 
-  const montant = watch('montant') || 0
-  const modePaiement = watch('mode_paiement')
-  const isEspeces = modePaiement === 'especes' || modePaiement === 'comptant'
+  const { fields, append, remove, update } = useFieldArray({
+    control,
+    name: 'lignes',
+  })
+
+  const lignes = watch('lignes') || []
+  const totalSaisi = useMemo(
+    () => lignes.reduce((s, l) => s + Number(l?.montant || 0), 0),
+    [lignes],
+  )
+  const isMix = (lignes?.length || 0) > 1
+
+  const ligne0 = lignes?.[0]
+  const mode0 = String(ligne0?.mode_paiement || 'especes')
+  const montant0 = Number(ligne0?.montant || 0)
+  const isEspeces0 = mode0 === 'especes' || mode0 === 'comptant'
 
   // Calculer monnaie rendue pour espèces/comptant
   useEffect(() => {
-    if (isEspeces && restantInfo && montant > 0) {
-      const monnaie = calculerMonnaieRendue(restantInfo.restant_a_payer, montant)
+    if (isEspeces0 && restantInfo && montant0 > 0) {
+      const monnaie = calculerMonnaieRendue(restantInfo.restant_a_payer, montant0)
       setMonnaieRendue(monnaie)
-      setMontantRecu(montant)
+      setMontantRecu(montant0)
     } else {
       setMonnaieRendue(0)
       setMontantRecu(0)
     }
-  }, [montant, isEspeces, restantInfo])
+  }, [montant0, isEspeces0, restantInfo])
 
   // Pré-remplir le montant avec le restant à payer pour les modes immédiats
   useEffect(() => {
-    if (restantInfo && isModeImmédiat(modePaiement) && montant === 0) {
-      setValue('montant', restantInfo.restant_a_payer)
+    if (
+      restantInfo &&
+      lignes?.length === 1 &&
+      isModeImmédiat(mode0) &&
+      Number(lignes?.[0]?.montant || 0) === 0
+    ) {
+      setValue('lignes.0.montant', restantInfo.restant_a_payer)
     }
-  }, [restantInfo, modePaiement, setValue, montant])
+  }, [restantInfo, mode0, setValue, lignes])
 
   const onFormSubmit = (data: PaiementFormData) => {
     // Sécurité UX: éviter un dépassement (le backend bloque aussi)
-    if (restantInfo && data.montant > restantInfo.restant_a_payer) {
+    const total = data.lignes.reduce((s, l) => s + Number(l.montant || 0), 0)
+    if (restantInfo && total > restantInfo.restant_a_payer) {
+      message.error('Le total saisi dépasse le reste à payer.')
       // eslint-disable-next-line no-alert
       // On utilise antd message plus bas dans le composant, mais ici on reste simple.
       // (Le toast global de l'API affichera le message backend si besoin.)
       return
     }
-    const submitData: CreatePaiementDto = {
-      ref_colis: refColis,
-      montant: data.montant,
-      mode_paiement: data.mode_paiement, // valeur enum : 'especes', 'wave', 'om', etc.
-      date_paiement: data.date_paiement,
-      reference: data.reference,
-      monnaie_rendue: isEspeces ? monnaieRendue : undefined,
+    if (data.lignes.length === 1 || !onSubmitEncaissement) {
+      const l = data.lignes[0]
+      const isEspeces = l.mode_paiement === 'especes' || l.mode_paiement === 'comptant'
+      const submitData: CreatePaiementDto = {
+        ref_colis: refColis,
+        montant: l.montant,
+        mode_paiement: l.mode_paiement,
+        date_paiement: data.date_paiement,
+        reference: l.reference,
+        monnaie_rendue: isEspeces ? monnaieRendue : undefined,
+      }
+      onSubmit(submitData)
+      return
     }
-    onSubmit(submitData)
+
+    const submitEnc: CreateEncaissementDto = {
+      ref_colis: refColis,
+      date_paiement: data.date_paiement,
+      lignes: data.lignes.map((l) => ({
+        montant: l.montant,
+        mode_paiement: l.mode_paiement,
+        reference: l.reference,
+      })),
+    }
+    onSubmitEncaissement(submitEnc)
   }
 
   if (isLoadingRestant) {
     return <div style={{ padding: 24 }}>Chargement des informations...</div>
   }
 
-  const modeActuel = getModeConfig(modePaiement)
+  const modeActuel = getModeConfig(mode0)
 
   return (
     <Form layout="vertical" onFinish={handleSubmit(onFormSubmit)}>
@@ -222,7 +266,7 @@ export const PaiementForm: React.FC<PaiementFormProps> = ({
       )}
 
       {restantInfo?.restant_a_payer === 0 && (
-        <Alert
+        <AntAlert
           message="Ce colis est entièrement payé"
           type="success"
           showIcon
@@ -265,123 +309,139 @@ export const PaiementForm: React.FC<PaiementFormProps> = ({
             />
           </Col>
 
-          {/* Mode de paiement */}
+          {/* Lignes de paiement (mix) */}
           <Col xs={24}>
-            <Controller
-              name="mode_paiement"
-              control={control}
-              render={({ field }) => (
-                <Form.Item
-                  label="Mode de paiement"
-                  required
-                  validateStatus={errors.mode_paiement ? 'error' : ''}
-                  help={errors.mode_paiement?.message}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+              <Title level={5} style={{ margin: 0 }}>Lignes de paiement</Title>
+              <Space>
+                <Button
+                  size="small"
+                  onClick={() => append({ montant: 0, mode_paiement: 'wave', reference: '' } as any)}
                 >
-                  <Select {...field} size="large" optionLabelProp="label">
-                    {APP_CONFIG.modesPaiement.map((mode) => (
-                      <Option
-                        key={mode.value}
-                        value={mode.value}
-                        label={mode.label}
+                  + Ajouter une ligne
+                </Button>
+                {fields.length > 1 && (
+                  <Tag color="purple">Paiement mixte</Tag>
+                )}
+              </Space>
+            </div>
+            <Text type="secondary">
+              Exemple : une partie en espèces + une partie sur Wave.
+            </Text>
+          </Col>
+
+          {fields.map((f, idx) => {
+            const mode = String(lignes?.[idx]?.mode_paiement || '')
+            const isCredit = isModeCredit(mode)
+            const needsRef = isModeNécessitantRef(mode)
+            const isEspeces = mode === 'especes' || mode === 'comptant'
+            return (
+              <React.Fragment key={f.id}>
+                <Col xs={24} md={8}>
+                  <Controller
+                    name={`lignes.${idx}.mode_paiement` as const}
+                    control={control}
+                    render={({ field }) => (
+                      <Form.Item label={`Mode (ligne ${idx + 1})`} required>
+                        <Select {...field} size="large" optionLabelProp="label">
+                          {APP_CONFIG.modesPaiement.map((m) => (
+                            <Option key={m.value} value={m.value} label={m.label}>
+                              <Space>
+                                <Tag color={m.color} icon={getModeIcon(m.value)} style={{ minWidth: 120 }}>
+                                  {m.label}
+                                </Tag>
+                              </Space>
+                            </Option>
+                          ))}
+                        </Select>
+                      </Form.Item>
+                    )}
+                  />
+                </Col>
+                <Col xs={24} md={8}>
+                  <Controller
+                    name={`lignes.${idx}.montant` as const}
+                    control={control}
+                    render={({ field }) => (
+                      <Form.Item label={`Montant (ligne ${idx + 1})`} required>
+                        <InputNumber
+                          {...field}
+                          value={field.value as any}
+                          onChange={(value: number | null) => field.onChange(value || 0)}
+                          min={0.01}
+                          max={restantInfo?.restant_a_payer}
+                          style={{ width: '100%' }}
+                          size="large"
+                          prefix={<DollarOutlined />}
+                          formatter={(value: any) =>
+                            `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ' ')
+                          }
+                        />
+                      </Form.Item>
+                    )}
+                  />
+                </Col>
+                <Col xs={24} md={8}>
+                  <Controller
+                    name={`lignes.${idx}.reference` as const}
+                    control={control}
+                    render={({ field }) => (
+                      <Form.Item
+                        label={needsRef ? `Référence (ligne ${idx + 1})` : `Référence (optionnel)`}
+                        required={needsRef}
                       >
-                        <Space>
-                          <Tag color={mode.color} icon={getModeIcon(mode.value)} style={{ minWidth: 120 }}>
-                            {mode.label}
-                          </Tag>
-                          {isModeCredit(mode.value) && (
-                            <Text type="secondary" style={{ fontSize: 12 }}>
-                              Paiement différé
-                            </Text>
-                          )}
-                        </Space>
-                      </Option>
-                    ))}
-                  </Select>
-                </Form.Item>
-              )}
-            />
-          </Col>
-
-          {/* Alerte mode crédit */}
-          {isModeCredit(modePaiement) && (
-            <Col xs={24}>
-              <Alert
-                message={`Paiement différé — ${modeActuel?.label}`}
-                description="Le client paiera dans les délais convenus. La référence de l'accord est recommandée."
-                type="warning"
-                showIcon
-                style={{ marginBottom: 8 }}
-              />
-            </Col>
-          )}
-
-          {/* Montant */}
-          <Col xs={24} md={12}>
-            <Controller
-              name="montant"
-              control={control}
-              render={({ field }) => (
-                <Form.Item
-                  label={isEspeces ? 'Montant reçu' : 'Montant encaissé'}
-                  required
-                  validateStatus={errors.montant ? 'error' : ''}
-                  help={errors.montant?.message}
-                >
-                  <InputNumber
-                    {...field}
-                    value={field.value}
-                    onChange={(value: number | null) => field.onChange(value || 0)}
-                    min={0.01}
-                    max={restantInfo?.restant_a_payer}
-                    style={{ width: '100%' }}
-                    size="large"
-                    prefix={<DollarOutlined />}
-                    formatter={(value: any) =>
-                      `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ' ')
-                    }
+                        <Input
+                          {...field}
+                          prefix={getReferenceIcon(mode)}
+                          placeholder={getReferencePlaceholder(mode)}
+                          size="large"
+                        />
+                      </Form.Item>
+                    )}
                   />
-                  {restantInfo && (
-                    <Text type="secondary" style={{ display: 'block', marginTop: 4, fontSize: 12 }}>
-                      Max : {formatMontantWithDevise(restantInfo.restant_a_payer)}
-                    </Text>
-                  )}
-                </Form.Item>
-              )}
-            />
-          </Col>
+                </Col>
 
-          {/* Référence de transaction */}
-          <Col xs={24} md={12}>
-            <Controller
-              name="reference"
-              control={control}
-              render={({ field }) => (
-                <Form.Item
-                  label={
-                    isModeNécessitantRef(modePaiement)
-                      ? `Référence de transaction ${modePaiement === 'wave' ? 'Wave' : modePaiement === 'om' ? 'Orange Money' : ''}`
-                      : 'Référence (optionnel)'
-                  }
-                  required={isModeNécessitantRef(modePaiement)}
-                >
-                  <Input
-                    {...field}
-                    prefix={getReferenceIcon(modePaiement)}
-                    placeholder={getReferencePlaceholder(modePaiement)}
-                    size="large"
-                  />
-                  {(modePaiement === 'wave' || modePaiement === 'om') && (
-                    <Text type="secondary" style={{ fontSize: 11, marginTop: 4, display: 'block' }}>
-                      Entrez le numéro de transaction visible dans le SMS de confirmation {modePaiement === 'wave' ? 'Wave' : 'Orange Money'}
-                    </Text>
-                  )}
-                </Form.Item>
+                {isCredit && (
+                  <Col xs={24}>
+                    <AntAlert
+                      message={`Paiement différé — ${getModeConfig(mode)?.label ?? mode}`}
+                      description="Le client paiera dans les délais convenus. La référence de l'accord est recommandée."
+                      type="warning"
+                      showIcon
+                      style={{ marginBottom: 8 }}
+                    />
+                  </Col>
+                )}
+
+                {idx > 0 && (
+                  <Col xs={24}>
+                    <div style={{ textAlign: 'right', marginTop: -8, marginBottom: 12 }}>
+                      <Button danger size="small" onClick={() => remove(idx)}>
+                        Supprimer la ligne {idx + 1}
+                      </Button>
+                    </div>
+                  </Col>
+                )}
+              </React.Fragment>
+            )
+          })}
+
+          {/* Total saisi */}
+          <Col xs={24}>
+            <div style={{ marginTop: 6, marginBottom: 6 }}>
+              <Tag color={restantInfo && totalSaisi > restantInfo.restant_a_payer ? 'red' : 'blue'}>
+                Total saisi : {formatMontantWithDevise(totalSaisi)}
+              </Tag>
+              {restantInfo && (
+                <Tag color="default">
+                  Reste à payer : {formatMontantWithDevise(restantInfo.restant_a_payer)}
+                </Tag>
               )}
-            />
+            </div>
           </Col>
 
           {/* Monnaie rendue — espèces seulement */}
-          {isEspeces && montantRecu > 0 && restantInfo && (
+          {isEspeces0 && montantRecu > 0 && restantInfo && (
             <>
               <Col xs={24}>
                 <Divider style={{ margin: '8px 0' }} />
@@ -419,7 +479,7 @@ export const PaiementForm: React.FC<PaiementFormProps> = ({
             loading={loading}
             disabled={restantInfo?.restant_a_payer === 0}
           >
-            Enregistrer le paiement
+            {isMix ? "Enregistrer l'encaissement" : 'Enregistrer le paiement'}
           </Button>
           <Button size="large" onClick={onCancel}>
             Annuler

@@ -18,7 +18,7 @@ const MANAGER = new Set<string>([
   UserRole.MANAGER,
   UserRole.SUPERVISEUR_REGIONAL,
 ])
-const CAISSIER = new Set<string>([UserRole.CAISSIER])
+const CAISSIER = new Set<string>([UserRole.CAISSIER, UserRole.CAISSIER_AGENCE])
 const CHEF_AGENCE = new Set<string>([UserRole.CHEF_AGENCE])
 
 /**

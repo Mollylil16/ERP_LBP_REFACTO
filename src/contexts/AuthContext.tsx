@@ -84,7 +84,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       if (rc === "AGENT_GROUPAGE") return "/colis/groupage"
       if (rc === "AGENT_EXPLOITATION" || rc === "SUPERVISEUR_REGIONAL") return "/exploitation"
       if (rc === "CALL_CENTER") return "/callcenter/inbox"
-      if (rc === "CAISSIER") return "/caisse/suivi"
+      if (rc === "CAISSIER" || rc === "CAISSIER_AGENCE") return "/caisse/suivi"
       if (rc === "CHEF_AGENCE") return "/exploitation"
     }
 
@@ -298,7 +298,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   // Debug: log quand l'état change
   useEffect(() => {
-    if (process.env.NODE_ENV === 'development') {
+    if (import.meta.env.DEV) {
       console.log('[AuthContext] State changed:', {
         hasUser: !!user,
         isAuthenticated: !!user,

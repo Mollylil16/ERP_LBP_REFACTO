@@ -5,8 +5,8 @@ import { apiService } from './api.service'
 export interface ClientColis {
   id: number
   nom_exp: string
-  type_piece_exp: string
-  num_piece_exp: string
+  type_piece_exp?: string
+  num_piece_exp?: string
   tel_exp: string
   email_exp?: string
   date_enrg: string
@@ -73,8 +73,10 @@ class ClientsService {
 
 export interface CreateClientDto {
   nom_exp: string
-  type_piece_exp: string
-  num_piece_exp: string
+  /** Optionnel: certains clients n'ont pas de pièce */
+  type_piece_exp?: string
+  /** Optionnel: certains clients n'ont pas de pièce */
+  num_piece_exp?: string
   tel_exp: string
   email_exp?: string
 }

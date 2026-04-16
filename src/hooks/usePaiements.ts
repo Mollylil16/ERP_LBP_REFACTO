@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { paiementsService, CreatePaiementDto, UpdatePaiementDto } from '@services/paiements.service'
+import { paiementsService, CreatePaiementDto, CreateEncaissementDto } from '@services/paiements.service'
 import { PaginationParams } from '@types'
 import toast from 'react-hot-toast'
 
@@ -51,6 +51,26 @@ export function useCreatePaiement() {
     },
     onError: (error: any) => {
       toast.error(error?.message || 'Erreur lors de l\'enregistrement du paiement')
+    },
+  })
+}
+
+/**
+ * Hook pour créer un encaissement mix (plusieurs lignes)
+ */
+export function useCreateEncaissement() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (data: CreateEncaissementDto) => paiementsService.createEncaissement(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['paiements'] })
+      queryClient.invalidateQueries({ queryKey: ['colis'] })
+      queryClient.invalidateQueries({ queryKey: ['factures'] })
+      toast.success('Encaissement enregistré avec succès')
+    },
+    onError: (error: any) => {
+      toast.error(error?.message || 'Erreur lors de l\'enregistrement de l\'encaissement')
     },
   })
 }

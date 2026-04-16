@@ -36,6 +36,24 @@ export class PaiementsController {
     return this.paiementsService.create(createPaiementDto, req.user);
   }
 
+  @Post('encaissement')
+  @RequirePermission('paiements.create')
+  @ApiOperation({
+    summary:
+      "Encaissement mix (plusieurs lignes : espèces + Wave, etc.) pour une facture",
+  })
+  createEncaissement(@Body() body: any, @Request() req) {
+    return this.paiementsService.createEncaissement(
+      {
+        id_facture: body.id_facture,
+        ref_colis: body.ref_colis,
+        date_paiement: body.date_paiement,
+        lignes: Array.isArray(body.lignes) ? body.lignes : [],
+      },
+      req.user,
+    );
+  }
+
   @Get()
   @RequirePermission('paiements.read')
   @ApiOperation({ summary: 'Liste de tous les paiements' })
@@ -73,6 +91,19 @@ export class PaiementsController {
   @ApiOperation({ summary: "Historique des paiements d'un colis" })
   findByColis(@Param('refColis') refColis: string) {
     return this.paiementsService.findByColis(refColis);
+  }
+
+  @Get('encaissement/:ref/receipt')
+  @RequirePermission('paiements.read')
+  @ApiOperation({ summary: "Télécharger le reçu PDF d'un encaissement (mix)" })
+  async getEncaissementReceipt(@Param('ref') ref: string, @Res() res: Response) {
+    const buffer = await this.paiementsService.generateEncaissementReceipt(ref);
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename=recu-encaissement-${ref}.pdf`,
+      'Content-Length': buffer.length,
+    });
+    res.end(buffer);
   }
 
   @Get(':id/receipt')
