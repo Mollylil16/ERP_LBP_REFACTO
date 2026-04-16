@@ -57,7 +57,7 @@ export class ReglementPrestataire {
   @Column({ type: 'decimal', precision: 12, scale: 2, default: 0 })
   montant: number;
 
-  @Column({ length: 150, nullable: true })
+  @Column({ type: 'varchar', length: 150, nullable: true })
   reference: string | null;
 
   @Column({ type: 'text', nullable: true })
@@ -72,7 +72,7 @@ export class ReglementPrestataire {
   @Column({ type: 'timestamptz', nullable: true })
   hub_retrait_marked_at: Date | null;
 
-  @Column({ length: 100, nullable: true })
+  @Column({ type: 'varchar', length: 100, nullable: true })
   hub_retrait_marked_by: string | null;
 
   @Column({ length: 20, default: 'NA' })
@@ -81,16 +81,16 @@ export class ReglementPrestataire {
   @Column({ type: 'timestamptz', nullable: true })
   hub_retrait_approval_requested_at: Date | null;
 
-  @Column({ length: 100, nullable: true })
+  @Column({ type: 'varchar', length: 100, nullable: true })
   hub_retrait_approval_requested_by: string | null;
 
   @Column({ type: 'timestamptz', nullable: true })
   hub_retrait_approval_decided_at: Date | null;
 
-  @Column({ length: 100, nullable: true })
+  @Column({ type: 'varchar', length: 100, nullable: true })
   hub_retrait_approval_decided_by: string | null;
 
-  @Column({ length: 100, nullable: true })
+  @Column({ type: 'varchar', length: 100, nullable: true })
   created_by: string | null;
 
   @CreateDateColumn({ type: 'timestamptz' })

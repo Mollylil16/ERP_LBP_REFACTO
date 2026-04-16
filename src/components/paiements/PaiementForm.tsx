@@ -189,7 +189,6 @@ export const PaiementForm: React.FC<PaiementFormProps> = ({
     const total = data.lignes.reduce((s, l) => s + Number(l.montant || 0), 0)
     if (restantInfo && total > restantInfo.restant_a_payer) {
       message.error('Le total saisi dépasse le reste à payer.')
-      // eslint-disable-next-line no-alert
       // On utilise antd message plus bas dans le composant, mais ici on reste simple.
       // (Le toast global de l'API affichera le message backend si besoin.)
       return

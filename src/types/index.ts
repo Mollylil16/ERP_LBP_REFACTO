@@ -159,12 +159,17 @@ export interface Paiement {
   date_paiement: string
   mode_paiement: string
   reference: string
+  /** Référence colis (si le backend la renvoie à plat) */
+  ref_colis?: string
+  /** Facture (si le backend renvoie les relations) */
+  facture?: { id: number; num_facture?: string; colis?: { id: number; ref_colis?: string } } | null
   facture_id?: number
   colis_id?: number
   code_user: string
   etat_validation?: number
   created_at?: string
   reference_paiement?: string
+  encaissement_ref?: string | null
 }
 
 // Types Dashboard

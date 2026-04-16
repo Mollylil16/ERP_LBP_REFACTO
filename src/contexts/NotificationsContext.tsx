@@ -126,7 +126,6 @@ export const NotificationsProvider: React.FC<{
         localStorage.removeItem("lbp_notifications");
       }
     } catch (e) {
-      // eslint-disable-next-line no-console
       console.warn("[Notifications] localStorage quota exceeded, clearing cache", e);
       try {
         localStorage.removeItem("lbp_notifications");

@@ -76,7 +76,6 @@ export const idbPersister: Persister = {
         } catch (e) {
             // Ne jamais casser l’app si IndexedDB est en train de se fermer (reload / SW / navigation).
             if (!isIdbClosingError(e)) {
-                // eslint-disable-next-line no-console
                 console.warn('[QueryPersist] persistClient failed:', e);
             }
         }
@@ -87,7 +86,6 @@ export const idbPersister: Persister = {
             return cached ?? undefined;
         } catch (e) {
             if (!isIdbClosingError(e)) {
-                // eslint-disable-next-line no-console
                 console.warn('[QueryPersist] restoreClient failed:', e);
             }
             return undefined;
@@ -98,7 +96,6 @@ export const idbPersister: Persister = {
             await persistentCache.delete(IDB_CACHE_KEY);
         } catch (e) {
             if (!isIdbClosingError(e)) {
-                // eslint-disable-next-line no-console
                 console.warn('[QueryPersist] removeClient failed:', e);
             }
         }

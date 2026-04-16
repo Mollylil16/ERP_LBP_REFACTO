@@ -103,28 +103,43 @@ export const PaiementList: React.FC<PaiementListProps> = ({ refColis }) => {
   const columns: ColumnsType<Paiement> = [
     {
       title: "Réf. Colis",
-      dataIndex: "reference",
-      key: "reference",
+      key: "ref_colis",
       width: 150,
-      render: (text: string) => (
-        <span style={{ fontFamily: 'monospace', fontWeight: 600 }}>{text || "-"}</span>
-      ),
+      render: (_: unknown, record: Paiement) => {
+        const ref =
+          (record as any).ref_colis ||
+          record.facture?.colis?.ref_colis ||
+          (record as any).num_dossier ||
+          '-'
+        return (
+          <span style={{ fontFamily: 'monospace', fontWeight: 600 }}>
+            {ref || '-'}
+          </span>
+        )
+      },
     },
     {
       title: "Date & Heure",
-      dataIndex: "date_paiement",
       key: "date_paiement",
       width: 150,
-      render: (date: string, record: Paiement) => (
-        <div>
-          <div>{formatDate(date)}</div>
-          {record.created_at && (
-            <div style={{ fontSize: 11, color: '#8c8c8c' }}>
-              {new Date(record.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
-            </div>
-          )}
-        </div>
-      ),
+      render: (_: unknown, record: Paiement) => {
+        const rawDate =
+          (record as any).date_paiement ||
+          (record as any).datePaiement ||
+          record.created_at ||
+          (record as any).createdAt
+        const rawTime = record.created_at || (record as any).createdAt
+        return (
+          <div>
+            <div>{formatDate(rawDate)}</div>
+            {rawTime ? (
+              <div style={{ fontSize: 11, color: '#8c8c8c' }}>
+                {new Date(rawTime).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+              </div>
+            ) : null}
+          </div>
+        )
+      },
       sorter: true,
     },
     {
@@ -149,12 +164,21 @@ export const PaiementList: React.FC<PaiementListProps> = ({ refColis }) => {
     },
     {
       title: "Réf. Transaction",
-      dataIndex: "reference_paiement",
       key: "reference_paiement",
       width: 180,
-      render: (ref: string) => ref
-        ? <span style={{ fontFamily: 'monospace', fontSize: 12 }}>{ref}</span>
-        : <span style={{ color: '#bfbfbf' }}>—</span>,
+      render: (_: unknown, record: Paiement) => {
+        const ref =
+          record.reference_paiement ||
+          (record as any).reference_paiement ||
+          (record as any).reference ||
+          record.encaissement_ref ||
+          null
+        return ref ? (
+          <span style={{ fontFamily: 'monospace', fontSize: 12 }}>{ref}</span>
+        ) : (
+          <span style={{ color: '#bfbfbf' }}>—</span>
+        )
+      },
     },
     {
       title: "Enregistré par",

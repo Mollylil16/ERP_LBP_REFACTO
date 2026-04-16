@@ -17,19 +17,19 @@ export class Prestataire {
   nom: string;
 
   /** Pays “référence” (optionnel) — utile pour filtrer par zone. */
-  @Column({ length: 100, nullable: true })
+  @Column({ type: 'varchar', length: 100, nullable: true })
   pays: string | null;
 
   @Column({ default: true })
   actif: boolean;
 
-  @Column({ length: 150, nullable: true })
+  @Column({ type: 'varchar', length: 150, nullable: true })
   contact_nom: string | null;
 
-  @Column({ length: 50, nullable: true })
+  @Column({ type: 'varchar', length: 50, nullable: true })
   contact_tel: string | null;
 
-  @Column({ length: 200, nullable: true })
+  @Column({ type: 'varchar', length: 200, nullable: true })
   contact_email: string | null;
 
   @OneToMany(() => FacturePrestataire, (f) => f.prestataire)

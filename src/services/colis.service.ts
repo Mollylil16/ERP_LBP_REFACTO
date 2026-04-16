@@ -50,7 +50,7 @@ function adaptColisFromBackend(backendColis: any): Colis {
     mode_envoi: backendColis.mode_envoi || '',
     // Important: si date_envoi est absente, la laisser à undefined pour permettre
     // au rendu (table) de fallback sur created_at au lieu d'afficher "-"
-    date_envoi: normalizeDateEnvoi(backendColis.date_envoi),
+    date_envoi: normalizeDateEnvoi(backendColis.date_envoi ?? backendColis.dateEnvoi),
     nom_marchandise: premiereMarchandise.nom_marchandise || '',
     nbre_colis: premiereMarchandise.nbre_colis || 0,
     nbre_articles: premiereMarchandise.nbre_articles || 0,
@@ -67,7 +67,9 @@ function adaptColisFromBackend(backendColis: any): Colis {
       num_piece_exp: backendColis.client.num_piece_exp || '',
       tel_exp: backendColis.client.tel_exp || '',
       email_exp: backendColis.client.email_exp,
-      date_enrg: backendColis.client.created_at ? new Date(backendColis.client.created_at).toISOString() : '',
+      date_enrg: (backendColis.client.created_at || backendColis.client.createdAt)
+        ? new Date(backendColis.client.created_at || backendColis.client.createdAt).toISOString()
+        : '',
     } : {} as ClientColis,
     nom_destinataire: backendColis.nom_dest || '',
     lieu_dest: backendColis.lieu_dest || '',
@@ -80,7 +82,9 @@ function adaptColisFromBackend(backendColis: any): Colis {
     forme_envoi: backendColis.forme_envoi as 'groupage' | 'autres_envoi',
     trafic_envoi: backendColis.trafic_envoi as any,
     code_user: backendColis.code_user || '',
-    date_enrg: backendColis.created_at ? new Date(backendColis.created_at).toISOString() : '',
+    date_enrg: (backendColis.created_at || backendColis.createdAt)
+      ? new Date(backendColis.created_at || backendColis.createdAt).toISOString()
+      : '',
     marchandises: marchandises,
   }
 }

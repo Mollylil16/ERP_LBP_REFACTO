@@ -41,9 +41,7 @@ export class ErrorBoundary extends Component<Props, State> {
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     // Toujours exposer l'erreur dans la console pour diagnostic rapide,
     // même en production (l'écran "Oups" est sinon aveugle).
-    // eslint-disable-next-line no-console
     console.error('[ErrorBoundary] Unhandled UI error:', error)
-    // eslint-disable-next-line no-console
     if (errorInfo?.componentStack) console.error('[ErrorBoundary] Component stack:', errorInfo.componentStack)
 
     // Expose aussi l'erreur dans un emplacement global pour support (debug rapide via DevTools).

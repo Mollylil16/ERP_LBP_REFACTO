@@ -30,7 +30,7 @@ export class FacturePrestataire {
   agence: Agence;
 
   /** Pays “opérationnel” (hérité de l’agence / sa région) — stocké pour filtres simples. */
-  @Column({ length: 100, nullable: true })
+  @Column({ type: 'varchar', length: 100, nullable: true })
   pays: string | null;
 
   @ManyToOne(() => Prestataire, { nullable: false })
@@ -40,10 +40,10 @@ export class FacturePrestataire {
   @Column({ type: 'date' })
   date_reception: string;
 
-  @Column({ length: 100, nullable: true })
+  @Column({ type: 'varchar', length: 100, nullable: true })
   numero_lta: string | null;
 
-  @Column({ length: 100, nullable: true })
+  @Column({ type: 'varchar', length: 100, nullable: true })
   numero_envoi: string | null;
 
   @Column({ length: 120 })
@@ -73,7 +73,7 @@ export class FacturePrestataire {
   @Column({ type: 'text', nullable: true })
   note: string | null;
 
-  @Column({ length: 100, nullable: true })
+  @Column({ type: 'varchar', length: 100, nullable: true })
   created_by: string | null;
 
   @OneToMany(() => ReglementPrestataire, (r) => r.facture)
