@@ -6,6 +6,27 @@ import { format, parse, parseISO, isValid } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { APP_CONFIG } from '@constants/application'
 
+/**
+ * Normalise une date « calendrier » (SQL, ISO, héritée) vers `YYYY-MM-DD` pour affichage cohérent.
+ * Utilisé par les adaptateurs colis / factures pour éviter les « — » quand le backend renvoie une autre forme.
+ */
+export function normalizeCalendarDate(raw: unknown): string | undefined {
+  if (raw == null || raw === '') return undefined
+  if (typeof raw === 'string') {
+    const m = raw.match(/^(\d{4}-\d{2}-\d{2})/)
+    if (m) return m[1]
+    const fr = raw.match(/^(\d{2})\/(\d{2})\/(\d{4})$/)
+    if (fr) return `${fr[3]}-${fr[2]}-${fr[1]}`
+  }
+  try {
+    const d = new Date(raw as string | Date)
+    if (Number.isNaN(d.getTime())) return undefined
+    return d.toISOString().split('T')[0]
+  } catch {
+    return undefined
+  }
+}
+
 function toDateSafe(input: string | Date): Date | null {
   if (input instanceof Date) return isValid(input) ? input : null
   const s = String(input).trim()

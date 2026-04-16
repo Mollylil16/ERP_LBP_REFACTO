@@ -1,12 +1,13 @@
 import { FactureColis, Colis, PaginatedResponse, PaginationParams } from '@types'
 import { apiService } from './api.service'
+import { normalizeCalendarDate } from '@utils/format'
 
 function adaptFactureFromBackend(backendFacture: any): FactureColis {
-  const created =
-    backendFacture.created_at ||
-    backendFacture.createdAt ||
-    backendFacture.created ||
-    null
+  const dateFacture =
+    normalizeCalendarDate(backendFacture.date_facture) ??
+    normalizeCalendarDate(backendFacture.dateFacture) ??
+    normalizeCalendarDate(backendFacture.created_at ?? backendFacture.createdAt)
+
   return {
     id: backendFacture.id,
     num_facture: backendFacture.num_facture,
@@ -17,12 +18,7 @@ function adaptFactureFromBackend(backendFacture: any): FactureColis {
     ref_colis: backendFacture.colis?.ref_colis || '',
     code_user: backendFacture.code_user || '',
     etat: backendFacture.etat,
-    // Fallback pour la date au cas où le champ changerait de nom (serialization)
-    date_facture:
-      backendFacture.date_facture ||
-      backendFacture.dateFacture ||
-      backendFacture.date ||
-      created,
+    date_facture: dateFacture ?? '',
   }
 }
 

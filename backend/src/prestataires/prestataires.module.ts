@@ -9,7 +9,6 @@ import { NotificationModule } from '../notifications/notification.module';
 import { Agence } from '../agences/entities/agence.entity';
 import { User } from '../users/entities/user.entity';
 import { PrestatairesAlertsService } from './prestataires-alerts.service';
-import { RolesModule } from '../roles/roles.module';
 
 @Module({
   imports: [
@@ -21,7 +20,6 @@ import { RolesModule } from '../roles/roles.module';
       User,
     ]),
     forwardRef(() => NotificationModule),
-    RolesModule,
   ],
   controllers: [PrestatairesController],
   providers: [PrestatairesService, PrestatairesAlertsService],

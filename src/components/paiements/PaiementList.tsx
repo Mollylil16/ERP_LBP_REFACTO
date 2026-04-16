@@ -107,14 +107,9 @@ export const PaiementList: React.FC<PaiementListProps> = ({ refColis }) => {
       width: 150,
       render: (_: unknown, record: Paiement) => {
         const ref =
-          (record as any).ref_colis ||
-          record.facture?.colis?.ref_colis ||
-          (record as any).num_dossier ||
-          '-'
+          (record as any).facture?.colis?.ref_colis ?? record.ref_colis ?? record.reference
         return (
-          <span style={{ fontFamily: 'monospace', fontWeight: 600 }}>
-            {ref || '-'}
-          </span>
+          <span style={{ fontFamily: 'monospace', fontWeight: 600 }}>{ref || "—"}</span>
         )
       },
     },
@@ -123,20 +118,15 @@ export const PaiementList: React.FC<PaiementListProps> = ({ refColis }) => {
       key: "date_paiement",
       width: 150,
       render: (_: unknown, record: Paiement) => {
-        const rawDate =
-          (record as any).date_paiement ||
-          (record as any).datePaiement ||
-          record.created_at ||
-          (record as any).createdAt
-        const rawTime = record.created_at || (record as any).createdAt
+        const dateSrc = record.date_paiement || record.created_at
         return (
           <div>
-            <div>{formatDate(rawDate)}</div>
-            {rawTime ? (
+            <div>{formatDate(dateSrc)}</div>
+            {record.created_at && (
               <div style={{ fontSize: 11, color: '#8c8c8c' }}>
-                {new Date(rawTime).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                {new Date(record.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
               </div>
-            ) : null}
+            )}
           </div>
         )
       },
@@ -167,12 +157,7 @@ export const PaiementList: React.FC<PaiementListProps> = ({ refColis }) => {
       key: "reference_paiement",
       width: 180,
       render: (_: unknown, record: Paiement) => {
-        const ref =
-          record.reference_paiement ||
-          (record as any).reference_paiement ||
-          (record as any).reference ||
-          record.encaissement_ref ||
-          null
+        const ref = record.reference_paiement || (record as any).encaissement_ref
         return ref ? (
           <span style={{ fontFamily: 'monospace', fontSize: 12 }}>{ref}</span>
         ) : (
