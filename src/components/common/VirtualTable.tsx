@@ -160,7 +160,7 @@ export function VirtualTable<T extends object>({
         className={`lbp-table ${shouldVirtualize ? 'lbp-table-virtual' : ''} ${className}`}
       />
 
-      {shouldVirtualize && process.env.NODE_ENV === 'development' && (
+      {shouldVirtualize && import.meta.env.DEV && (
         <div className="virtual-badge">
           ⚡ {count} lignes virtualisées
         </div>
