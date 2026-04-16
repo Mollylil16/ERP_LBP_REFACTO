@@ -157,12 +157,14 @@ export class UsersService implements OnApplicationBootstrap {
     if (dto.agence_id !== undefined) {
       if (dto.agence_id === null) {
         user.agence = null;
+        user.agence_selected = false;
       } else {
         const agence = await this.agenceRepository.findOne({
           where: { id: dto.agence_id },
         });
         if (!agence) throw new NotFoundException('Agence introuvable');
         user.agence = agence;
+        user.agence_selected = true;
       }
     }
 

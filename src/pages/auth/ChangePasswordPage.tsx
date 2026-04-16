@@ -5,6 +5,7 @@ import { useAuth } from '@hooks/useAuth';
 import { usersService } from '@services/users.service';
 import { useNavigate } from 'react-router-dom';
 import '../public/LoginPage.css'; // Réutilisation des styles premium
+import { shouldSkipAgencySelection } from '@utils/agencyGate';
 
 const { Title, Text } = Typography;
 
@@ -25,10 +26,23 @@ export const ChangePasswordPage: React.FC = () => {
             message.success("Mot de passe mis à jour avec succès !");
 
             // Rafraîchir l'utilisateur pour mettre à jour le flag must_change_password
-            await refreshUser();
+            const updated = await refreshUser();
+            const permsRaw =
+                sessionStorage.getItem('lbp_permissions') ?? localStorage.getItem('lbp_permissions');
+            let perms: string[] = [];
+            try {
+                const p = permsRaw ? JSON.parse(permsRaw) : [];
+                perms = Array.isArray(p) ? p : [];
+            } catch {
+                perms = [];
+            }
 
-            // Redirection vers la suite du flux (sélection d'agence ou dashboard)
-            navigate('/');
+            // Suite du flux : sélection d'agence obligatoire pour les profils « agence »
+            if (updated && !shouldSkipAgencySelection(updated, perms) && !updated.agence_selected) {
+                navigate('/auth/select-agency', { replace: true });
+            } else {
+                navigate('/', { replace: true });
+            }
         } catch (error: any) {
             message.error(error.response?.data?.message || "Erreur lors du changement de mot de passe");
         } finally {

@@ -76,7 +76,7 @@ export class AuthService {
   }
 
   toPublicUser(user: any) {
-    const hasGlobalAgencyAccess = this.hasGlobalAgencyAccess(user);
+    const skipAgency = this.skipAgencySelection(user);
     const roleCode = this.resolveRoleCode(user);
 
     return {
@@ -103,9 +103,14 @@ export class AuthService {
       can_modify: user.code_acces !== 2,
       status: user.actif ? 'active' : ('inactive' as 'active' | 'inactive'),
       must_change_password: user.must_change_password ?? false,
-      agence_selected: hasGlobalAgencyAccess
+      /**
+       * Ne pas déduire `agence_selected` depuis `code_acces === 1` (défaut à la création)
+       * ni depuis la présence d’une agence seule : seuls les profils « siège » sautent l’écran.
+       * Sinon : flag explicite en base OU agence déjà assignée (admin).
+       */
+      agence_selected: skipAgency
         ? true
-        : (user.agence_selected ?? user.agence != null),
+        : Boolean(user.agence_selected || user.agence?.id),
       actif: user.actif,
       created_at: user.created_at
         ? new Date(user.created_at).toISOString()
@@ -349,14 +354,18 @@ export class AuthService {
     return ensureDashboardPermissions([]);
   }
 
-  private hasGlobalAgencyAccess(user: any): boolean {
+  /**
+   * Utilisateurs qui ne doivent pas passer par l’écran « choix d’agence ».
+   * (Ne pas inclure `code_acces === 1` : c’est la valeur par défaut pour la plupart des rôles.)
+   */
+  private skipAgencySelection(user: any): boolean {
     const rc = this.resolveRoleCode(user);
     return Boolean(
       user?.peut_voir_toutes_agences ||
         user?.code_acces === 2 ||
-        user?.code_acces === 1 ||
         rc === 'DIRECTEUR' ||
-        rc === 'ADMIN',
+        rc === 'ADMIN' ||
+        rc === 'ASSISTANT_DG',
     );
   }
 }

@@ -12,6 +12,7 @@ import { MainLayout } from '../components/layout/MainLayout'
 import { OnboardingTourProvider } from '../components/onboarding/AppOnboardingTour'
 import { PublicLayout } from '../components/layout/PublicLayout'
 import { LazyPageLoader } from '../components/common/LazyPageLoader'
+import { shouldSkipAgencySelection } from '@utils/agencyGate'
 
 function getStoredPermissions(): string[] {
   try {
@@ -168,17 +169,9 @@ export const AppRoutes: React.FC = () => {
   const { isAuthenticated, user } = useAuth()
   const location = useLocation()
 
-  const hasGlobalAgencyAccess = (() => {
+  const skipAgencyScreen = (() => {
     if (!user) return false
-    const storedPermissions = getStoredPermissions()
-    const allPermissions = Array.isArray(storedPermissions) && storedPermissions.includes('*')
-    return Boolean(
-      user.peut_voir_toutes_agences ||
-      user.filter_mode === 'all' ||
-      user.role?.code === 'DIRECTEUR' ||
-      user.role?.code === 'ADMIN' ||
-      allPermissions
-    )
+    return shouldSkipAgencySelection(user, getStoredPermissions())
   })()
 
   // ✅ Redirection forcée pour le flux de première connexion
@@ -191,7 +184,7 @@ export const AppRoutes: React.FC = () => {
     if (
       !user.must_change_password &&
       !user.agence_selected &&
-      !hasGlobalAgencyAccess &&
+      !skipAgencyScreen &&
       location.pathname !== '/auth/select-agency'
     ) {
       return <Navigate to="/auth/select-agency" replace />

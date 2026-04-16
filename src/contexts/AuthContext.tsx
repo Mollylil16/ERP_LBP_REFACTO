@@ -10,6 +10,7 @@ import { useNavigate } from "react-router-dom";
 import { User, LoginCredentials, AuthResponse } from "@types";
 import { authService } from "@services/auth.service";
 import toast from "react-hot-toast";
+import { shouldSkipAgencySelection } from "@utils/agencyGate";
 
 interface AuthContextType {
   user: User | null;
@@ -18,7 +19,7 @@ interface AuthContextType {
   permissions: string[];
   login: (credentials: LoginCredentials) => Promise<void>;
   logout: () => void;
-  refreshUser: () => Promise<void>;
+  refreshUser: () => Promise<User | null>;
   getCurrency: () => string;
 }
 
@@ -115,17 +116,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   }, []);
 
   const hasGlobalAgencyAccess = useCallback((u: User | null, perms?: string[]) => {
-    if (!u) return false;
-    const roleCode = u.role?.code;
-    const allPermissions = Array.isArray(perms) ? perms.includes('*') : false;
-    return Boolean(
-      u.peut_voir_toutes_agences ||
-        u.code_acces === 2 ||
-        u.filter_mode === 'all' ||
-        roleCode === 'DIRECTEUR' ||
-        roleCode === 'ADMIN' ||
-        allPermissions
-    );
+    return shouldSkipAgencySelection(u, perms);
   }, []);
 
   // Vérifier si l'utilisateur est déjà connecté au chargement
@@ -266,7 +257,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   };
 
-  const logout = () => {
+  const logout = useCallback(() => {
     localStorage.removeItem("lbp_token");
     localStorage.removeItem("lbp_refresh_token");
     localStorage.removeItem("lbp_permissions");
@@ -280,17 +271,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     hasCheckedAuth.current = false; // Réinitialiser pour permettre une nouvelle vérification
     navigate("/login");
     toast.success("Déconnexion réussie");
-  };
+  }, [navigate]);
 
-  const refreshUser = useCallback(async () => {
+  const refreshUser = useCallback(async (): Promise<User | null> => {
     try {
       const userData = await authService.getCurrentUser();
-      setUser(userData);
+      const u = normalizeUser(userData);
+      setUser(u);
+      return u;
     } catch (error) {
       console.error("Error refreshing user:", error);
       logout();
+      return null;
     }
-  }, []);
+  }, [normalizeUser, logout]);
 
   const getCurrency = useCallback(() => {
     return user?.agency?.currency || "XOF";
