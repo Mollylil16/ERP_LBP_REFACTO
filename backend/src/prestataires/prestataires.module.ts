@@ -9,6 +9,7 @@ import { NotificationModule } from '../notifications/notification.module';
 import { Agence } from '../agences/entities/agence.entity';
 import { User } from '../users/entities/user.entity';
 import { PrestatairesAlertsService } from './prestataires-alerts.service';
+import { RolesModule } from '../roles/roles.module';
 
 @Module({
   imports: [
@@ -20,6 +21,8 @@ import { PrestatairesAlertsService } from './prestataires-alerts.service';
       User,
     ]),
     forwardRef(() => NotificationModule),
+    // PermissionsGuard dépend de RolesService → fournir le provider dans ce module
+    RolesModule,
   ],
   controllers: [PrestatairesController],
   providers: [PrestatairesService, PrestatairesAlertsService],
