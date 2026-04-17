@@ -9,11 +9,13 @@ import toast from 'react-hot-toast'
  */
 export function useColisList(
   formeEnvoi: 'groupage' | 'autres_envoi',
-  params?: PaginationParams
+  params?: PaginationParams,
+  options?: { enabled?: boolean }
 ) {
   return useQuery({
     queryKey: ['colis', formeEnvoi, params],
     queryFn: () => colisService.getColis(formeEnvoi, params),
+    enabled: options?.enabled,
   })
 }
 

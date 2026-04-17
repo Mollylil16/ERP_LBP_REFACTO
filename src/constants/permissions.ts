@@ -112,6 +112,8 @@ export const PERMISSIONS = {
 
   /** Crédits inter-agences & points journaliers (codes `exploitation.*` côté API) */
   EXPLOITATION: {
+    // Exploitation (colis) — utilisés par certains endpoints transverses (ex: produits-catalogue)
+    GROUPAGE_COLIS_CREATE: 'exploitation.groupage_colis.create',
     CREDITS_READ: 'exploitation.credits.read',
     CREDITS_MANAGE: 'exploitation.credits.manage',
     CREDITS_EXPORT: 'exploitation.credits.export',

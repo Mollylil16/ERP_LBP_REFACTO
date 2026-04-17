@@ -77,6 +77,10 @@ export const SuiviCaissePage: React.FC = () => {
     queryKey: ['caisse-active-session', idCaisse],
     queryFn: () => caisseService.getActiveSession(idCaisse),
     enabled: Boolean(idCaisse),
+    // Important: un autre utilisateur peut ouvrir/fermer la session.
+    // Sans refresh, l'écran d'un chef d'agence reste bloqué sur "fermée".
+    refetchInterval: 10_000,
+    refetchOnWindowFocus: true,
   })
 
   const { data: pointDuJour, isLoading: pointLoading, refetch: refetchPoint } = useQuery({

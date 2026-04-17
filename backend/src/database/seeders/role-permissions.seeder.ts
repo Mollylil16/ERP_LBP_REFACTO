@@ -375,6 +375,12 @@ const rolePermissionsMatrix = {
     'callcenter.inbox',
     'structures.clients.read',
     'structures.agences.read',
+    // Lecture multi-agences (relation client)
+    'exploitation.groupage_colis.read',
+    'exploitation.autres_envois.read',
+    // Factures / paiements : lecture seule pour répondre aux clients
+    'facturation.facturer.read',
+    'operation_caisse.reglement_client.read',
     'litiges.view',
     'litiges.create',
   ],

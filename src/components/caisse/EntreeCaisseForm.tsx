@@ -21,6 +21,8 @@ import {
 import type { MouvementCaisse, ModeReglement } from "@/types";
 import { useAuth } from "@hooks/useAuth";
 import { useColisList } from "@hooks/useColis";
+import { usePermissions } from "@hooks/usePermissions";
+import { PERMISSIONS } from "@constants/permissions";
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -48,14 +50,23 @@ export const EntreeCaisseForm: React.FC<EntreeCaisseFormProps> = ({
   const [modeReglement, setModeReglement] =
     React.useState<ModeReglement>("ESPECE");
   const { user } = useAuth();
-  const { data: colisGroupage } = useColisList("groupage", {
-    page: 1,
-    limit: 1000,
-  });
-  const { data: colisAutres } = useColisList("autres_envoi", {
-    page: 1,
-    limit: 1000,
-  });
+  const { hasAnyPermission } = usePermissions();
+  const canReadColis = hasAnyPermission([
+    PERMISSIONS.COLIS_GROUPAGE.READ,
+    PERMISSIONS.COLIS_AUTRES_ENVOIS.READ,
+  ]);
+  const shouldLoadColis = Boolean(visible) && canReadColis;
+
+  const { data: colisGroupage } = useColisList(
+    "groupage",
+    { page: 1, limit: 1000 },
+    { enabled: shouldLoadColis },
+  );
+  const { data: colisAutres } = useColisList(
+    "autres_envoi",
+    { page: 1, limit: 1000 },
+    { enabled: shouldLoadColis },
+  );
 
   // Combiner les deux listes pour l'autocomplete
   const colisData = React.useMemo(() => {

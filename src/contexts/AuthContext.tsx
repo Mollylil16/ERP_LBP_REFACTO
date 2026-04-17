@@ -146,7 +146,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         // Vérifier la validité du token et récupérer l'utilisateur
         try {
           const userData = await authService.getCurrentUser();
-          setUser(normalizeUser(userData));
+          const normalized = normalizeUser(userData);
+          // 🔒 Sécuriser le cache permissions : éviter les permissions "restées" d'un autre compte.
+          const cachedUid =
+            sessionStorage.getItem("lbp_permissions_user_id") ??
+            localStorage.getItem("lbp_permissions_user_id");
+          if (cachedUid && String(normalized?.id ?? "") !== String(cachedUid)) {
+            sessionStorage.removeItem("lbp_permissions");
+            localStorage.removeItem("lbp_permissions");
+            sessionStorage.removeItem("lbp_permissions_user_id");
+            localStorage.removeItem("lbp_permissions_user_id");
+            setPermissions([]);
+          }
+          setUser(normalized);
         } catch (error: any) {
           // Si l'erreur est 401, le token est invalide
           if (error.response?.status === 401 || error.response?.status === 403) {
@@ -214,6 +226,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         "lbp_permissions",
         JSON.stringify(response.permissions)
       );
+      sessionStorage.setItem("lbp_permissions_user_id", String((response.user as any)?.id ?? ""));
       localStorage.removeItem("lbp_permissions");
       // Source unique en mémoire (instantané)
       setPermissions(Array.isArray(response.permissions) ? response.permissions : []);
@@ -264,10 +277,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     localStorage.removeItem("lbp_token");
     localStorage.removeItem("lbp_refresh_token");
     localStorage.removeItem("lbp_permissions");
+    localStorage.removeItem("lbp_permissions_user_id");
     localStorage.removeItem("lbp_mock_user");
     sessionStorage.removeItem("lbp_token");
     sessionStorage.removeItem("lbp_refresh_token");
     sessionStorage.removeItem("lbp_permissions");
+    sessionStorage.removeItem("lbp_permissions_user_id");
     sessionStorage.removeItem("lbp_mock_user");
     setPermissions([]);
     setUser(null);
