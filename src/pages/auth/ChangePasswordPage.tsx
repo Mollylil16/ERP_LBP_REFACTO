@@ -37,8 +37,8 @@ export const ChangePasswordPage: React.FC = () => {
                 perms = [];
             }
 
-            // Suite du flux : sélection d'agence obligatoire pour les profils « agence »
-            if (updated && !shouldSkipAgencySelection(updated, perms) && !updated.agence_selected) {
+            // Suite du flux : sélection d'agence obligatoire si aucune agence n'est enregistrée
+            if (updated && !shouldSkipAgencySelection(updated, perms) && !(updated.agency_id || updated.agency?.id)) {
                 navigate('/auth/select-agency', { replace: true });
             } else {
                 navigate('/', { replace: true });

@@ -21,6 +21,14 @@ export const SelectAgencyPage: React.FC = () => {
         queryFn: () => apiService.get('/agences'),
     });
 
+    const roleCode = user?.role?.code;
+    const mustAttachToAbobo = roleCode === 'CAISSIER'; // Caissier Principal
+    const agencesToShow = (agences || []).filter((a) => {
+        if (!mustAttachToAbobo) return true;
+        const code = (a.code || '').toUpperCase();
+        return code === 'CI-ABOBO';
+    });
+
     const handleSelect = async (agenceId: number) => {
         if (!user) return;
         setSelectingId(agenceId);
@@ -28,7 +36,8 @@ export const SelectAgencyPage: React.FC = () => {
             await usersService.selectAgence(user.id, agenceId);
             message.success("Agence configurée avec succès !");
             await refreshUser();
-            navigate('/dashboard');
+            // Laisser le routeur déterminer la bonne page selon le rôle/permissions.
+            navigate('/', { replace: true });
         } catch (error: any) {
             message.error("Erreur lors de la sélection de l'agence");
         } finally {
@@ -55,7 +64,7 @@ export const SelectAgencyPage: React.FC = () => {
 
                 <div style={{ maxWidth: 1000, width: '100%', margin: '0 auto' }}>
                     <Row gutter={[24, 24]}>
-                        {agences?.map((agence) => (
+                        {agencesToShow?.map((agence) => (
                             <Col xs={24} sm={12} md={8} key={agence.id}>
                                 <Card
                                     hoverable
@@ -96,6 +105,14 @@ export const SelectAgencyPage: React.FC = () => {
                             </Col>
                         ))}
                     </Row>
+
+                    {mustAttachToAbobo && agencesToShow.length === 0 && (
+                        <div style={{ textAlign: 'center', marginTop: 24 }}>
+                            <Text type="danger">
+                                Agence obligatoire introuvable: <strong>CI-ABOBO</strong>. Contactez l’administrateur.
+                            </Text>
+                        </div>
+                    )}
 
                     <div style={{ textAlign: 'center', marginTop: 40 }}>
                         <Button type="link" onClick={logout} icon={<LogoutOutlined />}>

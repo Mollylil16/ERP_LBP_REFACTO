@@ -236,7 +236,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       if (normalizedUser.must_change_password) {
         console.log('[Auth] Redirecting to change-password');
         navigate("/auth/change-password", { replace: true });
-      } else if (!normalizedUser.agence_selected && !hasGlobalAgencyAccess(normalizedUser, response.permissions)) {
+      } else if (
+        !hasGlobalAgencyAccess(normalizedUser, response.permissions) &&
+        !(normalizedUser.agency_id || normalizedUser.agency?.id)
+      ) {
         console.log('[Auth] Redirecting to select-agency');
         navigate("/auth/select-agency", { replace: true });
       } else {

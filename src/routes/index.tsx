@@ -183,8 +183,8 @@ export const AppRoutes: React.FC = () => {
     // 2. Forcer la sélection d'agence si elle n'est pas encore faite (et mdp déjà changé)
     if (
       !user.must_change_password &&
-      !user.agence_selected &&
       !skipAgencyScreen &&
+      !(user.agency_id || user.agency?.id) &&
       location.pathname !== '/auth/select-agency'
     ) {
       return <Navigate to="/auth/select-agency" replace />
