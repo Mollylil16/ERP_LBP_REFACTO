@@ -288,10 +288,7 @@ const rolePermissionsMatrix = {
     'exploitation.autres_envois.create',
     'exploitation.autres_envois.read',
     // Pas de modification/suppression après enregistrement (réservé chef/manager)
-    // Facturation client (émission / suivi factures groupage)
-    'facturation.facturer.create',
-    'facturation.facturer.read',
-    'facturation.facturer.update',
+    // Pas de facturation / encaissement : réservé caissiers d’agence et caissier principal
     // NB: Les points journaliers / récap crédits sont gérés par le CHEF_AGENCE (pas AGENT_GROUPAGE)
     // Création client depuis saisie colis (certains clients sans pièce)
     'structures.clients.create',
@@ -335,6 +332,8 @@ const rolePermissionsMatrix = {
     // Prestataires: retraits hub (caisse principale)
     'exploitation.prestataires_retraits_hub.read',
     'exploitation.prestataires_retraits_hub.update',
+    // Liste / consultation factures clients (toutes agences visibles côté API pour ce rôle)
+    'facturation.facturer.read',
   ],
   CAISSIER_AGENCE: [
     // Caisse agence : opérations et lecture sur sa caisse (API filtre par id_agence)

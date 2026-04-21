@@ -19,10 +19,11 @@ import { FacturesService } from './factures.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { RequirePermission } from '../auth/decorators/permissions.decorator';
+import { AgencyRequiredGuard } from '../auth/guards/agency-required.guard';
 
 @ApiTags('factures')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, PermissionsGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard, AgencyRequiredGuard)
 @Controller('factures')
 export class FacturesController {
   constructor(private readonly facturesService: FacturesService) {}

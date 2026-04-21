@@ -13,12 +13,13 @@ import { CaisseService } from './caisse.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { RequirePermission } from '../auth/decorators/permissions.decorator';
+import { AgencyRequiredGuard } from '../auth/guards/agency-required.guard';
 import { MouvementType } from './entities/mouvement-caisse.entity';
 import { effectiveRoleCode } from '../common/effective-role-code';
 
 @ApiTags('caisse')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, PermissionsGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard, AgencyRequiredGuard)
 @Controller('caisse')
 export class CaisseController {
   constructor(private readonly caisseService: CaisseService) {}

@@ -20,11 +20,12 @@ import { CreatePaiementDto } from './dto/create-paiement.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { RequirePermission } from '../auth/decorators/permissions.decorator';
+import { AgencyRequiredGuard } from '../auth/guards/agency-required.guard';
 import type { Response } from 'express';
 
 @ApiTags('paiements')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, PermissionsGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard, AgencyRequiredGuard)
 @Controller('paiements')
 export class PaiementsController {
   constructor(private readonly paiementsService: PaiementsService) {}

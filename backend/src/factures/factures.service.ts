@@ -32,6 +32,31 @@ export class FacturesService {
     private readonly creditsColisService: CreditsColisService,
   ) {}
 
+  /** Rôle JWT : string ou objet `{ code }` selon la stratégie d’auth. */
+  private resolveRoleCode(user: any): string {
+    const r = user?.role;
+    if (typeof r === 'string') return String(r).trim().toUpperCase();
+    if (r && typeof r === 'object' && typeof (r as { code?: string }).code === 'string') {
+      return String((r as { code: string }).code).trim().toUpperCase();
+    }
+    return '';
+  }
+
+  /**
+   * Liste / recherche factures sans filtre par agence (supervision, direction).
+   * Aligné avec le besoin métier : le superviseur régional voit les factures de toutes les agences.
+   */
+  private userSeesAllFacturesAcrossAgences(user: any): boolean {
+    const rc = this.resolveRoleCode(user);
+    if (['ADMIN', 'DIRECTEUR', 'SUPERVISEUR_REGIONAL'].includes(rc)) {
+      return true;
+    }
+    if (user?.peut_voir_toutes_agences === true) return true;
+    if (Number(user?.code_acces) === 2) return true;
+    if (user?.filter_mode === 'all') return true;
+    return false;
+  }
+
   async createProforma(colis: Colis, userId: string): Promise<Facture> {
     const numFacture = await this.generateReference();
 
@@ -96,7 +121,7 @@ export class FacturesService {
   async findAll(user: any): Promise<Facture[]> {
     const where: any = {};
 
-    const canSeeAll = ['ADMIN', 'DIRECTEUR'].includes(user.role);
+    const canSeeAll = this.userSeesAllFacturesAcrossAgences(user);
 
     if (!canSeeAll && user.id_agence) {
       where.colis = { agence: { id: user.id_agence } };
@@ -196,13 +221,7 @@ export class FacturesService {
     if (!t) {
       throw new BadRequestException('Paramètre de recherche requis');
     }
-    const roleCode =
-      typeof user?.role === 'string'
-        ? user.role
-        : (user?.role as { code?: string } | undefined)?.code;
-    const canSeeAll = ['ADMIN', 'DIRECTEUR'].includes(
-      String(roleCode || '').toUpperCase(),
-    );
+    const canSeeAll = this.userSeesAllFacturesAcrossAgences(user);
 
     let facture =
       (await this.factureRepository.findOne({
@@ -261,13 +280,7 @@ export class FacturesService {
     if (!facture) {
       throw new NotFoundException(`Facture « ${num} » introuvable`);
     }
-    const roleCode =
-      typeof user?.role === 'string'
-        ? user.role
-        : (user?.role as { code?: string } | undefined)?.code;
-    const canSeeAll = ['ADMIN', 'DIRECTEUR'].includes(
-      String(roleCode || '').toUpperCase(),
-    );
+    const canSeeAll = this.userSeesAllFacturesAcrossAgences(user);
     if (!canSeeAll && user?.id_agence && facture.colis?.agence?.id !== user.id_agence) {
       throw new ForbiddenException('Accès à cette facture refusé');
     }

@@ -27,6 +27,7 @@ import {
   SwapOutlined,
 } from "@ant-design/icons";
 import { usePermissions } from "@hooks/usePermissions";
+import { useAuth } from "@hooks/useAuth";
 import { ROUTE_ACCESS, COLIS_READ_ANY } from "@constants/routeAccess";
 import "./SidebarMenu.css";
 
@@ -38,6 +39,10 @@ export const SidebarMenu: React.FC<SidebarMenuProps> = ({ collapsed: _collapsed 
   const navigate = useNavigate();
   const location = useLocation();
   const { hasPermission, hasAnyPermission } = usePermissions();
+  const { user } = useAuth();
+  const roleCodeUpper = String(user?.role?.code ?? "").toUpperCase();
+  /** Même si d’anciennes permissions JWT traînent, le volet facturation n’est pas pour l’agent groupage. */
+  const hideFacturationTresorerieForAgentGroupage = roleCodeUpper === "AGENT_GROUPAGE";
 
   const canColisGroupage =
     hasPermission("colis.groupage.read") ||
@@ -96,9 +101,10 @@ export const SidebarMenu: React.FC<SidebarMenuProps> = ({ collapsed: _collapsed 
   const showRapportsAnalyse = canColisRapports || canStatistiques;
 
   const showFacturationTresorerie =
-    hasPermission(ROUTE_ACCESS.factures) ||
-    hasPermission(ROUTE_ACCESS.paiements) ||
-    hasPermission(ROUTE_ACCESS.caisse);
+    !hideFacturationTresorerieForAgentGroupage &&
+    (hasPermission(ROUTE_ACCESS.factures) ||
+      hasPermission(ROUTE_ACCESS.paiements) ||
+      hasPermission(ROUTE_ACCESS.caisse));
 
   const settingsChildren = [
     ...(hasPermission(ROUTE_ACCESS.settings)

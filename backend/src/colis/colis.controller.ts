@@ -22,6 +22,7 @@ import { CreateColisDto } from './dto/create-colis.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { RequirePermission } from '../auth/decorators/permissions.decorator';
+import { AgencyRequiredGuard } from '../auth/guards/agency-required.guard';
 
 const COLIS_READ = ['colis.groupage.read', 'colis.autres-envois.read'] as const;
 const COLIS_CREATE = [
@@ -43,7 +44,7 @@ const COLIS_VALIDATE = [
 
 @ApiTags('colis')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, PermissionsGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard, AgencyRequiredGuard)
 @Controller('colis')
 export class ColisController {
   constructor(private readonly colisService: ColisService) {}
