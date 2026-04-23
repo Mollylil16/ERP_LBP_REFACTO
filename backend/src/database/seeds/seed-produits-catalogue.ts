@@ -339,7 +339,7 @@ export async function seedProduitsCatalogue(dataSource: DataSource) {
 
     // ========== CATÉGORIE: COLIS RAPIDE EXPORT ==========
     { nom: 'POISSON FUME', categorie: CategoriesProduit.COLIS_RAPIDE_EXPORT, nature: NaturePrix.PRIX_UNITAIRE, prix_unitaire: 5500, description: 'A PARTIR DE 2 KG', unite: 'kg' },
-    { nom: 'CREVETTE', categorie: CategoriesProduit.COLIS_RAPIDE_EXPORT, nature: NaturePrix.PRIX_UNITAIRE, prix_unitaire: 5500, description: 'A PARTIR DE 2 KG', unite: 'kg' },
+    { nom: 'CREVETTE FUMEE', categorie: CategoriesProduit.COLIS_RAPIDE_EXPORT, nature: NaturePrix.PRIX_UNITAIRE, prix_unitaire: 5500, description: 'A PARTIR DE 2 KG', unite: 'kg' },
     { nom: 'ESCARGOT', categorie: CategoriesProduit.COLIS_RAPIDE_EXPORT, nature: NaturePrix.PRIX_UNITAIRE, prix_unitaire: 5500, description: 'A PARTIR DE 2 KG', unite: 'kg' },
     { nom: 'POULET FUME', categorie: CategoriesProduit.COLIS_RAPIDE_EXPORT, nature: NaturePrix.PRIX_UNITAIRE, prix_unitaire: 5500, description: 'A PARTIR DE 2 KG', unite: 'kg' },
     {

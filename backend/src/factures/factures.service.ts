@@ -1011,7 +1011,7 @@ export class FacturesService {
 
         // ── Ligne 1 : Adresse
         doc
-          .fontSize(8)
+          .fontSize(10)
           .font('Helvetica-Bold')
           .fillColor(NAVY)
           .text(
@@ -1029,7 +1029,7 @@ export class FacturesService {
           .text(
             'Tél : +33 7 75 73 27 97  /  +33 7 51 19 83 82  /  +33 7 45 93 56 92',
             M,
-            FTR_TEXT_Y + 12,
+            FTR_TEXT_Y + 14,
             { width: CONTENT_W, align: 'center' },
           );
 

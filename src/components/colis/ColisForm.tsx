@@ -47,6 +47,9 @@ import { PERMISSIONS } from '@constants/permissions'
 const { Title, Text } = Typography
 const { Option } = Select
 
+const DESTINATION_FRANCE_BOBIGNY =
+  'ADRESSE : PARIS 17 CHEMIN DES VIGNES 93000 BOBIGNY'
+
 // Schéma de validation Zod
 const marchandiseSchema = z.object({
   nom_marchandise: z.string().min(1, 'Le nom de la marchandise est obligatoire'),
@@ -224,6 +227,7 @@ export const ColisForm: React.FC<ColisFormProps> = ({
 
   // Observer les valeurs de marchandise pour calculer le total
   const marchandiseValues = watch('marchandise')
+  const traficEnvoiValue = watch('trafic_envoi')
 
   /** Édition d’un colis existant : autoriser les dates d’envoi passées dans le DatePicker */
   const allowPastShipmentDate = Boolean(initialData?.date_envoi)
@@ -409,6 +413,23 @@ export const ColisForm: React.FC<ColisFormProps> = ({
       }
     }
   }, [initialData, setValue, user])
+
+  const isFranceShipment =
+    typeof traficEnvoiValue === 'string' &&
+    traficEnvoiValue.toLowerCase().includes('france')
+
+  // Tous les colis "France -> CI" vont à une adresse unique (Bobigny)
+  useEffect(() => {
+    if (isFranceShipment) {
+      const current = String(getValues('lieu_dest') || '').trim()
+      if (!current) {
+        setValue('lieu_dest', DESTINATION_FRANCE_BOBIGNY, {
+          shouldValidate: true,
+          shouldDirty: true,
+        })
+      }
+    }
+  }, [getValues, isFranceShipment, setValue])
 
   const addMarchandiseLine = () => {
     const newIndex = Math.max(...marchandiseLines) + 1
@@ -1467,7 +1488,20 @@ export const ColisForm: React.FC<ColisFormProps> = ({
                   validateStatus={errors.lieu_dest ? 'error' : ''}
                   help={errors.lieu_dest?.message}
                 >
-                  <Input {...field} placeholder="Ville, Pays" size="large" />
+                  {isFranceShipment ? (
+                    <AutoComplete
+                      value={field.value}
+                      onChange={(v: string) => field.onChange(v)}
+                      onSelect={(v: string) => field.onChange(v)}
+                      size="large"
+                      options={[
+                        { value: DESTINATION_FRANCE_BOBIGNY },
+                      ]}
+                      placeholder="Sélectionner l’adresse Bobigny ou saisir une autre adresse…"
+                    />
+                  ) : (
+                    <Input {...field} placeholder="Ville, Pays" size="large" />
+                  )}
                 </Form.Item>
               )}
             />
