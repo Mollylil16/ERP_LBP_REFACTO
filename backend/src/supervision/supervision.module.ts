@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { CaisseModule } from '../caisse/caisse.module';
 import { NotificationModule } from '../notifications/notification.module';
+import { RolesModule } from '../roles/roles.module';
 import { Agence } from '../agences/entities/agence.entity';
 import { Colis } from '../colis/entities/colis.entity';
 import { Paiement } from '../paiements/entities/paiement.entity';
@@ -22,6 +23,7 @@ import { SupervisionController } from './supervision.controller';
   imports: [
     CaisseModule,
     NotificationModule,
+    RolesModule,
     TypeOrmModule.forFeature([
       Agence,
       Colis,
