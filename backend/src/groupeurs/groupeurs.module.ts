@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { NotificationModule } from '../notifications/notification.module';
 import { UsersModule } from '../users/users.module';
+import { RolesModule } from '../roles/roles.module';
 import { GroupeursAdminController } from './controllers/groupeurs-admin.controller';
 import { GroupeursEspaceController } from './controllers/groupeurs-espace.controller';
 import { GroupeurOwnerGuard } from './guards/groupeur-owner.guard';
@@ -34,6 +35,7 @@ import { User } from '../users/entities/user.entity';
     ]),
     NotificationModule,
     UsersModule,
+    RolesModule,
   ],
   controllers: [GroupeursAdminController, GroupeursEspaceController],
   providers: [
