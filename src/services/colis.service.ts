@@ -69,7 +69,7 @@ function adaptColisFromBackend(backendColis: any): Colis {
       email_exp: backendColis.client.email_exp,
       date_enrg: (backendColis.client.created_at || backendColis.client.createdAt)
         ? new Date(backendColis.client.created_at || backendColis.client.createdAt).toISOString()
-        : '',
+        : undefined,
     } : {} as ClientColis,
     nom_destinataire: backendColis.nom_dest || '',
     lieu_dest: backendColis.lieu_dest || '',
@@ -84,7 +84,7 @@ function adaptColisFromBackend(backendColis: any): Colis {
     code_user: backendColis.code_user || '',
     date_enrg: (backendColis.created_at || backendColis.createdAt)
       ? new Date(backendColis.created_at || backendColis.createdAt).toISOString()
-      : '',
+      : undefined,
     marchandises: marchandises,
   }
 }

@@ -7,6 +7,7 @@ import {
   UseGuards,
   Request,
   Param,
+  ForbiddenException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { CaisseService } from './caisse.service';
@@ -82,7 +83,12 @@ export class CaisseController {
   @ApiOperation({ summary: 'Liste des mouvements de caisse' })
   getMouvements(@Query() query: any, @Request() req) {
     const rc = this.reqRole(req);
-    const canSeeAll = ['ADMIN', 'DIRECTEUR', 'SUPER_ADMIN'].includes(rc);
+    const canSeeAll = [
+      'ADMIN',
+      'DIRECTEUR',
+      'SUPER_ADMIN',
+      'SUPERVISEURE_GENERALE',
+    ].includes(rc);
     const agenceId =
       canSeeAll || rc === 'CAISSIER' ? undefined : req.user.id_agence;
     return this.caisseService.getMouvements(query, agenceId);
@@ -98,7 +104,12 @@ export class CaisseController {
       if (rc === 'CAISSIER') {
         finalCaisseId = await this.caisseService.resolveHubPrincipalCaisseId();
       } else if (req.user.id_agence) {
-        const canSeeAll = ['ADMIN', 'DIRECTEUR', 'SUPER_ADMIN'].includes(rc);
+        const canSeeAll = [
+          'ADMIN',
+          'DIRECTEUR',
+          'SUPER_ADMIN',
+          'SUPERVISEURE_GENERALE',
+        ].includes(rc);
         const agenceId = canSeeAll ? undefined : req.user.id_agence;
         const caisses = await this.caisseService.findAllCaisses(agenceId);
         finalCaisseId = caisses[0]?.id;
@@ -125,7 +136,12 @@ export class CaisseController {
       if (rc === 'CAISSIER') {
         id = await this.caisseService.resolveHubPrincipalCaisseId();
       } else if (req.user.id_agence) {
-        const canSeeAll = ['ADMIN', 'DIRECTEUR', 'SUPER_ADMIN'].includes(rc);
+        const canSeeAll = [
+          'ADMIN',
+          'DIRECTEUR',
+          'SUPER_ADMIN',
+          'SUPERVISEURE_GENERALE',
+        ].includes(rc);
         const agenceId = canSeeAll ? undefined : req.user.id_agence;
         const caisses = await this.caisseService.findAllCaisses(agenceId);
         id = caisses[0]?.id;
@@ -142,7 +158,12 @@ export class CaisseController {
   @ApiOperation({ summary: 'Liste des caisses' })
   async getCaisses(@Request() req) {
     const rc = this.reqRole(req);
-    const canSeeAll = ['ADMIN', 'DIRECTEUR', 'SUPER_ADMIN'].includes(rc);
+    const canSeeAll = [
+      'ADMIN',
+      'DIRECTEUR',
+      'SUPER_ADMIN',
+      'SUPERVISEURE_GENERALE',
+    ].includes(rc);
     const agenceId =
       canSeeAll || rc === 'CAISSIER' ? undefined : req.user.id_agence;
     const rows = await this.caisseService.findAllCaisses(agenceId);
@@ -161,12 +182,44 @@ export class CaisseController {
     return this.caisseService.getRapportGrandesLignes(query);
   }
 
+  @Get('journee-consolidee')
+  @RequirePermission('caisse.view')
+  @ApiOperation({
+    summary:
+      'Journée consolidée : totaux + entrées/sorties par caisse (agence). ' +
+      'Caissier principal / direction : toutes agences. Caissier d’agence : son agence seulement.',
+  })
+  getJourneeConsolidee(@Query('date') date: string | undefined, @Request() req) {
+    const rc = this.reqRole(req);
+    const vueMultiAgences = [
+      'ADMIN',
+      'DIRECTEUR',
+      'SUPER_ADMIN',
+      'CAISSIER',
+      'SUPERVISEUR_REGIONAL',
+      'SUPERVISEURE_GENERALE',
+    ].includes(rc);
+    if (vueMultiAgences) {
+      return this.caisseService.getJourneeConsolideeParCaisses(date);
+    }
+    const aid = req.user?.id_agence ?? req.user?.agence?.id;
+    if (aid == null) {
+      throw new ForbiddenException('Agence requise pour ce profil');
+    }
+    return this.caisseService.getJourneeConsolideePourAgence(date, Number(aid));
+  }
+
   @Get('withdrawals')
   @RequirePermission('caisse.view')
   @ApiOperation({ summary: 'Liste spécifique des retraits (décaissements)' })
   getWithdrawals(@Query() query: any, @Request() req) {
     const rc = this.reqRole(req);
-    const canSeeAll = ['ADMIN', 'DIRECTEUR', 'SUPER_ADMIN'].includes(rc);
+    const canSeeAll = [
+      'ADMIN',
+      'DIRECTEUR',
+      'SUPER_ADMIN',
+      'SUPERVISEURE_GENERALE',
+    ].includes(rc);
     const agenceId =
       canSeeAll || rc === 'CAISSIER' ? undefined : req.user.id_agence;
     return this.caisseService.getMouvements(

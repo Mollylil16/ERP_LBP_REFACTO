@@ -888,6 +888,135 @@ export class CaisseService implements OnApplicationBootstrap {
     return { entrees, sorties, mouvementsCount };
   }
 
+  /**
+   * Vue « direction / caissier principal » : pour une date, totaux globaux + détail par caisse (donc par agence).
+   * Les versements inter-agences devraient apparaître comme mouvements sur la caisse concernée.
+   */
+  async getJourneeConsolideeParCaisses(date?: string): Promise<{
+    date_ref: string;
+    consolide: {
+      entrees: number;
+      sorties: number;
+      mouvementsCount: number;
+    };
+    par_caisse: Array<{
+      id_caisse: number;
+      nom_caisse: string | null;
+      id_agence: number | null;
+      agence: { id: number; nom: string; code: string } | null;
+      solde_actuel: number;
+      point_du_jour: Awaited<ReturnType<CaisseService['getPointCaisse']>>;
+    }>;
+  }> {
+    const consolide = await this.summarizeAllCaissesForDate(date);
+    const caisses = await this.caisseRepository.find({
+      relations: ['agence'],
+      order: { id: 'ASC' },
+    });
+    const par_caisse: Array<{
+      id_caisse: number;
+      nom_caisse: string | null;
+      id_agence: number | null;
+      agence: { id: number; nom: string; code: string } | null;
+      solde_actuel: number;
+      point_du_jour: Awaited<ReturnType<CaisseService['getPointCaisse']>>;
+    }> = [];
+    for (const c of caisses) {
+      const point = await this.getPointCaisse(date, c.id);
+      const solde_actuel = await this.getSolde(c.id);
+      par_caisse.push({
+        id_caisse: c.id,
+        nom_caisse: c.nom ?? null,
+        id_agence: c.agence?.id ?? null,
+        agence: c.agence
+          ? { id: c.agence.id, nom: c.agence.nom, code: c.agence.code }
+          : null,
+        solde_actuel,
+        point_du_jour: point,
+      });
+    }
+    const date_ref =
+      date && String(date).trim() !== ''
+        ? String(date).slice(0, 10)
+        : new Date().toISOString().slice(0, 10);
+    return { date_ref, consolide, par_caisse };
+  }
+
+  /** Même logique que la consolidation, limitée à l’agence du caissier d’agence. */
+  async getJourneeConsolideePourAgence(
+    date: string | undefined,
+    agenceId: number,
+  ): Promise<{
+    date_ref: string;
+    consolide: {
+      entrees: number;
+      sorties: number;
+      mouvementsCount: number;
+    };
+    par_caisse: Array<{
+      id_caisse: number;
+      nom_caisse: string | null;
+      id_agence: number | null;
+      agence: { id: number; nom: string; code: string } | null;
+      solde_actuel: number;
+      point_du_jour: Awaited<ReturnType<CaisseService['getPointCaisse']>>;
+    }>;
+  }> {
+    const caisses = await this.caisseRepository.find({
+      where: { agence: { id: agenceId } },
+      relations: ['agence'],
+      order: { id: 'ASC' },
+    });
+    if (!caisses.length) {
+      const date_ref =
+        date && String(date).trim() !== ''
+          ? String(date).slice(0, 10)
+          : new Date().toISOString().slice(0, 10);
+      return {
+        date_ref,
+        consolide: { entrees: 0, sorties: 0, mouvementsCount: 0 },
+        par_caisse: [],
+      };
+    }
+    let entrees = 0;
+    let sorties = 0;
+    let mouvementsCount = 0;
+    const par_caisse: Array<{
+      id_caisse: number;
+      nom_caisse: string | null;
+      id_agence: number | null;
+      agence: { id: number; nom: string; code: string } | null;
+      solde_actuel: number;
+      point_du_jour: Awaited<ReturnType<CaisseService['getPointCaisse']>>;
+    }> = [];
+    for (const c of caisses) {
+      const point = await this.getPointCaisse(date, c.id);
+      const solde_actuel = await this.getSolde(c.id);
+      entrees += Number(point.entrees) || 0;
+      sorties += Number(point.sorties) || 0;
+      mouvementsCount += Number(point.mouvementsCount) || 0;
+      par_caisse.push({
+        id_caisse: c.id,
+        nom_caisse: c.nom ?? null,
+        id_agence: c.agence?.id ?? null,
+        agence: c.agence
+          ? { id: c.agence.id, nom: c.agence.nom, code: c.agence.code }
+          : null,
+        solde_actuel,
+        point_du_jour: point,
+      });
+    }
+    const date_ref =
+      date && String(date).trim() !== ''
+        ? String(date).slice(0, 10)
+        : new Date().toISOString().slice(0, 10);
+    return {
+      date_ref,
+      consolide: { entrees, sorties, mouvementsCount },
+      par_caisse,
+    };
+  }
+
   async findAllCaisses(agenceId?: number): Promise<any[]> {
     const caisses = agenceId
       ? await this.caisseRepository.find({

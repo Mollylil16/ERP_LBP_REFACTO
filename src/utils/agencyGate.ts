@@ -17,6 +17,8 @@ export function shouldSkipAgencySelection(user: User | null, permissions?: strin
       rc === 'DIRECTEUR' ||
       rc === 'ADMIN' ||
       rc === 'ASSISTANT_DG' ||
+      rc === 'SUPERVISEURE_GENERALE' ||
+      rc === 'GROUPEUR_GROSSISTE' ||
       allPerms
   )
 }

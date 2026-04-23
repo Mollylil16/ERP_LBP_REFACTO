@@ -106,6 +106,9 @@ export const SidebarMenu: React.FC<SidebarMenuProps> = ({ collapsed: _collapsed 
       hasPermission(ROUTE_ACCESS.paiements) ||
       hasPermission(ROUTE_ACCESS.caisse));
 
+  const showGroupeurs =
+    hasPermission(ROUTE_ACCESS.groupeursAdmin) || hasPermission(ROUTE_ACCESS.groupeursEspace);
+
   const settingsChildren = [
     ...(hasPermission(ROUTE_ACCESS.settings)
       ? [
@@ -376,6 +379,11 @@ export const SidebarMenu: React.FC<SidebarMenuProps> = ({ collapsed: _collapsed 
                 label: "Suivi Caisse",
               },
               {
+                key: "/caisse/consolidee",
+                icon: <LineChartOutlined />,
+                label: "Journée consolidée (par agence)",
+              },
+              {
                 key: "/caisse/retraits",
                 icon: <ArrowUpOutlined />,
                 label: "Suivi des Retraits",
@@ -399,6 +407,15 @@ export const SidebarMenu: React.FC<SidebarMenuProps> = ({ collapsed: _collapsed 
   ];
 
   const menuItems: any[] = [
+    ...(hasPermission(ROUTE_ACCESS.supervision)
+      ? [
+          {
+            key: "/supervision",
+            icon: <GlobalOutlined />,
+            label: "Supervision réseau",
+          },
+        ]
+      : []),
     ...(hasPermission(ROUTE_ACCESS.dashboard)
       ? [
           {
@@ -449,6 +466,35 @@ export const SidebarMenu: React.FC<SidebarMenuProps> = ({ collapsed: _collapsed 
           },
         ]
       : []),
+    ...(showGroupeurs
+      ? [
+          {
+            key: "groupeurs_root",
+            icon: <ApartmentOutlined />,
+            label: "Groupeurs",
+            children: [
+              ...(hasPermission(ROUTE_ACCESS.groupeursAdmin)
+                ? [
+                    {
+                      key: "/groupeurs/admin",
+                      icon: <TeamOutlined />,
+                      label: "Administration",
+                    },
+                  ]
+                : []),
+              ...(hasPermission(ROUTE_ACCESS.groupeursEspace)
+                ? [
+                    {
+                      key: "/groupeurs/espace",
+                      icon: <FolderOutlined />,
+                      label: "Mon espace",
+                    },
+                  ]
+                : []),
+            ],
+          },
+        ]
+      : []),
     ...settingsMenuBlock,
     ...(administrationChildren.length > 0
       ? [
@@ -470,6 +516,7 @@ export const SidebarMenu: React.FC<SidebarMenuProps> = ({ collapsed: _collapsed 
         "rapports_analyse_root",
         "stats_finance_sub",
         "facturation_tresorerie_root",
+        "groupeurs_root",
         "caisse_root",
         "settings_root",
         "administration_root",

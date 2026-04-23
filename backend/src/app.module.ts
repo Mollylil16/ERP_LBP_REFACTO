@@ -28,6 +28,8 @@ import { ExploitationModule } from './exploitation/exploitation.module';
 import { FournituresBureauModule } from './fournitures-bureau/fournitures-bureau.module';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { PrestatairesModule } from './prestataires/prestataires.module';
+import { SupervisionModule } from './supervision/supervision.module';
+import { GroupeursModule } from './groupeurs/groupeurs.module';
 
 @Module({
   imports: [
@@ -112,6 +114,8 @@ import { PrestatairesModule } from './prestataires/prestataires.module';
     ExploitationModule,
     FournituresBureauModule,
     PrestatairesModule,
+    SupervisionModule,
+    GroupeursModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -69,6 +69,27 @@ export const PERMISSIONS = {
     VIEW_ALL: 'rapports.view-all',
   },
 
+  // Supervision réseau (superviseure générale)
+  SUPERVISION: {
+    DASHBOARD_READ: 'supervision.dashboard.read',
+    RAPPORT_READ: 'supervision.rapport.read',
+    RAPPORT_CREATE: 'supervision.rapport.create',
+    SIGNALEMENT_CREATE: 'supervision.signalement.create',
+    JUSTIFICATION_CREATE: 'supervision.justification.create',
+    ANNOTATION_CREATE: 'supervision.annotation.create',
+  },
+
+  // Espace Groupeurs / Grossistes
+  GROUPEURS: {
+    ADMIN_READ: 'groupeurs.admin.read',
+    ADMIN_WRITE: 'groupeurs.admin.write',
+    ESPACE_READ: 'groupeurs.espace.read',
+    ESPACE_WRITE: 'groupeurs.espace.write',
+    RAPPORTS_CREATE: 'groupeurs.rapports.create',
+    RAPPORTS_READ: 'groupeurs.rapports.read',
+    AUDIT_READ: 'groupeurs.audit.read',
+  },
+
   // Module Caisse
   CAISSE: {
     VIEW: 'caisse.view',

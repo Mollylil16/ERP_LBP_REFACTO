@@ -15,6 +15,10 @@ export enum PermissionModule {
   GESTION_FONDS = 'GESTION_FONDS',
   RAPPORTS = 'RAPPORTS',
   STRUCTURES = 'STRUCTURES',
+  /** Supervision réseau (superviseure générale) */
+  SUPERVISION = 'SUPERVISION',
+  /** Espace groupeurs / grossistes */
+  GROUPEURS = 'GROUPEURS',
 }
 
 export enum PermissionAction {

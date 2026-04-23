@@ -18,6 +18,10 @@ export enum UserRole {
   ASSISTANT_DG = 'ASSISTANT_DG',
   MANAGER = 'MANAGER',
   SUPERVISEUR_REGIONAL = 'SUPERVISEUR_REGIONAL',
+  /** Supervision réseau : lecture transverse, contrôles et rapports (pas d’écriture opérationnelle) */
+  SUPERVISEURE_GENERALE = 'SUPERVISEURE_GENERALE',
+  /** Espace dédié groupeurs / grossistes (sans agence) */
+  GROUPEUR_GROSSISTE = 'GROUPEUR_GROSSISTE',
   /** Chef d'agence (périmètre agence, sans multi-agences par défaut) */
   CHEF_AGENCE = 'CHEF_AGENCE',
   AGENT_EXPLOITATION = 'AGENT_EXPLOITATION',

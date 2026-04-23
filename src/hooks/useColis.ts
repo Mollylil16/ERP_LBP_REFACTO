@@ -40,7 +40,8 @@ export function useCreateGroupage() {
     mutationFn: (data: CreateColisDto) => colisService.createGroupage(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['colis'] })
-      toast.success('Colis groupage créé avec succès')
+      queryClient.invalidateQueries({ queryKey: ['factures'] })
+      toast.success('Colis groupage enregistré — facture proforma générée automatiquement')
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.message || 'Erreur lors de la création du colis')

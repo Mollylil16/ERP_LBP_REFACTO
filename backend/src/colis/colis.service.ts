@@ -14,6 +14,7 @@ import { TarifsService } from '../tarifs/tarifs.service';
 import { Tarif } from '../tarifs/entities/tarif.entity';
 import { WhatsappService } from '../notifications/whatsapp.service';
 import { Agence } from '../agences/entities/agence.entity';
+import { effectiveRoleCode } from '../common/effective-role-code';
 
 @Injectable()
 export class ColisService {
@@ -30,6 +31,18 @@ export class ColisService {
     private whatsappService: WhatsappService,
     private dataSource: DataSource,
   ) {}
+
+  /** Colis : vue réseau (même principe que factures / caisse consolidée). */
+  private userSeesAllColis(user: any): boolean {
+    const rc = effectiveRoleCode(user).toUpperCase();
+    return [
+      'ADMIN',
+      'DIRECTEUR',
+      'ASSISTANT_DG',
+      'SUPERVISEUR_REGIONAL',
+      'SUPERVISEURE_GENERALE',
+    ].includes(rc);
+  }
 
   private hasGlobalAgencyRouting(user: any): boolean {
     const r =
@@ -101,7 +114,9 @@ export class ColisService {
         : undefined;
       const refColis = await this.generateReference(agencePays);
 
-      // 3. Create Colis
+      const isGroupage = createColisDto.forme_envoi === 'groupage';
+
+      // 3. Create Colis — groupage : enregistré comme validé + proforma générée juste après (plus d'étape manuelle)
       const colis = this.colisRepository.create({
         ...colisData,
         ref_colis: refColis,
@@ -109,6 +124,7 @@ export class ColisService {
         code_user: userId,
         agence: agenceId ? ({ id: agenceId } as any) : undefined,
         date_envoi: new Date(createColisDto.date_envoi),
+        etat_validation: isGroupage ? 1 : 0,
       });
 
       const savedColis = await queryRunner.manager.save(colis);
@@ -147,6 +163,23 @@ export class ColisService {
       }
 
       await queryRunner.commitTransaction();
+
+      if (isGroupage) {
+        try {
+          await this.facturesService.generateFromColis(savedColis.id, userId);
+        } catch (e: any) {
+          const msg = e?.message ?? String(e);
+          if (msg.includes('existe déjà')) {
+            this.logger.warn(
+              `Facture déjà présente pour colis #${savedColis.id}: ${msg}`,
+            );
+          } else {
+            this.logger.error(
+              `Échec génération facture proforma groupage (colis #${savedColis.id}): ${msg}`,
+            );
+          }
+        }
+      }
 
       // 📱 Notification au client (non-bloquante)
       if (client.tel_exp) {
@@ -355,8 +388,7 @@ export class ColisService {
   async findAll(query: any, user: any): Promise<any> {
     const where: any = {};
 
-    // Les rôles ADMIN et DIRECTEUR voient tout. Les autres sont filtrés par agence.
-    const canSeeAll = ['ADMIN', 'DIRECTEUR'].includes(user.role);
+    const canSeeAll = this.userSeesAllColis(user);
 
     if (!canSeeAll && user.id_agence) {
       where.agence = { id: user.id_agence };
@@ -409,7 +441,7 @@ export class ColisService {
       query.andWhere('colis.forme_envoi = :formeEnvoi', { formeEnvoi });
     }
 
-    const canSeeAll = ['ADMIN', 'DIRECTEUR'].includes(user.role);
+    const canSeeAll = this.userSeesAllColis(user);
     if (!canSeeAll && user.id_agence) {
       query.andWhere('colis.id_agence = :agenceId', {
         agenceId: user.id_agence,

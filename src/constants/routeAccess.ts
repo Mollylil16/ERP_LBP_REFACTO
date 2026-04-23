@@ -9,6 +9,12 @@ export const COLIS_READ_ANY = [
 ] as const
 
 export const ROUTE_ACCESS = {
+  /** Espace supervision réseau (KPI, agences, rapports) */
+  supervision: PERMISSIONS.SUPERVISION.DASHBOARD_READ,
+  /** Groupeurs : administration (superviseur régional + direction) */
+  groupeursAdmin: PERMISSIONS.GROUPEURS.ADMIN_READ,
+  /** Groupeurs : espace personnel */
+  groupeursEspace: PERMISSIONS.GROUPEURS.ESPACE_READ,
   dashboard: PERMISSIONS.DASHBOARD.VIEW,
   colisGroupage: PERMISSIONS.COLIS_GROUPAGE.READ,
   colisAutresEnvois: PERMISSIONS.COLIS_AUTRES_ENVOIS.READ,

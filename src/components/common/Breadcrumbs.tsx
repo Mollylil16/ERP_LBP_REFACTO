@@ -32,6 +32,7 @@ const ROUTE_LABELS: Record<string, string> = {
   paiements: 'Paiements',
   caisse: 'Caisse',
   suivi: 'Suivi de caisse',
+  consolidee: 'Journée consolidée',
   retraits: 'Retraits',
   statistiques: 'Statistiques',
   historiques: 'Historiques',

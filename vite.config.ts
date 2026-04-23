@@ -13,6 +13,9 @@ export default defineConfig(({ mode }) => {
 
       VitePWA({
         registerType: 'autoUpdate',
+        // Aligné avec `index.html` : <link rel="manifest" href="/manifest.json" />
+        // (sinon VitePWA génère par défaut `manifest.webmanifest` → 404 côté navigateur + chargements bizarres)
+        manifestFilename: 'manifest.json',
         includeAssets: ['favicon.ico', 'robots.txt', 'logo_lbp.png'],
         manifest: {
           name: 'LA BELLE PORTE - Gestion de Colis',

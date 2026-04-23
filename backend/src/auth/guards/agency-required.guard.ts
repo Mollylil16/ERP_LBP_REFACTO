@@ -24,7 +24,14 @@ export class AgencyRequiredGuard implements CanActivate {
   private hasGlobalAgencyAccess(user: any): boolean {
     const rc = this.resolveRoleCode(user);
     if (
-      ['ADMIN', 'DIRECTEUR', 'ASSISTANT_DG', 'SUPERVISEUR_REGIONAL'].includes(rc)
+      [
+        'ADMIN',
+        'DIRECTEUR',
+        'ASSISTANT_DG',
+        'SUPERVISEUR_REGIONAL',
+        'SUPERVISEURE_GENERALE',
+        'GROUPEUR_GROSSISTE',
+      ].includes(rc)
     ) {
       return true;
     }
@@ -47,4 +54,3 @@ export class AgencyRequiredGuard implements CanActivate {
     return idAgence != null;
   }
 }
-

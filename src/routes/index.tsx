@@ -38,8 +38,13 @@ function pickLandingRoute(perms: string[], roleCode?: string): string {
     if (rc === 'AGENT_EXPLOITATION' || rc === 'SUPERVISEUR_REGIONAL') return '/exploitation'
     if (rc === 'CALL_CENTER') return '/callcenter/inbox'
     if (rc === 'CAISSIER' || rc === 'CAISSIER_AGENCE') return '/caisse/suivi'
+    if (rc === 'SUPERVISEURE_GENERALE') return '/supervision'
+    if (rc === 'GROUPEUR_GROSSISTE') return '/groupeurs/espace'
   }
 
+  if (has(ROUTE_ACCESS.supervision)) return '/supervision'
+  if (has(ROUTE_ACCESS.groupeursEspace)) return '/groupeurs/espace'
+  if (has(ROUTE_ACCESS.groupeursAdmin)) return '/groupeurs/admin'
   if (has(ROUTE_ACCESS.dashboard)) return '/dashboard'
   if (has(ROUTE_ACCESS.callcenterInbox)) return '/callcenter/inbox'
   if (has(ROUTE_ACCESS.colisGroupage)) return '/colis/groupage'
@@ -65,6 +70,15 @@ const InvoicePublicPaymentPage = lazy(() => import('../pages/public/InvoicePubli
 
 // Pages - Admin (lazy loaded)
 const DashboardPage = lazy(() => import('../pages/admin/DashboardPage').then(m => ({ default: m.DashboardPage })))
+const SupervisionPage = lazy(() =>
+  import('../pages/admin/supervision/SupervisionPage').then(m => ({ default: m.SupervisionPage })),
+)
+const GroupeursAdminPage = lazy(() =>
+  import('../pages/admin/groupeurs/GroupeursAdminPage').then(m => ({ default: m.GroupeursAdminPage })),
+)
+const GroupeursEspacePage = lazy(() =>
+  import('../pages/groupeurs/GroupeursEspacePage').then(m => ({ default: m.GroupeursEspacePage })),
+)
 
 // Pages - Colis (lazy loaded)
 const ColisGroupageListPage = lazy(() => import('../pages/admin/colis/GroupageListPage').then(m => ({ default: m.ColisGroupageListPage })))
@@ -142,6 +156,9 @@ const UsersListPage = lazy(() => import('../pages/admin/users/UsersListPage').th
 
 // Pages - Caisse (lazy loaded)
 const SuiviCaissePage = lazy(() => import('../pages/admin/caisse/SuiviCaissePage').then(m => ({ default: m.SuiviCaissePage })))
+const CaisseConsolideePage = lazy(() =>
+  import('../pages/admin/caisse/CaisseConsolideePage').then((m) => ({ default: m.CaisseConsolideePage })),
+)
 const WithdrawalTrackingPage = lazy(() => import('../pages/admin/caisse/WithdrawalTrackingPage'))
 
 // Pages - Statistiques (lazy loaded)
@@ -278,6 +295,40 @@ export const AppRoutes: React.FC = () => {
           </ProtectedRoute>
         }
       >
+        {/* Supervision réseau */}
+        <Route
+          path="supervision"
+          element={
+            <ProtectedRoute requiredPermission={ROUTE_ACCESS.supervision}>
+              <LazyPageLoader>
+                <SupervisionPage />
+              </LazyPageLoader>
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Groupeurs / grossistes */}
+        <Route
+          path="groupeurs/admin"
+          element={
+            <ProtectedRoute requiredPermission={ROUTE_ACCESS.groupeursAdmin}>
+              <LazyPageLoader>
+                <GroupeursAdminPage />
+              </LazyPageLoader>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="groupeurs/espace"
+          element={
+            <ProtectedRoute requiredPermission={ROUTE_ACCESS.groupeursEspace}>
+              <LazyPageLoader>
+                <GroupeursEspacePage />
+              </LazyPageLoader>
+            </ProtectedRoute>
+          }
+        />
+
         {/* Dashboard */}
         <Route
           path="dashboard"
@@ -553,6 +604,16 @@ export const AppRoutes: React.FC = () => {
             <ProtectedRoute requiredPermission={ROUTE_ACCESS.caisse}>
               <LazyPageLoader>
                 <SuiviCaissePage />
+              </LazyPageLoader>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="caisse/consolidee"
+          element={
+            <ProtectedRoute requiredPermission={ROUTE_ACCESS.caisse}>
+              <LazyPageLoader>
+                <CaisseConsolideePage />
               </LazyPageLoader>
             </ProtectedRoute>
           }

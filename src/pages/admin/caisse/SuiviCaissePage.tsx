@@ -3,6 +3,7 @@
  */
 
 import React from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Tabs, Button, Space, Card, Select, Modal, InputNumber, message, Typography, Alert, Row, Col, Statistic, Divider, Tooltip, Tag } from 'antd'
 import {
   WalletOutlined,
@@ -28,11 +29,16 @@ import { PointsSoumisCaisseTab } from '@components/caisse/PointsSoumisCaisseTab'
 import { useCaisses, useSoldeCaisse } from '@hooks/useCaisse'
 import { caisseService } from '@services/caisse.service'
 import { useQuery, useMutation } from '@tanstack/react-query'
+import { useAuth } from '@hooks/useAuth'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 
 export const SuiviCaissePage: React.FC = () => {
+  const { user } = useAuth()
+  const [searchParams] = useSearchParams()
+  const idCaisseParam = searchParams.get('id_caisse')
   const { hasPermission } = usePermissions()
+  const roleCodePrincipal = String(user?.role?.code ?? '').toUpperCase()
   const canValidatePointsJournaliers = hasPermission(
     PERMISSIONS.EXPLOITATION.POINTS_VALIDATE,
   )
@@ -57,12 +63,22 @@ export const SuiviCaissePage: React.FC = () => {
 
   const { data: caisses, isLoading: caissesLoading, refetch: refetchCaisses } = useCaisses()
 
+  // Pré-sélection depuis l’URL (ex. vue consolidée) : ?id_caisse=3
+  React.useEffect(() => {
+    if (!caisses?.length || !idCaisseParam) return
+    const n = Number(idCaisseParam)
+    if (Number.isFinite(n) && caisses.some((c) => c.id === n)) {
+      setSelectedCaisseId(n)
+    }
+  }, [caisses, idCaisseParam])
+
   // Première caisse : priorité à celle sur laquelle les opérations sont autorisées (caisse principale siège pour la caissière).
   React.useEffect(() => {
     if (!caisses?.length || selectedCaisseId != null) return
+    if (idCaisseParam) return
     const op = caisses.find((c) => c.peut_operer === true)
     setSelectedCaisseId((op ?? caisses[0]).id)
-  }, [caisses, selectedCaisseId])
+  }, [caisses, selectedCaisseId, idCaisseParam])
 
   const selectedCaisse = caisses?.find(c => c.id === selectedCaisseId) || caisses?.[0]
   const idCaisse = selectedCaisseId || selectedCaisse?.id || 1
@@ -455,6 +471,14 @@ export const SuiviCaissePage: React.FC = () => {
     <div style={{ padding: 24 }}>
       <Card>
         <Space direction="vertical" style={{ width: '100%' }} size="large">
+          {roleCodePrincipal === 'CAISSIER' && caisses && caisses.length > 1 ? (
+            <Alert
+              type="info"
+              showIcon
+              message="Toutes les agences"
+              description="Sélectionnez la caisse dans la liste : le solde et le point du jour s’appliquent à l’agence choisie. Vous pouvez consulter chaque montant (consultation) ; les opérations d’encaissement en session restent en principe sur la caisse principale (hub) lorsque celle-ci est autorisée."
+            />
+          ) : null}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <h1>
               <WalletOutlined /> Suivi Caisse

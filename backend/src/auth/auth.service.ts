@@ -270,6 +270,8 @@ export class AuthService {
       ASSISTANT_DG: 11,
       MANAGER: 2,
       SUPERVISEUR_REGIONAL: 3,
+      SUPERVISEURE_GENERALE: 13,
+      GROUPEUR_GROSSISTE: 14,
       AGENT_EXPLOITATION: 4,
       CHEF_AGENCE: 10,
       AGENT_GROUPAGE: 5,
@@ -288,6 +290,8 @@ export class AuthService {
       ASSISTANT_DG: 'Assistant DG',
       MANAGER: 'Manager / Superviseur',
       SUPERVISEUR_REGIONAL: 'Superviseur Régional',
+      SUPERVISEURE_GENERALE: 'Superviseure générale',
+      GROUPEUR_GROSSISTE: 'Groupeur / Grossiste',
       AGENT_EXPLOITATION: 'Agent Exploitation',
       CHEF_AGENCE: "Chef d'agence",
       AGENT_GROUPAGE: 'Agent Groupage',
@@ -362,10 +366,11 @@ export class AuthService {
     const rc = this.resolveRoleCode(user);
     return Boolean(
       user?.peut_voir_toutes_agences ||
-        user?.code_acces === 2 ||
-        rc === 'DIRECTEUR' ||
-        rc === 'ADMIN' ||
-        rc === 'ASSISTANT_DG',
+      user?.code_acces === 2 ||
+      rc === 'DIRECTEUR' ||
+      rc === 'ADMIN' ||
+      rc === 'ASSISTANT_DG' ||
+      rc === 'SUPERVISEURE_GENERALE',
     );
   }
 }

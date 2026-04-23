@@ -18,7 +18,8 @@ function adaptFactureFromBackend(backendFacture: any): FactureColis {
     ref_colis: backendFacture.colis?.ref_colis || '',
     code_user: backendFacture.code_user || '',
     etat: backendFacture.etat,
-    date_facture: dateFacture ?? '',
+    // ⚠️ Important: conserver `undefined` si absent pour permettre aux tables de fallback sur created_at.
+    date_facture: (dateFacture ?? undefined) as any,
   }
 }
 

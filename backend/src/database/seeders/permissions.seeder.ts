@@ -709,6 +709,100 @@ export async function seedPermissions(dataSource: DataSource): Promise<void> {
       action: 'UPDATE',
       description: 'Approuver/rejeter une demande de marquage retrait hub (directeur)',
     },
+    {
+      code: 'supervision.dashboard.read',
+      module: PermissionModule.SUPERVISION,
+      fonctionnalite: 'supervision_dashboard',
+      action: 'READ',
+      description:
+        'Tableau de supervision : KPIs réseau, agences, performance, anomalies',
+    },
+    {
+      code: 'supervision.rapport.read',
+      module: PermissionModule.SUPERVISION,
+      fonctionnalite: 'supervision_rapports',
+      action: 'READ',
+      description: 'Consulter l’historique des rapports de supervision',
+    },
+    {
+      code: 'supervision.rapport.create',
+      module: PermissionModule.SUPERVISION,
+      fonctionnalite: 'supervision_rapports',
+      action: 'CREATE',
+      description: 'Soumettre un rapport de supervision à la direction',
+    },
+    {
+      code: 'supervision.signalement.create',
+      module: PermissionModule.SUPERVISION,
+      fonctionnalite: 'supervision_controle',
+      action: 'CREATE',
+      description: 'Enregistrer un signalement d’anomalie',
+    },
+    {
+      code: 'supervision.justification.create',
+      module: PermissionModule.SUPERVISION,
+      fonctionnalite: 'supervision_justification',
+      action: 'CREATE',
+      description: 'Demander une justification auprès d’un agent ou chef d’agence',
+    },
+    {
+      code: 'supervision.annotation.create',
+      module: PermissionModule.SUPERVISION,
+      fonctionnalite: 'supervision_annotation',
+      action: 'CREATE',
+      description: 'Ajouter une annotation de traçabilité sur une cible métier',
+    },
+    // ───────────────────────── Groupeurs / grossistes ─────────────────────────
+    {
+      code: 'groupeurs.admin.read',
+      module: PermissionModule.GROUPEURS,
+      fonctionnalite: 'groupeurs_admin',
+      action: 'READ',
+      description:
+        'Consulter l’espace administration des groupeurs (liste/détails/activité)',
+    },
+    {
+      code: 'groupeurs.admin.write',
+      module: PermissionModule.GROUPEURS,
+      fonctionnalite: 'groupeurs_admin',
+      action: 'UPDATE',
+      description: 'Créer / modifier / changer statut groupeur (admin)',
+    },
+    {
+      code: 'groupeurs.espace.read',
+      module: PermissionModule.GROUPEURS,
+      fonctionnalite: 'groupeurs_espace',
+      action: 'READ',
+      description: 'Accéder à son espace groupeur (dashboard, listes)',
+    },
+    {
+      code: 'groupeurs.espace.write',
+      module: PermissionModule.GROUPEURS,
+      fonctionnalite: 'groupeurs_espace',
+      action: 'UPDATE',
+      description: 'Créer / modifier ses devis, expéditions, factures, documents',
+    },
+    {
+      code: 'groupeurs.rapports.create',
+      module: PermissionModule.GROUPEURS,
+      fonctionnalite: 'groupeurs_rapports',
+      action: 'CREATE',
+      description: 'Soumettre un rapport groupeurs (supervision régionale)',
+    },
+    {
+      code: 'groupeurs.rapports.read',
+      module: PermissionModule.GROUPEURS,
+      fonctionnalite: 'groupeurs_rapports',
+      action: 'READ',
+      description: 'Consulter l’historique des rapports groupeurs',
+    },
+    {
+      code: 'groupeurs.audit.read',
+      module: PermissionModule.GROUPEURS,
+      fonctionnalite: 'groupeurs_audit',
+      action: 'READ',
+      description: 'Consulter le journal d’audit groupeurs (direction)',
+    },
   ];
 
   for (const row of explicitAppPermissions) {

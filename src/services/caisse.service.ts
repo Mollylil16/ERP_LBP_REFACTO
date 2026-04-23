@@ -136,6 +136,24 @@ export const getPointCaisse = async (
   return apiService.get<PointCaisse>(url)
 }
 
+/** Journée consolidée (totaux + détail par caisse / agence) — caissier principal ou agence selon le rôle. */
+export const getJourneeConsolidee = async (date?: string): Promise<{
+  date_ref: string
+  consolide: { entrees: number; sorties: number; mouvementsCount: number }
+  par_caisse: Array<{
+    id_caisse: number
+    nom_caisse: string | null
+    id_agence: number | null
+    agence: { id: number; nom: string; code: string } | null
+    solde_actuel: number
+    point_du_jour: PointCaisse
+  }>
+}> => {
+  return apiService.get(`${BASE_URL}/journee-consolidee`, {
+    params: date ? { date } : {},
+  })
+}
+
 export const getActiveSession = async (id_caisse: number) => {
   return apiService.get<any>(`${BASE_URL}/sessions/active`, { params: { id_caisse } })
 }

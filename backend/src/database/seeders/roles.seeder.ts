@@ -43,6 +43,22 @@ export async function seedRoles(dataSource: DataSource): Promise<void> {
       est_actif: true,
     },
     {
+      code: 'SUPERVISEURE_GENERALE',
+      nom: 'Superviseure générale',
+      description:
+        'Lecture transverse sur le réseau, espace supervision, contrôles et rapports (sans écriture opérationnelle)',
+      niveau_hierarchique: 2,
+      est_actif: true,
+    },
+    {
+      code: 'GROUPEUR_GROSSISTE',
+      nom: 'Groupeur / Grossiste',
+      description:
+        'Espace dédié : devis, expéditions, factures, documents (périmètre propre)',
+      niveau_hierarchique: 6,
+      est_actif: true,
+    },
+    {
       code: 'CHEF_AGENCE',
       nom: "Chef d'agence",
       description:

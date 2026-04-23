@@ -13,6 +13,7 @@ import {
   createEntreeCaisse,
   deleteMouvementCaisse,
   getRapportGrandesLignes,
+  getJourneeConsolidee,
 } from '@services/caisse.service'
 import type { Caisse, MouvementCaisse, RapportGrandesLignes } from '@types'
 import { message } from 'antd'
@@ -23,6 +24,7 @@ const QUERY_KEYS = {
   soldeCaisse: (idCaisse?: number) => ['caisses', 'solde', idCaisse] as const,
   mouvements: (params?: any) => ['caisses', 'mouvements', params] as const,
   rapport: (params?: any) => ['caisses', 'rapport', params] as const,
+  journeeConsolidee: (date?: string) => ['caisses', 'journee-consolidee', date] as const,
 }
 
 /**
@@ -73,6 +75,15 @@ export const useMouvementsCaisse = (params?: {
     queryKey: QUERY_KEYS.mouvements(params),
     queryFn: () => getMouvementsCaisse(params),
     staleTime: 30000,
+  })
+}
+
+/** Journée consolidée (toutes caisses pour caissier principal / direction, sinon agence seule). */
+export const useJourneeConsolidee = (date?: string) => {
+  return useQuery({
+    queryKey: QUERY_KEYS.journeeConsolidee(date),
+    queryFn: () => getJourneeConsolidee(date),
+    staleTime: 30_000,
   })
 }
 

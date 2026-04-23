@@ -1,0 +1,55 @@
+.lbp-supervision-command {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.lbp-supervision-hero {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.lbp-supervision-hero-text {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.lbp-supervision-range-card {
+  background: linear-gradient(135deg, #f8fbff 0%, #ffffff 100%);
+  border: 1px solid #e6f0ff !important;
+}
+
+.lbp-supervision-page {
+  padding: 0 0 24px;
+}
+
+.lbp-supervision-header {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  margin-bottom: 24px;
+}
+
+.lbp-supervision-icon {
+  font-size: 32px;
+  color: #1677ff;
+  margin-top: 4px;
+}
+
+.lbp-supervision-title {
+  margin-bottom: 4px !important;
+}
+
+.lbp-supervision-sub {
+  margin-bottom: 0;
+}
+
+.lbp-supervision-alert {
+  margin-bottom: 16px;
+}
+
+.lbp-supervision-table-card .ant-card-head-title {
+  font-weight: 600;
+}

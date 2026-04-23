@@ -336,7 +336,7 @@ export const ColisList: React.FC<ColisListProps> = ({
             </Tooltip>
           )}
 
-          {hasPermission(colisPermissions.VALIDATE) && (
+          {hasPermission(colisPermissions.VALIDATE) && record.etat_validation !== 1 && (
             <Tooltip title={t("valider")}>
               <Button
                 type="default"

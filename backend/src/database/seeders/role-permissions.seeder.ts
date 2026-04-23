@@ -63,6 +63,11 @@ const rolePermissionsMatrix = {
     'exploitation.prestataires_reglements.read',
     'exploitation.prestataires_retraits_hub.read',
     'exploitation.prestataires_retraits_hub.request_approval',
+    // Groupeurs (lecture + rapports + audit)
+    'groupeurs.admin.read',
+    'groupeurs.admin.write',
+    'groupeurs.rapports.read',
+    'groupeurs.audit.read',
   ],
   MANAGER: [
     // EXPLOITATION
@@ -207,7 +212,13 @@ const rolePermissionsMatrix = {
     'rapports.suivi_envois.read',
     'rapports.statistiques.read',
     'rapports.ca_detaille.read',
+    // Groupeurs (administration + rapports) — superviseur régional = superviseure régionale (prompt)
+    'groupeurs.admin.read',
+    'groupeurs.admin.write',
+    'groupeurs.rapports.create',
+    'groupeurs.rapports.read',
   ],
+  GROUPEUR_GROSSISTE: ['groupeurs.espace.read', 'groupeurs.espace.write'],
   CHEF_AGENCE: [
     // Colis (opérationnel agence)
     'exploitation.groupage_colis.create',
@@ -332,8 +343,9 @@ const rolePermissionsMatrix = {
     // Prestataires: retraits hub (caisse principale)
     'exploitation.prestataires_retraits_hub.read',
     'exploitation.prestataires_retraits_hub.update',
-    // Liste / consultation factures clients (toutes agences visibles côté API pour ce rôle)
+    // Liste / consultation + génération proforma (colis) pour encaisser sur place
     'facturation.facturer.read',
+    'facturation.facturer.create',
   ],
   CAISSIER_AGENCE: [
     // Caisse agence : opérations et lecture sur sa caisse (API filtre par id_agence)
@@ -346,8 +358,9 @@ const rolePermissionsMatrix = {
     'operation_caisse.reglement_client.create',
     'operation_caisse.reglement_client.read',
     'operation_caisse.reglement_client.update',
-    // Consultation factures (facture auto-générée au colis)
+    // Consultation + génération proforma sur place si besoin
     'facturation.facturer.read',
+    'facturation.facturer.create',
     // Structures (lecture)
     'structures.agences.read',
     'structures.clients.read',
@@ -382,6 +395,51 @@ const rolePermissionsMatrix = {
     'operation_caisse.reglement_client.read',
     'litiges.view',
     'litiges.create',
+  ],
+  /**
+   * Superviseure générale : même socle de lecture qu’ASSISTANT_DG (périmètre réseau)
+   * + espace supervision (tableaux, rapports, contrôles sans mutation des données opérationnelles).
+   */
+  SUPERVISEURE_GENERALE: [
+    'exploitation.groupage_colis.read',
+    'exploitation.autres_envois.read',
+    'exploitation.rapports_envois.read',
+    'exploitation.livraison.read',
+    'facturation.cotation.read',
+    'facturation.facturer.read',
+    'operation_caisse.gestion_caisses.read',
+    'operation_caisse.mouvements_caisses.read',
+    'operation_caisse.journal.read',
+    'operation_caisse.reglement_client.read',
+    'gestion_fonds.demandes_fonds.read',
+    'gestion_fonds.recap_demandes.read',
+    'rapports.suivi_envois.read',
+    'rapports.statistiques.read',
+    'rapports.ca_detaille.read',
+    'rapports.business_analyst.read',
+    'structures.clients.read',
+    'structures.zones_livraison.read',
+    'structures.agences.read',
+    'structures.parametres_application.read',
+    'litiges.view',
+    'callcenter.inbox',
+    'exploitation.credits.read',
+    'exploitation.points_journaliers.read',
+    'exploitation.fournitures.read',
+    'exploitation.prestataires.read',
+    'exploitation.prestataires_factures.read',
+    'exploitation.prestataires_reglements.read',
+    'exploitation.prestataires_retraits_hub.read',
+    'exploitation.prestataires_retraits_hub.request_approval',
+    'supervision.dashboard.read',
+    'supervision.rapport.read',
+    'supervision.rapport.create',
+    'supervision.signalement.create',
+    'supervision.justification.create',
+    'supervision.annotation.create',
+    // Groupeurs (lecture globale)
+    'groupeurs.admin.read',
+    'groupeurs.rapports.read',
   ],
 };
 

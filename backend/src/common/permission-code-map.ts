@@ -5,7 +5,7 @@
  */
 
 const APP_CODE =
-  /^(?:colis|dashboard|clients|factures|paiements|rapports|caisse|config|users|litiges|callcenter|exploitation)\.[a-z0-9_.-]+$/i;
+  /^(?:colis|dashboard|clients|factures|paiements|rapports|caisse|config|users|litiges|callcenter|exploitation|supervision|groupeurs)\.[a-z0-9_.-]+$/i;
 
 export function mapDbPermissionCodesToAppCodes(dbCodes: string[]): string[] {
   const out = new Set<string>();

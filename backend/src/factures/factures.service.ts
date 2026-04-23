@@ -44,11 +44,24 @@ export class FacturesService {
 
   /**
    * Liste / recherche factures sans filtre par agence (supervision, direction).
-   * Aligné avec le besoin métier : le superviseur régional voit les factures de toutes les agences.
+   * - Superviseur / direction : vue multi-agences.
+   * - CAISSIER (caisse principale / hub) : idem selon le seed (facturation.facturer.read
+   *   documenté comme « toutes agences visibles côté API ») — sinon les factures
+   *   créées dans les agences terrain n’apparaissent pas au hub tant que le filtre
+   *   se base sur l’agence seule.
+   * - CAISSIER_AGENCE : reste filtré sur user.id_agence (voir findAll).
    */
   private userSeesAllFacturesAcrossAgences(user: any): boolean {
     const rc = this.resolveRoleCode(user);
-    if (['ADMIN', 'DIRECTEUR', 'SUPERVISEUR_REGIONAL'].includes(rc)) {
+    if (
+      [
+        'ADMIN',
+        'DIRECTEUR',
+        'SUPERVISEUR_REGIONAL',
+        'SUPERVISEURE_GENERALE',
+        'CAISSIER',
+      ].includes(rc)
+    ) {
       return true;
     }
     if (user?.peut_voir_toutes_agences === true) return true;
@@ -128,7 +141,7 @@ export class FacturesService {
     }
     return this.factureRepository.find({
       where,
-      relations: ['colis', 'colis.client', 'colis.marchandises'],
+      relations: ['colis', 'colis.client', 'colis.marchandises', 'colis.agence'],
       order: { created_at: 'DESC' },
     });
   }
@@ -316,7 +329,7 @@ export class FacturesService {
     // Vérifier que le colis existe
     const colis = await this.colisRepository.findOne({
       where: { id: colisId },
-      relations: ['client', 'marchandises'],
+      relations: ['client', 'marchandises', 'agence'],
     });
 
     if (!colis) {
