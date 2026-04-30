@@ -11,6 +11,7 @@ export enum CategoriesProduit {
   HUILE_ET_KARITE = 'HUILE_ET_KARITE',
   DIVERS = 'DIVERS',
   COLIS_RAPIDE_EXPORT = 'COLIS_RAPIDE_EXPORT',
+  COLIS_RAPIDE_IMPORT = 'COLIS_RAPIDE_IMPORT',
 }
 
 export enum NaturePrix {

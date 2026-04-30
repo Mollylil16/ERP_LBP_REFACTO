@@ -29,6 +29,12 @@ export class CaisseController {
     return effectiveRoleCode(req.user).toUpperCase();
   }
 
+  /** Rôles pouvant consulter toutes les agences (vue transverse). */
+  private static readonly SEE_ALL_ROLES = [
+    'ADMIN', 'DIRECTEUR', 'SUPER_ADMIN',
+    'SUPERVISEURE_GENERALE', 'SUPERVISEUR_REGIONAL', 'ASSISTANT_DG',
+  ] as const;
+
   @Post('appro')
   @RequirePermission('caisse.operations')
   @ApiOperation({ summary: 'Enregistrer un approvisionnement' })
@@ -83,12 +89,7 @@ export class CaisseController {
   @ApiOperation({ summary: 'Liste des mouvements de caisse' })
   getMouvements(@Query() query: any, @Request() req) {
     const rc = this.reqRole(req);
-    const canSeeAll = [
-      'ADMIN',
-      'DIRECTEUR',
-      'SUPER_ADMIN',
-      'SUPERVISEURE_GENERALE',
-    ].includes(rc);
+    const canSeeAll = (CaisseController.SEE_ALL_ROLES as readonly string[]).includes(rc);
     const agenceId =
       canSeeAll || rc === 'CAISSIER' ? undefined : req.user.id_agence;
     return this.caisseService.getMouvements(query, agenceId);
@@ -136,12 +137,7 @@ export class CaisseController {
       if (rc === 'CAISSIER') {
         id = await this.caisseService.resolveHubPrincipalCaisseId();
       } else if (req.user.id_agence) {
-        const canSeeAll = [
-          'ADMIN',
-          'DIRECTEUR',
-          'SUPER_ADMIN',
-          'SUPERVISEURE_GENERALE',
-        ].includes(rc);
+        const canSeeAll = (CaisseController.SEE_ALL_ROLES as readonly string[]).includes(rc);
         const agenceId = canSeeAll ? undefined : req.user.id_agence;
         const caisses = await this.caisseService.findAllCaisses(agenceId);
         id = caisses[0]?.id;
@@ -158,12 +154,7 @@ export class CaisseController {
   @ApiOperation({ summary: 'Liste des caisses' })
   async getCaisses(@Request() req) {
     const rc = this.reqRole(req);
-    const canSeeAll = [
-      'ADMIN',
-      'DIRECTEUR',
-      'SUPER_ADMIN',
-      'SUPERVISEURE_GENERALE',
-    ].includes(rc);
+    const canSeeAll = (CaisseController.SEE_ALL_ROLES as readonly string[]).includes(rc);
     const agenceId =
       canSeeAll || rc === 'CAISSIER' ? undefined : req.user.id_agence;
     const rows = await this.caisseService.findAllCaisses(agenceId);
@@ -191,14 +182,9 @@ export class CaisseController {
   })
   getJourneeConsolidee(@Query('date') date: string | undefined, @Request() req) {
     const rc = this.reqRole(req);
-    const vueMultiAgences = [
-      'ADMIN',
-      'DIRECTEUR',
-      'SUPER_ADMIN',
-      'CAISSIER',
-      'SUPERVISEUR_REGIONAL',
-      'SUPERVISEURE_GENERALE',
-    ].includes(rc);
+    const vueMultiAgences =
+      rc === 'CAISSIER' ||
+      (CaisseController.SEE_ALL_ROLES as readonly string[]).includes(rc);
     if (vueMultiAgences) {
       return this.caisseService.getJourneeConsolideeParCaisses(date);
     }
@@ -214,12 +200,7 @@ export class CaisseController {
   @ApiOperation({ summary: 'Liste spécifique des retraits (décaissements)' })
   getWithdrawals(@Query() query: any, @Request() req) {
     const rc = this.reqRole(req);
-    const canSeeAll = [
-      'ADMIN',
-      'DIRECTEUR',
-      'SUPER_ADMIN',
-      'SUPERVISEURE_GENERALE',
-    ].includes(rc);
+    const canSeeAll = (CaisseController.SEE_ALL_ROLES as readonly string[]).includes(rc);
     const agenceId =
       canSeeAll || rc === 'CAISSIER' ? undefined : req.user.id_agence;
     return this.caisseService.getMouvements(

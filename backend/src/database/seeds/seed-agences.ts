@@ -60,7 +60,7 @@ export async function seedAgences(dataSource: DataSource) {
     },
     {
       code: 'FR-PARIS',
-      nom: 'STT-INTER FRANCE',
+      nom: 'LBP FRANCE',
       pays: 'FRANCE',
       ville: 'PARIS',
       adresse: 'PARIS 17 CHEMIN DES VIGNES 93000 BOBIGNY',
@@ -73,7 +73,7 @@ export async function seedAgences(dataSource: DataSource) {
     },
     {
       code: 'SN-DAKAR',
-      nom: 'STT-INTER SENEGAL',
+      nom: 'LBP SENEGAL',
       pays: 'SENEGAL',
       ville: 'DAKAR',
       adresse: 'DAKAR PARCELLES ASSAINIES',

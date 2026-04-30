@@ -104,7 +104,7 @@ export class ColisService {
         throw new NotFoundException(`Client with ID ${id_client} not found`);
       }
 
-      // 2. Generate reference (préfixe par pays de l'agence)
+      // 2. Generate reference (préfixe par type de colis)
       const agencePays = agenceId
         ? (
             await queryRunner.manager
@@ -112,7 +112,12 @@ export class ColisService {
               .findOne({ where: { id: agenceId } })
           )?.pays
         : undefined;
-      const refColis = await this.generateReference(agencePays);
+      const refColis = await this.generateReference(
+        agencePays,
+        createColisDto.mode_envoi,
+        createColisDto.trafic_envoi,
+        createColisDto.forme_envoi,
+      );
 
       const isGroupage = createColisDto.forme_envoi === 'groupage';
 
@@ -333,7 +338,6 @@ export class ColisService {
   private getPrefixFromAgencePays(pays?: string): string {
     const p = (pays || '').trim().toLowerCase();
     const norm = p.normalize('NFD').replace(/\p{M}/gu, '');
-    // CI / Côte d'Ivoire (éviter includes('ci') → "commercial", etc.)
     if (
       norm.includes('ivoire') ||
       norm.includes('civ') ||
@@ -342,23 +346,56 @@ export class ColisService {
     ) {
       return 'LB-CI';
     }
-    // Sénégal (éviter includes('sen') → faux positifs)
     if (norm.includes('senegal') || /^sn$/i.test(pays?.trim() || '')) {
       return 'LB-SEN';
     }
-    // France (éviter includes('fr') → "freetown", etc.)
     if (norm.includes('france') || /^fr$/i.test(pays?.trim() || '')) {
       return 'LB-FR';
     }
     return 'LBP';
   }
 
-  private async generateReference(agencePays?: string): Promise<string> {
+  private getPrefixFromColisType(
+    modeEnvoi?: string,
+    traficEnvoi?: string,
+    formeEnvoi?: string,
+    agencePays?: string,
+  ): string {
+    const mode = (modeEnvoi || '').toLowerCase().trim();
+    const trafic = (traficEnvoi || '').toLowerCase().trim();
+
+    // Colis Rapides Export (CI → FR)
+    if (mode.includes('export')) return 'CA-CI';
+
+    // Colis Rapides Import (FR → CI)
+    if (mode.includes('import')) return 'CA-FR';
+
+    // DHL
+    if (mode === 'dhl') return 'DL-CI';
+
+    // Groupage Maritime : export (CI) vs import (FR) selon pays agence
+    if (trafic.includes('maritime')) {
+      const pays = (agencePays || '').trim().toLowerCase();
+      const norm = pays.normalize('NFD').replace(/\p{M}/gu, '');
+      if (norm.includes('france') || /^fr$/i.test(pays)) return 'MP-FR';
+      return 'MP-CI';
+    }
+
+    // Fallback : Groupage Aérien et autres → préfixe pays agence
+    return this.getPrefixFromAgencePays(agencePays);
+  }
+
+  private async generateReference(
+    agencePays?: string,
+    modeEnvoi?: string,
+    traficEnvoi?: string,
+    formeEnvoi?: string,
+  ): Promise<string> {
     const now = new Date();
     const mm = String(now.getMonth() + 1).padStart(2, '0');
     const yy = String(now.getFullYear()).slice(-2);
     const datePart = `${mm}${yy}`;
-    const prefix = this.getPrefixFromAgencePays(agencePays);
+    const prefix = this.getPrefixFromColisType(modeEnvoi, traficEnvoi, formeEnvoi, agencePays);
 
     // Find the last reference for this month/year
     const lastColis = await this.colisRepository
@@ -393,6 +430,11 @@ export class ColisService {
     if (!canSeeAll && user.id_agence) {
       where.agence = { id: user.id_agence };
     }
+
+    if (query.forme_envoi) {
+      where.forme_envoi = query.forme_envoi;
+    }
+
     const [data, total] = await this.colisRepository.findAndCount({
       where,
       relations: ['client', 'marchandises'],

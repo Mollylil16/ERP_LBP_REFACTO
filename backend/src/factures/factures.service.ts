@@ -81,8 +81,7 @@ export class FacturesService {
         const totalLigne =
           Number(m.prix_unit) * Number(m.poids_total || 0) +
           Number(m.prix_emballage || 0) +
-          Number(m.prix_assurance || 0) +
-          Number(m.prix_agence || 0);
+          Number(m.prix_assurance || 0);
         return acc + totalLigne;
       }, 0);
     }

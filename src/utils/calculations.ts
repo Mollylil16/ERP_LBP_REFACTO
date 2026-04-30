@@ -22,7 +22,7 @@ export function calculerTotalLigneMarchandise(
   const pAg = Number(prixAgence || 0)
 
   const totalUnitaire = pUnit * pds
-  return totalUnitaire + pEmb + pAss + pAg
+  return totalUnitaire + pEmb + pAss
 }
 
 /**

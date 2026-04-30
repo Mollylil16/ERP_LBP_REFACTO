@@ -13,7 +13,7 @@ const rolePermissionsMatrix = {
    * - pas de gestion utilisateurs / permissions
    * - pas de paramètres société (structures.parametres_application.*) ni gestion agences (create/update/delete)
    * - pas de suppressions critiques (delete sur colis/factures/paiements/caisse/fonds)
-   * - pas d’annulation/validation workflow (factures/paiements/colis validation)
+   * - pas d'annulation/validation workflow (factures/paiements/colis validation)
    */
   ASSISTANT_DG: [
     // Objectif: visibilité "complète" sur le système, mais STRICTEMENT en lecture seule.
@@ -57,7 +57,7 @@ const rolePermissionsMatrix = {
     'exploitation.credits.read',
     'exploitation.points_journaliers.read',
     'exploitation.fournitures.read',
-    // Prestataires: lecture + demande d’approbation (pas d’exécution sans accord)
+    // Prestataires: lecture + demande d'approbation (pas d'exécution sans accord)
     'exploitation.prestataires.read',
     'exploitation.prestataires_factures.read',
     'exploitation.prestataires_reglements.read',
@@ -299,7 +299,9 @@ const rolePermissionsMatrix = {
     'exploitation.autres_envois.create',
     'exploitation.autres_envois.read',
     // Pas de modification/suppression après enregistrement (réservé chef/manager)
-    // Pas de facturation / encaissement : réservé caissiers d’agence et caissier principal
+    // Génération facture proforma (groupage + autres envois) — encaissement réservé caissiers
+    'facturation.facturer.create',
+    'facturation.facturer.read',
     // NB: Les points journaliers / récap crédits sont gérés par le CHEF_AGENCE (pas AGENT_GROUPAGE)
     // Création client depuis saisie colis (certains clients sans pièce)
     'structures.clients.create',
@@ -397,7 +399,7 @@ const rolePermissionsMatrix = {
     'litiges.create',
   ],
   /**
-   * Superviseure générale : même socle de lecture qu’ASSISTANT_DG (périmètre réseau)
+   * Superviseure générale : même socle de lecture qu'ASSISTANT_DG (périmètre réseau)
    * + espace supervision (tableaux, rapports, contrôles sans mutation des données opérationnelles).
    */
   SUPERVISEURE_GENERALE: [

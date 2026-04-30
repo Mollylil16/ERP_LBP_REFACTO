@@ -1,0 +1,22 @@
+%% UC1 — S’inscrire — Diagramme de cas d’utilisation
+%% Import draw.io: Arrange -> Insert -> Advanced -> Mermaid
+usecaseDiagram
+actor "Utilisateur" as U
+
+rectangle "Système LBP" {
+  (UC1 : S’inscrire) as UC1
+  (Valider les données\n(format, champs requis)) as UC1A
+  (Vérifier unicité email) as UC1B
+  (Hasher le mot de passe\n(bcrypt)) as UC1C
+  (Créer le compte utilisateur) as UC1D
+  (Rediriger vers\npage de connexion) as UC1E
+}
+
+U --> UC1
+
+UC1 ..> UC1A : <<include>>
+UC1 ..> UC1B : <<include>>
+UC1 ..> UC1C : <<include>>
+UC1 ..> UC1D : <<include>>
+UC1 ..> UC1E : <<include>>
+

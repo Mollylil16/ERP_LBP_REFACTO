@@ -217,7 +217,6 @@ export const FactureList: React.FC<FactureListProps> = ({ type, onView }) => {
         formatDate(
           (record as any).date_facture ??
             (record as any).created_at ??
-            (record as any).date_facture ??
             (record as any).createdAt,
         ),
       sorter: true,

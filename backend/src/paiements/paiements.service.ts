@@ -211,7 +211,7 @@ export class PaiementsService {
   async findByColis(refColis: string): Promise<Paiement[]> {
     return this.paiementRepository.find({
       where: { facture: { colis: { ref_colis: refColis } } },
-      relations: ['facture'],
+      relations: ['facture', 'facture.colis'],
       order: { date_paiement: 'DESC' },
     });
   }
@@ -986,7 +986,7 @@ export class PaiementsService {
           dernier_paiement_date: lastPaiement?.date_paiement,
           dernier_mode_paiement: lastPaiement?.mode_paiement,
           nb_paiements: nbPaiements,
-          date_creation: f.date_facture,
+          date_creation: f.colis?.date_envoi || f.date_facture,
         };
       }),
     );

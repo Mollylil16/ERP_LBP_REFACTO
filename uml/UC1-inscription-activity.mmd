@@ -1,0 +1,22 @@
+%% UC1 — S’inscrire — Diagramme d’activité
+flowchart TD
+  A([Début]) --> B[Afficher formulaire d’inscription]
+  B --> C[Saisir nom, prénom, email, mot de passe]
+  C --> D[Soumettre]
+  D --> E{Données valides ?}
+
+  E -- Non --> F[Afficher erreurs de validation]
+  F --> C
+
+  E -- Oui --> G[Envoyer demande d’inscription au serveur]
+  G --> H{Email déjà utilisé ?}
+
+  H -- Oui --> I[Afficher message “Email déjà enregistré”]
+  I --> C
+
+  H -- Non --> J[Hasher mot de passe (bcrypt)]
+  J --> K[Créer l’utilisateur en base]
+  K --> L[Afficher succès]
+  L --> M[Rediriger vers page de connexion]
+  M --> N([Fin])
+

@@ -4,7 +4,10 @@
 
 import React from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Tabs, Button, Space, Card, Select, Modal, InputNumber, message, Typography, Alert, Row, Col, Statistic, Divider, Tooltip, Tag } from 'antd'
+import {
+  Tabs, Button, Space, Card, Select, Modal, InputNumber, Input,
+  message, Typography, Alert, Row, Col, Statistic, Tag,
+} from 'antd'
 import {
   WalletOutlined,
   ArrowUpOutlined,
@@ -13,7 +16,9 @@ import {
   FileTextOutlined,
   PlusOutlined,
   CheckCircleOutlined,
+  SendOutlined,
 } from '@ant-design/icons'
+import dayjs from 'dayjs'
 import { ApproForm } from '@components/caisse/ApproForm'
 import { DecaissementForm } from '@components/caisse/DecaissementForm'
 import { EntreeCaisseForm } from '@components/caisse/EntreeCaisseForm'
@@ -27,21 +32,41 @@ import { RecettesDuJourCard } from '@components/paiements/RecettesDuJourCard'
 import { EncaissementRapideCard } from '@components/caisse/EncaissementRapideCard'
 import { PointsSoumisCaisseTab } from '@components/caisse/PointsSoumisCaisseTab'
 import { useCaisses, useSoldeCaisse } from '@hooks/useCaisse'
-import { caisseService } from '@services/caisse.service'
+import { caisseService, getMouvementsCaisse } from '@services/caisse.service'
+import { exploitationService } from '@services/exploitation.service'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { useAuth } from '@hooks/useAuth'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 
+const { TextArea } = Input
+
+// ─── Labels PDF ──────────────────────────────────────────────────────────────
+const TYPE_LABELS: Record<string, string> = {
+  APPRO: 'Approvisionnement',
+  DECAISSEMENT: 'Décaissement',
+  ENTREE_CHEQUE: 'Entrée Chèque',
+  ENTREE_ESPECE: 'Entrée Espèce',
+  ENTREE_VIREMENT: 'Entrée Virement',
+}
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+function fmt(n: number) {
+  return n.toLocaleString('fr-FR') + ' FCFA'
+}
+
+// ─── Component ───────────────────────────────────────────────────────────────
 export const SuiviCaissePage: React.FC = () => {
   const { user } = useAuth()
   const [searchParams] = useSearchParams()
   const idCaisseParam = searchParams.get('id_caisse')
   const { hasPermission } = usePermissions()
   const roleCodePrincipal = String(user?.role?.code ?? '').toUpperCase()
-  const canValidatePointsJournaliers = hasPermission(
-    PERMISSIONS.EXPLOITATION.POINTS_VALIDATE,
-  )
+
+  const canValidatePointsJournaliers = hasPermission(PERMISSIONS.EXPLOITATION.POINTS_VALIDATE)
+  const canSubmitPoint =
+    hasPermission(PERMISSIONS.EXPLOITATION.POINTS_CREATE) ||
+    hasPermission(PERMISSIONS.EXPLOITATION.POINTS_SUBMIT)
   const canSeeRecettesDuJour =
     hasPermission(PERMISSIONS.CAISSE.VIEW) ||
     hasPermission(PERMISSIONS.PAIEMENTS.READ) ||
@@ -51,9 +76,7 @@ export const SuiviCaissePage: React.FC = () => {
   const [approFormVisible, setApproFormVisible] = React.useState(false)
   const [decaissementFormVisible, setDecaissementFormVisible] = React.useState(false)
   const [entreeFormVisible, setEntreeFormVisible] = React.useState(false)
-  const [entreeType, setEntreeType] = React.useState<
-    'ENTREE_CHEQUE' | 'ENTREE_ESPECE' | 'ENTREE_VIREMENT'
-  >('ENTREE_ESPECE')
+  const [entreeType, setEntreeType] = React.useState<'ENTREE_CHEQUE' | 'ENTREE_ESPECE' | 'ENTREE_VIREMENT'>('ENTREE_ESPECE')
   const [refreshKey, setRefreshKey] = React.useState(0)
   const [selectedCaisseId, setSelectedCaisseId] = React.useState<number | undefined>()
   const [openAmount, setOpenAmount] = React.useState<number | null>(null)
@@ -61,18 +84,20 @@ export const SuiviCaissePage: React.FC = () => {
   const [openModalVisible, setOpenModalVisible] = React.useState(false)
   const [closeModalVisible, setCloseModalVisible] = React.useState(false)
 
+  // Point du jour — soumission
+  const [submitPointVisible, setSubmitPointVisible] = React.useState(false)
+  const [submitPointLoading, setSubmitPointLoading] = React.useState(false)
+  const [submitPointObs, setSubmitPointObs] = React.useState('')
+  const [submitPointMontant, setSubmitPointMontant] = React.useState<number | null>(null)
+
   const { data: caisses, isLoading: caissesLoading, refetch: refetchCaisses } = useCaisses()
 
-  // Pré-sélection depuis l’URL (ex. vue consolidée) : ?id_caisse=3
   React.useEffect(() => {
     if (!caisses?.length || !idCaisseParam) return
     const n = Number(idCaisseParam)
-    if (Number.isFinite(n) && caisses.some((c) => c.id === n)) {
-      setSelectedCaisseId(n)
-    }
+    if (Number.isFinite(n) && caisses.some((c) => c.id === n)) setSelectedCaisseId(n)
   }, [caisses, idCaisseParam])
 
-  // Première caisse : priorité à celle sur laquelle les opérations sont autorisées (caisse principale siège pour la caissière).
   React.useEffect(() => {
     if (!caisses?.length || selectedCaisseId != null) return
     if (idCaisseParam) return
@@ -80,7 +105,7 @@ export const SuiviCaissePage: React.FC = () => {
     setSelectedCaisseId((op ?? caisses[0]).id)
   }, [caisses, selectedCaisseId, idCaisseParam])
 
-  const selectedCaisse = caisses?.find(c => c.id === selectedCaisseId) || caisses?.[0]
+  const selectedCaisse = caisses?.find((c) => c.id === selectedCaisseId) || caisses?.[0]
   const idCaisse = selectedCaisseId || selectedCaisse?.id || 1
   const canOperateOnSelectedCaisse = selectedCaisse?.peut_operer !== false
 
@@ -93,8 +118,6 @@ export const SuiviCaissePage: React.FC = () => {
     queryKey: ['caisse-active-session', idCaisse],
     queryFn: () => caisseService.getActiveSession(idCaisse),
     enabled: Boolean(idCaisse),
-    // Important: un autre utilisateur peut ouvrir/fermer la session.
-    // Sans refresh, l'écran d'un chef d'agence reste bloqué sur "fermée".
     refetchInterval: 10_000,
     refetchOnWindowFocus: true,
   })
@@ -106,45 +129,205 @@ export const SuiviCaissePage: React.FC = () => {
     refetchInterval: 30000,
   })
 
-  const exportPointPdf = React.useCallback(() => {
+  // ─── Export PDF complet (état de la journée) ──────────────────────────────
+  const exportPointPdf = React.useCallback(async () => {
     try {
-      const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' })
-      const title = 'Point de caisse (journée)'
-      const caisseLabel = selectedCaisse?.libelle || selectedCaisse?.code || `#${idCaisse}`
-      const dateLabel = new Date().toLocaleDateString('fr-FR')
+      const today = dayjs().format('YYYY-MM-DD')
+      const dateLabel = dayjs().format('DD/MM/YYYY')
+      const caisseLabel = selectedCaisse?.nom || selectedCaisse?.libelle || selectedCaisse?.code || `Caisse #${idCaisse}`
+      const agenceNom = (selectedCaisse as any)?.agence?.nom || ''
+      const operateur = user?.nom_complet || user?.username || '—'
 
-      doc.setFontSize(14)
-      doc.text(title, 40, 40)
-      doc.setFontSize(10)
-      doc.text(`Caisse: ${caisseLabel} — Date: ${dateLabel}`, 40, 60)
-
-      const entrees = Number(pointDuJour?.entrees ?? 0)
-      const sorties = Number(pointDuJour?.sorties ?? 0)
-      const soldeNet = Number(entrees) - Number(sorties)
-
-      autoTable(doc, {
-        startY: 90,
-        head: [['Indicateur', 'Valeur']],
-        body: [
-          ['Entrées (jour)', `${entrees.toLocaleString('fr-FR')} FCFA`],
-          ['Sorties (jour)', `${sorties.toLocaleString('fr-FR')} FCFA`],
-          ['Solde net (jour)', `${soldeNet.toLocaleString('fr-FR')} FCFA`],
-          ['Solde actuel', `${Number(soldeActuel ?? 0).toLocaleString('fr-FR')} FCFA`],
-          [
-            'Seuil alerte',
-            seuilAlerte > 0 ? `${seuilAlerte.toLocaleString('fr-FR')} FCFA` : '—',
-          ],
-        ],
-        styles: { fontSize: 10, cellPadding: 6 },
-        headStyles: { fillColor: [22, 119, 255] },
+      // Récupérer tous les mouvements du jour pour cette caisse
+      const mouvements = await getMouvementsCaisse({
+        id_caisse: idCaisse,
+        date_debut: today,
+        date_fin: today,
       })
 
-      doc.save(`point-caisse_${idCaisse}_${new Date().toISOString().slice(0, 10)}.pdf`)
+      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+      const pw = doc.internal.pageSize.getWidth()
+      const ml = 14
+      const mr = 14
+
+      // ── En-tête coloré ─────────────────────────────────────────────────
+      doc.setFillColor(22, 119, 255)
+      doc.rect(0, 0, pw, 20, 'F')
+      doc.setFontSize(12)
+      doc.setFont('helvetica', 'bold')
+      doc.setTextColor(255, 255, 255)
+      doc.text('LA BELLE PORTE (LBP)', ml, 13)
+      doc.setFontSize(9)
+      doc.setFont('helvetica', 'normal')
+      doc.text(`ÉTAT DE CAISSE — JOURNÉE DU ${dateLabel}`, pw - mr, 13, { align: 'right' })
+
+      // ── Infos caisse ────────────────────────────────────────────────────
+      doc.setTextColor(40, 40, 40)
+      doc.setFontSize(9)
+      const infoY = 26
+      doc.text(`Caisse : ${caisseLabel}${agenceNom ? ' — ' + agenceNom : ''}`, ml, infoY)
+      doc.text(`Généré par : ${operateur}`, pw - mr, infoY, { align: 'right' })
+      doc.text(`Imprimé le : ${dayjs().format('DD/MM/YYYY HH:mm')}`, pw / 2, infoY, { align: 'center' })
+      doc.setDrawColor(200, 200, 200)
+      doc.line(ml, infoY + 3, pw - mr, infoY + 3)
+
+      // ── Résumé chiffré ──────────────────────────────────────────────────
+      const entrees = Number(pointDuJour?.entrees ?? 0)
+      const sorties = Number(pointDuJour?.sorties ?? 0)
+      const soldeNet = entrees - sorties
+
+      autoTable(doc, {
+        startY: infoY + 7,
+        head: [['RÉSUMÉ DE LA JOURNÉE', '']],
+        body: [
+          ['Entrées totales (jour)', fmt(entrees)],
+          ['Sorties totales (jour)', fmt(sorties)],
+          ['Solde net (jour)', fmt(soldeNet)],
+          ['Solde caisse actuel', fmt(Number(soldeActuel ?? 0))],
+          ...(seuilAlerte > 0 ? [['Seuil d\'alerte', fmt(seuilAlerte)]] : []),
+        ],
+        headStyles: { fillColor: [22, 119, 255], textColor: 255, fontSize: 9, fontStyle: 'bold' },
+        styles: { fontSize: 9, cellPadding: 3 },
+        columnStyles: { 0: { fontStyle: 'bold', cellWidth: 75 }, 1: { halign: 'right' } },
+        margin: { left: ml, right: mr },
+      })
+
+      // ── Tableau des mouvements ──────────────────────────────────────────
+      const movStartY = (doc as any).lastAutoTable.finalY + 6
+
+      const rows = mouvements.map((m: any, i: number) => {
+        const isDebit = m.type === 'DECAISSEMENT'
+        const montantStr = `${isDebit ? '−' : '+'} ${Number(m.montant).toLocaleString('fr-FR')} FCFA`
+        const numDossier = m.details?.dossier_num ?? m.details?.numero_dossier ?? m.numero_dossier ?? '—'
+        return [
+          String(i + 1),
+          dayjs(m.date_mouvement || m.date || m.created_at).format('HH:mm'),
+          TYPE_LABELS[m.type] || m.type,
+          m.libelle || '—',
+          numDossier,
+          m.code_user || '—',
+          montantStr,
+        ]
+      })
+
+      autoTable(doc, {
+        startY: movStartY,
+        head: [['N°', 'Heure', 'Type', 'Libellé', 'N° Dossier', 'Saisi par', 'Montant']],
+        body: rows.length > 0 ? rows : [['', '', 'Aucun mouvement enregistré ce jour', '', '', '', '']],
+        headStyles: { fillColor: [50, 50, 50], textColor: 255, fontSize: 8, fontStyle: 'bold' },
+        styles: { fontSize: 8, cellPadding: 2.5 },
+        columnStyles: {
+          0: { cellWidth: 8, halign: 'center' },
+          1: { cellWidth: 16 },
+          2: { cellWidth: 34 },
+          3: { cellWidth: 46 },
+          4: { cellWidth: 22 },
+          5: { cellWidth: 22 },
+          6: { halign: 'right', cellWidth: 30, fontStyle: 'bold' },
+        },
+        didParseCell: (data: any) => {
+          if (data.section === 'body' && data.column.index === 6) {
+            const txt = String(data.cell.text[0] || '')
+            data.cell.styles.textColor = txt.startsWith('−') ? [220, 38, 38] : [22, 163, 74]
+          }
+        },
+        alternateRowStyles: { fillColor: [248, 249, 250] },
+        margin: { left: ml, right: mr },
+      })
+
+      // ── Totaux par type ─────────────────────────────────────────────────
+      const typeMap: Record<string, number> = {}
+      mouvements.forEach((m: any) => {
+        typeMap[m.type] = (typeMap[m.type] || 0) + Number(m.montant)
+      })
+      const totauxY = (doc as any).lastAutoTable.finalY + 5
+
+      if (Object.keys(typeMap).length > 0) {
+        autoTable(doc, {
+          startY: totauxY,
+          head: [['Récapitulatif par type', 'Total']],
+          body: Object.entries(typeMap).map(([type, tot]) => [
+            TYPE_LABELS[type] || type,
+            fmt(tot),
+          ]),
+          headStyles: { fillColor: [80, 80, 80], textColor: 255, fontSize: 8 },
+          styles: { fontSize: 8, cellPadding: 2.5 },
+          columnStyles: { 1: { halign: 'right', fontStyle: 'bold' } },
+          margin: { left: ml, right: mr },
+        })
+      }
+
+      // ── Zone signatures ─────────────────────────────────────────────────
+      const sigY = (doc as any).lastAutoTable.finalY + 12
+      doc.setFontSize(8)
+      doc.setTextColor(60, 60, 60)
+
+      const col1 = ml
+      const col2 = pw / 2 + 4
+      const lineW = 58
+
+      doc.text('Signature Chef d\'agence / Caissier :', col1, sigY)
+      doc.setDrawColor(100, 100, 100)
+      doc.line(col1, sigY + 14, col1 + lineW, sigY + 14)
+
+      doc.text('Visa Caissière principale :', col2, sigY)
+      doc.line(col2, sigY + 14, col2 + lineW, sigY + 14)
+
+      // ── Pied de page ────────────────────────────────────────────────────
+      const totalPages = (doc.internal as any).getNumberOfPages()
+      for (let p = 1; p <= totalPages; p++) {
+        doc.setPage(p)
+        doc.setFontSize(7)
+        doc.setTextColor(150, 150, 150)
+        doc.text(
+          `Page ${p}/${totalPages} — Généré le ${dayjs().format('DD/MM/YYYY HH:mm')} — LBP Gestion de colis`,
+          pw / 2,
+          doc.internal.pageSize.getHeight() - 6,
+          { align: 'center' },
+        )
+      }
+
+      doc.save(`etat-caisse_${caisseLabel.replace(/\s+/g, '-')}_${today}.pdf`)
     } catch {
       message.error('Export PDF impossible')
     }
-  }, [selectedCaisse, idCaisse, pointDuJour, soldeActuel, seuilAlerte])
+  }, [selectedCaisse, idCaisse, pointDuJour, soldeActuel, seuilAlerte, user])
 
+  // ─── Soumettre le point du jour ───────────────────────────────────────────
+  const handleOpenSubmitPoint = () => {
+    setSubmitPointMontant(Math.round(Number(pointDuJour?.entrees ?? 0)))
+    setSubmitPointObs('')
+    setSubmitPointVisible(true)
+  }
+
+  const handleSubmitPoint = async () => {
+    const idAgence = (selectedCaisse as any)?.id_agence ?? (selectedCaisse as any)?.agence?.id
+    if (!idAgence) {
+      message.warning('Cette caisse n\'est pas rattachée à une agence.')
+      return
+    }
+    setSubmitPointLoading(true)
+    try {
+      const pj = await exploitationService.createPointJournalier({
+        id_agence: idAgence,
+        date_point: dayjs().format('YYYY-MM-DD'),
+        total_recettes: submitPointMontant ?? 0,
+        devise: 'FCFA',
+        observations: submitPointObs.trim() || undefined,
+      })
+      await exploitationService.soumettrePointJournalier(pj.id)
+      message.success('Point de la journée soumis avec succès à la caissière principale.')
+      setSubmitPointVisible(false)
+      setRefreshKey((k) => k + 1)
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || err?.message || 'Soumission impossible'
+      message.error(msg)
+    } finally {
+      setSubmitPointLoading(false)
+    }
+  }
+
+  // ─── Sessions ─────────────────────────────────────────────────────────────
   const { data: sessionHistory, isLoading: sessionHistoryLoading, refetch: refetchSessionHistory } = useQuery({
     queryKey: ['caisse-session-history', idCaisse],
     queryFn: () => caisseService.getSessionHistory(idCaisse, 20),
@@ -155,11 +338,11 @@ export const SuiviCaissePage: React.FC = () => {
     mutationFn: (amount: number) =>
       caisseService.openSession({ id_caisse: idCaisse, solde_ouverture_reel: amount }),
     onSuccess: () => {
-      message.success('Session de caisse ouverte avec succes.');
-      setOpenModalVisible(false);
-      setOpenAmount(null);
-      refetchSession();
-      refetchSessionHistory();
+      message.success('Session de caisse ouverte avec succès.')
+      setOpenModalVisible(false)
+      setOpenAmount(null)
+      refetchSession()
+      refetchSessionHistory()
     },
     onError: (err: any) => message.error(err.message || "Erreur lors de l'ouverture de session"),
   })
@@ -168,29 +351,27 @@ export const SuiviCaissePage: React.FC = () => {
     mutationFn: (amount: number) =>
       caisseService.closeSession(activeSession.id, { solde_fermeture_reel: amount }),
     onSuccess: () => {
-      message.success('Session de caisse cloturee avec succes.');
-      setCloseModalVisible(false);
-      setCloseAmount(null);
-      refetchSession();
-      refetchSolde();
-      refetchCaisses();
-      refetchSessionHistory();
-      refetchPoint();
+      message.success('Session de caisse clôturée avec succès.')
+      setCloseModalVisible(false)
+      setCloseAmount(null)
+      refetchSession()
+      refetchSolde()
+      refetchCaisses()
+      refetchSessionHistory()
+      refetchPoint()
     },
-    onError: (err: any) => message.error(err.message || 'Erreur lors de la cloture de session'),
+    onError: (err: any) => message.error(err.message || 'Erreur lors de la clôture de session'),
   })
 
   const isSessionOpen = Boolean(activeSession?.id)
 
   const requireOpenSession = (action: () => void) => {
     if (!canOperateOnSelectedCaisse) {
-      message.warning(
-        'Cette caisse est en consultation seule. Sélectionnez la caisse principale siège pour enregistrer des opérations.',
-      )
+      message.warning('Cette caisse est en consultation seule. Sélectionnez la caisse principale siège pour enregistrer des opérations.')
       return
     }
     if (!isSessionOpen) {
-      message.warning('Veuillez ouvrir la caisse (session) avant d’enregistrer des opérations.')
+      message.warning('Veuillez ouvrir la caisse (session) avant d\'enregistrer des opérations.')
       setOpenModalVisible(true)
       return
     }
@@ -201,7 +382,7 @@ export const SuiviCaissePage: React.FC = () => {
     setApproFormVisible(false)
     setDecaissementFormVisible(false)
     setEntreeFormVisible(false)
-    setRefreshKey((prev) => prev + 1) // Force le rechargement des listes
+    setRefreshKey((prev) => prev + 1)
     refetchSolde()
     refetchCaisses()
     refetchPoint()
@@ -212,207 +393,101 @@ export const SuiviCaissePage: React.FC = () => {
     setEntreeFormVisible(true)
   }
 
-  // Items pour les Tabs imbriqués (entrées)
+  // ─── Tabs ─────────────────────────────────────────────────────────────────
   const entreesTabItems = [
     {
       key: 'espece',
       label: 'Espèce',
       children: (
-        <MouvementsCaisseList
-          key={`entree-espece-${refreshKey}`}
-          type="ENTREE_ESPECE"
-          idCaisse={idCaisse}
-          operationsEnabled={canOperateOnSelectedCaisse}
-        />
+        <MouvementsCaisseList key={`entree-espece-${refreshKey}`} type="ENTREE_ESPECE" idCaisse={idCaisse} operationsEnabled={canOperateOnSelectedCaisse} />
       ),
     },
     {
       key: 'cheque',
       label: 'Chèque',
       children: (
-        <MouvementsCaisseList
-          key={`entree-cheque-${refreshKey}`}
-          type="ENTREE_CHEQUE"
-          idCaisse={idCaisse}
-          operationsEnabled={canOperateOnSelectedCaisse}
-        />
+        <MouvementsCaisseList key={`entree-cheque-${refreshKey}`} type="ENTREE_CHEQUE" idCaisse={idCaisse} operationsEnabled={canOperateOnSelectedCaisse} />
       ),
     },
     {
       key: 'virement',
       label: 'Virement',
       children: (
-        <MouvementsCaisseList
-          key={`entree-virement-${refreshKey}`}
-          type="ENTREE_VIREMENT"
-          idCaisse={idCaisse}
-          operationsEnabled={canOperateOnSelectedCaisse}
-        />
+        <MouvementsCaisseList key={`entree-virement-${refreshKey}`} type="ENTREE_VIREMENT" idCaisse={idCaisse} operationsEnabled={canOperateOnSelectedCaisse} />
       ),
     },
   ]
 
-  // Items pour les Tabs principaux
   const mainTabItems = [
     {
       key: 'appro',
-      label: (
-        <span>
-          <ArrowUpOutlined /> APPRO (Approvisionnement)
-        </span>
-      ),
+      label: <span><ArrowUpOutlined /> APPRO</span>,
       children: (
         <Space direction="vertical" style={{ width: '100%' }} size="middle">
           <div>
             <WithPermission permission={PERMISSIONS.CAISSE.OPERATIONS}>
-              <Button
-                type="primary"
-                icon={<PlusOutlined />}
-                disabled={!canOperateOnSelectedCaisse || !isSessionOpen}
-                onClick={() => requireOpenSession(() => setApproFormVisible(true))}
-              >
+              <Button type="primary" icon={<PlusOutlined />} disabled={!canOperateOnSelectedCaisse || !isSessionOpen} onClick={() => requireOpenSession(() => setApproFormVisible(true))}>
                 Nouvel Approvisionnement
               </Button>
             </WithPermission>
-            {!isSessionOpen ? (
-              <Alert
-                style={{ marginTop: 12 }}
-                type="warning"
-                showIcon
-                message="Session fermée"
-                description="Ouvrez la caisse pour enregistrer des approvisionnements, décaissements et entrées."
-              />
-            ) : null}
+            {!isSessionOpen && (
+              <Alert style={{ marginTop: 12 }} type="warning" showIcon message="Session fermée" description="Ouvrez la caisse pour enregistrer des approvisionnements, décaissements et entrées." />
+            )}
           </div>
-
-          <MouvementsCaisseList
-            key={`appro-${refreshKey}`}
-            type="APPRO"
-            idCaisse={idCaisse}
-            operationsEnabled={canOperateOnSelectedCaisse}
-          />
+          <MouvementsCaisseList key={`appro-${refreshKey}`} type="APPRO" idCaisse={idCaisse} operationsEnabled={canOperateOnSelectedCaisse} />
         </Space>
       ),
     },
     {
       key: 'decaissement',
-      label: (
-        <span>
-          <ArrowDownOutlined /> DÉCAISSEMENT
-        </span>
-      ),
+      label: <span><ArrowDownOutlined /> DÉCAISSEMENT</span>,
       children: (
         <Space direction="vertical" style={{ width: '100%' }} size="middle">
           <div>
             <WithPermission permission={PERMISSIONS.CAISSE.OPERATIONS}>
-              <Button
-                type="primary"
-                danger
-                icon={<PlusOutlined />}
-                disabled={!canOperateOnSelectedCaisse || !isSessionOpen}
-                onClick={() => requireOpenSession(() => setDecaissementFormVisible(true))}
-              >
+              <Button type="primary" danger icon={<PlusOutlined />} disabled={!canOperateOnSelectedCaisse || !isSessionOpen} onClick={() => requireOpenSession(() => setDecaissementFormVisible(true))}>
                 Nouveau Décaissement
               </Button>
             </WithPermission>
-            {!isSessionOpen ? (
-              <Alert
-                style={{ marginTop: 12 }}
-                type="warning"
-                showIcon
-                message="Session fermée"
-                description="Ouvrez la caisse pour enregistrer des décaissements."
-              />
-            ) : null}
+            {!isSessionOpen && (
+              <Alert style={{ marginTop: 12 }} type="warning" showIcon message="Session fermée" description="Ouvrez la caisse pour enregistrer des décaissements." />
+            )}
           </div>
-
-          <MouvementsCaisseList
-            key={`decaissement-${refreshKey}`}
-            type="DECAISSEMENT"
-            idCaisse={idCaisse}
-            operationsEnabled={canOperateOnSelectedCaisse}
-          />
+          <MouvementsCaisseList key={`decaissement-${refreshKey}`} type="DECAISSEMENT" idCaisse={idCaisse} operationsEnabled={canOperateOnSelectedCaisse} />
         </Space>
       ),
     },
     {
       key: 'entrees',
-      label: (
-        <span>
-          <DollarOutlined /> ENTRÉES DE CAISSE
-        </span>
-      ),
+      label: <span><DollarOutlined /> ENTRÉES DE CAISSE</span>,
       children: (
         <Space direction="vertical" style={{ width: '100%' }} size="middle">
           <div>
             <WithPermission permission={PERMISSIONS.CAISSE.OPERATIONS}>
               <Space wrap>
-                <Button
-                  type="primary"
-                  icon={<PlusOutlined />}
-                  disabled={!canOperateOnSelectedCaisse || !isSessionOpen}
-                  onClick={() => requireOpenSession(() => handleOpenEntreeForm('ENTREE_ESPECE'))}
-                >
-                  Entrée Espèce
-                </Button>
-                <Button
-                  type="primary"
-                  icon={<PlusOutlined />}
-                  disabled={!canOperateOnSelectedCaisse || !isSessionOpen}
-                  onClick={() => requireOpenSession(() => handleOpenEntreeForm('ENTREE_CHEQUE'))}
-                >
-                  Entrée Chèque
-                </Button>
-                <Button
-                  type="primary"
-                  icon={<PlusOutlined />}
-                  disabled={!canOperateOnSelectedCaisse || !isSessionOpen}
-                  onClick={() => requireOpenSession(() => handleOpenEntreeForm('ENTREE_VIREMENT'))}
-                >
-                  Entrée Virement
-                </Button>
+                <Button type="primary" icon={<PlusOutlined />} disabled={!canOperateOnSelectedCaisse || !isSessionOpen} onClick={() => requireOpenSession(() => handleOpenEntreeForm('ENTREE_ESPECE'))}>Entrée Espèce</Button>
+                <Button type="primary" icon={<PlusOutlined />} disabled={!canOperateOnSelectedCaisse || !isSessionOpen} onClick={() => requireOpenSession(() => handleOpenEntreeForm('ENTREE_CHEQUE'))}>Entrée Chèque</Button>
+                <Button type="primary" icon={<PlusOutlined />} disabled={!canOperateOnSelectedCaisse || !isSessionOpen} onClick={() => requireOpenSession(() => handleOpenEntreeForm('ENTREE_VIREMENT'))}>Entrée Virement</Button>
               </Space>
             </WithPermission>
-            {!isSessionOpen ? (
-              <Alert
-                style={{ marginTop: 12 }}
-                type="warning"
-                showIcon
-                message="Session fermée"
-                description="Ouvrez la caisse pour enregistrer des entrées."
-              />
-            ) : null}
+            {!isSessionOpen && (
+              <Alert style={{ marginTop: 12 }} type="warning" showIcon message="Session fermée" description="Ouvrez la caisse pour enregistrer des entrées." />
+            )}
           </div>
-
           <Tabs size="small" type="card" items={entreesTabItems} />
         </Space>
       ),
     },
     ...(canValidatePointsJournaliers
-      ? [
-          {
-            key: 'points-soumis',
-            label: (
-              <span>
-                <CheckCircleOutlined /> Points soumis
-              </span>
-            ),
-            children: (
-              <PointsSoumisCaisseTab
-                idAgence={selectedCaisse?.id_agence}
-                refreshKey={refreshKey}
-              />
-            ),
-          },
-        ]
+      ? [{
+          key: 'points-soumis',
+          label: <span><CheckCircleOutlined /> Points soumis</span>,
+          children: <PointsSoumisCaisseTab idAgence={(selectedCaisse as any)?.id_agence} refreshKey={refreshKey} />,
+        }]
       : []),
     {
       key: 'rapport',
-      label: (
-        <span>
-          <FileTextOutlined /> RAPPORT GRANDES LIGNES
-        </span>
-      ),
+      label: <span><FileTextOutlined /> RAPPORT GRANDES LIGNES</span>,
       children: <RapportGrandesLignes idCaisse={idCaisse} />,
     },
     {
@@ -423,20 +498,16 @@ export const SuiviCaissePage: React.FC = () => {
           <Space direction="vertical" style={{ width: '100%' }}>
             <Space style={{ justifyContent: 'space-between', width: '100%' }} wrap>
               <Typography.Text strong>Historique des sessions (20 dernières)</Typography.Text>
-              <Button onClick={() => refetchSessionHistory()} loading={sessionHistoryLoading}>
-                Actualiser
-              </Button>
+              <Button onClick={() => refetchSessionHistory()} loading={sessionHistoryLoading}>Actualiser</Button>
             </Space>
             {Array.isArray(sessionHistory) && sessionHistory.length > 0 ? (
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr>
-                      <th style={{ textAlign: 'left', padding: 8, borderBottom: '1px solid #f0f0f0' }}>Ouverture</th>
-                      <th style={{ textAlign: 'left', padding: 8, borderBottom: '1px solid #f0f0f0' }}>Fermeture</th>
-                      <th style={{ textAlign: 'right', padding: 8, borderBottom: '1px solid #f0f0f0' }}>Solde ouverture</th>
-                      <th style={{ textAlign: 'right', padding: 8, borderBottom: '1px solid #f0f0f0' }}>Solde fermeture</th>
-                      <th style={{ textAlign: 'left', padding: 8, borderBottom: '1px solid #f0f0f0' }}>Statut</th>
+                      {['Ouverture', 'Fermeture', 'Solde ouverture', 'Solde fermeture', 'Statut'].map((h) => (
+                        <th key={h} style={{ textAlign: h.includes('Solde') ? 'right' : 'left', padding: 8, borderBottom: '1px solid #f0f0f0' }}>{h}</th>
+                      ))}
                     </tr>
                   </thead>
                   <tbody>
@@ -444,12 +515,8 @@ export const SuiviCaissePage: React.FC = () => {
                       <tr key={s.id}>
                         <td style={{ padding: 8, borderBottom: '1px solid #fafafa' }}>{s.opened_at ?? '—'}</td>
                         <td style={{ padding: 8, borderBottom: '1px solid #fafafa' }}>{s.closed_at ?? '—'}</td>
-                        <td style={{ padding: 8, borderBottom: '1px solid #fafafa', textAlign: 'right' }}>
-                          {(s.solde_ouverture_reel ?? s.solde_ouverture ?? 0).toLocaleString('fr-FR')} FCFA
-                        </td>
-                        <td style={{ padding: 8, borderBottom: '1px solid #fafafa', textAlign: 'right' }}>
-                          {s.solde_fermeture_reel != null ? `${Number(s.solde_fermeture_reel).toLocaleString('fr-FR')} FCFA` : '—'}
-                        </td>
+                        <td style={{ padding: 8, borderBottom: '1px solid #fafafa', textAlign: 'right' }}>{(s.solde_ouverture_reel ?? s.solde_ouverture ?? 0).toLocaleString('fr-FR')} FCFA</td>
+                        <td style={{ padding: 8, borderBottom: '1px solid #fafafa', textAlign: 'right' }}>{s.solde_fermeture_reel != null ? `${Number(s.solde_fermeture_reel).toLocaleString('fr-FR')} FCFA` : '—'}</td>
                         <td style={{ padding: 8, borderBottom: '1px solid #fafafa' }}>
                           <Tag color={s.closed_at ? 'default' : 'green'}>{s.closed_at ? 'Clôturée' : 'Ouverte'}</Tag>
                         </td>
@@ -467,22 +534,23 @@ export const SuiviCaissePage: React.FC = () => {
     },
   ]
 
+  // ─── Render ───────────────────────────────────────────────────────────────
   return (
     <div style={{ padding: 24 }}>
       <Card>
         <Space direction="vertical" style={{ width: '100%' }} size="large">
-          {roleCodePrincipal === 'CAISSIER' && caisses && caisses.length > 1 ? (
+          {roleCodePrincipal === 'CAISSIER' && caisses && caisses.length > 1 && (
             <Alert
               type="info"
               showIcon
               message="Toutes les agences"
-              description="Sélectionnez la caisse dans la liste : le solde et le point du jour s’appliquent à l’agence choisie. Vous pouvez consulter chaque montant (consultation) ; les opérations d’encaissement en session restent en principe sur la caisse principale (hub) lorsque celle-ci est autorisée."
+              description="Sélectionnez la caisse dans la liste : le solde et le point du jour s'appliquent à l'agence choisie."
             />
-          ) : null}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h1>
-              <WalletOutlined /> Suivi Caisse
-            </h1>
+          )}
+
+          {/* Barre supérieure : titre + sélecteur caisse */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+            <h1 style={{ margin: 0 }}><WalletOutlined /> Suivi Caisse</h1>
             {caisses && caisses.length > 0 && (
               <Card size="small" style={{ backgroundColor: '#f0f2f5' }}>
                 <Space wrap>
@@ -492,36 +560,26 @@ export const SuiviCaissePage: React.FC = () => {
                     onChange={(val: number) => setSelectedCaisseId(val)}
                     style={{ minWidth: 200 }}
                     options={caisses.map((c) => ({
-                      label:
-                        (c.libelle || c.code) +
-                        (c.peut_operer === false ? ' (consultation)' : ''),
+                      label: (c.nom || c.libelle || c.code) + (c.peut_operer === false ? ' (consultation)' : ''),
                       value: c.id,
                     }))}
                   />
-                  <strong>Solde actuel:</strong>{' '}
-                  <span style={{ color: '#52c41a', fontWeight: 'bold' }}>
-                    {soldeActuel.toLocaleString('fr-FR')} FCFA
-                  </span>
+                  <strong>Solde actuel:</strong>
+                  <span style={{ color: '#52c41a', fontWeight: 'bold' }}>{Number(soldeActuel).toLocaleString('fr-FR')} FCFA</span>
                   <Typography.Text type={activeSession?.id ? 'success' : 'warning'}>
                     {activeSession?.id ? 'Session: OUVERTE' : 'Session: FERMEE'}
                   </Typography.Text>
                   <WithPermission permission={PERMISSIONS.CAISSE.OPERATIONS}>
                     {!activeSession?.id ? (
-                      <Button
-                        type="primary"
-                        disabled={!canOperateOnSelectedCaisse}
-                        onClick={() => setOpenModalVisible(true)}
-                      >
-                        Ouvrir caisse
-                      </Button>
+                      <Button type="primary" disabled={!canOperateOnSelectedCaisse} onClick={() => setOpenModalVisible(true)}>Ouvrir caisse</Button>
                     ) : (
                       <TracedActionButton
                         danger
                         disabled={!canOperateOnSelectedCaisse}
                         onClick={() => setCloseModalVisible(true)}
-                        traceHint="La clôture de session est enregistrée dans le journal d’audit métier et dans l’historique caisse."
+                        traceHint="La clôture de session est enregistrée dans le journal d'audit métier et dans l'historique caisse."
                       >
-                        Cloturer caisse
+                        Clôturer caisse
                       </TracedActionButton>
                     )}
                   </WithPermission>
@@ -530,163 +588,154 @@ export const SuiviCaissePage: React.FC = () => {
             )}
           </div>
 
+          {/* Statistiques */}
           <Row gutter={[16, 16]}>
             <Col xs={24} md={8}>
               <Card size="small">
-                <Statistic
-                  title="Solde actuel"
-                  value={soldeActuel}
-                  precision={0}
-                  suffix="FCFA"
-                  valueStyle={{ color: soldeActuel >= 0 ? '#52c41a' : '#ff4d4f' }}
-                  loading={caissesLoading}
-                />
+                <Statistic title="Solde actuel" value={soldeActuel} precision={0} suffix="FCFA" valueStyle={{ color: soldeActuel >= 0 ? '#52c41a' : '#ff4d4f' }} loading={caissesLoading} />
               </Card>
             </Col>
             <Col xs={24} md={8}>
               <Card size="small">
-                <Statistic
-                  title="Entrées (jour)"
-                  value={pointDuJour?.entrees ?? 0}
-                  precision={0}
-                  suffix="FCFA"
-                  valueStyle={{ color: '#1677ff' }}
-                  loading={pointLoading}
-                />
+                <Statistic title="Entrées (jour)" value={pointDuJour?.entrees ?? 0} precision={0} suffix="FCFA" valueStyle={{ color: '#1677ff' }} loading={pointLoading} />
               </Card>
             </Col>
             <Col xs={24} md={8}>
               <Card size="small">
-                <Statistic
-                  title="Sorties (jour)"
-                  value={pointDuJour?.sorties ?? 0}
-                  precision={0}
-                  suffix="FCFA"
-                  valueStyle={{ color: '#ff4d4f' }}
-                  loading={pointLoading}
-                />
+                <Statistic title="Sorties (jour)" value={pointDuJour?.sorties ?? 0} precision={0} suffix="FCFA" valueStyle={{ color: '#ff4d4f' }} loading={pointLoading} />
               </Card>
             </Col>
           </Row>
 
+          {/* Actions */}
           <Space wrap>
-            <Button onClick={exportPointPdf} disabled={!pointDuJour}>
-              Exporter point (PDF)
+            <Button onClick={exportPointPdf} disabled={!pointDuJour} icon={<FileTextOutlined />}>
+              Exporter état du jour (PDF)
             </Button>
+            {canSubmitPoint && (selectedCaisse as any)?.id_agence && (
+              <Button
+                type="primary"
+                icon={<SendOutlined />}
+                onClick={handleOpenSubmitPoint}
+                disabled={!pointDuJour}
+              >
+                Soumettre le point à la caissière principale
+              </Button>
+            )}
           </Space>
 
-          {isSoldeSousSeuil ? (
-            <Alert
-              type="error"
-              showIcon
-              message="Solde sous le seuil d’alerte"
-              description={`Solde actuel : ${soldeActuel.toLocaleString('fr-FR')} FCFA — Seuil : ${seuilAlerte.toLocaleString('fr-FR')} FCFA`}
-            />
-          ) : null}
+          {/* Alertes */}
+          {isSoldeSousSeuil && (
+            <Alert type="error" showIcon message="Solde sous le seuil d'alerte" description={`Solde actuel : ${Number(soldeActuel).toLocaleString('fr-FR')} FCFA — Seuil : ${seuilAlerte.toLocaleString('fr-FR')} FCFA`} />
+          )}
+          {selectedCaisse?.peut_operer === false && (
+            <Alert type="warning" showIcon message="Caisse en consultation seule" description="Vous visualisez une caisse d'agence. Les encaissements, sessions et mouvements sont réservés à la caisse principale siège." />
+          )}
+          {!isSessionOpen && (
+            <Alert type="info" showIcon message="Caisse fermée" description="Ouvrez une session pour enregistrer des opérations. Vous pouvez toujours consulter l'historique et les rapports." />
+          )}
 
-          {selectedCaisse?.peut_operer === false ? (
-            <Alert
-              type="warning"
-              showIcon
-              message="Caisse en consultation seule"
-              description="Vous visualisez une caisse d’agence. Les encaissements, sessions et mouvements sont réservés à la caisse principale siège (versements centralisés)."
-            />
-          ) : null}
+          {canSeeRecettesDuJour && <RecettesDuJourCard />}
 
-          {!isSessionOpen ? (
-            <Alert
-              type="info"
-              showIcon
-              message="Caisse fermée"
-              description="Ouvrez une session pour enregistrer des opérations. Vous pouvez toujours consulter l’historique et les rapports."
-            />
-          ) : null}
-
-          {canSeeRecettesDuJour ? <RecettesDuJourCard /> : null}
-
-          <EncaissementRapideCard
-            isSessionOpen={isSessionOpen}
-            onEncaissementSuccess={handleSuccess}
-            readOnly={!canOperateOnSelectedCaisse}
-          />
+          <EncaissementRapideCard isSessionOpen={isSessionOpen} onEncaissementSuccess={handleSuccess} readOnly={!canOperateOnSelectedCaisse} />
 
           <Tabs activeKey={activeTab} onChange={setActiveTab} size="large" items={mainTabItems} />
         </Space>
       </Card>
 
-      {/* Formulaires Modaux */}
-      <ApproForm
-        visible={approFormVisible}
-        onCancel={() => setApproFormVisible(false)}
-        onSuccess={handleSuccess}
-        idCaisse={idCaisse}
-        soldeActuel={soldeActuel}
-      />
+      {/* Formulaires */}
+      <ApproForm visible={approFormVisible} onCancel={() => setApproFormVisible(false)} onSuccess={handleSuccess} idCaisse={idCaisse} soldeActuel={soldeActuel} />
+      <DecaissementForm visible={decaissementFormVisible} onCancel={() => setDecaissementFormVisible(false)} onSuccess={handleSuccess} idCaisse={idCaisse} soldeActuel={soldeActuel} />
+      <EntreeCaisseForm visible={entreeFormVisible} onCancel={() => setEntreeFormVisible(false)} onSuccess={handleSuccess} idCaisse={idCaisse} soldeActuel={soldeActuel} typeEntree={entreeType} />
 
-      <DecaissementForm
-        visible={decaissementFormVisible}
-        onCancel={() => setDecaissementFormVisible(false)}
-        onSuccess={handleSuccess}
-        idCaisse={idCaisse}
-        soldeActuel={soldeActuel}
-      />
-
-      <EntreeCaisseForm
-        visible={entreeFormVisible}
-        onCancel={() => setEntreeFormVisible(false)}
-        onSuccess={handleSuccess}
-        idCaisse={idCaisse}
-        soldeActuel={soldeActuel}
-        typeEntree={entreeType}
-      />
-
+      {/* Ouverture session */}
       <Modal
         title="Ouverture de caisse"
         open={openModalVisible}
         onCancel={() => setOpenModalVisible(false)}
         onOk={() => {
-          if (openAmount === null) return message.warning('Saisissez le solde reel a l ouverture.');
-          openSessionMutation.mutate(openAmount);
+          if (openAmount === null) return message.warning('Saisissez le solde réel à l\'ouverture.')
+          openSessionMutation.mutate(openAmount)
         }}
         confirmLoading={openSessionMutation.isPending}
+        okText="Ouvrir"
       >
         <Space direction="vertical" style={{ width: '100%' }}>
-          <Typography.Text>Solde reel a l ouverture</Typography.Text>
-          <InputNumber
-            value={openAmount}
-            onChange={(v: number | null) => setOpenAmount(typeof v === 'number' ? v : null)}
-            style={{ width: '100%' }}
-            min={0}
-          />
+          <Typography.Text>Solde réel à l'ouverture</Typography.Text>
+          <InputNumber value={openAmount} onChange={(v) => setOpenAmount(typeof v === 'number' ? v : null)} style={{ width: '100%' }} min={0} addonAfter="FCFA" />
         </Space>
       </Modal>
 
+      {/* Clôture session */}
       <Modal
-        title="Cloture de caisse"
+        title="Clôture de caisse"
         open={closeModalVisible}
         onCancel={() => setCloseModalVisible(false)}
         onOk={() => {
-          if (closeAmount === null) return message.warning('Saisissez le solde reel a la fermeture.');
-          if (!activeSession?.id) return message.warning('Aucune session active.');
-          closeSessionMutation.mutate(closeAmount);
+          if (closeAmount === null) return message.warning('Saisissez le solde réel à la fermeture.')
+          if (!activeSession?.id) return message.warning('Aucune session active.')
+          closeSessionMutation.mutate(closeAmount)
         }}
         confirmLoading={closeSessionMutation.isPending}
+        okText="Clôturer"
+        okButtonProps={{ danger: true }}
       >
         <Space direction="vertical" style={{ width: '100%' }}>
+          <Alert type="info" showIcon message="Action tracée" description="La fermeture de session génère une trace dans le journal d'audit (horodatage, utilisateur, solde saisi)." style={{ marginBottom: 8 }} />
+          <Typography.Text>Solde réel à la fermeture</Typography.Text>
+          <InputNumber value={closeAmount} onChange={(v) => setCloseAmount(typeof v === 'number' ? v : null)} style={{ width: '100%' }} min={0} addonAfter="FCFA" />
+        </Space>
+      </Modal>
+
+      {/* Soumission du point du jour */}
+      <Modal
+        title={<><SendOutlined /> Soumettre le point de la journée</>}
+        open={submitPointVisible}
+        onCancel={() => setSubmitPointVisible(false)}
+        onOk={handleSubmitPoint}
+        confirmLoading={submitPointLoading}
+        okText="Soumettre à la caissière principale"
+        okButtonProps={{ type: 'primary', icon: <SendOutlined /> }}
+        width={480}
+      >
+        <Space direction="vertical" style={{ width: '100%' }} size="middle">
           <Alert
             type="info"
             showIcon
-            message="Action tracée"
-            description="La fermeture de session génère une trace dans le journal d’audit (horodatage, utilisateur, solde saisi)."
-            style={{ marginBottom: 8 }}
+            message="Ce point sera transmis à la caissière principale pour vérification et validation."
+            description="Elle pourra le comparer avec les versements reçus physiquement et choisir de valider ou rejeter."
           />
-          <Typography.Text>Solde reel a la fermeture</Typography.Text>
-          <InputNumber
-            value={closeAmount}
-            onChange={(v: number | null) => setCloseAmount(typeof v === 'number' ? v : null)}
-            style={{ width: '100%' }}
-            min={0}
-          />
+          <div>
+            <Typography.Text strong>Date du point :</Typography.Text>
+            <br />
+            <Typography.Text>{dayjs().format('dddd DD MMMM YYYY')}</Typography.Text>
+          </div>
+          <div>
+            <Typography.Text strong>Total recettes déclaré (FCFA) :</Typography.Text>
+            <InputNumber
+              style={{ width: '100%', marginTop: 4 }}
+              value={submitPointMontant}
+              onChange={(v) => setSubmitPointMontant(typeof v === 'number' ? v : null)}
+              min={0}
+              addonAfter="FCFA"
+              formatter={(v) => String(v).replace(/\B(?=(\d{3})+(?!\d))/g, '.')}
+              parser={(v) => Number(String(v).replace(/\./g, ''))}
+            />
+            <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+              Pré-rempli depuis les entrées du jour ({fmt(Number(pointDuJour?.entrees ?? 0))}). Modifiable si nécessaire.
+            </Typography.Text>
+          </div>
+          <div>
+            <Typography.Text strong>Observations (optionnel) :</Typography.Text>
+            <TextArea
+              rows={3}
+              style={{ marginTop: 4 }}
+              value={submitPointObs}
+              onChange={(e) => setSubmitPointObs(e.target.value)}
+              placeholder="Ex : 2 versements Wave en attente de confirmation..."
+              maxLength={500}
+            />
+          </div>
         </Space>
       </Modal>
     </div>

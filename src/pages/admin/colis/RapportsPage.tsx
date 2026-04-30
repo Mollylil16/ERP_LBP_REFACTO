@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useMemo } from 'react'
 import {
   Typography,
   Card,
@@ -10,30 +10,118 @@ import {
   Button,
   Space,
   Tabs,
+  Statistic,
+  Table,
+  Tag,
 } from 'antd'
 import {
   SearchOutlined,
   FileExcelOutlined,
   FilePdfOutlined,
   BarChartOutlined,
+  TableOutlined,
+  InboxOutlined,
+  SwapOutlined,
+  ApartmentOutlined,
 } from '@ant-design/icons'
+import type { ColumnsType } from 'antd/es/table'
 const { RangePicker } = DatePicker
-import dayjs, { Dayjs } from 'dayjs'
+import dayjs from 'dayjs'
 import { rapportsService } from '@services/rapports.service'
 import { ChartColisParMois } from '@components/dashboard/ChartColisParMois'
 import { ChartRepartitionTrafic } from '@components/dashboard/ChartRepartitionTrafic'
-import { ChartRevenus } from '@components/dashboard/ChartRevenus'
 import toast from 'react-hot-toast'
-import { useQuery } from '@tanstack/react-query'
 import { APP_CONFIG } from '@constants/application'
+import jsPDF from 'jspdf'
+import autoTable from 'jspdf-autotable'
+import ExcelJS from 'exceljs'
+import { saveAs } from 'file-saver'
 
 const { Title } = Typography
 const { Option } = Select
 
+interface RapportRow {
+  key: number
+  ref: string
+  date: string
+  type: string
+  trafic: string
+  mode: string
+  expediteur: string
+  destinataire: string
+  montant: number
+}
+
+const calculerMontantColis = (colis: any): number => {
+  if (colis.marchandises?.length) {
+    return colis.marchandises.reduce((acc: number, m: any) => {
+      return (
+        acc +
+        Number(m.poids_total || 0) * Number(m.prix_unit || 0) +
+        Number(m.prix_emballage || 0) +
+        Number(m.prix_assurance || 0)
+      )
+    }, 0)
+  }
+  return Number(colis.total_montant || 0)
+}
+
 export const ColisRapportsPage: React.FC = () => {
   const [form] = Form.useForm()
   const [reportParams, setReportParams] = useState<any>(null)
+  const [reportData, setReportData] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
+
+  const chartData = useMemo(() => {
+    if (!reportData.length) return []
+    const byMonth = new Map<string, { mois: string; groupage: number; autresEnvois: number; total: number }>()
+    reportData.forEach((c) => {
+      const d = dayjs(c.date_envoi)
+      const key = d.format('YYYY-MM')
+      const mois = d.format('MMM')
+      if (!byMonth.has(key)) byMonth.set(key, { mois, groupage: 0, autresEnvois: 0, total: 0 })
+      const entry = byMonth.get(key)!
+      entry.total++
+      if (c.forme_envoi === 'groupage') entry.groupage++
+      else entry.autresEnvois++
+    })
+    return Array.from(byMonth.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([, v]) => v)
+  }, [reportData])
+
+  const traficData = useMemo(() => {
+    if (!reportData.length) return []
+    const counts = new Map<string, number>()
+    reportData.forEach((c) => {
+      const key = c.trafic_envoi || 'Non défini'
+      counts.set(key, (counts.get(key) || 0) + 1)
+    })
+    return Array.from(counts.entries()).map(([name, value]) => ({ name, value }))
+  }, [reportData])
+
+  const kpis = useMemo(() => {
+    const total = reportData.length
+    const groupage = reportData.filter((c) => c.forme_envoi === 'groupage').length
+    const montantTotal = reportData.reduce((acc, c) => acc + calculerMontantColis(c), 0)
+    return { total, groupage, autresEnvois: total - groupage, montantTotal }
+  }, [reportData])
+
+  const tableRows: RapportRow[] = useMemo(
+    () =>
+      reportData.map((c) => ({
+        key: c.id,
+        ref: c.ref_colis,
+        date: dayjs(c.date_envoi).format('DD/MM/YYYY'),
+        type: c.forme_envoi === 'groupage' ? 'Groupage' : 'Autres Envois',
+        trafic: c.trafic_envoi || '-',
+        mode: c.mode_envoi || '-',
+        expediteur: c.client?.nom_exp || '-',
+        destinataire: c.nom_dest || c.nom_destinataire || '-',
+        montant: calculerMontantColis(c),
+      })),
+    [reportData]
+  )
 
   const handleGenerateReport = async (values: any) => {
     setLoading(true)
@@ -44,16 +132,12 @@ export const ColisRapportsPage: React.FC = () => {
         trafic_envoi: values.trafic_envoi,
         mode_envoi: values.mode_envoi,
         forme_envoi: values.forme_envoi,
-        client_id: values.client_id,
       }
-
       setReportParams(params)
-
-      // Générer le rapport via l'API
-      const reportData = await rapportsService.generateRapportColis(params)
-      console.log('Report data:', reportData)
-
-      toast.success('Rapport généré avec succès')
+      const data = await rapportsService.generateRapportColis(params)
+      const list = Array.isArray(data) ? data : []
+      setReportData(list)
+      toast.success(`${list.length} colis trouvés`)
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Erreur lors de la génération du rapport')
     } finally {
@@ -62,55 +146,137 @@ export const ColisRapportsPage: React.FC = () => {
   }
 
   const handleExportExcel = async () => {
-    if (!reportParams) {
-      toast.error('Veuillez d\'abord générer un rapport')
+    if (!reportData.length) {
+      toast.error('Générez d\'abord un rapport')
       return
     }
+    const wb = new ExcelJS.Workbook()
+    const sheet = wb.addWorksheet('Rapport Colis')
+    const periode = `${reportParams.start_date} → ${reportParams.end_date}`
 
-    setLoading(true)
-    try {
-      await rapportsService.downloadRapportExcel(reportParams)
-      toast.success('Rapport Excel téléchargé avec succès')
-    } catch (error: any) {
-      toast.error('Erreur lors de l\'export Excel')
-    } finally {
-      setLoading(false)
-    }
+    sheet.mergeCells('A1:H1')
+    const titleCell = sheet.getCell('A1')
+    titleCell.value = `Rapport Colis — La Belle Porte | Période : ${periode}`
+    titleCell.font = { bold: true, size: 13, color: { argb: 'FF1a3a5c' } }
+    titleCell.alignment = { horizontal: 'center' }
+    sheet.addRow([])
+
+    const headerRow = sheet.addRow([
+      'Référence', 'Date', 'Type', 'Trafic', 'Mode', 'Expéditeur', 'Destinataire', 'Montant (FCFA)',
+    ])
+    headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } }
+    headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1a3a5c' } }
+    headerRow.alignment = { horizontal: 'center' }
+
+    tableRows.forEach((r, i) => {
+      const row = sheet.addRow([r.ref, r.date, r.type, r.trafic, r.mode, r.expediteur, r.destinataire, r.montant])
+      if (i % 2 === 0) {
+        row.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF5F7FA' } }
+      }
+      row.getCell(8).alignment = { horizontal: 'right' }
+    })
+
+    ;[18, 14, 16, 28, 18, 24, 24, 18].forEach((w, i) => {
+      sheet.getColumn(i + 1).width = w
+    })
+
+    const kpiSheet = wb.addWorksheet('Résumé')
+    kpiSheet.addRow(['Indicateur', 'Valeur'])
+    kpiSheet.getRow(1).font = { bold: true }
+    kpiSheet.addRow(['Total colis', kpis.total])
+    kpiSheet.addRow(['Groupage', kpis.groupage])
+    kpiSheet.addRow(['Autres envois', kpis.autresEnvois])
+    kpiSheet.addRow(['Montant total (FCFA)', kpis.montantTotal])
+    kpiSheet.getColumn(1).width = 25
+    kpiSheet.getColumn(2).width = 20
+
+    const buffer = await wb.xlsx.writeBuffer()
+    saveAs(
+      new Blob([buffer]),
+      `rapport-colis-${reportParams.start_date}-${reportParams.end_date}.xlsx`
+    )
+    toast.success('Rapport Excel téléchargé')
   }
 
-  const handleExportPDF = async () => {
-    if (!reportParams) {
-      toast.error('Veuillez d\'abord générer un rapport')
+  const handleExportPDF = () => {
+    if (!reportData.length) {
+      toast.error('Générez d\'abord un rapport')
       return
     }
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' })
+    const periode = `${reportParams.start_date} → ${reportParams.end_date}`
 
-    setLoading(true)
-    try {
-      await rapportsService.downloadRapportPDF(reportParams)
-      toast.success('Rapport PDF téléchargé avec succès')
-    } catch (error: any) {
-      toast.error('Erreur lors de l\'export PDF')
-    } finally {
-      setLoading(false)
-    }
+    doc.setFontSize(16)
+    doc.setTextColor(26, 58, 92)
+    doc.text('Rapport Colis — La Belle Porte', 14, 15)
+
+    doc.setFontSize(10)
+    doc.setTextColor(80)
+    doc.text(`Période : ${periode}`, 14, 22)
+    doc.text(
+      `Total : ${kpis.total} colis  |  Groupage : ${kpis.groupage}  |  Autres envois : ${kpis.autresEnvois}`,
+      14,
+      28
+    )
+    doc.text(`Montant total : ${kpis.montantTotal.toLocaleString('fr-FR')} FCFA`, 14, 34)
+
+    autoTable(doc, {
+      head: [['Référence', 'Date', 'Type', 'Trafic', 'Mode', 'Expéditeur', 'Destinataire', 'Montant']],
+      body: tableRows.map((r) => [
+        r.ref,
+        r.date,
+        r.type,
+        r.trafic,
+        r.mode,
+        r.expediteur,
+        r.destinataire,
+        r.montant.toLocaleString('fr-FR') + ' FCFA',
+      ]),
+      startY: 40,
+      styles: { fontSize: 7.5, cellPadding: 2 },
+      headStyles: { fillColor: [26, 58, 92], textColor: 255, fontStyle: 'bold' },
+      alternateRowStyles: { fillColor: [245, 247, 250] },
+      columnStyles: { 7: { halign: 'right' } },
+    })
+
+    doc.save(`rapport-colis-${reportParams.start_date}-${reportParams.end_date}.pdf`)
+    toast.success('Rapport PDF téléchargé')
   }
 
-  // Données de graphiques (à remplacer par des données réelles du rapport)
-  const chartData = reportParams
-    ? [
-      { mois: 'Jan', groupage: 120, autresEnvois: 80, total: 200 },
-      { mois: 'Fév', groupage: 150, autresEnvois: 100, total: 250 },
-    ]
-    : []
-
-  const traficData = reportParams
-    ? [
-      { name: 'Groupage Aérien', value: 45 },
-      { name: 'Groupage Maritime', value: 30 },
-      { name: 'Colis Rapide CI vers FR', value: 15 },
-      { name: 'Colis Rapide FR vers CI', value: 10 },
-    ]
-    : []
+  const columns: ColumnsType<RapportRow> = [
+    {
+      title: 'Référence',
+      dataIndex: 'ref',
+      key: 'ref',
+      render: (v: string) => <strong>{v}</strong>,
+    },
+    { title: 'Date', dataIndex: 'date', key: 'date', sorter: (a: RapportRow, b: RapportRow) => a.date.localeCompare(b.date) },
+    {
+      title: 'Type',
+      dataIndex: 'type',
+      key: 'type',
+      filters: [
+        { text: 'Groupage', value: 'Groupage' },
+        { text: 'Autres Envois', value: 'Autres Envois' },
+      ],
+      onFilter: (value: React.Key | boolean, record: RapportRow) => record.type === value,
+      render: (v: string) => <Tag color={v === 'Groupage' ? 'blue' : 'green'}>{v}</Tag>,
+    },
+    { title: 'Trafic', dataIndex: 'trafic', key: 'trafic' },
+    { title: 'Mode', dataIndex: 'mode', key: 'mode' },
+    { title: 'Expéditeur', dataIndex: 'expediteur', key: 'expediteur' },
+    { title: 'Destinataire', dataIndex: 'destinataire', key: 'destinataire' },
+    {
+      title: 'Montant',
+      dataIndex: 'montant',
+      key: 'montant',
+      align: 'right',
+      sorter: (a: RapportRow, b: RapportRow) => a.montant - b.montant,
+      render: (v: number) => (
+        <strong>{v.toLocaleString('fr-FR')} FCFA</strong>
+      ),
+    },
+  ]
 
   return (
     <div>
@@ -137,27 +303,28 @@ export const ColisRapportsPage: React.FC = () => {
             </Col>
 
             <Col xs={24} sm={12} md={6}>
-              <Form.Item noStyle shouldUpdate={(prev: any, curr: any) => prev.forme_envoi !== curr.forme_envoi}>
+              <Form.Item
+                noStyle
+                shouldUpdate={(prev: any, curr: any) => prev.forme_envoi !== curr.forme_envoi}
+              >
                 {({ getFieldValue }: { getFieldValue: (name: string) => any }) => {
-                  const currentFormeEnvoi = getFieldValue('forme_envoi');
+                  const currentFormeEnvoi = getFieldValue('forme_envoi')
                   return (
                     <Form.Item name="trafic_envoi" label="Trafic d'envoi">
                       <Select placeholder="Tous" allowClear size="large">
                         {APP_CONFIG.traficEnvoi
-                          .filter((trafic) => {
-                            if (!currentFormeEnvoi) return true;
+                          .filter((t) => {
+                            if (!currentFormeEnvoi) return true
                             return currentFormeEnvoi === 'groupage'
-                              ? trafic.includes('Groupage')
-                              : trafic.includes('Colis Rapide');
+                              ? t.includes('Groupage')
+                              : t.includes('Colis Rapide')
                           })
-                          .map((trafic) => (
-                            <Option key={trafic} value={trafic}>
-                              {trafic}
-                            </Option>
+                          .map((t) => (
+                            <Option key={t} value={t}>{t}</Option>
                           ))}
                       </Select>
                     </Form.Item>
-                  );
+                  )
                 }}
               </Form.Item>
             </Col>
@@ -175,16 +342,14 @@ export const ColisRapportsPage: React.FC = () => {
               <Form.Item name="mode_envoi" label="Mode d'envoi">
                 <Select placeholder="Tous" allowClear size="large">
                   {APP_CONFIG.modeEnvoi.filter((m) => m !== 'groupage').map((mode) => (
-                    <Option key={mode} value={mode}>
-                      {mode}
-                    </Option>
+                    <Option key={mode} value={mode}>{mode}</Option>
                   ))}
                 </Select>
               </Form.Item>
             </Col>
 
             <Col xs={24}>
-              <Space>
+              <Space wrap>
                 <Button
                   type="primary"
                   icon={<SearchOutlined />}
@@ -195,13 +360,13 @@ export const ColisRapportsPage: React.FC = () => {
                   Générer le Rapport
                 </Button>
 
-                {reportParams && (
+                {reportData.length > 0 && (
                   <>
                     <Button
                       icon={<FileExcelOutlined />}
                       onClick={handleExportExcel}
                       size="large"
-                      loading={loading}
+                      style={{ color: '#217346', borderColor: '#217346' }}
                     >
                       Exporter Excel
                     </Button>
@@ -209,7 +374,7 @@ export const ColisRapportsPage: React.FC = () => {
                       icon={<FilePdfOutlined />}
                       onClick={handleExportPDF}
                       size="large"
-                      loading={loading}
+                      style={{ color: '#c0392b', borderColor: '#c0392b' }}
                     >
                       Exporter PDF
                     </Button>
@@ -221,39 +386,96 @@ export const ColisRapportsPage: React.FC = () => {
         </Form>
       </Card>
 
-      {reportParams && (
-        <Tabs
-          defaultActiveKey="charts"
-          items={[
-            {
-              key: 'charts',
-              label: (
-                <>
-                  <BarChartOutlined /> Graphiques
-                </>
-              ),
-              children: (
-                <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
-                  <Col xs={24} lg={12}>
-                    <ChartColisParMois data={chartData} />
-                  </Col>
-                  <Col xs={24} lg={12}>
-                    <ChartRepartitionTrafic data={traficData} />
-                  </Col>
-                </Row>
-              ),
-            },
-            {
-              key: 'details',
-              label: 'Détails',
-              children: (
-                <Card>
-                  <p>Tableau détaillé du rapport à implémenter</p>
-                </Card>
-              ),
-            },
-          ]}
-        />
+      {reportData.length > 0 && (
+        <>
+          <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+            <Col xs={12} sm={6}>
+              <Card>
+                <Statistic
+                  title="Total Colis"
+                  value={kpis.total}
+                  prefix={<InboxOutlined />}
+                />
+              </Card>
+            </Col>
+            <Col xs={12} sm={6}>
+              <Card>
+                <Statistic
+                  title="Groupage"
+                  value={kpis.groupage}
+                  prefix={<ApartmentOutlined />}
+                  valueStyle={{ color: '#1890ff' }}
+                />
+              </Card>
+            </Col>
+            <Col xs={12} sm={6}>
+              <Card>
+                <Statistic
+                  title="Autres Envois"
+                  value={kpis.autresEnvois}
+                  prefix={<SwapOutlined />}
+                  valueStyle={{ color: '#52c41a' }}
+                />
+              </Card>
+            </Col>
+            <Col xs={12} sm={6}>
+              <Card>
+                <Statistic
+                  title="Montant Total"
+                  value={kpis.montantTotal.toLocaleString('fr-FR')}
+                  suffix="FCFA"
+                  valueStyle={{ color: '#1a3a5c', fontSize: 16 }}
+                />
+              </Card>
+            </Col>
+          </Row>
+
+          <Tabs
+            defaultActiveKey="charts"
+            items={[
+              {
+                key: 'charts',
+                label: (
+                  <>
+                    <BarChartOutlined /> Graphiques
+                  </>
+                ),
+                children: (
+                  <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
+                    <Col xs={24} lg={12}>
+                      <ChartColisParMois data={chartData} />
+                    </Col>
+                    <Col xs={24} lg={12}>
+                      <ChartRepartitionTrafic data={traficData} />
+                    </Col>
+                  </Row>
+                ),
+              },
+              {
+                key: 'details',
+                label: (
+                  <>
+                    <TableOutlined /> Détails ({kpis.total})
+                  </>
+                ),
+                children: (
+                  <Table
+                    columns={columns}
+                    dataSource={tableRows}
+                    size="middle"
+                    scroll={{ x: 900 }}
+                    pagination={{
+                      pageSize: 20,
+                      showSizeChanger: true,
+                      showTotal: (t: number) => `${t} colis`,
+                    }}
+                    style={{ marginTop: 16 }}
+                  />
+                ),
+              },
+            ]}
+          />
+        </>
       )}
     </div>
   )

@@ -75,6 +75,7 @@ describe('FacturesService', () => {
         marchandises: [
           {
             nbre_colis: 2,
+            poids_total: 2,
             prix_unit: 1000,
             prix_emballage: 50,
             prix_assurance: 20,
@@ -82,6 +83,7 @@ describe('FacturesService', () => {
           },
           {
             nbre_colis: 1,
+            poids_total: 1,
             prix_unit: 500,
             prix_emballage: 0,
             prix_assurance: 10,
@@ -90,9 +92,9 @@ describe('FacturesService', () => {
         ],
       } as any;
 
-      // Total Item 1: 2 * 1000 + 50 + 20 + 30 = 2100
-      // Total Item 2: 1 * 500 + 0 + 10 + 0 = 510
-      // Expected Total Sum = 2610
+      // Total Item 1: 2 * 1000 + 50 + 20 = 2070 (prix_agence exclu du total)
+      // Total Item 2: 1 * 500 + 0 + 10 = 510
+      // Expected Total Sum = 2580
 
       // Mock generateReference (used inside createProforma)
       mockFactureRepo.createQueryBuilder.mockReturnValue({
@@ -108,7 +110,7 @@ describe('FacturesService', () => {
 
       const result = await service.createProforma(mockColis, 'user-1');
 
-      expect(result.montant_ht).toBe(2610);
+      expect(result.montant_ht).toBe(2580);
       expect(result.etat).toBe(0); // Proforma
       expect(result.num_facture).toMatch(/^FCO-\d{4}-001$/);
     });
