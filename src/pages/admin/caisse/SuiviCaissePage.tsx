@@ -134,7 +134,7 @@ export const SuiviCaissePage: React.FC = () => {
     try {
       const today = dayjs().format('YYYY-MM-DD')
       const dateLabel = dayjs().format('DD/MM/YYYY')
-      const caisseLabel = selectedCaisse?.nom || selectedCaisse?.libelle || selectedCaisse?.code || `Caisse #${idCaisse}`
+      const caisseLabel = selectedCaisse?.libelle || selectedCaisse?.code || `Caisse #${idCaisse}`
       const agenceNom = (selectedCaisse as any)?.agence?.nom || ''
       const operateur = user?.nom_complet || user?.username || '—'
 
@@ -560,7 +560,7 @@ export const SuiviCaissePage: React.FC = () => {
                     onChange={(val: number) => setSelectedCaisseId(val)}
                     style={{ minWidth: 200 }}
                     options={caisses.map((c) => ({
-                      label: (c.nom || c.libelle || c.code) + (c.peut_operer === false ? ' (consultation)' : ''),
+                      label: (c.libelle || c.code) + (c.peut_operer === false ? ' (consultation)' : ''),
                       value: c.id,
                     }))}
                   />
@@ -662,7 +662,7 @@ export const SuiviCaissePage: React.FC = () => {
       >
         <Space direction="vertical" style={{ width: '100%' }}>
           <Typography.Text>Solde réel à l'ouverture</Typography.Text>
-          <InputNumber value={openAmount} onChange={(v) => setOpenAmount(typeof v === 'number' ? v : null)} style={{ width: '100%' }} min={0} addonAfter="FCFA" />
+          <InputNumber value={openAmount} onChange={(v: number | string | null) => setOpenAmount(typeof v === 'number' ? v : null)} style={{ width: '100%' }} min={0} addonAfter="FCFA" />
         </Space>
       </Modal>
 
@@ -683,7 +683,7 @@ export const SuiviCaissePage: React.FC = () => {
         <Space direction="vertical" style={{ width: '100%' }}>
           <Alert type="info" showIcon message="Action tracée" description="La fermeture de session génère une trace dans le journal d'audit (horodatage, utilisateur, solde saisi)." style={{ marginBottom: 8 }} />
           <Typography.Text>Solde réel à la fermeture</Typography.Text>
-          <InputNumber value={closeAmount} onChange={(v) => setCloseAmount(typeof v === 'number' ? v : null)} style={{ width: '100%' }} min={0} addonAfter="FCFA" />
+          <InputNumber value={closeAmount} onChange={(v: number | string | null) => setCloseAmount(typeof v === 'number' ? v : null)} style={{ width: '100%' }} min={0} addonAfter="FCFA" />
         </Space>
       </Modal>
 
@@ -715,11 +715,11 @@ export const SuiviCaissePage: React.FC = () => {
             <InputNumber
               style={{ width: '100%', marginTop: 4 }}
               value={submitPointMontant}
-              onChange={(v) => setSubmitPointMontant(typeof v === 'number' ? v : null)}
+              onChange={(v: number | string | null) => setSubmitPointMontant(typeof v === 'number' ? v : null)}
               min={0}
               addonAfter="FCFA"
-              formatter={(v) => String(v).replace(/\B(?=(\d{3})+(?!\d))/g, '.')}
-              parser={(v) => Number(String(v).replace(/\./g, ''))}
+              formatter={(v?: number | string) => String(v ?? '').replace(/\B(?=(\d{3})+(?!\d))/g, '.')}
+              parser={(v?: string) => Number(String(v ?? '').replace(/\./g, ''))}
             />
             <Typography.Text type="secondary" style={{ fontSize: 12 }}>
               Pré-rempli depuis les entrées du jour ({fmt(Number(pointDuJour?.entrees ?? 0))}). Modifiable si nécessaire.
@@ -731,7 +731,7 @@ export const SuiviCaissePage: React.FC = () => {
               rows={3}
               style={{ marginTop: 4 }}
               value={submitPointObs}
-              onChange={(e) => setSubmitPointObs(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setSubmitPointObs(e.target.value)}
               placeholder="Ex : 2 versements Wave en attente de confirmation..."
               maxLength={500}
             />
