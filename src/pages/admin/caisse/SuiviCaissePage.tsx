@@ -41,6 +41,8 @@ import autoTable from 'jspdf-autotable'
 
 const { TextArea } = Input
 
+import { fmtPdf, fmtPdfNum, loadLogoBase64, drawLBPHeader, drawLBPFooters, LBP_TABLE_HEAD_STYLES, LBP_TABLE_ALT_ROW, C_BLUE } from '@utils/pdfHelpers'
+
 // ─── Labels PDF ──────────────────────────────────────────────────────────────
 const TYPE_LABELS: Record<string, string> = {
   APPRO: 'Approvisionnement',
@@ -51,9 +53,7 @@ const TYPE_LABELS: Record<string, string> = {
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-function fmt(n: number) {
-  return n.toLocaleString('fr-FR') + ' FCFA'
-}
+const fmt = fmtPdf
 
 // ─── Component ───────────────────────────────────────────────────────────────
 export const SuiviCaissePage: React.FC = () => {
@@ -132,63 +132,57 @@ export const SuiviCaissePage: React.FC = () => {
   // ─── Export PDF complet (état de la journée) ──────────────────────────────
   const exportPointPdf = React.useCallback(async () => {
     try {
-      const today = dayjs().format('YYYY-MM-DD')
-      const dateLabel = dayjs().format('DD/MM/YYYY')
+      const today      = dayjs().format('YYYY-MM-DD')
+      const dateLabel  = dayjs().format('DD/MM/YYYY')
       const caisseLabel = selectedCaisse?.libelle || selectedCaisse?.code || `Caisse #${idCaisse}`
-      const agenceNom = (selectedCaisse as any)?.agence?.nom || ''
-      const operateur = user?.nom_complet || user?.username || '—'
+      const agenceNom  = (selectedCaisse as any)?.agence?.nom || ''
+      const operateur  = user?.nom_complet || user?.username || '—'
 
-      // Récupérer tous les mouvements du jour pour cette caisse
-      const mouvements = await getMouvementsCaisse({
-        id_caisse: idCaisse,
-        date_debut: today,
-        date_fin: today,
-      })
+      const [mouvements, logo] = await Promise.all([
+        getMouvementsCaisse({ id_caisse: idCaisse, date_debut: today, date_fin: today }),
+        loadLogoBase64(),
+      ])
 
       const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
-      const pw = doc.internal.pageSize.getWidth()
-      const ml = 14
-      const mr = 14
+      const pw  = doc.internal.pageSize.getWidth()
+      const ml  = 14
+      const mr  = 14
 
-      // ── En-tête coloré ─────────────────────────────────────────────────
-      doc.setFillColor(22, 119, 255)
-      doc.rect(0, 0, pw, 20, 'F')
-      doc.setFontSize(12)
-      doc.setFont('helvetica', 'bold')
-      doc.setTextColor(255, 255, 255)
-      doc.text('LA BELLE PORTE (LBP)', ml, 13)
-      doc.setFontSize(9)
-      doc.setFont('helvetica', 'normal')
-      doc.text(`ÉTAT DE CAISSE — JOURNÉE DU ${dateLabel}`, pw - mr, 13, { align: 'right' })
+      // ── En-tête LBP ────────────────────────────────────────────────────
+      let y = drawLBPHeader(doc, {
+        title:     'État de caisse',
+        subtitle:  `Journée du ${dateLabel}`,
+        rightInfo: `Caisse : ${caisseLabel}${agenceNom ? ' — ' + agenceNom : ''}`,
+        logoBase64: logo,
+      })
 
-      // ── Infos caisse ────────────────────────────────────────────────────
-      doc.setTextColor(40, 40, 40)
-      doc.setFontSize(9)
-      const infoY = 26
-      doc.text(`Caisse : ${caisseLabel}${agenceNom ? ' — ' + agenceNom : ''}`, ml, infoY)
-      doc.text(`Généré par : ${operateur}`, pw - mr, infoY, { align: 'right' })
-      doc.text(`Imprimé le : ${dayjs().format('DD/MM/YYYY HH:mm')}`, pw / 2, infoY, { align: 'center' })
-      doc.setDrawColor(200, 200, 200)
-      doc.line(ml, infoY + 3, pw - mr, infoY + 3)
+      // ── Ligne métadonnées ───────────────────────────────────────────────
+      doc.setFontSize(8)
+      doc.text(`Généré par : ${operateur}`, ml, y)
+      doc.text(`Imprimé le : ${dayjs().format('DD/MM/YYYY HH:mm')}`, pw - mr, y, { align: 'right' })
+      doc.setDrawColor(200, 210, 230)
+      doc.line(ml, y + 3, pw - mr, y + 3)
+      y += 8
 
       // ── Résumé chiffré ──────────────────────────────────────────────────
-      const entrees = Number(pointDuJour?.entrees ?? 0)
-      const sorties = Number(pointDuJour?.sorties ?? 0)
+      const entrees  = Number(pointDuJour?.entrees ?? 0)
+      const sorties  = Number(pointDuJour?.sorties ?? 0)
       const soldeNet = entrees - sorties
 
       autoTable(doc, {
-        startY: infoY + 7,
+        startY: y,
         head: [['RÉSUMÉ DE LA JOURNÉE', '']],
         body: [
-          ['Entrées totales (jour)', fmt(entrees)],
-          ['Sorties totales (jour)', fmt(sorties)],
-          ['Solde net (jour)', fmt(soldeNet)],
-          ['Solde caisse actuel', fmt(Number(soldeActuel ?? 0))],
-          ...(seuilAlerte > 0 ? [['Seuil d\'alerte', fmt(seuilAlerte)]] : []),
+          ['Entrées totales (jour)',  fmt(entrees)],
+          ['Sorties totales (jour)',  fmt(sorties)],
+          ['Solde net (jour)',        fmt(soldeNet)],
+          ['Solde caisse actuel',     fmt(Number(soldeActuel ?? 0))],
+          ...(seuilAlerte > 0 ? [["Seuil d'alerte", fmt(seuilAlerte)]] : []),
         ],
-        headStyles: { fillColor: [22, 119, 255], textColor: 255, fontSize: 9, fontStyle: 'bold' },
+        headStyles: { ...LBP_TABLE_HEAD_STYLES, fillColor: C_BLUE },
         styles: { fontSize: 9, cellPadding: 3 },
-        columnStyles: { 0: { fontStyle: 'bold', cellWidth: 75 }, 1: { halign: 'right' } },
+        columnStyles: { 0: { fontStyle: 'bold', cellWidth: 80 }, 1: { halign: 'right' } },
+        alternateRowStyles: LBP_TABLE_ALT_ROW,
         margin: { left: ml, right: mr },
       })
 
@@ -196,8 +190,8 @@ export const SuiviCaissePage: React.FC = () => {
       const movStartY = (doc as any).lastAutoTable.finalY + 6
 
       const rows = mouvements.map((m: any, i: number) => {
-        const isDebit = m.type === 'DECAISSEMENT'
-        const montantStr = `${isDebit ? '−' : '+'} ${Number(m.montant).toLocaleString('fr-FR')} FCFA`
+        const isDebit   = m.type === 'DECAISSEMENT'
+        const montantStr = `${isDebit ? '-' : '+'} ${fmtPdfNum(m.montant)} FCFA`
         const numDossier = m.details?.dossier_num ?? m.details?.numero_dossier ?? m.numero_dossier ?? '—'
         return [
           String(i + 1),
@@ -214,10 +208,10 @@ export const SuiviCaissePage: React.FC = () => {
         startY: movStartY,
         head: [['N°', 'Heure', 'Type', 'Libellé', 'N° Dossier', 'Saisi par', 'Montant']],
         body: rows.length > 0 ? rows : [['', '', 'Aucun mouvement enregistré ce jour', '', '', '', '']],
-        headStyles: { fillColor: [50, 50, 50], textColor: 255, fontSize: 8, fontStyle: 'bold' },
+        headStyles: LBP_TABLE_HEAD_STYLES,
         styles: { fontSize: 8, cellPadding: 2.5 },
         columnStyles: {
-          0: { cellWidth: 8, halign: 'center' },
+          0: { cellWidth: 8,  halign: 'center' },
           1: { cellWidth: 16 },
           2: { cellWidth: 34 },
           3: { cellWidth: 46 },
@@ -228,64 +222,48 @@ export const SuiviCaissePage: React.FC = () => {
         didParseCell: (data: any) => {
           if (data.section === 'body' && data.column.index === 6) {
             const txt = String(data.cell.text[0] || '')
-            data.cell.styles.textColor = txt.startsWith('−') ? [220, 38, 38] : [22, 163, 74]
+            data.cell.styles.textColor = txt.startsWith('-') ? [200, 30, 30] : [20, 140, 60]
           }
         },
-        alternateRowStyles: { fillColor: [248, 249, 250] },
+        alternateRowStyles: LBP_TABLE_ALT_ROW,
         margin: { left: ml, right: mr },
       })
 
-      // ── Totaux par type ─────────────────────────────────────────────────
+      // ── Récapitulatif par type ──────────────────────────────────────────
       const typeMap: Record<string, number> = {}
       mouvements.forEach((m: any) => {
         typeMap[m.type] = (typeMap[m.type] || 0) + Number(m.montant)
       })
-      const totauxY = (doc as any).lastAutoTable.finalY + 5
 
       if (Object.keys(typeMap).length > 0) {
         autoTable(doc, {
-          startY: totauxY,
+          startY: (doc as any).lastAutoTable.finalY + 5,
           head: [['Récapitulatif par type', 'Total']],
-          body: Object.entries(typeMap).map(([type, tot]) => [
-            TYPE_LABELS[type] || type,
-            fmt(tot),
-          ]),
-          headStyles: { fillColor: [80, 80, 80], textColor: 255, fontSize: 8 },
+          body: Object.entries(typeMap).map(([type, tot]) => [TYPE_LABELS[type] || type, fmt(tot)]),
+          headStyles: { ...LBP_TABLE_HEAD_STYLES, fontSize: 8 },
           styles: { fontSize: 8, cellPadding: 2.5 },
           columnStyles: { 1: { halign: 'right', fontStyle: 'bold' } },
+          alternateRowStyles: LBP_TABLE_ALT_ROW,
           margin: { left: ml, right: mr },
         })
       }
 
       // ── Zone signatures ─────────────────────────────────────────────────
-      const sigY = (doc as any).lastAutoTable.finalY + 12
+      const sigY  = (doc as any).lastAutoTable.finalY + 14
+      const lineW = 60
+      const col2  = pw / 2 + 4
+
       doc.setFontSize(8)
-      doc.setTextColor(60, 60, 60)
-
-      const col1 = ml
-      const col2 = pw / 2 + 4
-      const lineW = 58
-
-      doc.text('Signature Chef d\'agence / Caissier :', col1, sigY)
-      doc.setDrawColor(100, 100, 100)
-      doc.line(col1, sigY + 14, col1 + lineW, sigY + 14)
+      doc.setTextColor(50, 60, 80)
+      doc.text("Signature Chef d'agence / Caissier :", ml, sigY)
+      doc.setDrawColor(120, 130, 150)
+      doc.line(ml, sigY + 14, ml + lineW, sigY + 14)
 
       doc.text('Visa Caissière principale :', col2, sigY)
       doc.line(col2, sigY + 14, col2 + lineW, sigY + 14)
 
       // ── Pied de page ────────────────────────────────────────────────────
-      const totalPages = (doc.internal as any).getNumberOfPages()
-      for (let p = 1; p <= totalPages; p++) {
-        doc.setPage(p)
-        doc.setFontSize(7)
-        doc.setTextColor(150, 150, 150)
-        doc.text(
-          `Page ${p}/${totalPages} — Généré le ${dayjs().format('DD/MM/YYYY HH:mm')} — LBP Gestion de colis`,
-          pw / 2,
-          doc.internal.pageSize.getHeight() - 6,
-          { align: 'center' },
-        )
-      }
+      drawLBPFooters(doc)
 
       doc.save(`etat-caisse_${caisseLabel.replace(/\s+/g, '-')}_${today}.pdf`)
     } catch {

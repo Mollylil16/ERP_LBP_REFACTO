@@ -36,6 +36,7 @@ import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import ExcelJS from 'exceljs'
 import { saveAs } from 'file-saver'
+import { fmtPdf, fmtPdfNum, loadLogoBase64, drawLBPHeader, drawLBPFooters, LBP_TABLE_HEAD_STYLES, LBP_TABLE_ALT_ROW } from '@utils/pdfHelpers'
 
 const { Title } = Typography
 const { Option } = Select
@@ -198,27 +199,28 @@ export const ColisRapportsPage: React.FC = () => {
     toast.success('Rapport Excel téléchargé')
   }
 
-  const handleExportPDF = () => {
+  const handleExportPDF = async () => {
     if (!reportData.length) {
-      toast.error('Générez d\'abord un rapport')
+      toast.error("Générez d'abord un rapport")
       return
     }
+    const periode = `${reportParams.start_date} -> ${reportParams.end_date}`
+    const logo    = await loadLogoBase64()
+
     const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' })
-    const periode = `${reportParams.start_date} → ${reportParams.end_date}`
+    const ml  = 14
 
-    doc.setFontSize(16)
-    doc.setTextColor(26, 58, 92)
-    doc.text('Rapport Colis — La Belle Porte', 14, 15)
+    let y = drawLBPHeader(doc, {
+      title:    'Rapport Colis',
+      subtitle: `Periode : ${periode}`,
+      logoBase64: logo,
+    })
 
-    doc.setFontSize(10)
-    doc.setTextColor(80)
-    doc.text(`Période : ${periode}`, 14, 22)
+    doc.setFontSize(8.5)
     doc.text(
-      `Total : ${kpis.total} colis  |  Groupage : ${kpis.groupage}  |  Autres envois : ${kpis.autresEnvois}`,
-      14,
-      28
+      `Total : ${kpis.total} colis  |  Groupage : ${kpis.groupage}  |  Autres envois : ${kpis.autresEnvois}  |  Montant total : ${fmtPdf(kpis.montantTotal)}`,
+      ml, y,
     )
-    doc.text(`Montant total : ${kpis.montantTotal.toLocaleString('fr-FR')} FCFA`, 14, 34)
 
     autoTable(doc, {
       head: [['Référence', 'Date', 'Type', 'Trafic', 'Mode', 'Expéditeur', 'Destinataire', 'Montant']],
@@ -230,15 +232,16 @@ export const ColisRapportsPage: React.FC = () => {
         r.mode,
         r.expediteur,
         r.destinataire,
-        r.montant.toLocaleString('fr-FR') + ' FCFA',
+        fmtPdfNum(r.montant) + ' FCFA',
       ]),
-      startY: 40,
+      startY: y + 5,
       styles: { fontSize: 7.5, cellPadding: 2 },
-      headStyles: { fillColor: [26, 58, 92], textColor: 255, fontStyle: 'bold' },
-      alternateRowStyles: { fillColor: [245, 247, 250] },
+      headStyles: LBP_TABLE_HEAD_STYLES,
+      alternateRowStyles: LBP_TABLE_ALT_ROW,
       columnStyles: { 7: { halign: 'right' } },
     })
 
+    drawLBPFooters(doc)
     doc.save(`rapport-colis-${reportParams.start_date}-${reportParams.end_date}.pdf`)
     toast.success('Rapport PDF téléchargé')
   }

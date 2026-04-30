@@ -15,6 +15,7 @@ import {
 } from '@ant-design/icons'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
+import { fmtPdf, fmtPdfNum, loadLogoBase64, drawLBPHeader, drawLBPFooters, LBP_TABLE_HEAD_STYLES, LBP_TABLE_ALT_ROW } from '@utils/pdfHelpers'
 import { Link } from 'react-router-dom'
 import type { ColumnsType } from 'antd/es/table'
 import dayjs, { type Dayjs } from 'dayjs'
@@ -50,91 +51,63 @@ export const CaisseConsolideePage: React.FC = () => {
     [roleCode],
   )
 
-  const exportPdf = useCallback(() => {
+  const exportPdf = useCallback(async () => {
     if (!data?.par_caisse) {
       message.warning('Aucune donnée à exporter')
       return
     }
     try {
-      const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' })
-      const m = 40
-      const title = 'Journée consolidée — caisses par agence'
-      doc.setFontSize(14)
-      doc.text(title, m, 44)
-      doc.setFontSize(9)
-      doc.setTextColor(80, 80, 80)
-      doc.text(
-        `Date de référence : ${dateStr}  ·  Généré le : ${new Date().toLocaleString('fr-FR')}`,
-        m,
-        60,
-      )
-      if (user?.username) {
-        doc.text(`Utilisateur : ${user.username}`, m, 74)
-      }
+      const logo = await loadLogoBase64()
+      const doc  = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' })
+      const ml   = 14
+
       const cons = data.consolide
-      if (cons) {
-        doc.text(
-          `Totaux (jour) — Entrées : ${formatFcfa(cons.entrees)}  |  Sorties : ${formatFcfa(cons.sorties)}  |  Mouvements : ${cons.mouvementsCount}`,
-          m,
-          92,
-        )
-      }
-      doc.setTextColor(0, 0, 0)
+      const subtitle = cons
+        ? `Entrees : ${fmtPdf(cons.entrees)}  |  Sorties : ${fmtPdf(cons.sorties)}  |  Mouvements : ${cons.mouvementsCount}`
+        : undefined
+
+      let y = drawLBPHeader(doc, {
+        title:    'Journee consolidee -- caisses par agence',
+        subtitle,
+        rightInfo: `Date : ${dateStr}  |  Utilisateur : ${user?.username ?? '--'}`,
+        logoBase64: logo,
+      })
 
       const body: string[][] = data.par_caisse.map((row: Record<string, unknown>) => {
         const ag = row.agence as { nom?: string; code?: string } | null
-        const agLabel = ag ? `${ag.nom} (${ag.code})` : '—'
+        const agLabel = ag ? `${ag.nom} (${ag.code})` : '--'
         const p = row.point_du_jour as
           | { entrees?: number; sorties?: number; mouvementsCount?: number }
           | undefined
         return [
           agLabel,
-          String((row.nom_caisse as string | null) || '—'),
-          numOnly(Number(p?.entrees)),
-          numOnly(Number(p?.sorties)),
+          String((row.nom_caisse as string | null) || '--'),
+          fmtPdfNum(Number(p?.entrees)),
+          fmtPdfNum(Number(p?.sorties)),
           String(p?.mouvementsCount ?? 0),
-          numOnly(Number(row.solde_actuel)),
+          fmtPdfNum(Number(row.solde_actuel)),
         ]
       })
 
       autoTable(doc, {
-        startY: 108,
-        head: [
-          [
-            'Agence',
-            'Caisse',
-            'Entrées jour (FCFA)',
-            'Sorties jour (FCFA)',
-            'Mouv.',
-            'Solde actuel (FCFA)',
-          ],
-        ],
+        startY: y,
+        head: [['Agence', 'Caisse', 'Entrees jour (FCFA)', 'Sorties jour (FCFA)', 'Mouv.', 'Solde actuel (FCFA)']],
         body,
-        styles: { fontSize: 8, cellPadding: 4 },
-        headStyles: { fillColor: [22, 119, 255], fontSize: 9 },
-        alternateRowStyles: { fillColor: [250, 250, 250] },
+        styles: { fontSize: 8, cellPadding: 3.5 },
+        headStyles: LBP_TABLE_HEAD_STYLES,
+        alternateRowStyles: LBP_TABLE_ALT_ROW,
         tableWidth: 'auto',
         columnStyles: {
-          0: { cellWidth: 160 },
-          1: { cellWidth: 120 },
+          0: { cellWidth: 60 },
+          1: { cellWidth: 50 },
           2: { halign: 'right' },
           3: { halign: 'right' },
-          4: { halign: 'center', cellWidth: 44 },
-          5: { halign: 'right' },
+          4: { halign: 'center', cellWidth: 18 },
+          5: { halign: 'right', fontStyle: 'bold' },
         },
       })
 
-      const finalY = (doc as { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? 108
-      const footerY = finalY + 20
-      const pageW = doc.internal.pageSize.getWidth()
-      doc.setFontSize(7)
-      doc.setTextColor(120, 120, 120)
-      doc.text(
-        'LBP — Document interne. Les soldes et mouvements reflètent l’état des caisses en base à la génération.',
-        m,
-        Math.min(footerY, 540),
-        { maxWidth: pageW - 2 * m },
-      )
+      drawLBPFooters(doc)
       doc.save(`journee-consolidee_${dateStr}.pdf`)
       message.success('PDF généré')
     } catch {
@@ -155,7 +128,7 @@ export const CaisseConsolideePage: React.FC = () => {
             <Tag>{ag.code}</Tag>
           </Space>
         ) : (
-          <Text type="secondary">—</Text>
+          <Text type="secondary">--</Text>
         )
       },
     },
@@ -164,7 +137,7 @@ export const CaisseConsolideePage: React.FC = () => {
       dataIndex: 'nom_caisse',
       key: 'nom_caisse',
       ellipsis: true,
-      render: (t: string | null) => t || '—',
+      render: (t: string | null) => t || '--',
     },
     {
       title: 'Entrées (jour)',
@@ -220,7 +193,7 @@ export const CaisseConsolideePage: React.FC = () => {
       <Space direction="vertical" size="large" style={{ width: '100%' }}>
         <div>
           <Title level={2} style={{ marginBottom: 8 }}>
-            <TeamOutlined /> Journée consolidée — caisses par agence
+            <TeamOutlined /> Journée consolidée -- caisses par agence
           </Title>
           <Paragraph type="secondary" style={{ marginBottom: 0 }}>
             Synthèse des entrées, sorties et soldes pour la date choisie. Les versements vers la caisse
@@ -234,7 +207,7 @@ export const CaisseConsolideePage: React.FC = () => {
             type="info"
             showIcon
             message="Vue réseau (caissier principal / direction)"
-            description="Vous visualisez l’ensemble des agences. Pour la caisse de votre propre agence, les règles sont les mêmes que sur « Suivi caisse » (opérations sur la caisse hub lorsque c’est la caisse principale)."
+            description="Vous visualisez l'ensemble des agences. Pour la caisse de votre propre agence, les règles sont les mêmes que sur « Suivi caisse » (opérations sur la caisse hub lorsque c'est la caisse principale)."
             style={{ maxWidth: 900 }}
           />
         )}

@@ -16,7 +16,7 @@ import {
 import { FileExcelOutlined, FilePdfOutlined, ReloadOutlined } from '@ant-design/icons'
 import type { Dayjs } from 'dayjs'
 import { supervisionService, SupervisionAgenceRow } from '@services/supervision.service'
-import { exportSupervisionSynthesePdf } from '@utils/supervisionPdfExport'
+import { exportSupervisionSynthesePdf, fmtPdf } from '@utils/supervisionPdfExport'
 import { exportSupervisionPilotageExcel } from '@utils/supervisionExcelExport'
 import { usePermissions } from '@hooks/usePermissions'
 import { PERMISSIONS } from '@constants/permissions'
@@ -90,38 +90,42 @@ export const SupervisionPilotageTab: React.FC<Props> = ({ range, agences, loadAg
     [],
   )
 
-  const handleExportPdf = () => {
+  const handleExportPdf = async () => {
     if (!insKpis) {
       message.warning('Chargement des indicateurs…')
       return
     }
-    exportSupervisionSynthesePdf({
-      titre: 'Synthèse de supervision (consolidation réseau)',
-      periode: range,
-      kpis: {
-        colisCrees: insKpis.colisCrees,
-        facturesEmises: insKpis.facturesEmises,
-        encaissementsValides: insKpis.encaissementsValides,
-        nouveauxClients: insKpis.nouveauxClients,
-        nbAgences: insKpis.nbAgences,
-      },
-      comparatifAnnees: compare
-        ? {
-            a1,
-            a2,
-            e1: compare.encaissements[a1] ?? 0,
-            e2: compare.encaissements[a2] ?? 0,
-            ecartPct: compare.ecart_pourcent,
-          }
-        : undefined,
-      projection: projection
-        ? {
-            baseMensuelle: projection.base_moyenne_mensuelle,
-            estimeAnnee: `${projection.encaissement_annee_reference_estime.toLocaleString('fr-FR')} FCFA (ordre de grandeur)`,
-          }
-        : undefined,
-    })
-    message.success('PDF généré — vous pouvez le remettre au directeur')
+    try {
+      await exportSupervisionSynthesePdf({
+        titre: 'Synthese de supervision (consolidation reseau)',
+        periode: range,
+        kpis: {
+          colisCrees: insKpis.colisCrees,
+          facturesEmises: insKpis.facturesEmises,
+          encaissementsValides: insKpis.encaissementsValides,
+          nouveauxClients: insKpis.nouveauxClients,
+          nbAgences: insKpis.nbAgences,
+        },
+        comparatifAnnees: compare
+          ? {
+              a1,
+              a2,
+              e1: compare.encaissements[a1] ?? 0,
+              e2: compare.encaissements[a2] ?? 0,
+              ecartPct: compare.ecart_pourcent,
+            }
+          : undefined,
+        projection: projection
+          ? {
+              baseMensuelle: projection.base_moyenne_mensuelle,
+              estimeAnnee: `${fmtPdf(projection.encaissement_annee_reference_estime)} (ordre de grandeur)`,
+            }
+          : undefined,
+      })
+      message.success('PDF genere — vous pouvez le remettre au directeur')
+    } catch {
+      message.error('Export PDF impossible')
+    }
   }
 
   const handleExportExcel = async () => {

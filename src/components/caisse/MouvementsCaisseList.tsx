@@ -36,6 +36,7 @@ import { usePermissions } from "@hooks/usePermissions";
 import { PERMISSIONS } from "@constants/permissions";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { fmtPdf, loadLogoBase64, drawLBPHeader, drawLBPFooters, LBP_TABLE_HEAD_STYLES, LBP_TABLE_ALT_ROW } from "@utils/pdfHelpers";
 
 const { RangePicker } = DatePicker;
 const { Option } = Select;
@@ -370,25 +371,22 @@ export const MouvementsCaisseList: React.FC<MouvementsCaisseListProps> = ({
     );
   }, [filteredMouvements]);
 
-  const exportPdf = React.useCallback(() => {
+  const exportPdf = React.useCallback(async () => {
     try {
-      const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
-      const title = "Mouvements de caisse";
-      const subtitleParts: string[] = [];
-      if (type) subtitleParts.push(`Type: ${type}`);
-      if (idCaisse) subtitleParts.push(`Caisse: #${idCaisse}`);
-      if (dateRange) {
-        subtitleParts.push(
-          `Période: ${dateRange[0].format("DD/MM/YYYY")} → ${dateRange[1].format("DD/MM/YYYY")}`,
-        );
-      }
-      if (searchText.trim()) subtitleParts.push(`Recherche: "${searchText.trim()}"`);
-      subtitleParts.push(`Export: ${new Date().toLocaleString("fr-FR")}`);
+      const logo = await loadLogoBase64();
+      const doc  = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
 
-      doc.setFontSize(14);
-      doc.text(title, 40, 40);
-      doc.setFontSize(10);
-      doc.text(subtitleParts.join(" — "), 40, 60);
+      const subtitleParts: string[] = [];
+      if (type)      subtitleParts.push(`Type: ${type}`);
+      if (idCaisse)  subtitleParts.push(`Caisse: #${idCaisse}`);
+      if (dateRange) subtitleParts.push(`Periode: ${dateRange[0].format("DD/MM/YYYY")} - ${dateRange[1].format("DD/MM/YYYY")}`);
+      if (searchText.trim()) subtitleParts.push(`Recherche: "${searchText.trim()}"`);
+
+      let y = drawLBPHeader(doc, {
+        title:     "Mouvements de caisse",
+        subtitle:  subtitleParts.join("  |  ") || undefined,
+        logoBase64: logo,
+      });
 
       const body = filteredMouvements.map((m) => [
         m.date ? dayjs(m.date).format("DD/MM/YYYY") : "—",
@@ -396,32 +394,22 @@ export const MouvementsCaisseList: React.FC<MouvementsCaisseListProps> = ({
         m.libelle ?? "—",
         m.numero_dossier ?? "—",
         (type === "DECAISSEMENT" ? m.nom_demandeur : m.nom_client) ?? "—",
-        formatMontantWithDevise(Number(m.montant || 0)),
+        fmtPdf(Number(m.montant || 0)),
         m.workflow_status ?? "—",
         m.rejection_reason ?? "—",
       ]);
 
       autoTable(doc, {
-        startY: 80,
-        head: [[
-          "Date",
-          "Type",
-          "Libellé",
-          "N° dossier",
-          "Client/Demandeur",
-          "Montant",
-          "Workflow",
-          "Motif rejet",
-        ]],
+        startY: y,
+        head: [["Date", "Type", "Libellé", "N° dossier", "Client/Demandeur", "Montant", "Workflow", "Motif rejet"]],
         body,
-        styles: { fontSize: 8, cellPadding: 4, overflow: "linebreak" },
-        headStyles: { fillColor: [22, 119, 255] },
-        columnStyles: {
-          2: { cellWidth: 220 },
-          7: { cellWidth: 220 },
-        },
+        styles: { fontSize: 8, cellPadding: 3, overflow: "linebreak" },
+        headStyles: LBP_TABLE_HEAD_STYLES,
+        alternateRowStyles: LBP_TABLE_ALT_ROW,
+        columnStyles: { 5: { halign: "right", fontStyle: "bold" } },
       });
 
+      drawLBPFooters(doc);
       doc.save(`mouvements_caisse_${idCaisse ?? "all"}_${new Date().toISOString().slice(0, 10)}.pdf`);
     } catch {
       message.error("Export PDF impossible");
