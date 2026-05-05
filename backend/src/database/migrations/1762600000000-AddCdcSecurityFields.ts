@@ -49,9 +49,10 @@ export class AddCdcSecurityFields1762600000000 implements MigrationInterface {
     `);
 
     // Activer MFA_REQUIRED pour ADMIN et RESPONSABLE_RH
+    // Cast ::text pour éviter l'erreur PostgreSQL 55P04 (enum value ajouté dans la même session)
     await queryRunner.query(`
       UPDATE "lbp_users" SET "mfa_required" = TRUE
-      WHERE "role" IN ('ADMIN', 'RESPONSABLE_RH');
+      WHERE "role"::text IN ('ADMIN', 'RESPONSABLE_RH');
     `);
   }
 
