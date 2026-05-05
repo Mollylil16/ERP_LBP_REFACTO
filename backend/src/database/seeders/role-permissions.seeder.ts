@@ -7,71 +7,7 @@ import { RolePermission } from '../../permissions/entities/role-permission.entit
 const rolePermissionsMatrix = {
   ADMIN: '*',
   DIRECTEUR: '*', // Toutes les permissions
-  /**
-   * Assistant DG : périmètre DG (lecture & opérations), sans administration sensible.
-   * Choix de restriction :
-   * - pas de gestion utilisateurs / permissions
-   * - pas de paramètres société (structures.parametres_application.*) ni gestion agences (create/update/delete)
-   * - pas de suppressions critiques (delete sur colis/factures/paiements/caisse/fonds)
-   * - pas d'annulation/validation workflow (factures/paiements/colis validation)
-   */
-  ASSISTANT_DG: [
-    // Objectif: visibilité "complète" sur le système, mais STRICTEMENT en lecture seule.
-    // Colis / exploitation (lecture)
-    'exploitation.groupage_colis.read',
-    'exploitation.autres_envois.read',
-    'exploitation.rapports_envois.read',
-    'exploitation.livraison.read',
-
-    // Facturation (lecture)
-    'facturation.cotation.read',
-    'facturation.facturer.read',
-
-    // Caisse (lecture)
-    'operation_caisse.gestion_caisses.read',
-    'operation_caisse.mouvements_caisses.read',
-    'operation_caisse.journal.read',
-    'operation_caisse.reglement_client.read',
-
-    // Gestion fonds (lecture)
-    'gestion_fonds.demandes_fonds.read',
-    'gestion_fonds.recap_demandes.read',
-
-    // Rapports (lecture)
-    'rapports.suivi_envois.read',
-    'rapports.statistiques.read',
-    'rapports.ca_detaille.read',
-    'rapports.business_analyst.read',
-
-    // Structures (lecture)
-    'structures.clients.read',
-    'structures.zones_livraison.read',
-    'structures.agences.read',
-    'structures.parametres_application.read',
-
-    // Litiges / call center (lecture)
-    'litiges.view',
-    'callcenter.inbox',
-
-    // Pilotage exploitation (lecture)
-    'exploitation.credits.read',
-    'exploitation.points_journaliers.read',
-    'exploitation.fournitures.read',
-    // Prestataires: lecture + demande d'approbation (pas d'exécution sans accord)
-    'exploitation.prestataires.read',
-    'exploitation.prestataires_factures.read',
-    'exploitation.prestataires_reglements.read',
-    'exploitation.prestataires_retraits_hub.read',
-    'exploitation.prestataires_retraits_hub.request_approval',
-    // Groupeurs (lecture + rapports + audit)
-    'groupeurs.admin.read',
-    'groupeurs.admin.write',
-    'groupeurs.rapports.read',
-    'groupeurs.audit.read',
-    // Rapports / exports (états PDF/Excel)
-    'rapports.view',
-    'rapports.export',
-  ],
+  ASSISTANT_DG: '*', // Accès CRUD total — même périmètre que ADMIN/DIRECTEUR
   MANAGER: [
     // EXPLOITATION
     'exploitation.groupage_colis.create',

@@ -26,6 +26,7 @@ import {
   HistoryOutlined,
   SwapOutlined,
   SolutionOutlined,
+  TrophyOutlined,
 } from "@ant-design/icons";
 import { usePermissions } from "@hooks/usePermissions";
 import { useAuth } from "@hooks/useAuth";
@@ -111,6 +112,9 @@ export const SidebarMenu: React.FC<SidebarMenuProps> = ({ collapsed: _collapsed 
     hasPermission(ROUTE_ACCESS.groupeursAdmin) || hasPermission(ROUTE_ACCESS.groupeursEspace);
 
   const canRh = hasPermission(ROUTE_ACCESS.rh);
+  const isAgenceUser =
+    (roleCodeUpper === 'CHEF_AGENCE' || roleCodeUpper === 'CAISSIER_AGENCE') &&
+    !!user?.agency_id;
 
   const settingsChildren = [
     ...(hasPermission(ROUTE_ACCESS.settings)
@@ -430,6 +434,24 @@ export const SidebarMenu: React.FC<SidebarMenuProps> = ({ collapsed: _collapsed 
             key: "/dashboard",
             icon: <DashboardOutlined />,
             label: "Tableau de bord",
+          },
+        ]
+      : []),
+    ...(hasPermission(ROUTE_ACCESS.dashboardExecutif)
+      ? [
+          {
+            key: "/dashboard/executif",
+            icon: <TrophyOutlined />,
+            label: "Tableau exécutif",
+          },
+        ]
+      : []),
+    ...(isAgenceUser
+      ? [
+          {
+            key: "/dashboard/agence",
+            icon: <DashboardOutlined />,
+            label: "Mon agence",
           },
         ]
       : []),

@@ -73,7 +73,7 @@ export class PermissionsGuard implements CanActivate {
     if (r === 'SUPER_ADMIN') {
       return true;
     }
-    if (r === 'DIRECTEUR' || r === 'ADMIN') {
+    if (r === 'DIRECTEUR' || r === 'ADMIN' || r === 'ASSISTANT_DG') {
       return true;
     }
     if (user?.code_acces === 2) {

@@ -31,6 +31,7 @@ export class AgencyRequiredGuard implements CanActivate {
         'SUPERVISEUR_REGIONAL',
         'SUPERVISEURE_GENERALE',
         'GROUPEUR_GROSSISTE',
+        'CAISSIER', // caissier principal (hub) : opère sur toutes les agences
       ].includes(rc)
     ) {
       return true;

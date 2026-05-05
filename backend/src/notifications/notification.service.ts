@@ -169,6 +169,7 @@ export class NotificationService {
       type: NotificationType.WARNING,
       category: NotificationCategory.CAISSE,
       action_url: `/caisse/suivi`,
+      id_agence: caisse.agence?.id ?? null,
       audit_data: {
         caisseId: caisse.id,
         soldeActual: solde,

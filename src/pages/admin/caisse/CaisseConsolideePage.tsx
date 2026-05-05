@@ -49,7 +49,7 @@ export const CaisseConsolideePage: React.FC = () => {
 
   const isVueReseau = useMemo(
     () =>
-      ['CAISSIER', 'DIRECTEUR', 'ADMIN', 'SUPER_ADMIN', 'SUPERVISEUR_REGIONAL'].includes(roleCode),
+      ['CAISSIER', 'DIRECTEUR', 'ADMIN', 'SUPER_ADMIN', 'SUPERVISEUR_REGIONAL', 'ASSISTANT_DG', 'SUPERVISEURE_GENERALE'].includes(roleCode),
     [roleCode],
   )
 

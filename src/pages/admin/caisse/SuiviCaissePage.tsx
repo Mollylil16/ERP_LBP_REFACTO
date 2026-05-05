@@ -517,7 +517,7 @@ export const SuiviCaissePage: React.FC = () => {
     <div style={{ padding: 24 }}>
       <Card>
         <Space direction="vertical" style={{ width: '100%' }} size="large">
-          {roleCodePrincipal === 'CAISSIER' && caisses && caisses.length > 1 && (
+          {caisses && caisses.length > 1 && (
             <Alert
               type="info"
               showIcon

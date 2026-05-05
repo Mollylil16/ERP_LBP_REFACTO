@@ -1,4 +1,4 @@
-import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Query, Request, UseGuards, ForbiddenException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { DashboardService } from './dashboard.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -38,5 +38,23 @@ export class DashboardController {
   @ApiOperation({ summary: 'Performance journalière par agence (Directeur)' })
   getAgenciesPerformances(@Query('date') date?: string) {
     return this.dashboardService.getAgenciesPerformances(date);
+  }
+
+  @Get('executive-summary')
+  @RequirePermission('dashboard.admin')
+  @ApiOperation({ summary: 'Tableau de bord exécutif DG/Assistant DG' })
+  getExecutiveSummary() {
+    return this.dashboardService.getExecutiveSummary();
+  }
+
+  @Get('agence-summary')
+  @RequirePermission('dashboard.view')
+  @ApiOperation({ summary: 'Tableau de bord agence — Chef d\'agence' })
+  getAgenceSummary(@Request() req: { user: { id_agence?: number | null } }) {
+    const agenceId = req.user?.id_agence;
+    if (!agenceId) {
+      throw new ForbiddenException('Aucune agence associée à cet utilisateur.');
+    }
+    return this.dashboardService.getAgenceSummary(agenceId);
   }
 }

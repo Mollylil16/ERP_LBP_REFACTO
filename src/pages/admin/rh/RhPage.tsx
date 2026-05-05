@@ -1,5 +1,5 @@
 import React from 'react'
-import { Tabs, Typography } from 'antd'
+import { Tabs, Typography, Alert, Button } from 'antd'
 import {
   DashboardOutlined,
   TeamOutlined,
@@ -26,6 +26,7 @@ import { RhRapportsTab } from './tabs/RhRapportsTab'
 import { RhParametresTab } from './tabs/RhParametresTab'
 import { usePermissions } from '@hooks/usePermissions'
 import { PERMISSIONS } from '@constants/permissions'
+import { ErrorBoundary } from '@components/common/ErrorBoundary'
 
 const { Title } = Typography
 
@@ -123,16 +124,35 @@ export const RhPage: React.FC = () => {
     children: t.component,
   }))
 
+  const rhFallback = (
+    <Alert
+      type="error"
+      showIcon
+      message="Erreur de chargement du module RH"
+      description={
+        <span>
+          Une erreur est survenue dans le module Ressources Humaines.{' '}
+          <Button size="small" onClick={() => window.location.reload()}>
+            Recharger la page
+          </Button>
+        </span>
+      }
+      style={{ margin: '24px' }}
+    />
+  )
+
   return (
     <div style={{ padding: '24px 24px 0' }}>
       <Title level={3} style={{ marginBottom: 16 }}>
         Ressources Humaines — SIRH
       </Title>
-      <Tabs
-        items={items}
-        destroyInactiveTabPane={false}
-        tabBarStyle={{ marginBottom: 16 }}
-      />
+      <ErrorBoundary fallback={rhFallback}>
+        <Tabs
+          items={items}
+          destroyInactiveTabPane={true}
+          tabBarStyle={{ marginBottom: 16 }}
+        />
+      </ErrorBoundary>
     </div>
   )
 }

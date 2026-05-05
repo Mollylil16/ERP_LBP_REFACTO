@@ -59,6 +59,20 @@ class DashboardService {
   async getAIMonitoring(): Promise<any> {
     return apiService.get<any>('/analytics/monitoring')
   }
+
+  /**
+   * Tableau de bord exécutif DG/Assistant DG — synthèse réseau complète
+   */
+  async getExecutiveSummary(): Promise<any> {
+    return apiService.get<any>('/dashboard/executive-summary')
+  }
+
+  /**
+   * Tableau de bord agence — Chef d'agence (données filtrées par agence)
+   */
+  async getAgenceSummary(): Promise<any> {
+    return apiService.get<any>('/dashboard/agence-summary')
+  }
 }
 
 export const dashboardService = new DashboardService()

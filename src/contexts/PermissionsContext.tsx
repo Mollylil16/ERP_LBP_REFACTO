@@ -78,6 +78,7 @@ export const PermissionsProvider: React.FC<{ children: React.ReactNode }> = ({ c
       code === 'DIRECTEUR' ||
       code === 'ADMIN' ||
       code === 'SUPER_ADMIN' ||
+      code === 'ASSISTANT_DG' ||
       code.toLowerCase() === 'admin'
     )
   }, [user])

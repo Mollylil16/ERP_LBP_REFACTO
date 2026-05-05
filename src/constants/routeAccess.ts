@@ -18,6 +18,7 @@ export const ROUTE_ACCESS = {
   /** Groupeurs : espace personnel */
   groupeursEspace: PERMISSIONS.GROUPEURS.ESPACE_READ,
   dashboard: PERMISSIONS.DASHBOARD.VIEW,
+  dashboardExecutif: PERMISSIONS.DASHBOARD.ADMIN,
   colisGroupage: PERMISSIONS.COLIS_GROUPAGE.READ,
   colisAutresEnvois: PERMISSIONS.COLIS_AUTRES_ENVOIS.READ,
   colisMap: COLIS_READ_ANY,

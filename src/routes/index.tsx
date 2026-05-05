@@ -188,6 +188,18 @@ const RhPage = lazy(() =>
   import('../pages/admin/rh/RhPage').then((m) => ({ default: m.RhPage })),
 )
 
+const ExecutiveDashboardPage = lazy(() =>
+  import('../pages/admin/dashboard/ExecutiveDashboardPage').then((m) => ({
+    default: m.ExecutiveDashboardPage,
+  })),
+)
+
+const AgenceDashboardPage = lazy(() =>
+  import('../pages/admin/dashboard/AgenceDashboardPage').then((m) => ({
+    default: m.AgenceDashboardPage,
+  })),
+)
+
 // ✅ Flux Auth & Agences
 import { ChangePasswordPage, SelectAgencyPage, AgencesManagementPage } from './lazyPages'
 
@@ -362,6 +374,30 @@ export const AppRoutes: React.FC = () => {
             <ProtectedRoute requiredPermission={ROUTE_ACCESS.dashboard}>
               <LazyPageLoader>
                 <DashboardPage />
+              </LazyPageLoader>
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Tableau de bord exécutif (DG / Assistant DG) */}
+        <Route
+          path="dashboard/executif"
+          element={
+            <ProtectedRoute requiredPermission={ROUTE_ACCESS.dashboardExecutif}>
+              <LazyPageLoader>
+                <ExecutiveDashboardPage />
+              </LazyPageLoader>
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Tableau de bord agence (Chef d'agence) */}
+        <Route
+          path="dashboard/agence"
+          element={
+            <ProtectedRoute requiredPermission={ROUTE_ACCESS.dashboard}>
+              <LazyPageLoader>
+                <AgenceDashboardPage />
               </LazyPageLoader>
             </ProtectedRoute>
           }
