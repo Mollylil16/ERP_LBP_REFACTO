@@ -1,12 +1,11 @@
 import React, { useState } from 'react'
 import {
   Card, Form, InputNumber, Button, message, Table, Space,
-  Divider, Alert, Typography, Row, Col, Statistic, Input, Modal,
+  Divider, Alert, Typography, Row, Col,
 } from 'antd'
-import { SaveOutlined, SettingOutlined, SafetyOutlined, QrcodeOutlined } from '@ant-design/icons'
+import { SaveOutlined, SettingOutlined } from '@ant-design/icons'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { rhService, RhConfigPaie } from '@services/rh.service'
-import { apiService } from '@services/api.service'
 import { usePermissions } from '@hooks/usePermissions'
 import { PERMISSIONS } from '@constants/permissions'
 import dayjs from 'dayjs'
@@ -24,19 +23,6 @@ export const RhParametresTab: React.FC = () => {
   const [form] = Form.useForm()
   const [tranchesForm] = Form.useForm()
   const [editingTranches, setEditingTranches] = useState(false)
-  const [mfaQr, setMfaQr] = useState<string | null>(null)
-  const [mfaModalOpen, setMfaModalOpen] = useState(false)
-  const [mfaToken, setMfaToken] = useState('')
-  const [mfaStatus, setMfaStatus] = useState<{ mfa_enabled: boolean; mfa_required: boolean } | null>(null)
-
-  const loadMfaStatus = async () => {
-    try {
-      const status: any = await apiService.get('/auth/mfa/status')
-      setMfaStatus(status)
-    } catch { /* ignore */ }
-  }
-
-  React.useEffect(() => { loadMfaStatus() }, [])
 
   const { data: config, isLoading } = useQuery<RhConfigPaie>({
     queryKey: ['rh-paie-config'],
@@ -249,93 +235,6 @@ export const RhParametresTab: React.FC = () => {
         </Col>
       </Row>
 
-      {/* Sécurité MFA (CDC Module 10) */}
-      <Card
-        title={<span><SafetyOutlined style={{ marginRight: 8 }} />Authentification à deux facteurs (MFA)</span>}
-        style={{ marginTop: 16 }}
-        size="small"
-      >
-        <Alert
-          type={mfaStatus?.mfa_enabled ? 'success' : mfaStatus?.mfa_required ? 'warning' : 'info'}
-          showIcon
-          message={
-            mfaStatus?.mfa_enabled
-              ? 'MFA activé — votre compte est protégé par Google Authenticator'
-              : mfaStatus?.mfa_required
-              ? 'MFA requis pour votre rôle — activez-le pour continuer à accéder au système'
-              : 'MFA non activé (optionnel pour ce rôle)'
-          }
-          style={{ marginBottom: 12 }}
-        />
-        <Space>
-          {!mfaStatus?.mfa_enabled && (
-            <Button
-              icon={<QrcodeOutlined />}
-              type="primary"
-              onClick={async () => {
-                try {
-                  const res: any = await apiService.get('/auth/mfa/setup')
-                  setMfaQr(res.qr_code)
-                  setMfaModalOpen(true)
-                } catch { message.error('Erreur lors de la configuration MFA') }
-              }}
-            >
-              Configurer le MFA
-            </Button>
-          )}
-          {mfaStatus?.mfa_enabled && (
-            <Button
-              danger
-              onClick={async () => {
-                try {
-                  await apiService.post('/auth/mfa/disable', {})
-                  message.success('MFA désactivé')
-                  loadMfaStatus()
-                } catch { message.error('Erreur désactivation MFA') }
-              }}
-            >
-              Désactiver le MFA
-            </Button>
-          )}
-        </Space>
-
-        <Modal
-          open={mfaModalOpen}
-          title="Activer le MFA — Scanner le QR code"
-          onCancel={() => setMfaModalOpen(false)}
-          footer={null}
-        >
-          {mfaQr && (
-            <div style={{ textAlign: 'center' }}>
-              <img src={mfaQr} alt="QR code MFA" style={{ width: 200, marginBottom: 16 }} />
-              <p>Scannez ce code avec <strong>Google Authenticator</strong> ou <strong>Authy</strong>, puis entrez le code généré :</p>
-              <Input
-                placeholder="Code OTP à 6 chiffres"
-                maxLength={6}
-                style={{ letterSpacing: 8, fontSize: 20, textAlign: 'center', marginBottom: 8 }}
-                value={mfaToken}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setMfaToken(e.target.value)}
-              />
-              <Button
-                type="primary"
-                block
-                disabled={mfaToken.length !== 6}
-                onClick={async () => {
-                  try {
-                    await apiService.post('/auth/mfa/enable', { token: mfaToken })
-                    message.success('MFA activé avec succès !')
-                    setMfaModalOpen(false)
-                    setMfaToken('')
-                    loadMfaStatus()
-                  } catch { message.error('Code invalide') }
-                }}
-              >
-                Valider et activer
-              </Button>
-            </div>
-          )}
-        </Modal>
-      </Card>
     </div>
   )
 }

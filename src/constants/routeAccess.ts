@@ -71,7 +71,8 @@ export const ROUTE_ACCESS = {
   exploitationFournitures: [
     PERMISSIONS.EXPLOITATION.FOURNITURES_READ,
     PERMISSIONS.EXPLOITATION.FOURNITURES_MANAGE,
-    PERMISSIONS.EXPLOITATION.FOURNITURES_REQUEST,
+    // NOTE: FOURNITURES_REQUEST exclu ici — utilisé uniquement dans agenceFournituresDemande
+    // pour que "Fournitures bureau" (admin) ne s'affiche pas pour les chefs d'agence
   ],
   exploitationPrestataires: [
     PERMISSIONS.EXPLOITATION.PRESTATAIRES_READ,

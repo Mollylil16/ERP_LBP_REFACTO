@@ -11,8 +11,6 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { RefreshToken } from './entities/refresh-token.entity';
 import { User } from '../users/entities/user.entity';
 import { AuditModule } from '../audit/audit.module';
-import { MfaService } from './mfa.service';
-
 @Module({
   imports: [
     TypeOrmModule.forFeature([RefreshToken, User]),
@@ -33,8 +31,8 @@ import { MfaService } from './mfa.service';
       inject: [ConfigService],
     }),
   ],
-  providers: [AuthService, JwtStrategy, MfaService],
+  providers: [AuthService, JwtStrategy],
   controllers: [AuthController],
-  exports: [AuthService, JwtModule, MfaService],
+  exports: [AuthService, JwtModule],
 })
 export class AuthModule {}

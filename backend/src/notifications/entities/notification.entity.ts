@@ -69,6 +69,10 @@ export class Notification {
   @JoinColumn({ name: 'user_id' })
   user: User | null;
 
+  /** Agence concernée : si renseignée, seuls les utilisateurs de cette agence voient la notif (user_id NULL). */
+  @Column({ type: 'int', nullable: true, name: 'id_agence' })
+  id_agence: number | null;
+
   @CreateDateColumn()
   created_at: Date;
 

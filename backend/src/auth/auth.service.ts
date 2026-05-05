@@ -11,7 +11,6 @@ import { Repository } from 'typeorm';
 import * as crypto from 'crypto';
 import { BusinessAuditService } from '../audit/business-audit.service';
 import { ensureDashboardPermissions } from '../common/permission-code-map';
-import { MfaService } from './mfa.service';
 
 @Injectable()
 export class AuthService {
@@ -26,7 +25,6 @@ export class AuthService {
     private readonly businessAudit: BusinessAuditService,
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
-    private readonly mfaService: MfaService,
   ) {}
 
   async validateUser(username: string, pass: string): Promise<any> {
@@ -123,38 +121,6 @@ export class AuthService {
   }
 
   async login(user: any) {
-    const roleCode = this.resolveRoleCode(user);
-
-    // MFA challenge si le compte a le MFA activé
-    if (user.mfa_enabled || user.mfa_required) {
-      const mfaSessionToken = crypto.randomBytes(32).toString('hex');
-      // Stocker dans un JWT court-terme (5 min) pour le challenge
-      const mfaPayload = { sub: user.id, mfa_pending: true, session: mfaSessionToken };
-      const mfaToken = this.jwtService.sign(mfaPayload, { expiresIn: '5m' });
-      return {
-        mfa_required: true,
-        mfa_session_token: mfaToken,
-        message: 'Code MFA requis',
-      };
-    }
-
-    return this.issueFullTokens(user, roleCode);
-  }
-
-  async completeMfaLogin(mfaSessionToken: string, otpToken: string) {
-    let payload: any;
-    try {
-      payload = this.jwtService.verify(mfaSessionToken);
-    } catch {
-      throw new UnauthorizedException('Session MFA expirée ou invalide');
-    }
-    if (!payload.mfa_pending) throw new UnauthorizedException('Token invalide');
-
-    await this.mfaService.verifyToken(payload.sub, otpToken);
-
-    const user = await this.usersService.findById(payload.sub);
-    if (!user) throw new UnauthorizedException('Utilisateur introuvable');
-
     const roleCode = this.resolveRoleCode(user);
     return this.issueFullTokens(user, roleCode);
   }

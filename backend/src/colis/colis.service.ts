@@ -41,6 +41,8 @@ export class ColisService {
       'ASSISTANT_DG',
       'SUPERVISEUR_REGIONAL',
       'SUPERVISEURE_GENERALE',
+      'AGENT_EXPLOITATION',
+      'CAISSIER',
     ].includes(rc);
   }
 

@@ -41,15 +41,26 @@ export class NotificationService {
   }
 
   /**
-   * Notifications non lues : fil destinataire (user_id) + notifications globales legacy (user_id NULL).
+   * Notifications non lues filtrées par utilisateur ET agence.
+   * - Notifs destinées spécifiquement à cet utilisateur (user_id = userId)
+   * - Notifs globales sans destinataire ni agence (user_id IS NULL AND id_agence IS NULL)
+   * - Notifs globales pour l'agence de l'utilisateur (user_id IS NULL AND id_agence = user.id_agence)
    */
-  async getUnreadForUser(userId: number): Promise<Notification[]> {
-    return await this.notificationRepository
+  async getUnreadForUser(userId: number, idAgence?: number | null): Promise<Notification[]> {
+    const qb = this.notificationRepository
       .createQueryBuilder('n')
-      .where('n.read = :read', { read: false })
-      .andWhere('(n.user_id = :userId OR n.user_id IS NULL)', { userId })
-      .orderBy('n.created_at', 'DESC')
-      .getMany();
+      .where('n.read = :read', { read: false });
+
+    if (idAgence) {
+      qb.andWhere(
+        '(n.user_id = :userId OR (n.user_id IS NULL AND (n.id_agence IS NULL OR n.id_agence = :agenceId)))',
+        { userId, agenceId: idAgence },
+      );
+    } else {
+      qb.andWhere('(n.user_id = :userId OR n.user_id IS NULL)', { userId });
+    }
+
+    return qb.orderBy('n.created_at', 'DESC').getMany();
   }
 
   /**

@@ -240,10 +240,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
       // Définir l'utilisateur et arrêter le loading
       const normalizedUser = normalizeUser(response.user as any);
-      setUser(normalizedUser);
+      setUser(normalizedUser ?? null);
       setIsLoading(false);
 
-      toast.success(`Bienvenue ${normalizedUser.nom_complet || normalizedUser.username} !`);
+      if (normalizedUser) {
+        toast.success(`Bienvenue ${normalizedUser.nom_complet || normalizedUser.username} !`);
+      }
 
       // ✅ Logique de redirection selon les flags de 1ère connexion
       if (normalizedUser.must_change_password) {

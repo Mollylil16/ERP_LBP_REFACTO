@@ -231,13 +231,17 @@ const rolePermissionsMatrix = {
     'exploitation.autres_envois.read',
     'exploitation.autres_envois.update',
     'exploitation.rapports_envois.read',
-    // Facturation (émission / consultation)
+    // Facturation : créer + consulter les factures de son agence
     'facturation.facturer.create',
     'facturation.facturer.read',
-    // Structures (lecture)
+    // Paiements : encaisser + consulter les paiements de son agence
+    'paiements.read',
+    'paiements.create',
+    // Structures (lecture + création clients)
     'structures.clients.read',
+    'structures.clients.create',
     'structures.agences.read',
-    // Caisse (lecture)
+    // Caisse (lecture uniquement)
     'operation_caisse.gestion_caisses.read',
     // Workflow / validation
     'colis.groupage.validate',
@@ -247,14 +251,7 @@ const rolePermissionsMatrix = {
     'litiges.view',
     'litiges.create',
     'callcenter.inbox',
-    // Exploitation (chef agence : soumission des points/recaps)
-    'exploitation.points_journaliers.read',
-    'exploitation.points_journaliers.create',
-    'exploitation.points_journaliers.submit',
-    'exploitation.credits.read',
-    'exploitation.credits.submit_recap',
-    // Fournitures (demandes agence)
-    'exploitation.fournitures.read',
+    // Fournitures : demandes uniquement (PAS la gestion admin)
     'exploitation.fournitures.request',
     // Rapports / exports (états PDF/Excel)
     'rapports.view',

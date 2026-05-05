@@ -198,7 +198,7 @@ export class PaiementsService {
     const rc = (typeof user?.role === 'string' ? user.role : user?.role?.code ?? '')
       .toUpperCase();
     return ['ADMIN', 'DIRECTEUR', 'ASSISTANT_DG', 'SUPERVISEUR_REGIONAL',
-      'SUPERVISEURE_GENERALE', 'CAISSIER'].includes(rc);
+      'SUPERVISEURE_GENERALE', 'AGENT_EXPLOITATION', 'CAISSIER'].includes(rc);
   }
 
   async findAll(user?: any): Promise<Paiement[]> {

@@ -7,6 +7,7 @@ import {
   Put,
   UseGuards,
   Query,
+  Request,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { ClientsService } from './clients.service';
@@ -32,15 +33,15 @@ export class ClientsController {
   @Get()
   @RequirePermission('clients.read')
   @ApiOperation({ summary: 'Liste des clients' })
-  findAll() {
-    return this.clientsService.findAll();
+  findAll(@Request() req: any) {
+    return this.clientsService.findAll(req.user);
   }
 
   @Get('search')
   @RequirePermission('clients.read')
   @ApiOperation({ summary: 'Rechercher des clients' })
-  search(@Query('search') searchTerm: string) {
-    return this.clientsService.search(searchTerm);
+  search(@Query('search') searchTerm: string, @Request() req: any) {
+    return this.clientsService.search(searchTerm, req.user);
   }
 
   @Get(':id')

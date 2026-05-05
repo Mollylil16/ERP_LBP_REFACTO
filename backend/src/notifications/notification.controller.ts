@@ -21,8 +21,8 @@ export class NotificationController {
   constructor(private readonly notificationService: NotificationService) {}
 
   @Get('unread')
-  getUnread(@Request() req: { user: { id: number } }) {
-    return this.notificationService.getUnreadForUser(req.user.id);
+  getUnread(@Request() req: { user: { id: number; id_agence?: number | null } }) {
+    return this.notificationService.getUnreadForUser(req.user.id, req.user.id_agence ?? null);
   }
 
   @Patch(':id/read')

@@ -1,15 +1,13 @@
 import React, { useState, useEffect } from 'react'
-import { Form, Input, Button, Typography, Space, Card, Switch, Tooltip, Alert, message } from 'antd'
+import { Form, Input, Button, Typography, Space, Card, Switch, Tooltip, Alert } from 'antd'
 import {
   UserOutlined,
   LockOutlined,
   MoonOutlined,
   SunOutlined,
   ThunderboltOutlined,
-  SafetyOutlined,
 } from '@ant-design/icons'
 import { useAuth } from '@hooks/useAuth'
-import { apiService } from '@services/api.service'
 import './LoginPage.css'
 
 const { Title, Text } = Typography
@@ -17,8 +15,6 @@ const { Title, Text } = Typography
 export const LoginPage: React.FC = () => {
   const [loading, setLoading] = useState(false)
   const [darkMode, setDarkMode] = useState(false)
-  const [mfaStep, setMfaStep] = useState(false)
-  const [mfaSessionToken, setMfaSessionToken] = useState('')
   const { login } = useAuth()
 
   useEffect(() => {
@@ -32,38 +28,9 @@ export const LoginPage: React.FC = () => {
   const onFinish = async (values: { username: string; password: string }) => {
     try {
       setLoading(true)
-      const response: any = await apiService.post('/auth/login', values)
-      if (response?.mfa_required) {
-        setMfaSessionToken(response.mfa_session_token)
-        setMfaStep(true)
-        message.info('Saisissez votre code MFA (Google Authenticator)')
-      } else {
-        await login(values)
-      }
+      await login(values)
     } catch (error) {
       console.error('Login error:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const onMfaFinish = async (values: { token: string }) => {
-    try {
-      setLoading(true)
-      const resp: any = await apiService.post('/auth/mfa/challenge', {
-        mfa_session_token: mfaSessionToken,
-        token: values.token,
-      })
-      // Simulate full login by storing the token directly
-      if (resp?.token) {
-        sessionStorage.setItem('lbp_token', resp.token)
-        if (resp.refresh_token) sessionStorage.setItem('lbp_refresh_token', resp.refresh_token)
-        if (resp.permissions) sessionStorage.setItem('lbp_permissions', JSON.stringify(resp.permissions))
-        window.location.href = '/'
-      }
-    } catch (error) {
-      message.error('Code MFA invalide ou expiré')
-      console.error('MFA error:', error)
     } finally {
       setLoading(false)
     }
@@ -220,8 +187,7 @@ export const LoginPage: React.FC = () => {
               />
             </Card>
 
-            {!mfaStep ? (
-              <Form
+            <Form
                 name="login"
                 onFinish={onFinish}
                 autoComplete="off"
@@ -267,54 +233,6 @@ export const LoginPage: React.FC = () => {
                   </Button>
                 </Form.Item>
               </Form>
-            ) : (
-              <Form
-                name="mfa"
-                onFinish={onMfaFinish}
-                autoComplete="off"
-                size="large"
-                className="premium-login-form"
-                layout="vertical"
-              >
-                <Alert
-                  type="warning"
-                  showIcon
-                  icon={<SafetyOutlined />}
-                  message="Authentification à deux facteurs"
-                  description="Ouvrez Google Authenticator et saisissez le code à 6 chiffres."
-                  style={{ marginBottom: 16 }}
-                />
-                <Form.Item
-                  name="token"
-                  label={<Text strong className="form-label-premium">Code MFA (6 chiffres)</Text>}
-                  rules={[{ required: true, len: 6, message: 'Code à 6 chiffres requis' }]}
-                >
-                  <Input
-                    prefix={<SafetyOutlined className="input-prefix-icon-premium" />}
-                    placeholder="000000"
-                    maxLength={6}
-                    className="premium-input glass-input"
-                    style={{ letterSpacing: 8, fontSize: 20, textAlign: 'center' }}
-                  />
-                </Form.Item>
-                <Form.Item className="submit-form-item-premium">
-                  <Button
-                    type="primary"
-                    htmlType="submit"
-                    loading={loading}
-                    block
-                    className="premium-login-button glass-button"
-                    size="large"
-                    icon={<SafetyOutlined />}
-                  >
-                    {loading ? 'Vérification...' : 'Valider le code'}
-                  </Button>
-                </Form.Item>
-                <Button type="link" block onClick={() => setMfaStep(false)}>
-                  Retour à la connexion
-                </Button>
-              </Form>
-            )}
 
             <div className="login-footer-premium">
               <Text type="secondary" className="footer-text-premium">

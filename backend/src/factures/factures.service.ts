@@ -57,8 +57,10 @@ export class FacturesService {
       [
         'ADMIN',
         'DIRECTEUR',
+        'ASSISTANT_DG',
         'SUPERVISEUR_REGIONAL',
         'SUPERVISEURE_GENERALE',
+        'AGENT_EXPLOITATION',
         'CAISSIER',
       ].includes(rc)
     ) {
@@ -145,7 +147,7 @@ export class FacturesService {
     });
   }
 
-  async findOne(id: number): Promise<Facture> {
+  async findOne(id: number, user?: any): Promise<Facture> {
     const facture = await this.factureRepository.findOne({
       where: { id },
       relations: [
@@ -157,6 +159,11 @@ export class FacturesService {
     });
     if (!facture) {
       throw new NotFoundException(`Facture #${id} introuvable`);
+    }
+    if (user && !this.userSeesAllFacturesAcrossAgences(user) && user.id_agence) {
+      if (Number(facture.colis?.agence?.id) !== Number(user.id_agence)) {
+        throw new NotFoundException(`Facture #${id} introuvable`);
+      }
     }
     return facture;
   }

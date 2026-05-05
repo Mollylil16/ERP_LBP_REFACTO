@@ -7,6 +7,7 @@ import {
   Get,
   UnauthorizedException,
 } from '@nestjs/common';
+// UnauthorizedException est utilisé dans login()
 import {
   ApiTags,
   ApiOperation,
@@ -14,7 +15,6 @@ import {
   ApiBearerAuth,
 } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
-import { MfaService } from './mfa.service';
 import { LoginDto } from './dto/login.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { Throttle } from '@nestjs/throttler';
@@ -24,7 +24,6 @@ import { Throttle } from '@nestjs/throttler';
 export class AuthController {
   constructor(
     private authService: AuthService,
-    private mfaService: MfaService,
   ) {}
 
   @Post('login')
@@ -105,48 +104,4 @@ export class AuthController {
     return await this.authService.getPermissionsForUser(req.user);
   }
 
-  // ── MFA endpoints ─────────────────────────────────────────────────────
-
-  @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard)
-  @Get('mfa/setup')
-  @ApiOperation({ summary: 'Générer le QR code TOTP pour activer le MFA' })
-  async mfaSetup(@Request() req) {
-    return this.mfaService.setupMfa(req.user.id);
-  }
-
-  @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard)
-  @Post('mfa/enable')
-  @ApiOperation({ summary: 'Activer le MFA avec le premier code OTP valide' })
-  async mfaEnable(@Request() req, @Body() body: { token: string }) {
-    await this.mfaService.enableMfa(req.user.id, body.token);
-    return { ok: true, message: 'MFA activé avec succès' };
-  }
-
-  @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard)
-  @Post('mfa/disable')
-  @ApiOperation({ summary: 'Désactiver le MFA' })
-  async mfaDisable(@Request() req) {
-    await this.mfaService.disableMfa(req.user.id);
-    return { ok: true, message: 'MFA désactivé' };
-  }
-
-  @Post('mfa/challenge')
-  @ApiOperation({ summary: 'Valider le code MFA lors du login (second facteur)' })
-  async mfaChallenge(@Body() body: { mfa_session_token: string; token: string }) {
-    return this.authService.completeMfaLogin(body.mfa_session_token, body.token);
-  }
-
-  @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard)
-  @Get('mfa/status')
-  @ApiOperation({ summary: 'Statut MFA de l\'utilisateur courant' })
-  async mfaStatus(@Request() req) {
-    return {
-      mfa_enabled: Boolean(req.user.mfa_enabled),
-      mfa_required: Boolean(req.user.mfa_required),
-    };
-  }
 }
