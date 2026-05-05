@@ -48,7 +48,7 @@ export class Colis {
   @Column({ type: 'date' })
   date_envoi: Date;
 
-  @ManyToOne(() => Client)
+  @ManyToOne(() => Client, (client) => client.colis, { nullable: true })
   @JoinColumn({ name: 'id_client' })
   client: Client;
 

@@ -6,6 +6,7 @@ import {
   UpdateDateColumn,
   OneToMany,
 } from 'typeorm';
+import { Colis } from '../../colis/entities/colis.entity';
 
 @Entity('lbp_clients')
 export class Client {
@@ -35,4 +36,7 @@ export class Client {
 
   @UpdateDateColumn()
   updated_at: Date;
+
+  @OneToMany(() => Colis, (colis) => colis.client)
+  colis: Colis[];
 }
