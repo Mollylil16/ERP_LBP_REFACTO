@@ -297,7 +297,7 @@ export class SupervisionInsightsService {
     for (const ag of agences) {
       const caisses = await this.caisseRepo.find({ where: { agence: { id: ag.id } } });
       for (const caisse of caisses) {
-        const solde = await this.caisseService.getSolde(caisse.id);
+        const solde = await this.caisseService.getSoldeReelCourant(caisse.id);
         const mv = await this.mouvementRepo
           .createQueryBuilder('m')
           .select('COALESCE(SUM(m.montant::numeric),0)', 's')

@@ -19,6 +19,8 @@ export enum PermissionModule {
   SUPERVISION = 'SUPERVISION',
   /** Espace groupeurs / grossistes */
   GROUPEURS = 'GROUPEURS',
+  /** Ressources Humaines — SIRH */
+  RH = 'RH',
 }
 
 export enum PermissionAction {

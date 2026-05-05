@@ -9,6 +9,8 @@ export const COLIS_READ_ANY = [
 ] as const
 
 export const ROUTE_ACCESS = {
+  /** Espace SIRH — Responsable RH */
+  rh: PERMISSIONS.RH.DASHBOARD_READ,
   /** Espace supervision réseau (KPI, agences, rapports) */
   supervision: PERMISSIONS.SUPERVISION.DASHBOARD_READ,
   /** Groupeurs : administration (superviseur régional + direction) */

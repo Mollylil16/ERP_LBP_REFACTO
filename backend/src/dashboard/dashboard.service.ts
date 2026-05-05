@@ -8,6 +8,7 @@ import { Paiement } from '../paiements/entities/paiement.entity';
 import { CaisseService } from '../caisse/caisse.service';
 import { AgencesService } from '../agences/agences.service';
 import { Agence } from '../agences/entities/agence.entity';
+import { ColisStatutSuivi } from '../colis/entities/colis.entity';
 
 @Injectable()
 export class DashboardService {
@@ -25,38 +26,70 @@ export class DashboardService {
   ) {}
 
   async getStats(): Promise<any> {
-    const totalColis = await this.colisRepository.count();
-    const activeClients = await this.clientRepository.count({
-      where: { isActive: true },
-    });
-
-    // Total Revenue (all definitive invoices)
-    const definitiveFacturesData = await this.factureRepository.find({
-      where: { etat: 1 },
-      select: ['montant_ttc'],
-    });
-    const totalRevenue = definitiveFacturesData.reduce(
-      (sum, f) => sum + Number(f.montant_ttc),
-      0,
-    );
-
-    // Today's Revenue
-    const startOfToday = new Date();
+    const today = new Date();
+    const startOfToday = new Date(today);
     startOfToday.setHours(0, 0, 0, 0);
-    const todayPayments = await this.paiementRepository.find({
-      where: { created_at: MoreThanOrEqual(startOfToday), etat_validation: 1 },
-      select: ['montant'],
-    });
-    const todayRevenue = todayPayments.reduce(
-      (sum, p) => sum + Number(p.montant),
-      0,
-    );
+    const endOfToday = new Date(today);
+    endOfToday.setHours(23, 59, 59, 999);
+
+    const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    endOfMonth.setHours(23, 59, 59, 999);
+
+    const [
+      colisAujourdhui,
+      colisEnTransit,
+      colisLivres,
+      clientsActifs,
+      facturesAValider,
+      paiementsAttente,
+      revenusJourRow,
+      revenusMoisRow,
+    ] = await Promise.all([
+      this.colisRepository.count({
+        where: { created_at: Between(startOfToday, endOfToday) },
+      }),
+      this.colisRepository.count({
+        where: { statut_suivi: Between(ColisStatutSuivi.EMBALLE, ColisStatutSuivi.EN_LIVRAISON) as any },
+      }).catch(async () => {
+        // Fallback simple si l'enum/Between n'est pas supporté selon driver
+        return this.colisRepository
+          .createQueryBuilder('c')
+          .where('c.statut_suivi != :livre', { livre: ColisStatutSuivi.LIVRE })
+          .getCount();
+      }),
+      this.colisRepository.count({
+        where: { statut_suivi: ColisStatutSuivi.LIVRE },
+      }),
+      this.clientRepository.count({ where: { isActive: true } }),
+      this.factureRepository.count({ where: { etat: 0 } }),
+      this.paiementRepository.count({ where: { etat_validation: 0 } }),
+      this.paiementRepository
+        .createQueryBuilder('p')
+        .select('COALESCE(SUM(p.montant::numeric),0)', 's')
+        .where('p.etat_validation = 1')
+        .andWhere('p.date_paiement BETWEEN :a AND :b', { a: startOfToday, b: endOfToday })
+        .getRawOne(),
+      this.paiementRepository
+        .createQueryBuilder('p')
+        .select('COALESCE(SUM(p.montant::numeric),0)', 's')
+        .where('p.etat_validation = 1')
+        .andWhere('p.date_paiement BETWEEN :a AND :b', { a: startOfMonth, b: endOfMonth })
+        .getRawOne(),
+    ]);
+
+    const revenus_jour = Number(revenusJourRow?.s ?? 0);
+    const revenus_mois = Number(revenusMoisRow?.s ?? 0);
 
     return {
-      totalColis,
-      totalRevenue,
-      activeClients,
-      todayRevenue,
+      colis_aujourdhui: colisAujourdhui,
+      colis_en_transit: colisEnTransit,
+      colis_livres: colisLivres,
+      revenus_jour,
+      revenus_mois,
+      clients_actifs: clientsActifs,
+      factures_a_valider: facturesAValider,
+      paiements_attente: paiementsAttente,
     };
   }
 
@@ -105,19 +138,35 @@ export class DashboardService {
     const agences = await this.agencesService.findAll();
     const results: any[] = [];
 
+    const target = date ? new Date(date) : new Date();
+    const start = new Date(target);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(target);
+    end.setHours(23, 59, 59, 999);
+
     for (const agence of agences) {
-      // Pour chaque agence, on récupère ses caisses
+      // Entrées: paiements validés du jour rattachés à l'agence (plus fidèle à "l'activité" que les seuls mouvements de caisse).
+      const payRow = await this.paiementRepository
+        .createQueryBuilder('p')
+        .leftJoin('p.facture', 'f')
+        .leftJoin('f.colis', 'c')
+        .leftJoin('c.agence', 'a')
+        .select('COALESCE(SUM(p.montant::numeric),0)', 's')
+        .where('p.etat_validation = 1')
+        .andWhere('p.date_paiement BETWEEN :start AND :end', { start, end })
+        .andWhere('a.id = :aid', { aid: agence.id })
+        .getRawOne();
+      const totalEntrees = Number(payRow?.s ?? 0);
+
+      // Sorties: décaissements du jour (mouvements caisse)
       const caisses = await this.caisseService.findAllCaisses(agence.id);
-
-      let totalEntrees = 0;
       let totalSorties = 0;
-      let soldeGlobal = 0;
-
       for (const caisse of caisses) {
-        const point = await this.caisseService.getPointCaisse(date, caisse.id);
-        totalEntrees += point.entrees;
-        totalSorties += point.sorties;
-        soldeGlobal += point.solde;
+        const point = await this.caisseService.getPointCaisse(
+          start.toISOString().slice(0, 10),
+          caisse.id,
+        );
+        totalSorties += Number(point.sorties ?? 0);
       }
 
       results.push({
@@ -126,8 +175,9 @@ export class DashboardService {
         agenceCode: agence.code,
         entrees: totalEntrees,
         sorties: totalSorties,
-        solde: soldeGlobal,
-        date: date || new Date().toISOString().split('T')[0],
+        // Solde Net (jour) attendu par la grille front.
+        solde: Number(totalEntrees) - Number(totalSorties),
+        date: (date || new Date().toISOString().split('T')[0]) as string,
       });
     }
 

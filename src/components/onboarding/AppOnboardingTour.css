@@ -39,3 +39,9 @@
 .role-summary--compact .ant-collapse-content-box {
   padding-block: 6px !important;
 }
+
+/* Tour dédié "États & exports" */
+.lbp-exports-tour .ant-tour-inner {
+  max-width: min(460px, calc(100vw - 32px));
+  border-radius: 12px;
+}

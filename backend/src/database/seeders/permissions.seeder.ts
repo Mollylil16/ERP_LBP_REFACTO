@@ -1,4 +1,4 @@
-import { DataSource } from 'typeorm';
+﻿import { DataSource } from 'typeorm';
 import {
   Permission,
   PermissionModule,
@@ -63,7 +63,7 @@ export async function seedPermissions(dataSource: DataSource): Promise<void> {
       fonctionnalite: 'prestataires_retraits_hub',
       action: PermissionAction.READ,
       description:
-        'Consulter la liste “Retraits à faire (caisse principale)” (paiements espèces en agence)',
+        'Consulter la liste "Retraits à faire (caisse principale)" (paiements espèces en agence)',
     },
     {
       module: PermissionModule.EXPLOITATION,
@@ -506,6 +506,23 @@ export async function seedPermissions(dataSource: DataSource): Promise<void> {
       action: PermissionAction.DELETE,
       description: 'Supprimer un utilisateur',
     },
+
+    // ─────────────────────────── Module RH (SIRH) ────────────────────────────
+    { module: PermissionModule.RH, fonctionnalite: 'dashboard', action: PermissionAction.READ, description: 'Tableau de bord RH (KPIs, alertes)' },
+    { module: PermissionModule.RH, fonctionnalite: 'employes', action: PermissionAction.READ, description: 'Consulter les fiches employés' },
+    { module: PermissionModule.RH, fonctionnalite: 'employes', action: PermissionAction.CREATE, description: 'Créer un employé' },
+    { module: PermissionModule.RH, fonctionnalite: 'employes', action: PermissionAction.UPDATE, description: 'Modifier un employé / enregistrer une sortie' },
+    { module: PermissionModule.RH, fonctionnalite: 'employes', action: PermissionAction.DELETE, description: 'Archiver / supprimer un employé' },
+    { module: PermissionModule.RH, fonctionnalite: 'contrats', action: PermissionAction.READ, description: 'Consulter les contrats et alertes CDD' },
+    { module: PermissionModule.RH, fonctionnalite: 'contrats', action: PermissionAction.CREATE, description: 'Créer un contrat (CDI, CDD, Stage, Intérim)' },
+    { module: PermissionModule.RH, fonctionnalite: 'contrats', action: PermissionAction.UPDATE, description: 'Modifier un contrat / enregistrer un avenant' },
+    { module: PermissionModule.RH, fonctionnalite: 'conges', action: PermissionAction.READ, description: 'Consulter les demandes de congé et soldes' },
+    { module: PermissionModule.RH, fonctionnalite: 'conges', action: PermissionAction.CREATE, description: 'Soumettre une demande de congé' },
+    { module: PermissionModule.RH, fonctionnalite: 'conges', action: PermissionAction.UPDATE, description: 'Valider ou refuser une demande de congé' },
+    { module: PermissionModule.RH, fonctionnalite: 'paie', action: PermissionAction.READ, description: 'Consulter les éléments de paie' },
+    { module: PermissionModule.RH, fonctionnalite: 'paie', action: PermissionAction.CREATE, description: 'Préparer un bulletin de paie' },
+    { module: PermissionModule.RH, fonctionnalite: 'paie', action: PermissionAction.UPDATE, description: 'Valider / clôturer une campagne de paie' },
+    { module: PermissionModule.RH, fonctionnalite: 'rapports', action: PermissionAction.READ, description: 'Consulter les rapports RH (bilan social, CNPS, DGI)' },
   ];
 
   for (const permData of permissions) {
@@ -601,6 +618,20 @@ export async function seedPermissions(dataSource: DataSource): Promise<void> {
       description: 'Annuler une facture',
     },
     {
+      code: 'paiements.read',
+      module: PermissionModule.OPERATION_CAISSE,
+      fonctionnalite: 'paiements_consultation',
+      action: 'READ',
+      description: 'Consulter les paiements (filtrés par agence pour chef agence)',
+    },
+    {
+      code: 'paiements.create',
+      module: PermissionModule.OPERATION_CAISSE,
+      fonctionnalite: 'paiements_encaissement',
+      action: 'CREATE',
+      description: 'Enregistrer un encaissement / paiement client',
+    },
+    {
       code: 'paiements.validate',
       module: PermissionModule.OPERATION_CAISSE,
       fonctionnalite: 'paiements_validation',
@@ -693,14 +724,14 @@ export async function seedPermissions(dataSource: DataSource): Promise<void> {
       action: 'CREATE',
       description: 'Créer et soumettre une demande de fournitures pour son agence',
     },
-    // Prestataires : codes “app” spécifiques au workflow d’approbation ASSISTANT_DG
+    // Prestataires : codes "app" spécifiques au workflow d'approbation ASSISTANT_DG
     {
       code: 'exploitation.prestataires_retraits_hub.request_approval',
       module: PermissionModule.EXPLOITATION,
       fonctionnalite: 'prestataires_retraits_hub_approval',
       action: 'CREATE',
       description:
-        'Demander l’approbation du directeur pour marquer un retrait hub (assistante DG)',
+        "Demander l'approbation du directeur pour marquer un retrait hub (assistante DG)",
     },
     {
       code: 'exploitation.prestataires_retraits_hub.approve',
@@ -722,7 +753,7 @@ export async function seedPermissions(dataSource: DataSource): Promise<void> {
       module: PermissionModule.SUPERVISION,
       fonctionnalite: 'supervision_rapports',
       action: 'READ',
-      description: 'Consulter l’historique des rapports de supervision',
+      description: "Consulter l'historique des rapports de supervision",
     },
     {
       code: 'supervision.rapport.create',
@@ -736,14 +767,14 @@ export async function seedPermissions(dataSource: DataSource): Promise<void> {
       module: PermissionModule.SUPERVISION,
       fonctionnalite: 'supervision_controle',
       action: 'CREATE',
-      description: 'Enregistrer un signalement d’anomalie',
+      description: "Enregistrer un signalement d'anomalie",
     },
     {
       code: 'supervision.justification.create',
       module: PermissionModule.SUPERVISION,
       fonctionnalite: 'supervision_justification',
       action: 'CREATE',
-      description: 'Demander une justification auprès d’un agent ou chef d’agence',
+      description: "Demander une justification auprès d'un agent ou chef d'agence",
     },
     {
       code: 'supervision.annotation.create',
@@ -759,7 +790,7 @@ export async function seedPermissions(dataSource: DataSource): Promise<void> {
       fonctionnalite: 'groupeurs_admin',
       action: 'READ',
       description:
-        'Consulter l’espace administration des groupeurs (liste/détails/activité)',
+        "Consulter l'espace administration des groupeurs (liste/détails/activité)",
     },
     {
       code: 'groupeurs.admin.write',
@@ -794,14 +825,251 @@ export async function seedPermissions(dataSource: DataSource): Promise<void> {
       module: PermissionModule.GROUPEURS,
       fonctionnalite: 'groupeurs_rapports',
       action: 'READ',
-      description: 'Consulter l’historique des rapports groupeurs',
+      description: "Consulter l'historique des rapports groupeurs",
     },
     {
       code: 'groupeurs.audit.read',
       module: PermissionModule.GROUPEURS,
       fonctionnalite: 'groupeurs_audit',
       action: 'READ',
-      description: 'Consulter le journal d’audit groupeurs (direction)',
+      description: "Consulter le journal d'audit groupeurs (direction)",
+    },
+    // ───────────────────────── RH — Dashboard ──────────────────────────────
+    {
+      code: 'rh.dashboard.read',
+      module: PermissionModule.RH,
+      fonctionnalite: 'rh_dashboard',
+      action: 'READ',
+      description: 'Consulter le tableau de bord RH (KPIs, alertes CDD, effectifs)',
+    },
+    // ───────────────────────── RH — Employés ───────────────────────────────
+    {
+      code: 'rh.employes.read',
+      module: PermissionModule.RH,
+      fonctionnalite: 'rh_employes',
+      action: 'READ',
+      description: 'Consulter la liste et les fiches des employés',
+    },
+    {
+      code: 'rh.employes.create',
+      module: PermissionModule.RH,
+      fonctionnalite: 'rh_employes',
+      action: 'CREATE',
+      description: 'Créer un nouvel employé (fiche complète)',
+    },
+    {
+      code: 'rh.employes.update',
+      module: PermissionModule.RH,
+      fonctionnalite: 'rh_employes',
+      action: 'UPDATE',
+      description: 'Modifier la fiche d\'un employé (poste, statut, infos)',
+    },
+    {
+      code: 'rh.employes.delete',
+      module: PermissionModule.RH,
+      fonctionnalite: 'rh_employes',
+      action: 'DELETE',
+      description: 'Archiver ou supprimer un employé (sortie définitive)',
+    },
+    // ───────────────────────── RH — Contrats ───────────────────────────────
+    {
+      code: 'rh.contrats.read',
+      module: PermissionModule.RH,
+      fonctionnalite: 'rh_contrats',
+      action: 'READ',
+      description: 'Consulter les contrats de travail et alertes CDD',
+    },
+    {
+      code: 'rh.contrats.create',
+      module: PermissionModule.RH,
+      fonctionnalite: 'rh_contrats',
+      action: 'CREATE',
+      description: 'Créer un nouveau contrat de travail (CDI, CDD, Stage, Intérim)',
+    },
+    {
+      code: 'rh.contrats.update',
+      module: PermissionModule.RH,
+      fonctionnalite: 'rh_contrats',
+      action: 'UPDATE',
+      description: 'Modifier un contrat ou créer un avenant',
+    },
+    // ───────────────────────── RH — Congés ─────────────────────────────────
+    {
+      code: 'rh.conges.read',
+      module: PermissionModule.RH,
+      fonctionnalite: 'rh_conges',
+      action: 'READ',
+      description: 'Consulter les demandes de congé et les soldes',
+    },
+    {
+      code: 'rh.conges.create',
+      module: PermissionModule.RH,
+      fonctionnalite: 'rh_conges',
+      action: 'CREATE',
+      description: 'Soumettre une demande de congé (Art. 25 CDT)',
+    },
+    {
+      code: 'rh.conges.update',
+      module: PermissionModule.RH,
+      fonctionnalite: 'rh_conges',
+      action: 'UPDATE',
+      description: 'Modifier une demande de congé en attente',
+    },
+    // ───────────────────────── RH — Paie ────────────────────────────────────
+    {
+      code: 'rh.paie.read',
+      module: PermissionModule.RH,
+      fonctionnalite: 'rh_paie',
+      action: 'READ',
+      description: 'Consulter les bulletins de paie et runs mensuels',
+    },
+    {
+      code: 'rh.paie.create',
+      module: PermissionModule.RH,
+      fonctionnalite: 'rh_paie',
+      action: 'CREATE',
+      description: 'Lancer un run de paie mensuel et calculer les salaires',
+    },
+    {
+      code: 'rh.paie.update',
+      module: PermissionModule.RH,
+      fonctionnalite: 'rh_paie',
+      action: 'UPDATE',
+      description: 'Valider un run de paie (RH ou DAF) et configurer les paramètres',
+    },
+    // ───────────────────────── RH — Rapports ────────────────────────────────
+    {
+      code: 'rh.rapports.read',
+      module: PermissionModule.RH,
+      fonctionnalite: 'rh_rapports',
+      action: 'READ',
+      description: 'Consulter les rapports légaux RH (bilan social, CNPS, ITS, déclaration MO)',
+    },
+    // ───────────────────────── RH — codes workflow ─────────────────────────
+    {
+      code: 'rh.conges.validate',
+      module: PermissionModule.RH,
+      fonctionnalite: 'rh_conges_validation',
+      action: 'UPDATE',
+      description: 'Valider ou refuser une demande de conge (RH)',
+    },
+    // ───────────────────────── RH — Présences ─────────────────────────
+    {
+      code: 'rh.presences.read',
+      module: PermissionModule.RH,
+      fonctionnalite: 'rh_presences',
+      action: 'READ',
+      description: 'Consulter les presences et pointages',
+    },
+    {
+      code: 'rh.presences.create',
+      module: PermissionModule.RH,
+      fonctionnalite: 'rh_presences',
+      action: 'CREATE',
+      description: 'Saisir une presence ou un pointage',
+    },
+    {
+      code: 'rh.presences.update',
+      module: PermissionModule.RH,
+      fonctionnalite: 'rh_presences',
+      action: 'UPDATE',
+      description: 'Valider ou modifier une presence, gerer les jours feries',
+    },
+    // ───────────────────────── RH — Evaluations ─────────────────────────
+    {
+      code: 'rh.evaluations.read',
+      module: PermissionModule.RH,
+      fonctionnalite: 'rh_evaluations',
+      action: 'READ',
+      description: 'Consulter les evaluations de performance',
+    },
+    {
+      code: 'rh.evaluations.create',
+      module: PermissionModule.RH,
+      fonctionnalite: 'rh_evaluations',
+      action: 'CREATE',
+      description: 'Creer une evaluation de performance',
+    },
+    {
+      code: 'rh.evaluations.update',
+      module: PermissionModule.RH,
+      fonctionnalite: 'rh_evaluations',
+      action: 'UPDATE',
+      description: 'Modifier et valider une evaluation de performance',
+    },
+    // ───────────────────────── RH — Recrutement ─────────────────────────
+    {
+      code: 'rh.recrutement.read',
+      module: PermissionModule.RH,
+      fonctionnalite: 'rh_recrutement',
+      action: 'READ',
+      description: 'Consulter les postes et candidatures',
+    },
+    {
+      code: 'rh.recrutement.create',
+      module: PermissionModule.RH,
+      fonctionnalite: 'rh_recrutement',
+      action: 'CREATE',
+      description: 'Creer un poste ou enregistrer une candidature',
+    },
+    {
+      code: 'rh.recrutement.update',
+      module: PermissionModule.RH,
+      fonctionnalite: 'rh_recrutement',
+      action: 'UPDATE',
+      description: 'Mettre a jour le pipeline de recrutement',
+    },
+    // ───────────────────────── RH — Formation ─────────────────────────
+    {
+      code: 'rh.formation.read',
+      module: PermissionModule.RH,
+      fonctionnalite: 'rh_formation',
+      action: 'READ',
+      description: 'Consulter le plan de formation',
+    },
+    {
+      code: 'rh.formation.create',
+      module: PermissionModule.RH,
+      fonctionnalite: 'rh_formation',
+      action: 'CREATE',
+      description: 'Creer une formation et inscrire des employes',
+    },
+    {
+      code: 'rh.formation.update',
+      module: PermissionModule.RH,
+      fonctionnalite: 'rh_formation',
+      action: 'UPDATE',
+      description: 'Modifier une formation ou une inscription',
+    },
+    // ───────────────────────── RH — Rapports légaux ─────────────────────────
+    {
+      code: 'rh.rapports.export',
+      module: PermissionModule.RH,
+      fonctionnalite: 'rh_rapports',
+      action: 'READ',
+      description: 'Exporter les rapports legaux RH (bilan social, CNPS, DGI) en PDF/Excel',
+    },
+    // ───────────────────────── RH — Documents (coffre-fort) ─────────────────
+    {
+      code: 'rh.documents.read',
+      module: PermissionModule.RH,
+      fonctionnalite: 'rh_documents',
+      action: 'READ',
+      description: 'Consulter le coffre-fort numerique des documents employes',
+    },
+    {
+      code: 'rh.documents.create',
+      module: PermissionModule.RH,
+      fonctionnalite: 'rh_documents',
+      action: 'CREATE',
+      description: 'Deposer un document dans le coffre-fort numerique',
+    },
+    {
+      code: 'rh.documents.delete',
+      module: PermissionModule.RH,
+      fonctionnalite: 'rh_documents',
+      action: 'DELETE',
+      description: 'Supprimer un document du coffre-fort numerique',
     },
   ];
 

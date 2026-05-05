@@ -30,6 +30,7 @@ import { ThrottlerModule } from '@nestjs/throttler';
 import { PrestatairesModule } from './prestataires/prestataires.module';
 import { SupervisionModule } from './supervision/supervision.module';
 import { GroupeursModule } from './groupeurs/groupeurs.module';
+import { RhModule } from './rh/rh.module';
 
 @Module({
   imports: [
@@ -116,6 +117,7 @@ import { GroupeursModule } from './groupeurs/groupeurs.module';
     PrestatairesModule,
     SupervisionModule,
     GroupeursModule,
+    RhModule,
   ],
   controllers: [AppController],
   providers: [AppService],

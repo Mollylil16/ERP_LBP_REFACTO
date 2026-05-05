@@ -9,11 +9,13 @@ import { RolesModule } from '../roles/roles.module';
 import { JwtStrategy } from './jwt.strategy';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { RefreshToken } from './entities/refresh-token.entity';
+import { User } from '../users/entities/user.entity';
 import { AuditModule } from '../audit/audit.module';
+import { MfaService } from './mfa.service';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([RefreshToken]),
+    TypeOrmModule.forFeature([RefreshToken, User]),
     UsersModule,
     RolesModule,
     AuditModule,
@@ -31,8 +33,8 @@ import { AuditModule } from '../audit/audit.module';
       inject: [ConfigService],
     }),
   ],
-  providers: [AuthService, JwtStrategy],
+  providers: [AuthService, JwtStrategy, MfaService],
   controllers: [AuthController],
-  exports: [AuthService, JwtModule],
+  exports: [AuthService, JwtModule, MfaService],
 })
 export class AuthModule {}

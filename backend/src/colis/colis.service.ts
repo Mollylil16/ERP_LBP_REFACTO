@@ -448,13 +448,18 @@ export class ColisService {
     return { data, total };
   }
 
-  async findOne(id: number): Promise<Colis> {
+  async findOne(id: number, user?: any): Promise<Colis> {
     const colis = await this.colisRepository.findOne({
       where: { id },
-      relations: ['client', 'marchandises'],
+      relations: ['client', 'marchandises', 'agence'],
     });
     if (!colis) {
       throw new NotFoundException(`Colis #${id} not found`);
+    }
+    if (user && !this.userSeesAllColis(user) && user.id_agence) {
+      if (colis.agence && Number(colis.agence.id) !== Number(user.id_agence)) {
+        throw new NotFoundException(`Colis #${id} not found`);
+      }
     }
     return colis;
   }

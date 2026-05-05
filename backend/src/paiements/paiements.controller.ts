@@ -58,8 +58,8 @@ export class PaiementsController {
   @Get()
   @RequirePermission('paiements.read')
   @ApiOperation({ summary: 'Liste de tous les paiements' })
-  findAll() {
-    return this.paiementsService.findAll();
+  findAll(@Request() req) {
+    return this.paiementsService.findAll(req.user);
   }
 
   @Get('suivi')
@@ -76,8 +76,8 @@ export class PaiementsController {
   @Get('facture/:id')
   @RequirePermission('paiements.read')
   @ApiOperation({ summary: "Historique des paiements d'une facture" })
-  findByFacture(@Param('id') id: string) {
-    return this.paiementsService.findByFacture(+id);
+  findByFacture(@Param('id') id: string, @Request() req) {
+    return this.paiementsService.findByFacture(+id, req.user);
   }
 
   @Get('calculate/:refColis')
@@ -90,8 +90,8 @@ export class PaiementsController {
   @Get('colis/:refColis')
   @RequirePermission('paiements.read')
   @ApiOperation({ summary: "Historique des paiements d'un colis" })
-  findByColis(@Param('refColis') refColis: string) {
-    return this.paiementsService.findByColis(refColis);
+  findByColis(@Param('refColis') refColis: string, @Request() req) {
+    return this.paiementsService.findByColis(refColis, req.user);
   }
 
   @Get('encaissement/:ref/receipt')

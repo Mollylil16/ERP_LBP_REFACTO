@@ -838,6 +838,64 @@ export class CaisseService implements OnApplicationBootstrap {
     return total;
   }
 
+  /**
+   * Solde "réel" : basé sur les sessions (ouverture/fermeture) plutôt que sur `solde_initial`.
+   * - S'il existe une session OPEN : base = solde_ouverture_reel, on applique les mouvements depuis l'ouverture.
+   * - Sinon, s'il existe une session CLOSED : base = solde_fermeture_reel (si renseigné), puis mouvements après clôture.
+   * - Sinon : fallback sur le solde théorique (`getSolde`).
+   */
+  async getSoldeReelCourant(id_caisse: number): Promise<number> {
+    const caisseId = Number(id_caisse);
+    if (!caisseId) return 0;
+
+    const sessionOpen = await this.sessionRepository.findOne({
+      where: {
+        caisse: { id: caisseId },
+        status: CaisseSessionStatus.OPEN,
+      },
+      relations: ['caisse'],
+      order: { created_at: 'DESC' },
+    });
+    if (sessionOpen) {
+      const mouvements = await this.mouvementRepository.find({
+        where: {
+          caisse: { id: caisseId },
+          created_at: Between(sessionOpen.created_at, new Date()),
+        },
+      });
+      const delta = mouvements.reduce((acc, mv) => {
+        if (mv.type === MouvementType.DECAISSEMENT) return acc - Number(mv.montant);
+        return acc + Number(mv.montant);
+      }, 0);
+      return Number(sessionOpen.solde_ouverture_reel || 0) + delta;
+    }
+
+    const lastClosed = await this.sessionRepository.findOne({
+      where: {
+        caisse: { id: caisseId },
+        status: CaisseSessionStatus.CLOSED,
+      },
+      relations: ['caisse'],
+      order: { updated_at: 'DESC' },
+    });
+    if (lastClosed && lastClosed.solde_fermeture_reel != null) {
+      const from = lastClosed.updated_at ?? lastClosed.created_at;
+      const mouvements = await this.mouvementRepository.find({
+        where: {
+          caisse: { id: caisseId },
+          created_at: Between(from, new Date()),
+        },
+      });
+      const delta = mouvements.reduce((acc, mv) => {
+        if (mv.type === MouvementType.DECAISSEMENT) return acc - Number(mv.montant);
+        return acc + Number(mv.montant);
+      }, 0);
+      return Number(lastClosed.solde_fermeture_reel || 0) + delta;
+    }
+
+    return this.getSolde(caisseId);
+  }
+
   async getPointCaisse(date?: string, id_caisse: number = 1): Promise<any> {
     const targetDate = date ? new Date(date) : new Date();
     const startOfDay = new Date(targetDate.setHours(0, 0, 0, 0));

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import {
   Typography,
   Card,
@@ -37,6 +37,7 @@ import autoTable from 'jspdf-autotable'
 import ExcelJS from 'exceljs'
 import { saveAs } from 'file-saver'
 import { fmtPdf, fmtPdfNum, loadLogoBase64, drawLBPHeader, drawLBPFooters, LBP_TABLE_HEAD_STYLES, LBP_TABLE_ALT_ROW } from '@utils/pdfHelpers'
+import { useSearchParams } from 'react-router-dom'
 
 const { Title } = Typography
 const { Option } = Select
@@ -69,6 +70,7 @@ const calculerMontantColis = (colis: any): number => {
 
 export const ColisRapportsPage: React.FC = () => {
   const [form] = Form.useForm()
+  const [searchParams] = useSearchParams()
   const [reportParams, setReportParams] = useState<any>(null)
   const [reportData, setReportData] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
@@ -105,7 +107,16 @@ export const ColisRapportsPage: React.FC = () => {
     const total = reportData.length
     const groupage = reportData.filter((c) => c.forme_envoi === 'groupage').length
     const montantTotal = reportData.reduce((acc, c) => acc + calculerMontantColis(c), 0)
-    return { total, groupage, autresEnvois: total - groupage, montantTotal }
+    const totalPoids = reportData.reduce((acc, c) => {
+      const ms = Array.isArray(c.marchandises) ? c.marchandises : []
+      return acc + ms.reduce((s: number, m: any) => s + Number(m.poids_total || 0), 0)
+    }, 0)
+    const nbColisPhysiques = reportData.reduce((acc, c) => {
+      const ms = Array.isArray(c.marchandises) ? c.marchandises : []
+      const n = ms.reduce((s: number, m: any) => s + Number(m.nbre_colis || 0), 0)
+      return acc + (n || 0)
+    }, 0)
+    return { total, groupage, autresEnvois: total - groupage, montantTotal, totalPoids, nbColisPhysiques }
   }, [reportData])
 
   const tableRows: RapportRow[] = useMemo(
@@ -123,6 +134,27 @@ export const ColisRapportsPage: React.FC = () => {
       })),
     [reportData]
   )
+
+  // Presets de période (via URL: ?preset=jour|semaine|mois|annee)
+  useEffect(() => {
+    const preset = (searchParams.get('preset') || '').toLowerCase()
+    if (!preset) return
+    const today = dayjs()
+    const range =
+      preset === 'jour'
+        ? [today.startOf('day'), today.endOf('day')]
+        : preset === 'semaine'
+          ? [today.subtract(6, 'day').startOf('day'), today.endOf('day')]
+          : preset === 'mois'
+            ? [today.startOf('month'), today.endOf('month')]
+            : preset === 'annee'
+              ? [today.startOf('year'), today.endOf('year')]
+              : null
+    if (!range) return
+    form.setFieldsValue({ dateRange: range })
+    void form.submit()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams])
 
   const handleGenerateReport = async (values: any) => {
     setLoading(true)
@@ -431,6 +463,25 @@ export const ColisRapportsPage: React.FC = () => {
                 />
               </Card>
             </Col>
+                    <Col xs={12} sm={6}>
+                      <Card>
+                        <Statistic
+                          title="Poids total"
+                          value={kpis.totalPoids.toLocaleString('fr-FR')}
+                          suffix="Kg"
+                          valueStyle={{ color: '#1a3a5c', fontSize: 16 }}
+                        />
+                      </Card>
+                    </Col>
+                    <Col xs={12} sm={6}>
+                      <Card>
+                        <Statistic
+                          title="Nombre de colis (physiques)"
+                          value={kpis.nbColisPhysiques}
+                          valueStyle={{ color: '#1a3a5c', fontSize: 16 }}
+                        />
+                      </Card>
+                    </Col>
           </Row>
 
           <Tabs

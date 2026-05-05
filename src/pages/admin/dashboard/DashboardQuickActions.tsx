@@ -120,6 +120,15 @@ export const DashboardQuickActions: React.FC<DashboardQuickActionsProps> = ({
               Colis groupage
             </Button>
           </WithPermission>
+          <WithPermission permission={ROUTE_ACCESS.colisRapports}>
+            <Button
+              icon={<FileTextOutlined />}
+              onClick={() => navigate('/colis/rapports?preset=jour')}
+              data-onboarding="etat-jour-btn"
+            >
+              État du jour (PDF/Excel)
+            </Button>
+          </WithPermission>
           <WithPermission permission={ROUTE_ACCESS.factures}>
             <Button icon={<FileTextOutlined />} onClick={() => navigate('/factures')}>
               Factures
@@ -176,6 +185,15 @@ export const DashboardQuickActions: React.FC<DashboardQuickActionsProps> = ({
           <WithPermission permission={ROUTE_ACCESS.colisGroupage}>
             <Button icon={<InboxOutlined />} onClick={() => navigate('/colis/groupage')}>
               Groupage
+            </Button>
+          </WithPermission>
+          <WithPermission permission={ROUTE_ACCESS.colisRapports}>
+            <Button
+              icon={<FileTextOutlined />}
+              onClick={() => navigate('/colis/rapports?preset=jour')}
+              data-onboarding="etat-jour-btn"
+            >
+              État du jour (PDF/Excel)
             </Button>
           </WithPermission>
           <WithPermission permission={ROUTE_ACCESS.factures}>

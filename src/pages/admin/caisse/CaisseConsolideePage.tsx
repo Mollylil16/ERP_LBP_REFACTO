@@ -12,10 +12,12 @@ import {
   LinkOutlined,
   TeamOutlined,
   FilePdfOutlined,
+  FileExcelOutlined,
 } from '@ant-design/icons'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import { fmtPdf, fmtPdfNum, loadLogoBase64, drawLBPHeader, drawLBPFooters, LBP_TABLE_HEAD_STYLES, LBP_TABLE_ALT_ROW } from '@utils/pdfHelpers'
+import { exportTableToExcel } from '@utils/export/excel'
 import { Link } from 'react-router-dom'
 import type { ColumnsType } from 'antd/es/table'
 import dayjs, { type Dayjs } from 'dayjs'
@@ -50,6 +52,51 @@ export const CaisseConsolideePage: React.FC = () => {
       ['CAISSIER', 'DIRECTEUR', 'ADMIN', 'SUPER_ADMIN', 'SUPERVISEUR_REGIONAL'].includes(roleCode),
     [roleCode],
   )
+
+  const exportExcel = useCallback(async () => {
+    if (!data?.par_caisse?.length) {
+      message.warning('Aucune donnée à exporter')
+      return
+    }
+    try {
+      const rows = data.par_caisse.map((row: Record<string, unknown>) => {
+        const ag = row.agence as { nom?: string; code?: string } | null
+        const agLabel = ag ? `${ag.nom} (${ag.code})` : '--'
+        const p = row.point_du_jour as
+          | { entrees?: number; sorties?: number; mouvementsCount?: number }
+          | undefined
+        return [
+          agLabel,
+          String((row.nom_caisse as string | null) || '--'),
+          Number(p?.entrees ?? 0),
+          Number(p?.sorties ?? 0),
+          Number(p?.mouvementsCount ?? 0),
+          Number(row.solde_actuel ?? 0),
+        ]
+      })
+      await exportTableToExcel(
+        {
+          headers: [
+            'Agence',
+            'Caisse',
+            'Entrées jour (FCFA)',
+            'Sorties jour (FCFA)',
+            'Mouvements jour',
+            'Solde actuel (FCFA)',
+          ],
+          rows,
+        },
+        `journee-consolidee_${dateStr}`,
+        {
+          title: `Journée consolidée — ${dateStr}`,
+          sheetName: 'Journée consolidée',
+        },
+      )
+      message.success('Fichier Excel généré')
+    } catch {
+      message.error('Export Excel impossible')
+    }
+  }, [data, dateStr])
 
   const exportPdf = useCallback(async () => {
     if (!data?.par_caisse) {
@@ -236,6 +283,13 @@ export const CaisseConsolideePage: React.FC = () => {
                 disabled={!data?.par_caisse?.length || isLoading}
               >
                 Exporter PDF
+              </Button>
+              <Button
+                icon={<FileExcelOutlined />}
+                onClick={exportExcel}
+                disabled={!data?.par_caisse?.length || isLoading}
+              >
+                Exporter Excel
               </Button>
             </Space>
             <Space wrap>

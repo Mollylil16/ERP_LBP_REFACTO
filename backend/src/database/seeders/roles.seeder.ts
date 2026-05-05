@@ -110,6 +110,14 @@ export async function seedRoles(dataSource: DataSource): Promise<void> {
       niveau_hierarchique: 5,
       est_actif: true,
     },
+    {
+      code: 'RESPONSABLE_RH',
+      nom: 'Responsable Ressources Humaines',
+      description:
+        'Gestion complète du SIRH : personnel, contrats, congés, paie, recrutement, formations — conforme Code du Travail ivoirien 2015-532',
+      niveau_hierarchique: 3,
+      est_actif: true,
+    },
   ];
 
   for (const roleData of roles) {

@@ -25,6 +25,7 @@ import {
   ShoppingOutlined,
   HistoryOutlined,
   SwapOutlined,
+  SolutionOutlined,
 } from "@ant-design/icons";
 import { usePermissions } from "@hooks/usePermissions";
 import { useAuth } from "@hooks/useAuth";
@@ -108,6 +109,8 @@ export const SidebarMenu: React.FC<SidebarMenuProps> = ({ collapsed: _collapsed 
 
   const showGroupeurs =
     hasPermission(ROUTE_ACCESS.groupeursAdmin) || hasPermission(ROUTE_ACCESS.groupeursEspace);
+
+  const canRh = hasPermission(ROUTE_ACCESS.rh);
 
   const settingsChildren = [
     ...(hasPermission(ROUTE_ACCESS.settings)
@@ -322,6 +325,11 @@ export const SidebarMenu: React.FC<SidebarMenuProps> = ({ collapsed: _collapsed 
             icon: <BarChartOutlined />,
             label: "Rapports",
           },
+          {
+            key: "/rapports/etat-agence",
+            icon: <FileTextOutlined />,
+            label: "État agence complet",
+          },
         ]
       : []),
     ...(canStatistiques
@@ -492,6 +500,15 @@ export const SidebarMenu: React.FC<SidebarMenuProps> = ({ collapsed: _collapsed 
                   ]
                 : []),
             ],
+          },
+        ]
+      : []),
+    ...(canRh
+      ? [
+          {
+            key: "/rh",
+            icon: <SolutionOutlined />,
+            label: "Ressources Humaines",
           },
         ]
       : []),

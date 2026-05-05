@@ -194,21 +194,52 @@ export class PaiementsService {
     }
   }
 
-  async findAll(): Promise<Paiement[]> {
-    return this.paiementRepository.find({
-      relations: ['facture', 'facture.colis'],
-      order: { created_at: 'DESC' },
-    });
+  private userSeesAllPaiements(user: any): boolean {
+    const rc = (typeof user?.role === 'string' ? user.role : user?.role?.code ?? '')
+      .toUpperCase();
+    return ['ADMIN', 'DIRECTEUR', 'ASSISTANT_DG', 'SUPERVISEUR_REGIONAL',
+      'SUPERVISEURE_GENERALE', 'CAISSIER'].includes(rc);
   }
 
-  async findByFacture(factureId: number): Promise<Paiement[]> {
+  async findAll(user?: any): Promise<Paiement[]> {
+    const qb = this.paiementRepository.createQueryBuilder('p')
+      .leftJoinAndSelect('p.facture', 'facture')
+      .leftJoinAndSelect('facture.colis', 'colis')
+      .leftJoinAndSelect('colis.agence', 'agence')
+      .orderBy('p.created_at', 'DESC');
+
+    if (user && !this.userSeesAllPaiements(user) && user.id_agence) {
+      qb.where('agence.id = :agenceId', { agenceId: Number(user.id_agence) });
+    }
+    return qb.getMany();
+  }
+
+  async findByFacture(factureId: number, user?: any): Promise<Paiement[]> {
+    if (user && !this.userSeesAllPaiements(user) && user.id_agence) {
+      const facture = await this.factureRepository.findOne({
+        where: { id: factureId },
+        relations: ['colis', 'colis.agence'],
+      });
+      if (facture && Number(facture.colis?.agence?.id) !== Number(user.id_agence)) {
+        return [];
+      }
+    }
     return this.paiementRepository.find({
       where: { facture: { id: factureId } },
       order: { date_paiement: 'DESC' },
     });
   }
 
-  async findByColis(refColis: string): Promise<Paiement[]> {
+  async findByColis(refColis: string, user?: any): Promise<Paiement[]> {
+    if (user && !this.userSeesAllPaiements(user) && user.id_agence) {
+      const colis = await this.colisRepository.findOne({
+        where: { ref_colis: refColis },
+        relations: ['agence'],
+      });
+      if (colis && Number(colis.agence?.id) !== Number(user.id_agence)) {
+        return [];
+      }
+    }
     return this.paiementRepository.find({
       where: { facture: { colis: { ref_colis: refColis } } },
       relations: ['facture', 'facture.colis'],

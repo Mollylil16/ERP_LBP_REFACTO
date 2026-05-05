@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
-import { Layout, Avatar, Dropdown, Space } from 'antd'
+import { Layout, Avatar, Dropdown, Space, Button } from 'antd'
 import {
   MenuFoldOutlined,
   MenuUnfoldOutlined,
@@ -9,6 +9,7 @@ import {
   LogoutOutlined,
   SettingOutlined,
   CompassOutlined,
+  QuestionCircleOutlined,
 } from '@ant-design/icons'
 import { useAuth } from '@hooks/useAuth'
 import { usePermissions } from '@hooks/usePermissions'
@@ -27,6 +28,7 @@ import { Breadcrumbs } from '../common/Breadcrumbs'
 import { useServiceWorker } from '../../hooks/useServiceWorker'
 import { useMobileMenu } from '../../hooks/useMobileMenu'
 import { useOnboardingTour } from '../onboarding/AppOnboardingTour'
+import { useExportsTour } from '../onboarding/ExportsTour'
 import '../../styles/responsive.css'
 import './MainLayout.css'
 
@@ -45,6 +47,7 @@ export const MainLayout: React.FC = () => {
   const { isDark } = useTheme()
   const { isMobile, isMenuOpen, closeMenu, toggleMenu } = useMobileMenu()
   const { startTour } = useOnboardingTour()
+  const { startExportsTour } = useExportsTour()
   useServiceWorker()    // Enregistre le service worker
   useKeyboardNav()      // Active les raccourcis clavier globaux
 
@@ -134,6 +137,23 @@ export const MainLayout: React.FC = () => {
       <SkipToMain mainId="main-content" />
       <OfflineIndicator />
       <KeyboardShortcutsHelp />
+      {/* Bouton flottant "Revoir le tuto" : toujours disponible si besoin */}
+      <Button
+        type="primary"
+        shape="round"
+        icon={<QuestionCircleOutlined />}
+        onClick={startTour}
+        className="lbp-floating-tour-btn"
+      >
+        Revoir le tuto
+      </Button>
+      <Button
+        shape="round"
+        onClick={startExportsTour}
+        className="lbp-floating-exports-tour-btn"
+      >
+        Revoir le tuto États
+      </Button>
       {/* Overlay pour mobile */}
       {isMobile && isMenuOpen && (
         <div className="sidebar-overlay active" onClick={closeMenu} aria-hidden="true" />

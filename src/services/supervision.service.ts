@@ -90,6 +90,47 @@ export type SupervisionAnomaliesUnavailable = {
   donnees: null
 }
 
+export interface SupervisionSignalementRow {
+  id: number
+  type: string
+  description: string | null
+  gravite: string
+  statut: string
+  created_at: string
+  agence?: { id: number; code: string; nom: string } | null
+  auteur?: { id: number; username: string; fullname?: string } | null
+}
+
+export interface SupervisionJustificationRow {
+  id: number
+  motif: string
+  statut: string
+  id_operation: string | null
+  reponse: string | null
+  created_at: string
+  agence?: { id: number; code: string; nom: string } | null
+  demandeur?: { id: number; username: string } | null
+  destinataire?: { id: number; username: string; fullname?: string } | null
+}
+
+export interface SupervisionAnnotationRow {
+  id: number
+  cible: string
+  cible_id: string
+  contenu: string
+  visibilite: string
+  created_at: string
+  auteur?: { id: number; username: string } | null
+}
+
+export interface SupervisionAgentRow {
+  id: number
+  username: string
+  nom_complet: string | null
+  role_code: string
+  agence_nom: string | null
+}
+
 class SupervisionService {
   getKpis() {
     return apiService.get<SupervisionKpis>('/supervision/kpis')
@@ -208,6 +249,22 @@ class SupervisionService {
 
   getPerformanceAgents() {
     return apiService.get<{ par_agence_role: unknown[] }>('/supervision/performance-agents')
+  }
+
+  getSignalements() {
+    return apiService.get<SupervisionSignalementRow[]>('/supervision/signalements')
+  }
+
+  getJustifications() {
+    return apiService.get<SupervisionJustificationRow[]>('/supervision/demandes-justification')
+  }
+
+  getAnnotations() {
+    return apiService.get<SupervisionAnnotationRow[]>('/supervision/annotations')
+  }
+
+  getAgents() {
+    return apiService.get<SupervisionAgentRow[]>('/supervision/agents')
   }
 }
 

@@ -108,7 +108,7 @@ export class SupervisionService {
         where: { agence: { id: a.id } },
         relations: ['agence'],
       });
-      const solde = c ? await this.caisseService.getSolde(c.id) : 0;
+      const solde = c ? await this.caisseService.getSoldeReelCourant(c.id) : 0;
       const statut =
         colisJ > 0 ? 'actif' : a.actif ? 'veille' : 'inactif';
       out.push({
@@ -145,7 +145,7 @@ export class SupervisionService {
     return {
       agence: a,
       id_caisse: c?.id ?? null,
-      solde_caisse: c ? await this.caisseService.getSolde(c.id) : 0,
+      solde_caisse: c ? await this.caisseService.getSoldeReelCourant(c.id) : 0,
       colis7j,
       agents_actifs: usersC,
     };
@@ -349,6 +349,43 @@ export class SupervisionService {
       auteur: { id: auteur.id } as User,
     });
     return this.annRepo.save(a);
+  }
+
+  async getSignalements() {
+    return this.signalementRepo.find({
+      order: { created_at: "DESC" },
+      take: 200,
+      relations: ["agence", "auteur"],
+    });
+  }
+
+  async getJustifications() {
+    return this.djRepo.find({
+      order: { created_at: "DESC" },
+      take: 200,
+      relations: ["agence", "demandeur", "destinataire"],
+    });
+  }
+
+  async getAnnotations() {
+    return this.annRepo.find({
+      order: { created_at: "DESC" },
+      take: 200,
+      relations: ["auteur"],
+    });
+  }
+
+  async getAgentsList(): Promise<
+    Array<{ id: number; username: string; nom_complet: string | null; role_code: string; agence_nom: string | null }>
+  > {
+    return this.dataSource.query(
+      `SELECT u.id, u.username, u."fullname" AS nom_complet, u.role::text AS role_code, a.nom AS agence_nom
+       FROM lbp_users u
+       LEFT JOIN agences a ON a.id = u.id_agence
+       WHERE u."isActive" = true
+       ORDER BY a.nom NULLS LAST, u."fullname"
+       LIMIT 500`,
+    );
   }
 
   /** Périmètre lecture colis côté liste (même filtre qu’un directeur) */

@@ -160,6 +160,34 @@ export class SupervisionController {
     return this.supervisionService.getHistoriqueRapports();
   }
 
+  @Get('signalements')
+  @RequirePermission('supervision.dashboard.read')
+  @ApiOperation({ summary: 'Historique des signalements' })
+  getSignalements() {
+    return this.supervisionService.getSignalements();
+  }
+
+  @Get('demandes-justification')
+  @RequirePermission('supervision.dashboard.read')
+  @ApiOperation({ summary: 'Historique des demandes de justification' })
+  getJustifications() {
+    return this.supervisionService.getJustifications();
+  }
+
+  @Get('annotations')
+  @RequirePermission('supervision.dashboard.read')
+  @ApiOperation({ summary: 'Historique des annotations internes' })
+  getAnnotations() {
+    return this.supervisionService.getAnnotations();
+  }
+
+  @Get('agents')
+  @RequirePermission('supervision.dashboard.read')
+  @ApiOperation({ summary: 'Liste des agents actifs (référentiel pour selects)' })
+  getAgents() {
+    return this.supervisionService.getAgentsList();
+  }
+
   @Post('rapports')
   @RequirePermission('supervision.rapport.create')
   @ApiOperation({ summary: 'Soumettre un rapport (direction)' })

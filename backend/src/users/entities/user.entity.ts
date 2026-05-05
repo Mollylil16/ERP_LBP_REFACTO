@@ -33,6 +33,8 @@ export enum UserRole {
   /** Service client : boîte d’appel, messagerie, litiges côté relation client */
   CALL_CENTER = 'CALL_CENTER',
   ADMIN = 'ADMIN', // Conservé pour compatibilité technique
+  /** Responsable Ressources Humaines : gestion du personnel, contrats, congés, paie */
+  RESPONSABLE_RH = 'RESPONSABLE_RH',
 }
 
 @Entity('lbp_users')
@@ -92,6 +94,17 @@ export class User {
 
   @Column({ type: 'boolean', default: false })
   peut_voir_toutes_agences: boolean;
+
+  // ── MFA (CDC Module 10 Sécurité) ─────────────────────────────────────
+  @Column({ type: 'varchar', length: 64, nullable: true, select: false })
+  mfa_secret: string | null;
+
+  @Column({ type: 'boolean', default: false })
+  mfa_enabled: boolean;
+
+  // MFA requis par le système pour ce rôle (ADMIN, RESPONSABLE_RH)
+  @Column({ type: 'boolean', default: false })
+  mfa_required: boolean;
 
   @OneToMany(() => UserActionSpeciale, (userAction) => userAction.user, {
     eager: true,

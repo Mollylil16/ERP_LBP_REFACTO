@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { Table, Card, Typography, Space, Tag, DatePicker, Select, Button, Avatar, Statistic, Row, Col } from "antd";
+import React, { useMemo, useState, useEffect } from "react";
+import { Table, Card, Typography, Space, Tag, DatePicker, Select, Button, Avatar, Statistic, Row, Col, message } from "antd";
 import {
     ArrowUpOutlined,
     BankOutlined,
@@ -7,10 +7,17 @@ import {
     UserOutlined,
     HistoryOutlined,
     CalendarOutlined,
+    FilePdfOutlined,
+    FileExcelOutlined,
 } from "@ant-design/icons";
 import { apiService } from "@services/api.service";
 import { formatMontant, formatDate } from "@utils/format";
 import dayjs from "dayjs";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
+import { exportTableToExcel } from "@utils/export/excel";
+import { fmtPdfNum, loadLogoBase64, drawLBPHeader, drawLBPFooters, LBP_TABLE_HEAD_STYLES, LBP_TABLE_ALT_ROW } from "@utils/pdfHelpers";
+import { useCaisses } from "@hooks/useCaisse";
 
 const { Title, Text } = Typography;
 const { RangePicker } = DatePicker;
@@ -22,6 +29,7 @@ const WithdrawalTrackingPage: React.FC = () => {
         dates: [dayjs().startOf('month'), dayjs()],
         id_caisse: undefined,
     });
+    const { data: caisses } = useCaisses();
 
     const fetchData = async () => {
         setLoading(true);
@@ -41,6 +49,7 @@ const WithdrawalTrackingPage: React.FC = () => {
             setData(response);
         } catch (error) {
             console.error("Erreur lors du chargement des retraits:", error);
+            message.error("Chargement des retraits impossible");
         } finally {
             setLoading(false);
         }
@@ -49,6 +58,93 @@ const WithdrawalTrackingPage: React.FC = () => {
     useEffect(() => {
         fetchData();
     }, [filters]);
+
+    const exportPdf = async () => {
+        if (!data.length) return;
+        try {
+            const logo = await loadLogoBase64();
+            const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+
+            const d0 = filters.dates?.[0]?.format("YYYY-MM-DD") ?? "";
+            const d1 = filters.dates?.[1]?.format("YYYY-MM-DD") ?? "";
+            const caisseLabel = (() => {
+                if (!filters.id_caisse) return "Toutes les caisses";
+                const c = caisses?.find((x: any) => Number(x.id) === Number(filters.id_caisse));
+                return c?.libelle || (c as any)?.nom || c?.code || `Caisse #${filters.id_caisse}`;
+            })();
+
+            let y = drawLBPHeader(doc, {
+                title: "Suivi des retraits",
+                subtitle: `Période : ${d0} → ${d1}`,
+                rightInfo: `Caisse : ${caisseLabel}`,
+                logoBase64: logo,
+            });
+
+            const body = data.map((r: any, idx: number) => [
+                String(idx + 1),
+                formatDate(r.date_mouvement),
+                r.libelle || "—",
+                r.mode_retrait || "ESPECE",
+                r.caisse?.nom || r.caisse?.libelle || "—",
+                r.code_user || "—",
+                fmtPdfNum(r.montant),
+            ]);
+
+            autoTable(doc, {
+                startY: y,
+                head: [["#", "Date", "Libellé", "Moyen", "Caisse", "Utilisateur", "Montant (FCFA)"]],
+                body,
+                styles: { fontSize: 8, cellPadding: 3 },
+                headStyles: LBP_TABLE_HEAD_STYLES,
+                alternateRowStyles: LBP_TABLE_ALT_ROW,
+                columnStyles: {
+                    0: { cellWidth: 10, halign: "center" },
+                    6: { halign: "right", fontStyle: "bold" },
+                },
+            });
+
+            drawLBPFooters(doc);
+            doc.save(`retraits_${d0}_${d1}.pdf`);
+            message.success("PDF généré");
+        } catch {
+            message.error("Export PDF impossible");
+        }
+    };
+
+    const exportExcel = async () => {
+        if (!data.length) return;
+        try {
+            const d0 = filters.dates?.[0]?.format("YYYY-MM-DD") ?? "";
+            const d1 = filters.dates?.[1]?.format("YYYY-MM-DD") ?? "";
+            const caisseLabel = (() => {
+                if (!filters.id_caisse) return "Toutes";
+                const c = caisses?.find((x: any) => Number(x.id) === Number(filters.id_caisse));
+                return c?.libelle || (c as any)?.nom || c?.code || String(filters.id_caisse);
+            })();
+
+            await exportTableToExcel(
+                {
+                    headers: ["Date", "Libellé", "Montant", "Moyen", "Caisse", "Utilisateur"],
+                    rows: data.map((r: any) => [
+                        formatDate(r.date_mouvement),
+                        r.libelle || "—",
+                        Number(r.montant ?? 0),
+                        r.mode_retrait || "ESPECE",
+                        r.caisse?.nom || r.caisse?.libelle || "—",
+                        r.code_user || "—",
+                    ]),
+                },
+                `retraits_${d0}_${d1}`,
+                {
+                    title: `Retraits — ${d0} → ${d1} (Caisse: ${caisseLabel})`,
+                    sheetName: "Retraits",
+                },
+            );
+            message.success("Fichier Excel généré");
+        } catch {
+            message.error("Export Excel impossible");
+        }
+    };
 
     const getModeIcon = (mode: string) => {
         if (!mode) return <BankOutlined />;
@@ -118,16 +214,33 @@ const WithdrawalTrackingPage: React.FC = () => {
     ];
 
     const totalWithdrawals = data.reduce((sum, item) => sum + Number(item.montant), 0);
+    const canExport = data.length > 0;
+
+    const caisseOptions = useMemo(() => {
+        const rows = Array.isArray(caisses) ? caisses : [];
+        return rows.map((c: any) => ({
+            label: (c.libelle || c.nom || c.code || `Caisse #${c.id}`) + (c.id_agence ? "" : ""),
+            value: c.id,
+        }));
+    }, [caisses]);
 
     return (
         <div style={{ padding: 24 }}>
             <Space direction="vertical" style={{ width: '100%' }} size="large">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div>
-                        <Title level={2}>💸 Suivi des Retraits & Sorties de Fonds</Title>
+                        <Title level={2}>Suivi des retraits & sorties de fonds</Title>
                         <Text type="secondary">Contrôlez qui retire, quand et par quel moyen.</Text>
                     </div>
-                    <Button icon={<HistoryOutlined />} onClick={fetchData}>Rafraîchir</Button>
+                    <Space>
+                        <Button icon={<HistoryOutlined />} onClick={fetchData}>Rafraîchir</Button>
+                        <Button icon={<FilePdfOutlined />} onClick={exportPdf} disabled={!canExport}>
+                            Exporter PDF
+                        </Button>
+                        <Button icon={<FileExcelOutlined />} onClick={exportExcel} disabled={!canExport}>
+                            Exporter Excel
+                        </Button>
+                    </Space>
                 </div>
 
                 <Row gutter={16}>
@@ -164,9 +277,10 @@ const WithdrawalTrackingPage: React.FC = () => {
                             placeholder="Filtrer par caisse"
                             style={{ width: 200 }}
                             allowClear
+                            value={filters.id_caisse as any}
+                            options={caisseOptions}
                             onChange={(val: any) => setFilters({ ...filters, id_caisse: val })}
                         >
-                            <Select.Option value={1}>Caisse Principale</Select.Option>
                         </Select>
                     </Space>
 

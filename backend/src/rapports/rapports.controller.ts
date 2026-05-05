@@ -1,4 +1,4 @@
-import { Controller, Get, Query, UseGuards, Response } from '@nestjs/common';
+import { Controller, Get, Query, UseGuards, Response, Request } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { RapportsService } from './rapports.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -31,8 +31,18 @@ export class RapportsController {
   @Get('colis')
   @RequirePermission('rapports.view')
   @ApiOperation({ summary: 'Générer un rapport de colis' })
-  getColisReport(@Query() query: any) {
-    return this.rapportsService.generateRapportColis(query);
+  getColisReport(@Request() req: { user: any }, @Query() query: any) {
+    return this.rapportsService.generateRapportColis(query, req.user);
+  }
+
+  @Get('etat-agence-complet')
+  @RequirePermission('rapports.view')
+  @ApiOperation({
+    summary:
+      'État agence complet (colis + factures + paiements + caisse) sur une période',
+  })
+  getEtatAgenceComplet(@Request() req: { user: any }, @Query() query: any) {
+    return this.rapportsService.getEtatAgenceComplet(query, req.user);
   }
 
   @Get('export/excel')

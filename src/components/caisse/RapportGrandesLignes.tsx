@@ -33,8 +33,8 @@ import { getRapportGrandesLignes } from "@services/caisse.service";
 import type { ColumnsType } from "antd/es/table";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import ExcelJS from "exceljs";
-import { saveAs } from "file-saver";
+import { exportTableToExcel } from "@utils/export/excel";
+import { fmtPdf, fmtPdfNum, loadLogoBase64, drawLBPHeader, drawLBPFooters, LBP_TABLE_HEAD_STYLES, LBP_TABLE_ALT_ROW, C_BLUE } from "@utils/pdfHelpers";
 
 const { RangePicker } = DatePicker;
 
@@ -79,68 +79,69 @@ export const RapportGrandesLignes: React.FC<RapportGrandesLignesProps> = ({
 
   const handleExportPDF = () => {
     if (!rapport) return;
-    const doc = new jsPDF();
     const periode = `${dateRange[0].format("DD/MM/YYYY")} - ${dateRange[1].format("DD/MM/YYYY")}`;
+    (async () => {
+      try {
+        const logo = await loadLogoBase64();
+        const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+        let y = drawLBPHeader(doc, {
+          title: "Rapport grandes lignes",
+          subtitle: `Période : ${periode}`,
+          logoBase64: logo,
+        });
 
-    doc.setFontSize(16);
-    doc.text("Rapport Grandes Lignes - Caisse", 14, 18);
-    doc.setFontSize(11);
-    doc.text(`Période : ${periode}`, 14, 28);
+        autoTable(doc, {
+          startY: y,
+          head: [["Type", "Montant"]],
+          body: [
+            ["Approvisionnement", fmtPdf(rapport.total_appro)],
+            ["Décaissement", fmtPdf(rapport.total_decaissement)],
+            ["Entrées Chèque", fmtPdf(rapport.total_entrees_cheque)],
+            ["Entrées Espèce", fmtPdf(rapport.total_entrees_espece)],
+            ["Entrées Virement", fmtPdf(rapport.total_entrees_virement)],
+            ["TOTAL ENTRÉES", fmtPdf(rapport.total_entrees)],
+            ["Solde initial (avant période)", fmtPdf(rapport.solde_initial)],
+            ["Solde final (fin période)", fmtPdf(rapport.solde_final)],
+          ],
+          styles: { fontSize: 9, cellPadding: 3 },
+          headStyles: { ...LBP_TABLE_HEAD_STYLES, fillColor: C_BLUE },
+          alternateRowStyles: LBP_TABLE_ALT_ROW,
+          columnStyles: { 1: { halign: "right", fontStyle: "bold" } },
+          margin: { left: 14, right: 14 },
+        });
 
-    const rows = [
-      ["Approvisionnement", rapport.total_appro],
-      ["Décaissement", rapport.total_decaissement],
-      ["Entrées Chèque", rapport.total_entrees_cheque],
-      ["Entrées Espèce", rapport.total_entrees_espece],
-      ["Entrées Virement", rapport.total_entrees_virement],
-      ["TOTAL ENTRÉES", rapport.total_entrees],
-    ].map(([label, montant]) => [label, `${Number(montant).toLocaleString("fr-FR")} FCFA`]);
-
-    autoTable(doc, {
-      head: [["Type", "Montant"]],
-      body: rows,
-      startY: 35,
-      styles: { fontSize: 10 },
-      headStyles: { fillColor: [30, 136, 229] },
-    });
-
-    doc.save(`rapport-caisse-${dateRange[0].format("YYYYMMDD")}.pdf`);
+        drawLBPFooters(doc);
+        doc.save(`rapport-grandes-lignes_${dateRange[0].format("YYYYMMDD")}_${dateRange[1].format("YYYYMMDD")}.pdf`);
+      } catch {
+        // eslint-disable-next-line no-console
+        console.error("Export PDF impossible");
+      }
+    })();
   };
 
   const handleExportExcel = async () => {
     if (!rapport) return;
-    const workbook = new ExcelJS.Workbook();
-    const sheet = workbook.addWorksheet("Rapport Caisse");
     const periode = `${dateRange[0].format("DD/MM/YYYY")} - ${dateRange[1].format("DD/MM/YYYY")}`;
-
-    sheet.mergeCells("A1:B1");
-    sheet.getCell("A1").value = `Rapport Grandes Lignes - Période : ${periode}`;
-    sheet.getCell("A1").font = { bold: true, size: 13 };
-    sheet.addRow([]);
-
-    sheet.addRow(["Type", "Montant (FCFA)"]);
-    sheet.getRow(3).font = { bold: true };
-    sheet.getRow(3).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF1E88E5" } };
-
-    const data = [
-      ["Approvisionnement", rapport.total_appro],
-      ["Décaissement", rapport.total_decaissement],
-      ["Entrées Chèque", rapport.total_entrees_cheque],
-      ["Entrées Espèce", rapport.total_entrees_espece],
-      ["Entrées Virement", rapport.total_entrees_virement],
-      ["TOTAL ENTRÉES", rapport.total_entrees],
-    ];
-
-    data.forEach(([label, montant]) => {
-      const row = sheet.addRow([label, montant]);
-      if (label === "TOTAL ENTRÉES") row.font = { bold: true };
-    });
-
-    sheet.getColumn(1).width = 35;
-    sheet.getColumn(2).width = 22;
-
-    const buffer = await workbook.xlsx.writeBuffer();
-    saveAs(new Blob([buffer]), `rapport-caisse-${dateRange[0].format("YYYYMMDD")}.xlsx`);
+    await exportTableToExcel(
+      {
+        headers: ["Type", "Montant (FCFA)"],
+        rows: [
+          ["Approvisionnement", Number(rapport.total_appro ?? 0)],
+          ["Décaissement", Number(rapport.total_decaissement ?? 0)],
+          ["Entrées Chèque", Number(rapport.total_entrees_cheque ?? 0)],
+          ["Entrées Espèce", Number(rapport.total_entrees_espece ?? 0)],
+          ["Entrées Virement", Number(rapport.total_entrees_virement ?? 0)],
+          ["TOTAL ENTRÉES", Number(rapport.total_entrees ?? 0)],
+          ["Solde initial (avant période)", Number(rapport.solde_initial ?? 0)],
+          ["Solde final (fin période)", Number(rapport.solde_final ?? 0)],
+        ],
+      },
+      `rapport-grandes-lignes_${dateRange[0].format("YYYYMMDD")}_${dateRange[1].format("YYYYMMDD")}`,
+      {
+        title: `Rapport Grandes Lignes — ${periode}`,
+        sheetName: "Grandes lignes",
+      },
+    );
   };
 
   if (!rapport) {

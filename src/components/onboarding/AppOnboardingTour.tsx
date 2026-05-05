@@ -19,6 +19,8 @@ const STORAGE_PREFIX = 'lbp_onboarding_tour_v1_'
 type OnboardingCtx = {
   startTour: () => void
   resetTourForCurrentUser: () => void
+  /** Alias UX: relancer la visite guidée depuis un bouton flottant */
+  showTourHelp: () => void
 }
 
 const Ctx = createContext<OnboardingCtx | null>(null)
@@ -41,6 +43,7 @@ export const OnboardingTourProvider: React.FC<{ children: React.ReactNode }> = (
   const [open, setOpen] = useState(false)
 
   const startTour = useCallback(() => setOpen(true), [])
+  const showTourHelp = useCallback(() => setOpen(true), [])
   const resetTourForCurrentUser = useCallback(() => {
     if (user?.id) {
       localStorage.removeItem(storageKey(user.id))
@@ -86,6 +89,29 @@ export const OnboardingTourProvider: React.FC<{ children: React.ReactNode }> = (
         scrollIntoViewOptions: { block: 'center' },
       },
       {
+        title: 'Tirer un état (PDF/Excel) — le plus simple',
+        description:
+          "Sur le tableau de bord, utilisez ce raccourci pour ouvrir directement l'état du jour. Ensuite vous pourrez choisir PDF ou Excel.",
+        target: () => q('[data-onboarding="etat-jour-btn"]') ?? q('#main-content') ?? document.body,
+        placement: 'bottom',
+        scrollIntoViewOptions: { block: 'center' },
+      },
+      {
+        title: 'État agence complet (un seul document)',
+        description:
+          "Dans « Rapports & analyse », ouvrez « État agence complet ». C’est l’export unique qui regroupe colis + factures + paiements + caisse.",
+        target: () => q('[data-onboarding="sidebar"]') ?? q('#main-content') ?? document.body,
+        placement: 'right',
+      },
+      {
+        title: 'Générer puis exporter',
+        description:
+          "1) Choisissez la période puis cliquez « Générer ». 2) Une fois les données chargées, cliquez « Exporter PDF » ou « Exporter Excel ».",
+        target: () => q('[data-onboarding="etat-agence-form"]') ?? q('#main-content') ?? document.body,
+        placement: 'top',
+        scrollIntoViewOptions: { block: 'center' },
+      },
+      {
         title: 'Zone de travail',
         description:
           'Le contenu de la page sélectionnée s’affiche ici. Les tableaux, formulaires et graphiques sont mis à jour en direct selon vos actions.',
@@ -106,6 +132,14 @@ export const OnboardingTourProvider: React.FC<{ children: React.ReactNode }> = (
           'Accédez à votre profil, aux paramètres (si votre rôle le permet) et à la déconnexion. La visite guidée est aussi disponible dans ce menu.',
         target: () => q('[data-onboarding="user-menu"]') ?? q('#main-content') ?? document.body,
         placement: 'bottomRight',
+      },
+      {
+        title: 'Soumettre à la direction (DG / Assistant DG)',
+        description:
+          "Dans « Supervision réseau », onglet « Rapports direction », vous pouvez soumettre un rapport. Le bouton ci-dessous déclenche la soumission et la notification.",
+        target: () => q('[data-onboarding="soumission-direction-card"]') ?? q('#main-content') ?? document.body,
+        placement: 'top',
+        scrollIntoViewOptions: { block: 'center' },
       },
       {
         title: 'Vos accès (résumé)',
@@ -136,8 +170,8 @@ export const OnboardingTourProvider: React.FC<{ children: React.ReactNode }> = (
   }
 
   const ctx = useMemo(
-    () => ({ startTour, resetTourForCurrentUser }),
-    [startTour, resetTourForCurrentUser],
+    () => ({ startTour, resetTourForCurrentUser, showTourHelp }),
+    [startTour, resetTourForCurrentUser, showTourHelp],
   )
 
   return (

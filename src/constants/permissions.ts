@@ -132,6 +132,42 @@ export const PERMISSIONS = {
   },
 
   /** Crédits inter-agences & points journaliers (codes `exploitation.*` côté API) */
+  // Module RH — SIRH
+  RH: {
+    DASHBOARD_READ: 'rh.dashboard.read',
+    EMPLOYES_READ: 'rh.employes.read',
+    EMPLOYES_CREATE: 'rh.employes.create',
+    EMPLOYES_UPDATE: 'rh.employes.update',
+    EMPLOYES_DELETE: 'rh.employes.delete',
+    CONTRATS_READ: 'rh.contrats.read',
+    CONTRATS_CREATE: 'rh.contrats.create',
+    CONTRATS_UPDATE: 'rh.contrats.update',
+    CONGES_READ: 'rh.conges.read',
+    CONGES_CREATE: 'rh.conges.create',
+    CONGES_UPDATE: 'rh.conges.update',
+    CONGES_VALIDATE: 'rh.conges.validate',
+    PAIE_READ: 'rh.paie.read',
+    PAIE_CREATE: 'rh.paie.create',
+    PAIE_UPDATE: 'rh.paie.update',
+    PRESENCES_READ: 'rh.presences.read',
+    PRESENCES_CREATE: 'rh.presences.create',
+    PRESENCES_UPDATE: 'rh.presences.update',
+    EVALUATIONS_READ: 'rh.evaluations.read',
+    EVALUATIONS_CREATE: 'rh.evaluations.create',
+    EVALUATIONS_UPDATE: 'rh.evaluations.update',
+    RECRUTEMENT_READ: 'rh.recrutement.read',
+    RECRUTEMENT_CREATE: 'rh.recrutement.create',
+    RECRUTEMENT_UPDATE: 'rh.recrutement.update',
+    FORMATION_READ: 'rh.formation.read',
+    FORMATION_CREATE: 'rh.formation.create',
+    FORMATION_UPDATE: 'rh.formation.update',
+    RAPPORTS_READ: 'rh.rapports.read',
+    RAPPORTS_EXPORT: 'rh.rapports.export',
+    DOCUMENTS_READ: 'rh.documents.read',
+    DOCUMENTS_CREATE: 'rh.documents.create',
+    DOCUMENTS_DELETE: 'rh.documents.delete',
+  },
+
   EXPLOITATION: {
     // Exploitation (colis) — utilisés par certains endpoints transverses (ex: produits-catalogue)
     GROUPAGE_COLIS_CREATE: 'exploitation.groupage_colis.create',

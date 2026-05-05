@@ -128,8 +128,8 @@ export class ColisController {
   @Get(':id')
   @RequirePermission(...COLIS_READ)
   @ApiOperation({ summary: "Détails d'un colis" })
-  findOne(@Param('id') id: string) {
-    return this.colisService.findOne(+id);
+  findOne(@Param('id') id: string, @Request() req) {
+    return this.colisService.findOne(+id, req.user);
   }
 
   @Patch(':id/validate')

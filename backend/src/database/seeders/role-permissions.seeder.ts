@@ -68,6 +68,9 @@ const rolePermissionsMatrix = {
     'groupeurs.admin.write',
     'groupeurs.rapports.read',
     'groupeurs.audit.read',
+    // Rapports / exports (états PDF/Excel)
+    'rapports.view',
+    'rapports.export',
   ],
   MANAGER: [
     // EXPLOITATION
@@ -253,6 +256,9 @@ const rolePermissionsMatrix = {
     // Fournitures (demandes agence)
     'exploitation.fournitures.read',
     'exploitation.fournitures.request',
+    // Rapports / exports (états PDF/Excel)
+    'rapports.view',
+    'rapports.export',
   ],
   AGENT_EXPLOITATION: [
     'exploitation.groupage_colis.create',
@@ -310,6 +316,9 @@ const rolePermissionsMatrix = {
     'litiges.view',
     'litiges.create',
     'callcenter.inbox',
+    // Rapports / exports (états PDF/Excel de l'agence)
+    'rapports.view',
+    'rapports.export',
   ],
   CAISSIER: [
     'operation_caisse.gestion_caisses.create',
@@ -337,6 +346,9 @@ const rolePermissionsMatrix = {
     // Consolidation des points journaliers soumis par les agences
     'exploitation.points_journaliers.read',
     'exploitation.points_journaliers.validate',
+    // Rapports / exports
+    'rapports.view',
+    'rapports.export',
     // Le caissier principal (Abobo-Dokui) fait aussi son PJ (sur son agence)
     'exploitation.points_journaliers.create',
     'exploitation.points_journaliers.submit',
@@ -442,6 +454,44 @@ const rolePermissionsMatrix = {
     // Groupeurs (lecture globale)
     'groupeurs.admin.read',
     'groupeurs.rapports.read',
+  ],
+  /**
+   * Responsable RH : accès complet au module SIRH — aucun accès opérationnel.
+   */
+  RESPONSABLE_RH: [
+    'rh.dashboard.read',
+    'rh.employes.read',
+    'rh.employes.create',
+    'rh.employes.update',
+    'rh.employes.delete',
+    'rh.contrats.read',
+    'rh.contrats.create',
+    'rh.contrats.update',
+    'rh.conges.read',
+    'rh.conges.create',
+    'rh.conges.update',
+    'rh.conges.validate',
+    'rh.paie.read',
+    'rh.paie.create',
+    'rh.paie.update',
+    'rh.presences.read',
+    'rh.presences.create',
+    'rh.presences.update',
+    'rh.evaluations.read',
+    'rh.evaluations.create',
+    'rh.evaluations.update',
+    'rh.recrutement.read',
+    'rh.recrutement.create',
+    'rh.recrutement.update',
+    'rh.formation.read',
+    'rh.formation.create',
+    'rh.formation.update',
+    'rh.rapports.read',
+    'rh.rapports.export',
+    'rh.documents.read',
+    'rh.documents.create',
+    'rh.documents.delete',
+    'structures.agences.read',
   ],
 };
 

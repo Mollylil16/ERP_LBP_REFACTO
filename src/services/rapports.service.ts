@@ -23,6 +23,21 @@ class RapportsService {
   }
 
   /**
+   * État agence complet (colis + factures + paiements + caisse) sur une période.
+   */
+  async getEtatAgenceComplet(params: {
+    debut: string
+    fin: string
+    agence_id?: number
+  }): Promise<any> {
+    const queryParams = new URLSearchParams()
+    queryParams.set('debut', params.debut)
+    queryParams.set('fin', params.fin)
+    if (params.agence_id != null) queryParams.set('agence_id', String(params.agence_id))
+    return apiService.get(`/rapports/etat-agence-complet?${queryParams.toString()}`)
+  }
+
+  /**
    * Exporter le rapport en Excel
    */
   async exportRapportExcel(params: RapportParams): Promise<Blob> {

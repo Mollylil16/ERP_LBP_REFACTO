@@ -129,6 +129,38 @@
   padding: 24px;
 }
 
+/* Bouton flottant "Revoir le tuto" */
+.lbp-floating-tour-btn {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 10900;
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.18);
+}
+
+.lbp-floating-exports-tour-btn {
+  position: fixed;
+  right: 18px;
+  bottom: 64px;
+  z-index: 10899;
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.14);
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+}
+
+@media (max-width: 520px) {
+  .lbp-floating-tour-btn {
+    right: 12px;
+    bottom: 12px;
+    padding-inline: 10px;
+  }
+  .lbp-floating-exports-tour-btn {
+    right: 12px;
+    bottom: 54px;
+    padding-inline: 10px;
+  }
+}
+
 /* DARK MODE OVERRIDES */
 .dark-mode .sidebar-trigger {
   background: var(--lbp-bg-elevated);

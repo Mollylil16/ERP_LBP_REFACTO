@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <title>Livrable 1 — UML — LBP</title>
+  <style>
+    body { font-family: Calibri, Arial, sans-serif; font-size: 12pt; line-height: 1.25; }
+    h1 { font-size: 20pt; margin: 0 0 10px 0; }
+    h2 { font-size: 16pt; margin: 18px 0 8px 0; }
+    h3 { font-size: 13.5pt; margin: 14px 0 6px 0; }
+    p { margin: 6px 0; }
+    .meta { color: #333; }
+    .box {
+      border: 1px solid #999;
+      padding: 10px;
+      margin: 10px 0;
+      background: #fafafa;
+    }
+    .placeholder {
+      border: 2px dashed #777;
+      padding: 14px;
+      margin: 10px 0;
+      background: #fff;
+      color: #444;
+    }
+    .placeholder .label { font-weight: bold; }
+    table { border-collapse: collapse; width: 100%; margin: 10px 0; }
+    th, td { border: 1px solid #888; padding: 8px; vertical-align: top; }
+    th { background: #efefef; }
+    ul { margin: 6px 0 6px 22px; }
+    .small { font-size: 10.5pt; color: #333; }
+    .pagebreak { page-break-before: always; }
+  </style>
+</head>
+<body>
+
+  <h1>Modélisation UML du Système LBP (La Belle Porte)</h1>
+  <p class="meta"><b>Examen UML — Master Hybride IGL</b></p>
+  <p class="meta"><b>Livrable 1 :</b> Document écrit (Word) — Présentation + cas d’utilisation + emplacements captures draw.io</p>
+
+  <h2>1. Description du domaine</h2>
+  <p><b>LBP (La Belle Porte)</b> est une application web de gestion <b>logistique</b> et <b>financière</b> pour une entreprise de transport de colis.
+    Le système couvre l’ensemble du cycle de vie des envois : réception/saisie en agence, suivi, facturation, paiements, caisse et livraison au destinataire.
+    Le SI est structuré en modules : gestion des colis, clients, factures, paiements, caisse, supervision/rapports, livraison, et gestion des utilisateurs avec contrôle d’accès basé sur les rôles (<b>RBAC</b>).</p>
+
+  <p><b>Stack technique (résumé)</b> : Frontend <b>React 18 + TypeScript (Vite)</b>, Backend <b>NestJS + TypeORM</b>, base <b>PostgreSQL</b>, authentification <b>JWT</b>.</p>
+
+  <div class="box">
+    <p><b>Particularité métier (réalité LBP)</b> :</p>
+    <ul>
+      <li><b>Pas d’inscription publique</b> : les comptes sont créés par l’<b>Admin</b>.</li>
+      <li>À la création, l’Admin génère un <b>mot de passe temporaire</b> et transmet les identifiants à l’utilisateur.</li>
+      <li>À la <b>première connexion</b>, l’utilisateur doit <b>changer son mot de passe temporaire</b>, puis <b>sélectionner son agence</b> si nécessaire.</li>
+    </ul>
+  </div>
+
+  <h2>2. Acteurs du système et rôle</h2>
+  <table>
+    <thead>
+      <tr>
+        <th style="width: 18%;">Acteur</th>
+        <th>Rôle</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><b>Utilisateur</b></td>
+        <td>Employé/agent. Se connecte avec des identifiants fournis (username + mot de passe temporaire à la création). Accède aux fonctionnalités selon ses permissions : consultation/saisie, traitement, opérations métier.</td>
+      </tr>
+      <tr>
+        <td><b>Admin</b></td>
+        <td>Administrateur. Crée/modifie/désactive les comptes utilisateurs, assigne rôles/permissions (RBAC), génère des rapports et supervise l’activité.</td>
+      </tr>
+      <tr>
+        <td><b>Livreur</b></td>
+        <td>Agent terrain. Consulte ses colis à livrer, suit l’état/l’historique, confirme la livraison, et signale une tentative échouée ou un refus.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>3. Interactions entre les acteurs et le système</h2>
+
+  <h3>3.1 Utilisateur ↔ Système</h3>
+  <ul>
+    <li>Reçoit un <b>nom d’utilisateur</b> et un <b>mot de passe temporaire</b> (créés par l’Admin).</li>
+    <li>S’authentifie via l’écran de connexion (JWT + permissions).</li>
+    <li>Lors de la première connexion : change le <b>mot de passe temporaire</b> (obligatoire) et sélectionne son <b>agence</b> si nécessaire.</li>
+    <li>Accède ensuite aux modules autorisés selon rôle/permissions.</li>
+  </ul>
+
+  <h3>3.2 Admin ↔ Système</h3>
+  <ul>
+    <li>Gère les comptes utilisateurs (création, modification, désactivation).</li>
+    <li>Génère un <b>mot de passe temporaire</b> lors de la création utilisateur et transmet les identifiants (canal interne).</li>
+    <li>Assigne rôles/permissions et consulte les rapports (PDF/Excel).</li>
+  </ul>
+
+  <h3>3.3 Livreur ↔ Système</h3>
+  <ul>
+    <li>Recherche un colis par numéro de tracking, consulte détails/statut/historique.</li>
+    <li>Confirme une livraison (mise à jour de statut + historique + notification éventuelle).</li>
+    <li>Signale une tentative échouée ou un refus.</li>
+  </ul>
+
+  <h2 class="pagebreak">4. Tableaux de description des cas d’utilisation</h2>
+  <p class="small">NB : Chaque UC ci-dessous correspond à 3 diagrammes draw.io (Cas d’utilisation, Séquence, Activité) dans le Livrable 2.</p>
+
+  <!-- UC1 -->
+  <h3>UC1 — Première connexion (mot de passe temporaire + sélection agence)</h3>
+  <table>
+    <tbody>
+      <tr><th>Nom</th><td>Première connexion (mot de passe temporaire + sélection agence)</td></tr>
+      <tr><th>Acteur(s)</th><td>Utilisateur</td></tr>
+      <tr><th>Préconditions</th><td>Le compte utilisateur existe déjà (créé par Admin). L’utilisateur a reçu son username et un mot de passe temporaire.</td></tr>
+      <tr>
+        <th>Scénario nominal</th>
+        <td>
+          <ol>
+            <li>L’utilisateur accède à la page de connexion.</li>
+            <li>Il saisit <b>username</b> + <b>mot de passe temporaire</b> et valide.</li>
+            <li>Le système authentifie et ouvre une session (JWT).</li>
+            <li>Le système détecte qu’un changement de mot de passe est requis (<b>must_change_password</b>) et redirige vers “Changer mot de passe”.</li>
+            <li>L’utilisateur saisit l’ancien mot de passe (temporaire), un nouveau mot de passe et la confirmation.</li>
+            <li>Le système enregistre le nouveau mot de passe (hash) et lève l’obligation de changement.</li>
+            <li>Si l’utilisateur doit être rattaché à une agence et n’en a pas, le système redirige vers “Sélectionner agence”.</li>
+            <li>L’utilisateur sélectionne son agence et valide.</li>
+            <li>Le système associe l’agence au compte puis redirige vers la page d’accueil.</li>
+          </ol>
+        </td>
+      </tr>
+      <tr>
+        <th>Cas d’erreur</th>
+        <td>
+          <ul>
+            <li>Identifiants temporaires incorrects → refus (401) + message.</li>
+            <li>Nouveau mot de passe faible / confirmation différente → message d’erreur.</li>
+            <li>Agence non autorisée / action non autorisée → 403.</li>
+            <li>Erreur serveur / réseau → message générique.</li>
+          </ul>
+        </td>
+      </tr>
+      <tr><th>Postconditions</th><td>Utilisateur authentifié, mot de passe définitif enregistré, agence sélectionnée si applicable, accès aux modules selon permissions.</td></tr>
+    </tbody>
+  </table>
+
+  <!-- UC2 -->
+  <h3>UC2 — Se connecter</h3>
+  <table>
+    <tbody>
+      <tr><th>Nom</th><td>Se connecter</td></tr>
+      <tr><th>Acteur(s)</th><td>Utilisateur, Admin, Livreur</td></tr>
+      <tr><th>Préconditions</th><td>L’acteur possède un compte actif.</td></tr>
+      <tr>
+        <th>Scénario nominal</th>
+        <td>
+          <ol>
+            <li>L’acteur accède à la page de connexion.</li>
+            <li>Il saisit username + mot de passe et valide.</li>
+            <li>Le système vérifie les identifiants.</li>
+            <li>Le système renvoie un token JWT, un refresh token et les permissions.</li>
+            <li>Le frontend stocke les tokens/permissions.</li>
+            <li>Redirection : si <b>must_change_password</b> → changer mot de passe ; sinon si agence requise absente → sélection agence ; sinon page d’accueil autorisée.</li>
+          </ol>
+        </td>
+      </tr>
+      <tr>
+        <th>Cas d’erreur</th>
+        <td>
+          <ul>
+            <li>Identifiants incorrects → message “Nom d’utilisateur ou mot de passe incorrect”.</li>
+            <li>Compte désactivé → accès refusé.</li>
+            <li>Token expiré → refresh / retour login.</li>
+          </ul>
+        </td>
+      </tr>
+      <tr><th>Postconditions</th><td>Session ouverte ; acteur redirigé vers un écran autorisé (ou vers les écrans de 1ère connexion si requis).</td></tr>
+    </tbody>
+  </table>
+
+  <!-- UC3 -->
+  <h3>UC3 — Gérer les utilisateurs</h3>
+  <table>
+    <tbody>
+      <tr><th>Nom</th><td>Gérer les utilisateurs</td></tr>
+      <tr><th>Acteur(s)</th><td>Admin</td></tr>
+      <tr><th>Préconditions</th><td>Admin authentifié et autorisé à gérer les utilisateurs.</td></tr>
+      <tr>
+        <th>Scénario nominal</th>
+        <td>
+          <ol>
+            <li>L’Admin ouvre le module de gestion des utilisateurs.</li>
+            <li>Le système affiche la liste des utilisateurs.</li>
+            <li>L’Admin choisit une action : créer / modifier / désactiver / assigner rôle-permissions.</li>
+            <li>En création : l’Admin saisit les informations, choisit un rôle puis valide.</li>
+            <li>Le système crée le compte avec <b>mot de passe temporaire</b> et obligation de changement à la 1ère connexion.</li>
+            <li>L’Admin transmet les identifiants au nouvel utilisateur (canal interne).</li>
+            <li>Le système met à jour la liste et confirme l’opération.</li>
+          </ol>
+        </td>
+      </tr>
+      <tr>
+        <th>Cas d’erreur</th>
+        <td>
+          <ul>
+            <li>Username/email déjà utilisé → erreur.</li>
+            <li>Permission insuffisante → 403.</li>
+            <li>Erreur serveur → message générique.</li>
+          </ul>
+        </td>
+      </tr>
+      <tr><th>Postconditions</th><td>Utilisateur créé/modifié/désactivé ; rôles/permissions mis à jour ; mot de passe temporaire disponible en cas de création.</td></tr>
+    </tbody>
+  </table>
+
+  <!-- UC4 -->
+  <h3>UC4 — Générer un rapport</h3>
+  <table>
+    <tbody>
+      <tr><th>Nom</th><td>Générer un rapport</td></tr>
+      <tr><th>Acteur(s)</th><td>Admin</td></tr>
+      <tr><th>Préconditions</th><td>Admin authentifié ; données disponibles sur la période (sinon rapport vide).</td></tr>
+      <tr>
+        <th>Scénario nominal</th>
+        <td>
+          <ol>
+            <li>L’Admin ouvre le tableau de bord / module rapports.</li>
+            <li>Il choisit le type de rapport (colis/factures/paiements) et la période.</li>
+            <li>Le système agrège les données depuis PostgreSQL.</li>
+            <li>Le système affiche le rapport.</li>
+            <li>L’Admin exporte le rapport (PDF/Excel) et télécharge le fichier.</li>
+          </ol>
+        </td>
+      </tr>
+      <tr>
+        <th>Cas d’erreur</th>
+        <td>
+          <ul>
+            <li>Aucune donnée sur la période → message informatif.</li>
+            <li>Erreur export/génération → message d’erreur.</li>
+          </ul>
+        </td>
+      </tr>
+      <tr><th>Postconditions</th><td>Rapport affiché et/ou exporté ; aucune donnée opérationnelle n’est modifiée.</td></tr>
+    </tbody>
+  </table>
+
+  <!-- UC5 -->
+  <h3>UC5 — Suivre une livraison</h3>
+  <table>
+    <tbody>
+      <tr><th>Nom</th><td>Suivre une livraison</td></tr>
+      <tr><th>Acteur(s)</th><td>Livreur</td></tr>
+      <tr><th>Préconditions</th><td>Livreur authentifié ; dispose du numéro de tracking.</td></tr>
+      <tr>
+        <th>Scénario nominal</th>
+        <td>
+          <ol>
+            <li>Le Livreur ouvre le module livraisons.</li>
+            <li>Il saisit ou scanne le numéro de tracking.</li>
+            <li>Le système recherche le colis et récupère les informations (statut, historique, adresse).</li>
+            <li>Le système affiche les détails du colis.</li>
+            <li>Option : affichage localisation (carte).</li>
+          </ol>
+        </td>
+      </tr>
+      <tr>
+        <th>Cas d’erreur</th>
+        <td>
+          <ul>
+            <li>Tracking inconnu → “Colis introuvable”.</li>
+            <li>Accès refusé (périmètre) → 403.</li>
+            <li>Erreur réseau → message d’erreur.</li>
+          </ul>
+        </td>
+      </tr>
+      <tr><th>Postconditions</th><td>Le Livreur dispose des informations nécessaires pour effectuer ou planifier la livraison.</td></tr>
+    </tbody>
+  </table>
+
+  <!-- UC6 -->
+  <h3>UC6 — Confirmer une livraison</h3>
+  <table>
+    <tbody>
+      <tr><th>Nom</th><td>Confirmer une livraison</td></tr>
+      <tr><th>Acteur(s)</th><td>Livreur</td></tr>
+      <tr><th>Préconditions</th><td>Livreur authentifié ; colis en cours de livraison ; livraison effectuée.</td></tr>
+      <tr>
+        <th>Scénario nominal</th>
+        <td>
+          <ol>
+            <li>Le Livreur sélectionne le colis à confirmer.</li>
+            <li>Il vérifie l’identité du destinataire.</li>
+            <li>Il confirme la livraison dans le système.</li>
+            <li>Le backend met à jour le statut du colis à “Livré” et enregistre l’historique.</li>
+            <li>Le système affiche une confirmation au Livreur (notification éventuelle).</li>
+          </ol>
+        </td>
+      </tr>
+      <tr>
+        <th>Cas d’erreur</th>
+        <td>
+          <ul>
+            <li>Erreur mise à jour → message d’erreur + possibilité de réessayer.</li>
+            <li>Accès refusé / colis hors périmètre → 403.</li>
+          </ul>
+        </td>
+      </tr>
+      <tr><th>Postconditions</th><td>Statut colis = “Livré” ; historique mis à jour ; confirmation visible.</td></tr>
+    </tbody>
+  </table>
+
+  <h2 class="pagebreak">5. Diagrammes draw.io (captures à insérer) + explications</h2>
+  <p class="small">Insère ci-dessous tes captures (depuis draw.io) dans les cadres “EMPLACEMENT IMAGE”. Les explications sont déjà rédigées.</p>
+
+  <!-- Helper: per UC -->
+  <h3>UC1 — Première connexion</h3>
+  <div class="placeholder"><div class="label">[EMPLACEMENT IMAGE : UC1 — Diagramme de cas d’utilisation]</div><p>Laisser cet espace pour coller la capture.</p><br/><br/><br/><br/></div>
+  <p><b>Explication (CdU UC1)</b> : Ce diagramme montre l’objectif “Première connexion” pour l’acteur Utilisateur. Le cas d’utilisation principal inclut la connexion avec mot de passe temporaire, le changement obligatoire du mot de passe (flag <b>must_change_password</b>) et la sélection d’agence si le compte n’est pas rattaché.</p>
+  <p>Les relations <i>&lt;&lt;include&gt;&gt;</i> indiquent que ces sous-fonctions sont systématiquement nécessaires pour finaliser la première connexion et permettre l’accès aux modules métier.</p>
+
+  <div class="placeholder"><div class="label">[EMPLACEMENT IMAGE : UC1 — Diagramme de séquence]</div><p>Laisser cet espace pour coller la capture.</p><br/><br/><br/><br/></div>
+  <p><b>Explication (Séquence UC1)</b> : La séquence décrit le chemin nominal : saisie identifiants temporaires → appel API d’authentification → validation en base → retour token + redirection vers changement de mot de passe → mise à jour du mot de passe → éventuelle sélection d’agence → accès à l’accueil.</p>
+  <p>Les branches d’erreur (identifiants invalides, mot de passe non conforme, agence non autorisée) peuvent être représentées via des blocs <i>alt</i> pour montrer les réponses HTTP (401/403) et les messages affichés.</p>
+
+  <div class="placeholder"><div class="label">[EMPLACEMENT IMAGE : UC1 — Diagramme d’activité]</div><p>Laisser cet espace pour coller la capture.</p><br/><br/><br/><br/></div>
+  <p><b>Explication (Activité UC1)</b> : Le diagramme d’activité structure le processus avec décisions : “identifiants valides ?”, “mot de passe validé ?”, “agence requise et absente ?”. Chaque décision oriente vers une branche (erreur ou poursuite) jusqu’à la finalisation (accès accueil).</p>
+
+  <h3>UC2 — Se connecter</h3>
+  <div class="placeholder"><div class="label">[EMPLACEMENT IMAGE : UC2 — Diagramme de cas d’utilisation]</div><p>Laisser cet espace pour coller la capture.</p><br/><br/><br/><br/></div>
+  <p><b>Explication (CdU UC2)</b> : Le cas d’utilisation “Se connecter” s’applique aux trois acteurs (Utilisateur, Admin, Livreur). Il inclut la vérification des identifiants, la génération des tokens (JWT + refresh) et la redirection vers une page autorisée en fonction des permissions.</p>
+  <p>La redirection peut mener à des écrans spécifiques (changement de mot de passe / sélection agence) selon l’état du compte et les règles de sécurité.</p>
+
+  <div class="placeholder"><div class="label">[EMPLACEMENT IMAGE : UC2 — Diagramme de séquence]</div><p>Laisser cet espace pour coller la capture.</p><br/><br/><br/><br/></div>
+  <p><b>Explication (Séquence UC2)</b> : La séquence présente le flux d’authentification standard : saisie credentials → POST /auth/login → validation en base → réponse 200 (token + user + permissions) → stockage côté frontend → redirection. Une branche d’erreur 401 illustre le rejet d’identifiants invalides.</p>
+
+  <div class="placeholder"><div class="label">[EMPLACEMENT IMAGE : UC2 — Diagramme d’activité]</div><p>Laisser cet espace pour coller la capture.</p><br/><br/><br/><br/></div>
+  <p><b>Explication (Activité UC2)</b> : L’activité formalise les étapes de connexion et les décisions “identifiants valides ?”, puis les décisions de routage “must_change_password ?” et “agence absente ?”. Le processus se termine lorsque l’acteur atteint un écran autorisé.</p>
+
+  <h3>UC3 — Gérer les utilisateurs</h3>
+  <div class="placeholder"><div class="label">[EMPLACEMENT IMAGE : UC3 — Diagramme de cas d’utilisation]</div><p>Laisser cet espace pour coller la capture.</p><br/><br/><br/><br/></div>
+  <p><b>Explication (CdU UC3)</b> : Ce diagramme montre l’Admin comme acteur principal. “Gérer les utilisateurs” inclut la consultation de la liste, la création, la modification, la désactivation et l’assignation de rôles/permissions. En cas de création, un sous-cas inclut la génération d’un <b>mot de passe temporaire</b>.</p>
+  <p>Ces fonctions représentent le cœur de l’administration des accès et garantissent la sécurité (pas d’auto-inscription).</p>
+
+  <div class="placeholder"><div class="label">[EMPLACEMENT IMAGE : UC3 — Diagramme de séquence]</div><p>Laisser cet espace pour coller la capture.</p><br/><br/><br/><br/></div>
+  <p><b>Explication (Séquence UC3)</b> : La séquence illustre une création d’utilisateur : saisie formulaire → POST /users → insert en base → génération et stockage du mot de passe temporaire (hash) → réponse 201 → mise à jour de la liste. La transmission des identifiants peut être notée “hors système”.</p>
+
+  <div class="placeholder"><div class="label">[EMPLACEMENT IMAGE : UC3 — Diagramme d’activité]</div><p>Laisser cet espace pour coller la capture.</p><br/><br/><br/><br/></div>
+  <p><b>Explication (Activité UC3)</b> : L’activité présente une décision centrale “Quelle action ?” qui bifurque vers 4 branches (Créer/Modifier/Désactiver/Assigner rôle). La branche “Créer” détaille la génération du mot de passe temporaire, point clé du fonctionnement réel de LBP.</p>
+
+  <h3>UC4 — Générer un rapport</h3>
+  <div class="placeholder"><div class="label">[EMPLACEMENT IMAGE : UC4 — Diagramme de cas d’utilisation]</div><p>Laisser cet espace pour coller la capture.</p><br/><br/><br/><br/></div>
+  <p><b>Explication (CdU UC4)</b> : L’Admin génère un rapport en choisissant un type et une période. Le cas d’utilisation inclut l’agrégation des données et l’export (PDF/Excel). Ce diagramme exprime l’objectif d’analyse/pilotage sans modification des données opérationnelles.</p>
+
+  <div class="placeholder"><div class="label">[EMPLACEMENT IMAGE : UC4 — Diagramme de séquence]</div><p>Laisser cet espace pour coller la capture.</p><br/><br/><br/><br/></div>
+  <p><b>Explication (Séquence UC4)</b> : La séquence montre : sélection paramètres → requête au backend → requêtes SQL d’agrégation → retour données → affichage → export. Les cas “aucune donnée” ou “erreur export” peuvent être modélisés via un bloc <i>alt</i>.</p>
+
+  <div class="placeholder"><div class="label">[EMPLACEMENT IMAGE : UC4 — Diagramme d’activité]</div><p>Laisser cet espace pour coller la capture.</p><br/><br/><br/><br/></div>
+  <p><b>Explication (Activité UC4)</b> : L’activité met en évidence la décision “Données disponibles ?”. En cas positif, l’Admin exporte. En cas négatif, le système affiche un message et le processus se termine.</p>
+
+  <h3>UC5 — Suivre une livraison</h3>
+  <div class="placeholder"><div class="label">[EMPLACEMENT IMAGE : UC5 — Diagramme de cas d’utilisation]</div><p>Laisser cet espace pour coller la capture.</p><br/><br/><br/><br/></div>
+  <p><b>Explication (CdU UC5)</b> : Le Livreur suit une livraison en recherchant un colis via tracking et en consultant les détails (statut/historique/adresse). L’affichage carte est optionnel et permet d’améliorer la compréhension terrain.</p>
+
+  <div class="placeholder"><div class="label">[EMPLACEMENT IMAGE : UC5 — Diagramme de séquence]</div><p>Laisser cet espace pour coller la capture.</p><br/><br/><br/><br/></div>
+  <p><b>Explication (Séquence UC5)</b> : La séquence suit l’enchaînement : saisie tracking → requête API → lecture DB → retour détails → affichage. Une branche “Colis introuvable” peut être ajoutée (404/403 selon règle).</p>
+
+  <div class="placeholder"><div class="label">[EMPLACEMENT IMAGE : UC5 — Diagramme d’activité]</div><p>Laisser cet espace pour coller la capture.</p><br/><br/><br/><br/></div>
+  <p><b>Explication (Activité UC5)</b> : L’activité est structurée autour de la décision “Colis trouvé ?”. En cas non, retour saisie. En cas oui, affichage détails puis option carte, puis fin.</p>
+
+  <h3>UC6 — Confirmer une livraison</h3>
+  <div class="placeholder"><div class="label">[EMPLACEMENT IMAGE : UC6 — Diagramme de cas d’utilisation]</div><p>Laisser cet espace pour coller la capture.</p><br/><br/><br/><br/></div>
+  <p><b>Explication (CdU UC6)</b> : Le Livreur confirme une livraison. Le cas d’utilisation inclut la mise à jour du statut à “Livré” et la mise à jour de l’historique/notification éventuelle.</p>
+
+  <div class="placeholder"><div class="label">[EMPLACEMENT IMAGE : UC6 — Diagramme de séquence]</div><p>Laisser cet espace pour coller la capture.</p><br/><br/><br/><br/></div>
+  <p><b>Explication (Séquence UC6)</b> : La séquence modélise l’action de confirmation : clic → PATCH backend → update DB → retour 200 → affichage confirmation. Un bloc <i>alt</i> peut illustrer l’échec d’update (erreur serveur).</p>
+
+  <div class="placeholder"><div class="label">[EMPLACEMENT IMAGE : UC6 — Diagramme d’activité]</div><p>Laisser cet espace pour coller la capture.</p><br/><br/><br/><br/></div>
+  <p><b>Explication (Activité UC6)</b> : L’activité déroule la sélection du colis, la vérification du destinataire, la confirmation, puis une décision “mise à jour OK ?” (oui → confirmation/fin ; non → erreur/réessayer).</p>
+
+  <h2 class="pagebreak">6. Conclusion</h2>
+  <p>Cette modélisation UML de LBP présente une vision cohérente des acteurs, des objectifs et des interactions. Les cas d’utilisation UC1 à UC6 reflètent le fonctionnement réel du système, notamment l’absence d’inscription publique et la sécurisation par mot de passe temporaire à la création. Les diagrammes de séquence et d’activité permettent de justifier la logique de contrôle, les décisions et les traitements côté système. Le Livrable 2 (draw.io) complète ce document en illustrant graphiquement ces scénarios et facilitera l’explication orale.</p>
+
+</body>
+</html>
+

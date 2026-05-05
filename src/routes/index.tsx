@@ -10,6 +10,7 @@ import { ProtectedRoute } from '../components/common/ProtectedRoute'
 import { ROUTE_ACCESS } from '@constants/routeAccess'
 import { MainLayout } from '../components/layout/MainLayout'
 import { OnboardingTourProvider } from '../components/onboarding/AppOnboardingTour'
+import { ExportsTourProvider } from '../components/onboarding/ExportsTour'
 import { PublicLayout } from '../components/layout/PublicLayout'
 import { LazyPageLoader } from '../components/common/LazyPageLoader'
 import { shouldSkipAgencySelection } from '@utils/agencyGate'
@@ -40,8 +41,10 @@ function pickLandingRoute(perms: string[], roleCode?: string): string {
     if (rc === 'CAISSIER' || rc === 'CAISSIER_AGENCE') return '/caisse/suivi'
     if (rc === 'SUPERVISEURE_GENERALE') return '/supervision'
     if (rc === 'GROUPEUR_GROSSISTE') return '/groupeurs/espace'
+    if (rc === 'RESPONSABLE_RH') return '/rh'
   }
 
+  if (has(ROUTE_ACCESS.rh)) return '/rh'
   if (has(ROUTE_ACCESS.supervision)) return '/supervision'
   if (has(ROUTE_ACCESS.groupeursEspace)) return '/groupeurs/espace'
   if (has(ROUTE_ACCESS.groupeursAdmin)) return '/groupeurs/admin'
@@ -84,6 +87,11 @@ const GroupeursEspacePage = lazy(() =>
 const ColisGroupageListPage = lazy(() => import('../pages/admin/colis/GroupageListPage').then(m => ({ default: m.ColisGroupageListPage })))
 const ColisAutresEnvoisListPage = lazy(() => import('../pages/admin/colis/AutresEnvoisListPage').then(m => ({ default: m.ColisAutresEnvoisListPage })))
 const ColisRapportsPage = lazy(() => import('../pages/admin/colis/RapportsPage').then(m => ({ default: m.ColisRapportsPage })))
+const EtatAgenceCompletPage = lazy(() =>
+  import('../pages/admin/rapports/EtatAgenceCompletPage').then((m) => ({
+    default: m.EtatAgenceCompletPage,
+  })),
+)
 const ColisMapView = lazy(() => import('../pages/admin/colis/ColisMapView').then(m => ({ default: m.ColisMapView })))
 const ExpeditionsPage = lazy(() => import('../pages/expeditions/ExpeditionsPage').then(m => ({ default: m.ExpeditionsPage })))
 
@@ -174,6 +182,10 @@ const HistoriqueProduitsPage = lazy(() =>
   import('../pages/admin/produits/HistoriqueProduitsPage').then((m) => ({
     default: m.HistoriqueProduitsPage,
   })),
+)
+
+const RhPage = lazy(() =>
+  import('../pages/admin/rh/RhPage').then((m) => ({ default: m.RhPage })),
 )
 
 // ✅ Flux Auth & Agences
@@ -290,11 +302,25 @@ export const AppRoutes: React.FC = () => {
         element={
           <ProtectedRoute>
             <OnboardingTourProvider>
-              <MainLayout />
+              <ExportsTourProvider>
+                <MainLayout />
+              </ExportsTourProvider>
             </OnboardingTourProvider>
           </ProtectedRoute>
         }
       >
+        {/* SIRH — Ressources Humaines */}
+        <Route
+          path="rh"
+          element={
+            <ProtectedRoute requiredPermission={ROUTE_ACCESS.rh}>
+              <LazyPageLoader>
+                <RhPage />
+              </LazyPageLoader>
+            </ProtectedRoute>
+          }
+        />
+
         {/* Supervision réseau */}
         <Route
           path="supervision"
@@ -396,6 +422,18 @@ export const AppRoutes: React.FC = () => {
             }
           />
         </Route>
+
+        {/* Rapports — état agence complet */}
+        <Route
+          path="rapports/etat-agence"
+          element={
+            <ProtectedRoute requiredPermission={ROUTE_ACCESS.colisRapports}>
+              <LazyPageLoader>
+                <EtatAgenceCompletPage />
+              </LazyPageLoader>
+            </ProtectedRoute>
+          }
+        />
 
         {/* Expéditions / Manifestes */}
         <Route
