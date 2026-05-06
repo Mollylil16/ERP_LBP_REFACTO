@@ -12,6 +12,8 @@ import {
   Col,
   DatePicker,
   Grid,
+  Modal,
+  Upload,
 } from "antd";
 import {
   EditOutlined,
@@ -24,6 +26,7 @@ import {
   FilePdfOutlined,
   FileExcelOutlined,
   HomeOutlined,
+  UploadOutlined,
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import { Colis } from "@types";
@@ -60,6 +63,7 @@ const getPermissions = (formeEnvoi: "groupage" | "autres_envoi") => {
 import { usePermissions } from "@hooks/usePermissions";
 import dayjs, { Dayjs } from "dayjs";
 import { APP_CONFIG } from "@constants/application";
+import { colisExtendedService } from "../../services/dashboard.service";
 
 
 const { RangePicker } = DatePicker;
@@ -86,6 +90,12 @@ export const ColisList: React.FC<ColisListProps> = ({
   >(null);
   const [exporting, setExporting] = useState(false);
 
+  // NOUVEAUX ÉTATS POUR LES EN-LOT / MASSE
+  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+  const [isImportModalVisible, setIsImportModalVisible] = useState(false);
+  const [importText, setImportText] = useState("");
+  const [importLoading, setImportLoading] = useState(false);
+
   const screens = Grid.useBreakpoint();
   const tableCompact = screens.lg === false;
 
@@ -101,6 +111,68 @@ export const ColisList: React.FC<ColisListProps> = ({
   const deleteMutation = useDeleteColis();
   const validateMutation = useValidateColis();
   const receiveAtHubMutation = useReceiveAtHub();
+
+  // VALIDATION EN LOT
+  const handleBatchValidate = async () => {
+    if (selectedRowKeys.length === 0) return;
+    try {
+      const ids = selectedRowKeys.map((key) => Number(key));
+      const res = await colisExtendedService.batchValidate(ids, "EXPEDIE");
+      message.success(`${res.updated} colis validés et marqués EXPÉDIÉS !`);
+      if (res.errors.length > 0) {
+        message.warning(`${res.errors.length} erreurs lors de la validation.`);
+      }
+      setSelectedRowKeys([]);
+      refetch();
+    } catch (err) {
+      message.error("Erreur de validation en lot");
+    }
+  };
+
+  // IMPORT EN MASSE (Pasted Excel or CSV)
+  const handleImportSubmit = async () => {
+    if (!importText.trim()) {
+      message.warning("Veuillez coller des données avant de soumettre");
+      return;
+    }
+    setImportLoading(true);
+    try {
+      // Parsing des lignes d'un tableau Excel copié-collé (séparé par des tabulations \t et retours à la ligne \n)
+      const lines = importText.trim().split("\n");
+      const rows = lines.map((line) => {
+        const parts = line.split("\t");
+        return {
+          nom_dest: parts[0] || "",
+          lieu_dest: parts[1] || "",
+          poids_total: Number(parts[2]) || 1,
+          total_montant: Number(parts[3]) || 0,
+          nom_marchandise: parts[4] || "Marchandise Excel",
+        };
+      });
+
+      const res = await colisExtendedService.batchImport(rows);
+      message.success(`Félicitations ! ${res.created} colis importés avec succès !`);
+      if (res.errors.length > 0) {
+        Modal.error({
+          title: "Erreurs d'importation",
+          content: (
+            <div style={{ maxHeight: 200, overflowY: "auto" }}>
+              {res.errors.map((err, idx) => (
+                <div key={idx}>Ligne {err.row}: {err.message}</div>
+              ))}
+            </div>
+          ),
+        });
+      }
+      setIsImportModalVisible(false);
+      setImportText("");
+      refetch();
+    } catch (err) {
+      message.error("Erreur lors de l'importation en masse");
+    } finally {
+      setImportLoading(false);
+    }
+  };
 
   const handleSearch = (value: string) => {
     setSearchTerm(value);
@@ -465,6 +537,18 @@ export const ColisList: React.FC<ColisListProps> = ({
                 className="premium-action-btn"
               />
 
+              {hasPermission(colisPermissions.CREATE) && (
+                <Button
+                  icon={<FileExcelOutlined />}
+                  onClick={() => setIsImportModalVisible(true)}
+                  size="large"
+                  className="premium-action-btn"
+                  style={{ color: "#52c41a", borderColor: "#52c41a" }}
+                >
+                  Importer Excel
+                </Button>
+              )}
+
               {hasPermission(colisPermissions.CREATE) && onCreate && (
                 <Button
                   type="primary"
@@ -481,6 +565,44 @@ export const ColisList: React.FC<ColisListProps> = ({
           </Col>
         </Row>
       </Card>
+
+      {/* BANDEAU FLOTTANT DE SÉLECTION EN LOT */}
+      {selectedRowKeys.length > 0 && (
+        <Card
+          style={{
+            position: "fixed",
+            bottom: 24,
+            left: "50%",
+            transform: "translateX(-50%)",
+            zIndex: 1000,
+            width: "auto",
+            maxWidth: "90%",
+            boxShadow: "0 8px 30px rgba(0,0,0,0.15)",
+            background: "rgba(255,255,255,0.95)",
+            backdropFilter: "blur(8px)",
+            borderRadius: 16,
+            border: "1px solid var(--premium-accent)",
+          }}
+          bodyStyle={{ padding: "12px 24px" }}
+        >
+          <Space size="large">
+            <span style={{ fontWeight: 600 }}>
+              ⚡ {selectedRowKeys.length} colis sélectionnés
+            </span>
+            <Button
+              type="primary"
+              icon={<CheckCircleOutlined />}
+              onClick={handleBatchValidate}
+              style={{ background: "var(--premium-accent)", border: "none" }}
+            >
+              Valider et Expédier
+            </Button>
+            <Button size="small" onClick={() => setSelectedRowKeys([])}>
+              Annuler
+            </Button>
+          </Space>
+        </Card>
+      )}
 
       {/* TABLEAU */}
       <div className="premium-table-wrapper">
@@ -512,6 +634,10 @@ export const ColisList: React.FC<ColisListProps> = ({
             className="premium-table"
             scroll={{ x: tableCompact ? 1320 : 1580 }}
             totalLabel="colis"
+            rowSelection={{
+              selectedRowKeys,
+              onChange: (keys: React.Key[]) => setSelectedRowKeys(keys),
+            }}
             pagination={{
               current: pagination.page,
               pageSize: pagination.limit,
@@ -524,6 +650,50 @@ export const ColisList: React.FC<ColisListProps> = ({
           />
         )}
       </div>
+
+      {/* MODAL D'IMPORT EN MASSE (EXCEL / COPY-PASTE) */}
+      <Modal
+        title={
+          <div style={{ fontSize: 18, fontWeight: 700 }}>
+            📥 Importation en Masse de Colis (Excel / CSV)
+          </div>
+        }
+        visible={isImportModalVisible}
+        onCancel={() => setIsImportModalVisible(false)}
+        footer={[
+          <Button key="cancel" onClick={() => setIsImportModalVisible(false)}>
+            Fermer
+          </Button>,
+          <Button
+            key="submit"
+            type="primary"
+            icon={<UploadOutlined />}
+            loading={importLoading}
+            onClick={handleImportSubmit}
+            style={{ background: "var(--premium-accent)", border: "none" }}
+          >
+            Lancer l'importation
+          </Button>,
+        ]}
+        width={720}
+      >
+        <div style={{ marginBottom: 16 }}>
+          <p>
+            Copiez-collez vos lignes depuis Excel ou Google Sheets ci-dessous. Les colonnes doivent être ordonnées comme suit :
+          </p>
+          <div style={{ background: "#f5f5f5", padding: "8px 12px", borderRadius: 8, fontFamily: "monospace", fontSize: 12, marginBottom: 16 }}>
+            Nom Destinataire [TAB] Ville Destination [TAB] Poids (Kg) [TAB] Montant [TAB] Description Marchandise
+          </div>
+          <Input.TextArea
+            rows={10}
+            placeholder="Exemple :&#10;Konan Kouassi&#10;Abidjan&#10;12&#10;25000&#10;Poli en lot"
+            value={importText}
+            onChange={(e) => setImportText(e.target.value)}
+            style={{ fontFamily: "monospace", fontSize: 12 }}
+          />
+        </div>
+      </Modal>
     </div>
   );
 };
+

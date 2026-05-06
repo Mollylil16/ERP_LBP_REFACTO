@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react'
-import { Button, Card, Col, Input, Progress, Row, Statistic, Table, Tag, Typography, message } from 'antd'
+import { Button, Card, Col, Input, Progress, Row, Statistic, Table, Tag, Typography, message, Tooltip } from 'antd'
 import { useQuery } from '@tanstack/react-query'
 import { FileExcelOutlined, SearchOutlined } from '@ant-design/icons'
 import type { Dayjs } from 'dayjs'
@@ -7,6 +7,7 @@ import { supervisionService } from '@services/supervision.service'
 import { exportSupervisionPerformanceExcel } from '@utils/supervisionExcelExport'
 import { usePermissions } from '@hooks/usePermissions'
 import { PERMISSIONS } from '@constants/permissions'
+import { dashboardService } from '@services/dashboard.service'
 
 const { Text } = Typography
 
@@ -59,6 +60,11 @@ export const SupervisionPerformanceTab: React.FC<{ range: [Dayjs, Dayjs] }> = ({
     queryFn: () => supervisionService.getPerformanceAgents(),
   })
 
+  const { data: agencyScores, isLoading: lScores } = useQuery({
+    queryKey: ['supervision', 'agency-scores'],
+    queryFn: () => dashboardService.getAgencyScores(0),
+  })
+
   const utilisateurs: UtilisateurRow[] = prod?.utilisateurs ?? []
 
   const filteredUsers = useMemo(() => {
@@ -97,6 +103,119 @@ export const SupervisionPerformanceTab: React.FC<{ range: [Dayjs, Dayjs] }> = ({
 
   return (
     <div>
+      {/* SECTION DU SCORING DE PERFORMANCE DES AGENCES /100 */}
+      <Card
+        title={
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <span style={{ fontSize: 16, fontWeight: 700 }}>
+              🏆 Classement et Scoring de Performance des Agences /100
+            </span>
+            <Tag color="purple">Mis à jour dimanche à 23h</Tag>
+          </div>
+        }
+        style={{ marginBottom: 24, boxShadow: "0 4px 20px rgba(0,0,0,0.05)", borderRadius: 12 }}
+        loading={lScores}
+      >
+        <Text type="secondary" style={{ display: "block", marginBottom: 16 }}>
+          Chaque agence est notée sur 100 points selon 4 critères de performance : Ponctualité (25 pts), Taux de recouvrement (25 pts), Volume de colis (25 pts), et Résolution de litiges (25 pts).
+        </Text>
+        <Table
+          size="middle"
+          dataSource={agencyScores || []}
+          rowKey="agenceId"
+          pagination={false}
+          scroll={{ x: true }}
+          columns={[
+            {
+              title: "Rang",
+              key: "rank",
+              width: 70,
+              align: "center",
+              render: (_1, _2, index) => {
+                const colors = ["#ffd700", "#c0c0c0", "#cd7f32"];
+                return index < 3 ? (
+                  <Tag color={colors[index]} style={{ fontWeight: 700, borderRadius: "50%", width: 24, height: 24, padding: 0, textAlign: "center", lineHeight: "22px" }}>
+                    {index + 1}
+                  </Tag>
+                ) : (
+                  <span style={{ fontWeight: 600 }}>{index + 1}</span>
+                );
+              },
+            },
+            {
+              title: "Agence",
+              dataIndex: "agenceNom",
+              key: "agenceNom",
+              render: (text) => <span style={{ fontWeight: 600, color: "var(--premium-accent)" }}>{text}</span>,
+            },
+            {
+              title: "Score Global",
+              dataIndex: "score",
+              key: "score",
+              width: 180,
+              sorter: (a: any, b: any) => a.score - b.score,
+              render: (score: number) => {
+                let color = "#f5222d";
+                if (score >= 80) color = "#52c41a";
+                else if (score >= 50) color = "#faad14";
+                return (
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <Progress
+                      type="circle"
+                      percent={score}
+                      width={42}
+                      strokeColor={color}
+                      format={() => <span style={{ fontSize: 11, fontWeight: 700 }}>{score}</span>}
+                    />
+                    <span style={{ fontWeight: 700, fontSize: 13 }}>/100</span>
+                  </div>
+                );
+              },
+            },
+            {
+              title: "⏱️ Ponctualité (PJ)",
+              dataIndex: "details",
+              key: "ponctualite",
+              render: (details: any) => (
+                <Tooltip title="Ponctualité de soumission des points journaliers">
+                  <Tag color="blue">{details?.ponctualitePoints ?? 0} /25</Tag>
+                </Tooltip>
+              ),
+            },
+            {
+              title: "💰 Recouvrement",
+              dataIndex: "details",
+              key: "recouvrement",
+              render: (details: any) => (
+                <Tooltip title="Taux d'encaissement et recouvrement de factures">
+                  <Tag color="cyan">{details?.tauxRecouvrement ?? 0} /25</Tag>
+                </Tooltip>
+              ),
+            },
+            {
+              title: "📦 Volume Colis",
+              dataIndex: "details",
+              key: "volume",
+              render: (details: any) => (
+                <Tooltip title="Volume de colis traités">
+                  <Tag color="geekblue">{details?.volumeColis ?? 0} /25</Tag>
+                </Tooltip>
+              ),
+            },
+            {
+              title: "⚖️ Résolution Litiges",
+              dataIndex: "details",
+              key: "litiges",
+              render: (details: any) => (
+                <Tooltip title="Taux de traitement et clôture de litiges">
+                  <Tag color="purple">{details?.resolutionLitiges ?? 0} /25</Tag>
+                </Tooltip>
+              ),
+            },
+          ]}
+        />
+      </Card>
+
       {/* Résumé niveaux */}
       {utilisateurs.length > 0 && (
         <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
