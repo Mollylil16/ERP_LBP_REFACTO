@@ -47,6 +47,8 @@ export enum UserRole {
   CALL_CENTER = 'CALL_CENTER',
   /** Responsable RH transverse (non rattaché à une agence) */
   RESPONSABLE_RH = 'RESPONSABLE_RH',
+  /** Groupeur / Grossiste (accès espace groupeur) */
+  GROUPEUR_GROSSISTE = 'GROUPEUR_GROSSISTE',
 }
 
 
