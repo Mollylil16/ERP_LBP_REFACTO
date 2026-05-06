@@ -688,7 +688,7 @@ export const ColisList: React.FC<ColisListProps> = ({
             rows={10}
             placeholder="Exemple :&#10;Konan Kouassi&#10;Abidjan&#10;12&#10;25000&#10;Poli en lot"
             value={importText}
-            onChange={(e) => setImportText(e.target.value)}
+            onChange={(e: any) => setImportText(e.target.value)}
             style={{ fontFamily: "monospace", fontSize: 12 }}
           />
         </div>
