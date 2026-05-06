@@ -22,7 +22,7 @@ import { RolesModule } from '../roles/roles.module';
     NotificationModule,
     RolesModule,
   ],
-  providers: [ColisService, ExpeditionsService, WhatsappService],
+  providers: [ColisService, ExpeditionsService],
   controllers: [ColisController, ExpeditionsController],
   exports: [ColisService, TypeOrmModule],
 })
