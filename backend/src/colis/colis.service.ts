@@ -764,7 +764,7 @@ export class ColisService {
         destination: c.lieu_dest,
         destinataire: c.nom_dest,
         statut: c.statut_suivi,
-        montant_estime: c.montant_estime,
+        montant_estime: 0,
         date: c.created_at,
         agence: c.agence?.nom,
       })),
