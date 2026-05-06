@@ -286,6 +286,7 @@ export class AuthService {
       AGENT_SUIVI: 8,
       CALL_CENTER: 9,
       ADMIN: 1,
+      RESPONSABLE_RH: 15,
     };
     return roleMap[role] || 4;
   }
@@ -306,21 +307,26 @@ export class AuthService {
       AGENT_SUIVI: 'Agent Suivi',
       CALL_CENTER: 'Call center',
       ADMIN: 'Administrateur',
+      RESPONSABLE_RH: 'Responsable RH',
     };
     return nameMap[role] || 'Agent Exploitation';
   }
 
   private getFilterMode(code_acces: number): 'individual' | 'agency' | 'all' {
-    // CODEACCES 2 = Super Admin (all)
-    // CODEACCES 1 = Admin/Manager (all)
-    // CODEACCES 8 = Individual
-    // CODEACCES 9 = Agency
-    if (code_acces === 2 || code_acces === 1) {
+    // CODEACCES 2 = accès global
+    if (code_acces === 2) {
       return 'all';
     }
-    // Pour l'instant, on retourne 'all' par défaut
-    // TODO: Implémenter la logique complète selon CODEACCES
-    return 'all';
+    // CODEACCES 8 = données individuelles
+    if (code_acces === 8) {
+      return 'individual';
+    }
+    // CODEACCES 9 = périmètre agence
+    if (code_acces === 9) {
+      return 'agency';
+    }
+    // Par défaut (profils terrain), limiter au périmètre agence.
+    return 'agency';
   }
 
   /**
@@ -376,7 +382,8 @@ export class AuthService {
       rc === 'DIRECTEUR' ||
       rc === 'ADMIN' ||
       rc === 'ASSISTANT_DG' ||
-      rc === 'SUPERVISEURE_GENERALE',
+      rc === 'SUPERVISEURE_GENERALE' ||
+      rc === 'RESPONSABLE_RH',
     );
   }
 }

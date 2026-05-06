@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ForbiddenException,
   Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -41,9 +42,13 @@ export class ColisService {
       'ASSISTANT_DG',
       'SUPERVISEUR_REGIONAL',
       'SUPERVISEURE_GENERALE',
-      'AGENT_EXPLOITATION',
       'CAISSIER',
     ].includes(rc);
+  }
+
+  private getUserAgenceId(user: any): number | null {
+    const agenceId = Number(user?.id_agence ?? user?.agence?.id ?? 0);
+    return Number.isFinite(agenceId) && agenceId > 0 ? agenceId : null;
   }
 
   private hasGlobalAgencyRouting(user: any): boolean {
@@ -429,8 +434,12 @@ export class ColisService {
 
     const canSeeAll = this.userSeesAllColis(user);
 
-    if (!canSeeAll && user.id_agence) {
-      where.agence = { id: user.id_agence };
+    if (!canSeeAll) {
+      const agenceId = this.getUserAgenceId(user);
+      if (!agenceId) {
+        throw new ForbiddenException("Aucune agence associée à votre compte.");
+      }
+      where.agence = { id: agenceId };
     }
 
     if (query.forme_envoi) {
@@ -458,8 +467,12 @@ export class ColisService {
     if (!colis) {
       throw new NotFoundException(`Colis #${id} not found`);
     }
-    if (user && !this.userSeesAllColis(user) && user.id_agence) {
-      if (colis.agence && Number(colis.agence.id) !== Number(user.id_agence)) {
+    if (user && !this.userSeesAllColis(user)) {
+      const agenceId = this.getUserAgenceId(user);
+      if (!agenceId) {
+        throw new ForbiddenException("Aucune agence associée à votre compte.");
+      }
+      if (colis.agence && Number(colis.agence.id) !== agenceId) {
         throw new NotFoundException(`Colis #${id} not found`);
       }
     }
@@ -491,9 +504,13 @@ export class ColisService {
     }
 
     const canSeeAll = this.userSeesAllColis(user);
-    if (!canSeeAll && user.id_agence) {
+    if (!canSeeAll) {
+      const agenceId = this.getUserAgenceId(user);
+      if (!agenceId) {
+        throw new ForbiddenException("Aucune agence associée à votre compte.");
+      }
       query.andWhere('colis.id_agence = :agenceId', {
-        agenceId: user.id_agence,
+        agenceId,
       });
     }
 

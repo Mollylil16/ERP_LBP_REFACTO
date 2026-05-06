@@ -11,6 +11,7 @@ import { User, LoginCredentials, AuthResponse } from "@types";
 import { authService } from "@services/auth.service";
 import toast from "react-hot-toast";
 import { shouldSkipAgencySelection } from "@utils/agencyGate";
+import { queryClient, idbPersister } from "@config/queryClient";
 
 interface AuthContextType {
   user: User | null;
@@ -286,6 +287,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     sessionStorage.removeItem("lbp_permissions");
     sessionStorage.removeItem("lbp_permissions_user_id");
     sessionStorage.removeItem("lbp_mock_user");
+    // Vider le cache React Query en mémoire ET en IndexedDB pour qu'un
+    // nouvel utilisateur ne voie pas les données du compte précédent.
+    queryClient.clear();
+    void idbPersister.removeClient();
     setPermissions([]);
     setUser(null);
     hasCheckedAuth.current = false; // Réinitialiser pour permettre une nouvelle vérification

@@ -83,8 +83,8 @@ export class PaiementsController {
   @Get('calculate/:refColis')
   @RequirePermission('paiements.read')
   @ApiOperation({ summary: 'Calculer le restant à payer pour un colis' })
-  calculateRestant(@Param('refColis') refColis: string) {
-    return this.paiementsService.calculateRestantAPayer(refColis);
+  calculateRestant(@Param('refColis') refColis: string, @Request() req) {
+    return this.paiementsService.calculateRestantAPayer(refColis, req.user);
   }
 
   @Get('colis/:refColis')
@@ -123,8 +123,8 @@ export class PaiementsController {
   @Get(':id')
   @RequirePermission('paiements.read')
   @ApiOperation({ summary: "Détails d'un paiement" })
-  findOne(@Param('id') id: string) {
-    return this.paiementsService.findOne(+id);
+  findOne(@Param('id') id: string, @Request() req) {
+    return this.paiementsService.findOne(+id, req.user);
   }
 
   @Patch(':id/cancel')

@@ -40,6 +40,24 @@ import { EmptyUsersList, EmptySearchState, EmptyErrorState } from "@components/c
 const { Title } = Typography;
 const { Option } = Select;
 
+const ROLE_OPTIONS: { value: UserRole; label: string }[] = [
+  { value: UserRole.ADMIN, label: 'Administrateur' },
+  { value: UserRole.DIRECTEUR, label: 'Directeur Général' },
+  { value: UserRole.ASSISTANT_DG, label: 'Assistant DG' },
+  { value: UserRole.MANAGER, label: 'Manager / Superviseur' },
+  { value: UserRole.SUPERVISEUR_REGIONAL, label: 'Superviseur Régional' },
+  { value: UserRole.SUPERVISEURE_GENERALE, label: 'Superviseure Générale' },
+  { value: UserRole.RESPONSABLE_RH, label: 'Responsable RH' },
+  { value: UserRole.CHEF_AGENCE, label: "Chef d'agence" },
+  { value: UserRole.AGENT_EXPLOITATION, label: 'Agent Exploitation' },
+  { value: UserRole.AGENT_GROUPAGE, label: 'Agent Groupage' },
+  { value: UserRole.CAISSIER, label: 'Caissier Principal' },
+  { value: UserRole.CAISSIER_AGENCE, label: "Caissier d'agence" },
+  { value: UserRole.AGENT_SUIVI, label: 'Agent Suivi' },
+  { value: UserRole.CALL_CENTER, label: 'Call Center' },
+  { value: UserRole.GROUPEUR_GROSSISTE, label: 'Groupeur / Grossiste' },
+];
+
 export const UsersListPage: React.FC = () => {
   const screens = Grid.useBreakpoint();
   const tableCompact = screens.lg === false;
@@ -414,8 +432,8 @@ const UserForm: React.FC<{ user: any; onSuccess: () => void; onCancel: () => voi
 
       <Form.Item name="role" label="Rôle" rules={[{ required: true }]}>
         <Select>
-          {Object.values(UserRole).map(r => (
-            <Option key={r} value={r}>{r}</Option>
+          {ROLE_OPTIONS.map(r => (
+            <Option key={r.value} value={r.value}>{r.label}</Option>
           ))}
         </Select>
       </Form.Item>

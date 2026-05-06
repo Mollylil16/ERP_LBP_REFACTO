@@ -45,6 +45,8 @@ export enum UserRole {
   AGENT_SUIVI = 'AGENT_SUIVI',
   /** Service client (boîte d’appel, SMS/WhatsApp, litiges relation client) */
   CALL_CENTER = 'CALL_CENTER',
+  /** Responsable RH transverse (non rattaché à une agence) */
+  RESPONSABLE_RH = 'RESPONSABLE_RH',
 }
 
 

@@ -52,7 +52,7 @@ export class RapportsService {
     return labels[Math.max(1, Math.min(12, monthIndex1to12)) - 1];
   }
 
-  async getHistoriqueMultiAnnees(anneesParam?: string): Promise<
+  async getHistoriqueMultiAnnees(anneesParam?: string, user?: any): Promise<
     Array<{
       annee: number;
       mois: Array<{
@@ -72,7 +72,7 @@ export class RapportsService {
 
     // Agrégation par année/mois, avec revenus = SUM(nbre_colis * prix_unit)
     // NB: on utilise created_at pour refléter l'activité saisie, pas seulement date_envoi.
-    const rows = await this.colisRepository
+    const qb = this.colisRepository
       .createQueryBuilder('c')
       .leftJoin('c.marchandises', 'm')
       .select([
@@ -87,8 +87,13 @@ export class RapportsService {
       .groupBy('annee')
       .addGroupBy('mois_num')
       .orderBy('annee', 'ASC')
-      .addOrderBy('mois_num', 'ASC')
-      .getRawMany<{
+      .addOrderBy('mois_num', 'ASC');
+    if (!this.canSeeAllAgences(user)) {
+      const agenceId = this.getUserAgenceId(user);
+      if (!agenceId) throw new BadRequestException('Agence requise pour ce profil');
+      qb.andWhere('c.id_agence = :agenceId', { agenceId });
+    }
+    const rows = await qb.getRawMany<{
         annee: number;
         mois_num: number;
         colis_total: number;
@@ -141,7 +146,7 @@ export class RapportsService {
     return result;
   }
 
-  async getTendancesMensuelles(anneesParam?: string): Promise<
+  async getTendancesMensuelles(anneesParam?: string, user?: any): Promise<
     Array<{
       mois: string;
       meilleureAnnee: number;
@@ -157,7 +162,7 @@ export class RapportsService {
     if (!annees.length) return [];
 
     // Données de base: total colis par mois/année (sur created_at)
-    const rows = await this.colisRepository
+    const qb = this.colisRepository
       .createQueryBuilder('c')
       .select([
         `EXTRACT(YEAR FROM c.created_at)::int AS annee`,
@@ -168,8 +173,17 @@ export class RapportsService {
       .groupBy('annee')
       .addGroupBy('mois_num')
       .orderBy('mois_num', 'ASC')
-      .addOrderBy('annee', 'ASC')
-      .getRawMany<{ annee: number; mois_num: number; total_colis: number }>();
+      .addOrderBy('annee', 'ASC');
+    if (!this.canSeeAllAgences(user)) {
+      const agenceId = this.getUserAgenceId(user);
+      if (!agenceId) throw new BadRequestException('Agence requise pour ce profil');
+      qb.andWhere('c.id_agence = :agenceId', { agenceId });
+    }
+    const rows = await qb.getRawMany<{
+      annee: number;
+      mois_num: number;
+      total_colis: number;
+    }>();
 
     const yearsSorted = annees.slice().sort((a, b) => a - b);
     const lastYear = yearsSorted[yearsSorted.length - 1];
@@ -248,6 +262,11 @@ export class RapportsService {
     );
   }
 
+  private getUserAgenceId(user: any): number | null {
+    const n = Number(user?.id_agence ?? user?.agence?.id ?? 0);
+    return Number.isFinite(n) && n > 0 ? n : null;
+  }
+
   async generateRapportColis(params: any, user?: any): Promise<any[]> {
     const {
       start_date,
@@ -268,13 +287,10 @@ export class RapportsService {
     if (client_id) where.client = { id: client_id };
 
     // Périmètre agence: par défaut restreint à l'agence du compte, sauf profils "réseau".
-    const aid =
-      user?.id_agence ??
-      user?.agency_id ??
-      user?.agence?.id ??
-      user?.agency?.id;
-    if (aid && !this.canSeeAllAgences(user)) {
-      where.agence = { id: Number(aid) };
+    if (!this.canSeeAllAgences(user)) {
+      const agenceId = this.getUserAgenceId(user);
+      if (!agenceId) throw new BadRequestException('Agence requise pour ce profil');
+      where.agence = { id: agenceId };
     }
 
     const colis = await this.colisRepository.find({
@@ -384,6 +400,9 @@ export class RapportsService {
     }
 
     if (!canAll && aid) return { agenceId: Number(aid) };
+    if (!canAll && !aid) {
+      throw new BadRequestException('Agence requise pour ce profil');
+    }
     return {};
   }
 
@@ -563,8 +582,8 @@ export class RapportsService {
     );
   }
 
-  async getFinancesParTarif(): Promise<any[]> {
-    const result = await this.colisRepository
+  async getFinancesParTarif(user?: any): Promise<any[]> {
+    const qb = this.colisRepository
       .createQueryBuilder('colis')
       .leftJoin('colis.marchandises', 'm')
       .leftJoin('m.tarif', 't')
@@ -578,8 +597,13 @@ export class RapportsService {
         'SUM(m.poids_total) as poids_total',
       ])
       .groupBy('m.prix_unit')
-      .addGroupBy('t.nom')
-      .getRawMany();
+      .addGroupBy('t.nom');
+    if (!this.canSeeAllAgences(user)) {
+      const agenceId = this.getUserAgenceId(user);
+      if (!agenceId) throw new BadRequestException('Agence requise pour ce profil');
+      qb.andWhere('colis.id_agence = :agenceId', { agenceId });
+    }
+    const result = await qb.getRawMany();
 
     return result.map((item) => ({
       tarif: parseFloat(item.tarif),

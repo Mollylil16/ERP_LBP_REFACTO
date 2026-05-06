@@ -30,83 +30,91 @@ import { ErrorBoundary } from '@components/common/ErrorBoundary'
 
 const { Title } = Typography
 
-const TABS = [
+type RhTabComponent = React.ComponentType
+
+const TABS: Array<{
+  key: string
+  label: string
+  icon: React.ReactNode
+  permission: string
+  Component: RhTabComponent
+}> = [
   {
     key: 'dashboard',
     label: 'Tableau de bord',
     icon: <DashboardOutlined />,
     permission: PERMISSIONS.RH.DASHBOARD_READ,
-    component: <RhDashboardTab />,
+    Component: RhDashboardTab,
   },
   {
     key: 'employes',
     label: 'Employés',
     icon: <TeamOutlined />,
     permission: PERMISSIONS.RH.EMPLOYES_READ,
-    component: <RhEmployesTab />,
+    Component: RhEmployesTab,
   },
   {
     key: 'contrats',
     label: 'Contrats',
     icon: <FileTextOutlined />,
     permission: PERMISSIONS.RH.CONTRATS_READ,
-    component: <RhContratsTab />,
+    Component: RhContratsTab,
   },
   {
     key: 'conges',
     label: 'Congés',
     icon: <CalendarOutlined />,
     permission: PERMISSIONS.RH.CONGES_READ,
-    component: <RhCongesTab />,
+    Component: RhCongesTab,
   },
   {
     key: 'presences',
     label: 'Présences',
     icon: <ClockCircleOutlined />,
     permission: PERMISSIONS.RH.PRESENCES_READ,
-    component: <RhPresencesTab />,
+    Component: RhPresencesTab,
   },
   {
     key: 'paie',
     label: 'Paie',
     icon: <DollarOutlined />,
     permission: PERMISSIONS.RH.PAIE_READ,
-    component: <RhPaieTab />,
+    Component: RhPaieTab,
   },
   {
     key: 'evaluations',
     label: 'Évaluations',
     icon: <StarOutlined />,
     permission: PERMISSIONS.RH.EVALUATIONS_READ,
-    component: <RhEvaluationsTab />,
+    Component: RhEvaluationsTab,
   },
   {
     key: 'recrutement',
     label: 'Recrutement',
     icon: <SearchOutlined />,
     permission: PERMISSIONS.RH.RECRUTEMENT_READ,
-    component: <RhRecrutementTab />,
+    Component: RhRecrutementTab,
   },
   {
     key: 'formation',
     label: 'Formation',
     icon: <BookOutlined />,
     permission: PERMISSIONS.RH.FORMATION_READ,
-    component: <RhFormationTab />,
+    Component: RhFormationTab,
   },
   {
     key: 'rapports',
     label: 'Rapports légaux',
     icon: <BarChartOutlined />,
     permission: PERMISSIONS.RH.RAPPORTS_READ,
-    component: <RhRapportsTab />,
+    Component: RhRapportsTab,
   },
   {
     key: 'parametres',
     label: 'Paramètres paie',
     icon: <SettingOutlined />,
     permission: PERMISSIONS.RH.PAIE_UPDATE,
-    component: <RhParametresTab />,
+    Component: RhParametresTab,
   },
 ]
 
@@ -121,7 +129,7 @@ export const RhPage: React.FC = () => {
         {t.label}
       </span>
     ),
-    children: t.component,
+    children: <t.Component />,
   }))
 
   const rhFallback = (
@@ -140,6 +148,23 @@ export const RhPage: React.FC = () => {
       style={{ margin: '24px' }}
     />
   )
+
+  if (items.length === 0) {
+    return (
+      <div style={{ padding: '24px 24px 0' }}>
+        <Title level={3} style={{ marginBottom: 16 }}>
+          Ressources Humaines — SIRH
+        </Title>
+        <Alert
+          type="warning"
+          showIcon
+          message="Aucun onglet RH disponible"
+          description="Votre rôle ne dispose pas encore de permissions RH actives. Contactez un administrateur."
+          style={{ marginBottom: 16 }}
+        />
+      </div>
+    )
+  }
 
   return (
     <div style={{ padding: '24px 24px 0' }}>

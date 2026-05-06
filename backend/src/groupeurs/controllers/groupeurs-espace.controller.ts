@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Delete,
+  ForbiddenException,
   Get,
   Param,
   Post,
@@ -36,21 +37,41 @@ export class GroupeursEspaceController {
     private readonly documentsService: DocumentsService,
   ) {}
 
+  private requireGroupeurId(req: any): string {
+    const groupeurId = req?.user?.groupeurId;
+    if (!groupeurId) {
+      throw new ForbiddenException(
+        "Accès réservé aux comptes Groupeur/Grossiste configurés.",
+      );
+    }
+    return groupeurId;
+  }
+
   @Get('dashboard')
   @RequirePermission('groupeurs.espace.read')
   async getMonDashboard(@Request() req: any) {
-    const groupeurId = req.user.groupeurId;
-    const devis = await this.devisService.getParGroupeur(groupeurId);
-    const exp = await this.expeditionsService.getParGroupeur(groupeurId);
-    const fac = await this.facturesService.getParGroupeur(groupeurId);
-    const impayees = fac.filter((f: any) =>
+    const groupeurId = this.requireGroupeurId(req);
+    const [devis, exp, fac, groupeur] = await Promise.all([
+      this.devisService.getParGroupeur(groupeurId),
+      this.expeditionsService.getParGroupeur(groupeurId),
+      this.facturesService.getParGroupeur(groupeurId),
+      this.groupeursService.getDetail(groupeurId).catch(() => null),
+    ]);
+    if (!groupeur) {
+      // Réinitialiser groupeurId pour forcer un nouveau lookup au prochain appel
+      if (req?.user) req.user.groupeurId = undefined;
+      throw new ForbiddenException(
+        'Compte groupeur introuvable — contactez votre administrateur.',
+      );
+    }
+    const impayees = (fac as any[]).filter((f: any) =>
       ['en_attente', 'partiel', 'en_retard'].includes(f.statut_paiement),
     ).length;
     return {
-      groupeur: await this.groupeursService.getDetail(groupeurId),
+      groupeur,
       kpis: {
-        devis_total: devis.length,
-        expeditions_actives: exp.filter((e: any) => e.statut !== 'livre')
+        devis_total: (devis as any[]).length,
+        expeditions_actives: (exp as any[]).filter((e: any) => e.statut !== 'livre')
           .length,
         factures_impayees: impayees,
       },
@@ -60,13 +81,13 @@ export class GroupeursEspaceController {
   @Get('devis')
   @RequirePermission('groupeurs.espace.read')
   getMesDevis(@Request() req: any) {
-    return this.devisService.getParGroupeur(req.user.groupeurId);
+    return this.devisService.getParGroupeur(this.requireGroupeurId(req));
   }
 
   @Post('devis')
   @RequirePermission('groupeurs.espace.write')
   creerDevis(@Body() dto: CreateDevisDto, @Request() req: any) {
-    return this.devisService.creer(dto, req.user.groupeurId);
+    return this.devisService.creer(dto, this.requireGroupeurId(req));
   }
 
   @Put('devis/:id')
@@ -76,25 +97,25 @@ export class GroupeursEspaceController {
     @Body() dto: any,
     @Request() req: any,
   ) {
-    return this.devisService.modifier(id, dto, req.user.groupeurId);
+    return this.devisService.modifier(id, dto, this.requireGroupeurId(req));
   }
 
   @Delete('devis/:id')
   @RequirePermission('groupeurs.espace.write')
   supprimerDevis(@Param('id') id: string, @Request() req: any) {
-    return this.devisService.supprimer(id, req.user.groupeurId);
+    return this.devisService.supprimer(id, this.requireGroupeurId(req));
   }
 
   @Get('expeditions')
   @RequirePermission('groupeurs.espace.read')
   getMesExpeditions(@Request() req: any) {
-    return this.expeditionsService.getParGroupeur(req.user.groupeurId);
+    return this.expeditionsService.getParGroupeur(this.requireGroupeurId(req));
   }
 
   @Post('expeditions')
   @RequirePermission('groupeurs.espace.write')
   creerExpedition(@Body() dto: CreateExpeditionDto, @Request() req: any) {
-    return this.expeditionsService.creer(dto, req.user.groupeurId);
+    return this.expeditionsService.creer(dto, this.requireGroupeurId(req));
   }
 
   @Put('expeditions/:id/statut')
@@ -107,20 +128,20 @@ export class GroupeursEspaceController {
     return this.expeditionsService.mettreAJourStatut(
       id,
       body,
-      req.user.groupeurId,
+      this.requireGroupeurId(req),
     );
   }
 
   @Get('factures')
   @RequirePermission('groupeurs.espace.read')
   getMesFactures(@Request() req: any) {
-    return this.facturesService.getParGroupeur(req.user.groupeurId);
+    return this.facturesService.getParGroupeur(this.requireGroupeurId(req));
   }
 
   @Post('factures')
   @RequirePermission('groupeurs.espace.write')
   creerFacture(@Body() dto: CreateFactureDto, @Request() req: any) {
-    return this.facturesService.creer(dto, req.user.groupeurId);
+    return this.facturesService.creer(dto, this.requireGroupeurId(req));
   }
 
   @Put('factures/:id')
@@ -130,13 +151,13 @@ export class GroupeursEspaceController {
     @Body() dto: any,
     @Request() req: any,
   ) {
-    return this.facturesService.modifier(id, dto, req.user.groupeurId);
+    return this.facturesService.modifier(id, dto, this.requireGroupeurId(req));
   }
 
   @Get('documents')
   @RequirePermission('groupeurs.espace.read')
   getMesDocuments(@Request() req: any) {
-    return this.documentsService.getParGroupeur(req.user.groupeurId);
+    return this.documentsService.getParGroupeur(this.requireGroupeurId(req));
   }
 
   @Post('documents/upload')
@@ -144,7 +165,7 @@ export class GroupeursEspaceController {
   uploadDocument(@Body() dto: any, @Request() req: any) {
     return this.documentsService.upload(
       dto,
-      req.user.groupeurId,
+      this.requireGroupeurId(req),
       req.user.sub ?? req.user.id,
     );
   }
@@ -152,13 +173,13 @@ export class GroupeursEspaceController {
   @Delete('documents/:id')
   @RequirePermission('groupeurs.espace.write')
   supprimerDocument(@Param('id') id: string, @Request() req: any) {
-    return this.documentsService.supprimer(id, req.user.groupeurId);
+    return this.documentsService.supprimer(id, this.requireGroupeurId(req));
   }
 
   @Get('profil')
   @RequirePermission('groupeurs.espace.read')
   getMonProfil(@Request() req: any) {
-    return this.groupeursService.getDetail(req.user.groupeurId);
+    return this.groupeursService.getDetail(this.requireGroupeurId(req));
   }
 
   @Put('profil')
@@ -179,7 +200,7 @@ export class GroupeursEspaceController {
       pays,
     }))(dto ?? {});
     return this.groupeursService.modifier(
-      req.user.groupeurId,
+      this.requireGroupeurId(req),
       allowed,
       req.user.sub ?? req.user.id,
       req.user,

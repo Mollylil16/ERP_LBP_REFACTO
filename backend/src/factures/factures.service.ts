@@ -60,7 +60,6 @@ export class FacturesService {
         'ASSISTANT_DG',
         'SUPERVISEUR_REGIONAL',
         'SUPERVISEURE_GENERALE',
-        'AGENT_EXPLOITATION',
         'CAISSIER',
       ].includes(rc)
     ) {
@@ -70,6 +69,11 @@ export class FacturesService {
     if (Number(user?.code_acces) === 2) return true;
     if (user?.filter_mode === 'all') return true;
     return false;
+  }
+
+  private getUserAgenceId(user: any): number | null {
+    const agenceId = Number(user?.id_agence ?? user?.agence?.id ?? 0);
+    return Number.isFinite(agenceId) && agenceId > 0 ? agenceId : null;
   }
 
   async createProforma(colis: Colis, userId: string): Promise<Facture> {
@@ -137,8 +141,12 @@ export class FacturesService {
 
     const canSeeAll = this.userSeesAllFacturesAcrossAgences(user);
 
-    if (!canSeeAll && user.id_agence) {
-      where.colis = { agence: { id: user.id_agence } };
+    if (!canSeeAll) {
+      const agenceId = this.getUserAgenceId(user);
+      if (!agenceId) {
+        throw new ForbiddenException("Aucune agence associée à votre compte.");
+      }
+      where.colis = { agence: { id: agenceId } };
     }
     return this.factureRepository.find({
       where,
@@ -160,8 +168,12 @@ export class FacturesService {
     if (!facture) {
       throw new NotFoundException(`Facture #${id} introuvable`);
     }
-    if (user && !this.userSeesAllFacturesAcrossAgences(user) && user.id_agence) {
-      if (Number(facture.colis?.agence?.id) !== Number(user.id_agence)) {
+    if (user && !this.userSeesAllFacturesAcrossAgences(user)) {
+      const agenceId = this.getUserAgenceId(user);
+      if (!agenceId) {
+        throw new ForbiddenException("Aucune agence associée à votre compte.");
+      }
+      if (Number(facture.colis?.agence?.id) !== agenceId) {
         throw new NotFoundException(`Facture #${id} introuvable`);
       }
     }
@@ -224,11 +236,22 @@ export class FacturesService {
     return saved;
   }
 
-  async findByColisRef(refColis: string): Promise<Facture | null> {
-    return this.factureRepository.findOne({
+  async findByColisRef(refColis: string, user?: any): Promise<Facture | null> {
+    const facture = await this.factureRepository.findOne({
       where: { colis: { ref_colis: refColis } },
-      relations: ['colis', 'colis.client', 'colis.marchandises'],
+      relations: ['colis', 'colis.client', 'colis.marchandises', 'colis.agence'],
     });
+    if (!facture) return null;
+    if (user && !this.userSeesAllFacturesAcrossAgences(user)) {
+      const agenceId = this.getUserAgenceId(user);
+      if (!agenceId) {
+        throw new ForbiddenException("Aucune agence associée à votre compte.");
+      }
+      if (Number(facture.colis?.agence?.id) !== agenceId) {
+        throw new ForbiddenException('Accès à cette facture refusé');
+      }
+    }
+    return facture;
   }
 
   /** Recherche par numéro de facture (ex. FCO-0426-001) — même périmètre agence que la liste. */
@@ -275,8 +298,14 @@ export class FacturesService {
       return null;
     }
 
-    if (!canSeeAll && user?.id_agence && facture.colis?.agence?.id !== user.id_agence) {
+    if (!canSeeAll) {
+      const agenceId = this.getUserAgenceId(user);
+      if (!agenceId) {
+        throw new ForbiddenException("Aucune agence associée à votre compte.");
+      }
+      if (facture.colis?.agence?.id !== agenceId) {
       throw new ForbiddenException('Accès refusé pour cette facture.');
+      }
     }
 
     return facture;
@@ -300,8 +329,14 @@ export class FacturesService {
       throw new NotFoundException(`Facture « ${num} » introuvable`);
     }
     const canSeeAll = this.userSeesAllFacturesAcrossAgences(user);
-    if (!canSeeAll && user?.id_agence && facture.colis?.agence?.id !== user.id_agence) {
+    if (!canSeeAll) {
+      const agenceId = this.getUserAgenceId(user);
+      if (!agenceId) {
+        throw new ForbiddenException("Aucune agence associée à votre compte.");
+      }
+      if (facture.colis?.agence?.id !== agenceId) {
       throw new ForbiddenException('Accès à cette facture refusé');
+      }
     }
     return facture;
   }

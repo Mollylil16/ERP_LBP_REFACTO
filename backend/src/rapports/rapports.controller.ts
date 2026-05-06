@@ -17,15 +17,15 @@ export class RapportsController {
   @ApiOperation({
     summary: 'Données historiques (comparaison multi-années) par mois',
   })
-  getHistorique(@Query('annees') annees?: string) {
-    return this.rapportsService.getHistoriqueMultiAnnees(annees);
+  getHistorique(@Request() req: { user: any }, @Query('annees') annees?: string) {
+    return this.rapportsService.getHistoriqueMultiAnnees(annees, req.user);
   }
 
   @Get('tendances')
   @RequirePermission('rapports.view')
   @ApiOperation({ summary: 'Analyse des tendances mensuelles (multi-années)' })
-  getTendances(@Query('annees') annees?: string) {
-    return this.rapportsService.getTendancesMensuelles(annees);
+  getTendances(@Request() req: { user: any }, @Query('annees') annees?: string) {
+    return this.rapportsService.getTendancesMensuelles(annees, req.user);
   }
 
   @Get('colis')
@@ -75,7 +75,7 @@ export class RapportsController {
   @Get('finances-tarif')
   @RequirePermission('rapports.view')
   @ApiOperation({ summary: 'Obtenir les finances groupées par tarif' })
-  async getFinancesParTarif() {
-    return this.rapportsService.getFinancesParTarif();
+  async getFinancesParTarif(@Request() req: { user: any }) {
+    return this.rapportsService.getFinancesParTarif(req.user);
   }
 }

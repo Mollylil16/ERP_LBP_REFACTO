@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ForbiddenException,
   Logger,
   Inject,
   forwardRef,
@@ -195,10 +196,18 @@ export class PaiementsService {
   }
 
   private userSeesAllPaiements(user: any): boolean {
-    const rc = (typeof user?.role === 'string' ? user.role : user?.role?.code ?? '')
-      .toUpperCase();
+    const rc = (
+      typeof user?.role === 'string'
+        ? user.role
+        : user?.role?.code ?? user?.roleEntity?.code ?? ''
+    ).toUpperCase();
     return ['ADMIN', 'DIRECTEUR', 'ASSISTANT_DG', 'SUPERVISEUR_REGIONAL',
-      'SUPERVISEURE_GENERALE', 'AGENT_EXPLOITATION', 'CAISSIER'].includes(rc);
+      'SUPERVISEURE_GENERALE', 'CAISSIER'].includes(rc);
+  }
+
+  private getUserAgenceId(user: any): number | null {
+    const agenceId = Number(user?.id_agence ?? user?.agence?.id ?? 0);
+    return Number.isFinite(agenceId) && agenceId > 0 ? agenceId : null;
   }
 
   async findAll(user?: any): Promise<Paiement[]> {
@@ -208,19 +217,27 @@ export class PaiementsService {
       .leftJoinAndSelect('colis.agence', 'agence')
       .orderBy('p.created_at', 'DESC');
 
-    if (user && !this.userSeesAllPaiements(user) && user.id_agence) {
-      qb.where('agence.id = :agenceId', { agenceId: Number(user.id_agence) });
+    if (user && !this.userSeesAllPaiements(user)) {
+      const agenceId = this.getUserAgenceId(user);
+      if (!agenceId) {
+        throw new ForbiddenException("Aucune agence associée à votre compte.");
+      }
+      qb.where('agence.id = :agenceId', { agenceId });
     }
     return qb.getMany();
   }
 
   async findByFacture(factureId: number, user?: any): Promise<Paiement[]> {
-    if (user && !this.userSeesAllPaiements(user) && user.id_agence) {
+    if (user && !this.userSeesAllPaiements(user)) {
+      const agenceId = this.getUserAgenceId(user);
+      if (!agenceId) {
+        throw new ForbiddenException("Aucune agence associée à votre compte.");
+      }
       const facture = await this.factureRepository.findOne({
         where: { id: factureId },
         relations: ['colis', 'colis.agence'],
       });
-      if (facture && Number(facture.colis?.agence?.id) !== Number(user.id_agence)) {
+      if (facture && Number(facture.colis?.agence?.id) !== agenceId) {
         return [];
       }
     }
@@ -231,12 +248,16 @@ export class PaiementsService {
   }
 
   async findByColis(refColis: string, user?: any): Promise<Paiement[]> {
-    if (user && !this.userSeesAllPaiements(user) && user.id_agence) {
+    if (user && !this.userSeesAllPaiements(user)) {
+      const agenceId = this.getUserAgenceId(user);
+      if (!agenceId) {
+        throw new ForbiddenException("Aucune agence associée à votre compte.");
+      }
       const colis = await this.colisRepository.findOne({
         where: { ref_colis: refColis },
         relations: ['agence'],
       });
-      if (colis && Number(colis.agence?.id) !== Number(user.id_agence)) {
+      if (colis && Number(colis.agence?.id) !== agenceId) {
         return [];
       }
     }
@@ -250,7 +271,7 @@ export class PaiementsService {
   /**
    * Calculer le montant restant à payer pour un colis (via sa référence)
    */
-  async calculateRestantAPayer(refColis: string): Promise<{
+  async calculateRestantAPayer(refColis: string, user?: any): Promise<{
     ref_colis: string;
     facture_num: string | null;
     montant_total: number;
@@ -259,8 +280,18 @@ export class PaiementsService {
   }> {
     const colis = await this.colisRepository.findOne({
       where: { ref_colis: refColis },
+      relations: ['agence'],
     });
     if (!colis) throw new NotFoundException(`Colis "${refColis}" introuvable`);
+    if (user && !this.userSeesAllPaiements(user)) {
+      const agenceId = this.getUserAgenceId(user);
+      if (!agenceId) {
+        throw new ForbiddenException("Aucune agence associée à votre compte.");
+      }
+      if (Number(colis.agence?.id) !== agenceId) {
+        throw new ForbiddenException("Accès refusé pour ce colis.");
+      }
+    }
 
     const facture = await this.factureRepository.findOne({
       where: { colis: { id: colis.id } },
@@ -288,13 +319,22 @@ export class PaiementsService {
     };
   }
 
-  async findOne(id: number): Promise<Paiement> {
+  async findOne(id: number, user?: any): Promise<Paiement> {
     const paiement = await this.paiementRepository.findOne({
       where: { id },
-      relations: ['facture'],
+      relations: ['facture', 'facture.colis', 'facture.colis.agence'],
     });
     if (!paiement) {
       throw new NotFoundException(`Paiement #${id} not found`);
+    }
+    if (user && !this.userSeesAllPaiements(user)) {
+      const agenceId = this.getUserAgenceId(user);
+      if (!agenceId) {
+        throw new ForbiddenException("Aucune agence associée à votre compte.");
+      }
+      if (Number(paiement.facture?.colis?.agence?.id) !== agenceId) {
+        throw new NotFoundException(`Paiement #${id} not found`);
+      }
     }
     return paiement;
   }
@@ -929,12 +969,13 @@ export class PaiementsService {
       .where('facture.etat != 2'); // Not cancelled
 
     // Role-based filtering
-    const canSeeAll = ['ADMIN', 'DIRECTEUR'].includes(user.role);
-    if (!canSeeAll && user.id_agence) {
-      const agenceId = Number(user.id_agence);
-      if (!isNaN(agenceId)) {
-        queryBuilder.andWhere('colis.agence.id = :agenceId', { agenceId });
+    const canSeeAll = this.userSeesAllPaiements(user);
+    if (!canSeeAll) {
+      const agenceId = this.getUserAgenceId(user);
+      if (!agenceId) {
+        throw new ForbiddenException("Aucune agence associée à votre compte.");
       }
+      queryBuilder.andWhere('colis.agence.id = :agenceId', { agenceId });
     }
 
     // Search filtering (client, ref_colis, num_facture)

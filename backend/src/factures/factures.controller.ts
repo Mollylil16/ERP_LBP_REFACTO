@@ -47,8 +47,8 @@ export class FacturesController {
   @Get('colis/:ref')
   @RequirePermission('factures.read')
   @ApiOperation({ summary: "Récupérer la facture d'un colis par sa référence" })
-  findByColis(@Param('ref') ref: string) {
-    return this.facturesService.findByColisRef(ref);
+  findByColis(@Param('ref') ref: string, @Request() req) {
+    return this.facturesService.findByColisRef(ref, req.user);
   }
 
   @Get('num/:num')
@@ -83,8 +83,8 @@ export class FacturesController {
   @Get(':id')
   @RequirePermission('factures.read')
   @ApiOperation({ summary: "Détails d'une facture" })
-  findOne(@Param('id') id: string) {
-    return this.facturesService.findOne(+id);
+  findOne(@Param('id') id: string, @Request() req) {
+    return this.facturesService.findOne(+id, req.user);
   }
 
   @Patch(':id/validate')

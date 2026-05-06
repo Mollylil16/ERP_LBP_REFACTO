@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import {
   Card, Form, InputNumber, Button, message, Table, Space,
   Divider, Alert, Typography, Row, Col,
@@ -27,19 +27,23 @@ export const RhParametresTab: React.FC = () => {
   const { data: config, isLoading } = useQuery<RhConfigPaie>({
     queryKey: ['rh-paie-config'],
     queryFn: () => rhService.getPaieConfig(),
-    onSuccess: (data: RhConfigPaie) => form.setFieldsValue({
-      smig_mensuel: data.smig_mensuel,
-      cnps_retraite_salarial: data.cnps_retraite_salarial * 100,
-      cnps_retraite_patronal: data.cnps_retraite_patronal * 100,
-      cnps_retraite_plafond_annuel: data.cnps_retraite_plafond_annuel,
-      cnps_at_patronal: data.cnps_at_patronal * 100,
-      cnps_famille_patronal: data.cnps_famille_patronal * 100,
-      cnps_famille_plafond_mensuel: data.cnps_famille_plafond_mensuel,
-      cmu_salarial: data.cmu_salarial * 100,
-      cmu_patronal: data.cmu_patronal * 100,
-      cn_taux: data.cn_taux * 100,
-    }),
-  } as Parameters<typeof useQuery<RhConfigPaie>>[0])
+  })
+
+  useEffect(() => {
+    if (!config) return
+    form.setFieldsValue({
+      smig_mensuel: config.smig_mensuel,
+      cnps_retraite_salarial: config.cnps_retraite_salarial * 100,
+      cnps_retraite_patronal: config.cnps_retraite_patronal * 100,
+      cnps_retraite_plafond_annuel: config.cnps_retraite_plafond_annuel,
+      cnps_at_patronal: config.cnps_at_patronal * 100,
+      cnps_famille_patronal: config.cnps_famille_patronal * 100,
+      cnps_famille_plafond_mensuel: config.cnps_famille_plafond_mensuel,
+      cmu_salarial: config.cmu_salarial * 100,
+      cmu_patronal: config.cmu_patronal * 100,
+      cn_taux: config.cn_taux * 100,
+    })
+  }, [config, form])
 
   const updateMut = useMutation({
     mutationFn: (data: Partial<RhConfigPaie>) => rhService.upsertPaieConfig(data),
