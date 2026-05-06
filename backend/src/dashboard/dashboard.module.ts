@@ -9,6 +9,7 @@ import { PaiementsModule } from '../paiements/paiements.module';
 import { CaisseModule } from '../caisse/caisse.module';
 import { AgencesModule } from '../agences/agences.module';
 import { LitigesModule } from '../litiges/litiges.module';
+import { AlertModule } from '../alerts/alert.module';
 import { Colis } from '../colis/entities/colis.entity';
 import { Client } from '../clients/entities/client.entity';
 import { Facture } from '../factures/entities/facture.entity';
@@ -30,6 +31,7 @@ import { RolesModule } from '../roles/roles.module';
     CaisseModule,
     LitigesModule,
     RolesModule,
+    AlertModule,
   ],
   providers: [DashboardService],
   controllers: [DashboardController],
