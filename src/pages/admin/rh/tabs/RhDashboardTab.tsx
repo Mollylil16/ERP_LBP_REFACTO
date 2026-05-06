@@ -143,20 +143,20 @@ export const RhDashboardTab: React.FC = () => {
       <Row gutter={16}>
         <Col xs={24} md={12}>
           <Card title="Répartition par statut" size="small">
-            {(data?.par_statut ?? []).map((r) => (
-              <Row key={r.statut} justify="space-between" style={{ marginBottom: 6 }}>
-                <Tag color={STATUT_COLOR[r.statut] ?? 'default'}>{r.statut}</Tag>
-                <strong>{r.nb}</strong>
+            {Object.entries(data?.par_statut ?? {}).map(([statut, nb]) => (
+              <Row key={statut} justify="space-between" style={{ marginBottom: 6 }}>
+                <Tag color={STATUT_COLOR[statut] ?? 'default'}>{statut}</Tag>
+                <strong>{nb as number}</strong>
               </Row>
             ))}
           </Card>
         </Col>
         <Col xs={24} md={12}>
           <Card title="Répartition par type de contrat" size="small">
-            {(data?.par_type_contrat ?? []).map((r) => (
-              <Row key={r.type} justify="space-between" style={{ marginBottom: 6 }}>
-                <Tag>{r.type}</Tag>
-                <strong>{r.nb}</strong>
+            {Object.entries(data?.par_type_contrat ?? {}).map(([type, nb]) => (
+              <Row key={type} justify="space-between" style={{ marginBottom: 6 }}>
+                <Tag>{type}</Tag>
+                <strong>{nb as number}</strong>
               </Row>
             ))}
           </Card>
