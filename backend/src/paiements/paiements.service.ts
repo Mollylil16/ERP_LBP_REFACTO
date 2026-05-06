@@ -532,7 +532,7 @@ export class PaiementsService {
     if (role === 'DIRECTEUR' || role === 'ADMIN' || role === 'SUPER_ADMIN')
       return true;
     /** Encaissements siège : tout est versé sur la caisse principale. */
-    if (user?.code_acces === 2 || user?.code_acces === 1) return true;
+    if (user?.code_acces === 2) return true;
     return false;
   }
 

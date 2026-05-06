@@ -121,6 +121,21 @@ const TABS: Array<{
 export const RhPage: React.FC = () => {
   const { hasPermission } = usePermissions()
 
+  const tabFallback = (tabLabel: string) => (
+    <Alert
+      type="warning"
+      showIcon
+      message={`Impossible de charger l'onglet « ${tabLabel} »`}
+      description="Le module est peut-être en cours de déploiement ou les tables n'ont pas encore été créées. Réessayez plus tard ou contactez un administrateur."
+      style={{ margin: '16px 0' }}
+      action={
+        <Button size="small" onClick={() => window.location.reload()}>
+          Recharger
+        </Button>
+      }
+    />
+  )
+
   const items = TABS.filter((t) => hasPermission(t.permission)).map((t) => ({
     key: t.key,
     label: (
@@ -129,7 +144,11 @@ export const RhPage: React.FC = () => {
         {t.label}
       </span>
     ),
-    children: <t.Component />,
+    children: (
+      <ErrorBoundary fallback={tabFallback(t.label)}>
+        <t.Component />
+      </ErrorBoundary>
+    ),
   }))
 
   const rhFallback = (

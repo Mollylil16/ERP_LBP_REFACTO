@@ -18,12 +18,29 @@ const STATUT_COLOR: Record<string, string> = {
 }
 
 export const RhDashboardTab: React.FC = () => {
-  const { data, isLoading } = useQuery<RhDashboard>({
+  const { data, isLoading, isError, error } = useQuery<RhDashboard>({
     queryKey: ['rh-dashboard'],
     queryFn: rhService.getDashboard,
     refetchInterval: 120_000,
     staleTime: 60_000,
+    retry: 1,
   })
+
+  if (isError) {
+    return (
+      <Alert
+        type="warning"
+        showIcon
+        message="Impossible de charger le tableau de bord RH"
+        description={
+          (error as any)?.response?.status === 500
+            ? 'Les tables RH n\'ont peut-être pas encore été créées. Exécutez les migrations sur le serveur.'
+            : 'Vérifiez la connexion au serveur et réessayez.'
+        }
+        style={{ margin: '16px 0' }}
+      />
+    )
+  }
 
   const alertesCdd = data?.alertes_cdd ?? []
 

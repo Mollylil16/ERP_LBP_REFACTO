@@ -59,7 +59,6 @@ export class ColisService {
     return Boolean(
       user?.peut_voir_toutes_agences ||
         user?.code_acces === 2 ||
-        user?.code_acces === 1 ||
         r === 'DIRECTEUR' ||
         r === 'ADMIN' ||
         r === 'SUPER_ADMIN',
