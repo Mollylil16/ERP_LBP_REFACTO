@@ -4,13 +4,19 @@ import { DashboardService } from './dashboard.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { RequirePermission } from '../auth/decorators/permissions.decorator';
+import { WeeklyReportService } from '../alerts/weekly-report.service';
+import { AgenceScoringService } from '../alerts/agency-scoring.service';
 
 @ApiTags('dashboard')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('dashboard')
 export class DashboardController {
-  constructor(private readonly dashboardService: DashboardService) {}
+  constructor(
+    private readonly dashboardService: DashboardService,
+    private readonly weeklyReportService: WeeklyReportService,
+    private readonly agencyScoringService: AgenceScoringService,
+  ) {}
 
   @Get('stats')
   @RequirePermission('dashboard.view')
@@ -57,4 +63,19 @@ export class DashboardController {
     }
     return this.dashboardService.getAgenceSummary(agenceId);
   }
+
+  @Get('weekly-report')
+  @RequirePermission('dashboard.admin')
+  @ApiOperation({ summary: 'Rapport hebdomadaire (génération à la demande)' })
+  getWeeklyReport() {
+    return this.weeklyReportService.generateWeeklyData();
+  }
+
+  @Get('agency-scores')
+  @RequirePermission('dashboard.admin', 'dashboard.view')
+  @ApiOperation({ summary: 'Scoring des agences (semaine en cours ou passée)' })
+  getAgencyScores(@Query('weeksAgo') weeksAgo?: string) {
+    return this.agencyScoringService.computeAllScores(weeksAgo ? +weeksAgo : 0);
+  }
 }
+

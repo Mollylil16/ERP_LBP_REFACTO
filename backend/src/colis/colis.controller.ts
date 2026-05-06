@@ -154,4 +154,40 @@ export class ColisController {
   async remove(@Param('id') id: string, @Request() req) {
     return this.colisService.remove(+id, req.user);
   }
+
+  @Post('batch-import')
+  @RequirePermission(...COLIS_CREATE)
+  @ApiOperation({ summary: 'Import en masse de colis (depuis Excel)' })
+  batchImport(@Body() body: { rows: any[] }, @Request() req) {
+    return this.colisService.batchImport(body.rows, req.user);
+  }
+
+  @Post('batch-validate')
+  @RequirePermission(...COLIS_VALIDATE)
+  @ApiOperation({ summary: 'Validation en lot de colis' })
+  batchValidate(@Body() body: { ids: number[]; statut: string }, @Request() req) {
+    return this.colisService.batchValidate(body.ids, body.statut as any, req.user);
+  }
+
+  @Get('client-history')
+  @RequirePermission(...COLIS_READ)
+  @ApiOperation({ summary: 'Historique des colis d\'un client par téléphone' })
+  getClientHistory(@Query('phone') phone: string, @Request() req) {
+    return this.colisService.getClientHistory(phone, req.user);
+  }
+
+  @Get('calculate-tarif')
+  @RequirePermission(...COLIS_READ)
+  @ApiOperation({ summary: 'Calcul automatique du tarif (poids + destination)' })
+  calculateTarif(
+    @Query('poids_kg') poids_kg: string,
+    @Query('destination') destination: string,
+    @Query('type_envoi') type_envoi?: string,
+  ) {
+    return this.colisService.calculateTarif({
+      poids_kg: Number(poids_kg) || 0,
+      destination: destination || '',
+      type_envoi,
+    });
+  }
 }

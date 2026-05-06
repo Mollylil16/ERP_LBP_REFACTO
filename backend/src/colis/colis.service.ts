@@ -661,4 +661,166 @@ export class ColisService {
 
     return savedColis;
   }
+
+  // ── IMPORT EN MASSE (Excel) ────────────────────────────────────────────────
+  /**
+   * Crée plusieurs colis en une seule opération depuis des données Excel.
+   * @param rows — Tableau d'objets provenant du parsing Excel côté client
+   * @param user — Utilisateur connecté (pour résoudre l'agence)
+   */
+  async batchImport(
+    rows: Array<Partial<CreateColisDto> & { nom_exp?: string; tel_exp?: string }>,
+    user: any,
+  ): Promise<{ created: number; errors: Array<{ row: number; message: string }> }> {
+    const errors: Array<{ row: number; message: string }> = [];
+    let created = 0;
+
+    for (let i = 0; i < rows.length; i++) {
+      try {
+        const row = rows[i];
+        if (!row.nom_dest || !row.lieu_dest) {
+          errors.push({ row: i + 1, message: 'Nom destinataire et lieu destination obligatoires' });
+          continue;
+        }
+        await this.create(row as CreateColisDto, user);
+        created++;
+      } catch (err: any) {
+        errors.push({ row: i + 1, message: err.message || 'Erreur inconnue' });
+      }
+    }
+
+    return { created, errors };
+  }
+
+  // ── VALIDATION EN LOT ──────────────────────────────────────────────────────
+  /**
+   * Valide plusieurs colis d'un coup (changement de statut).
+   * @param ids — Liste des IDs de colis à valider
+   * @param newStatut — Nouveau statut à appliquer
+   * @param user — Utilisateur connecté
+   */
+  async batchValidate(
+    ids: number[],
+    newStatut: ColisStatutSuivi,
+    user: any,
+  ): Promise<{ updated: number; errors: Array<{ id: number; message: string }> }> {
+    const errors: Array<{ id: number; message: string }> = [];
+    let updated = 0;
+
+    for (const id of ids) {
+      try {
+        const colis = await this.colisRepository.findOne({
+          where: { id },
+          relations: ['client', 'agence'],
+        });
+        if (!colis) {
+          errors.push({ id, message: 'Colis non trouvé' });
+          continue;
+        }
+        colis.statut_suivi = newStatut;
+        await this.colisRepository.save(colis);
+        updated++;
+      } catch (err: any) {
+        errors.push({ id, message: err.message || 'Erreur' });
+      }
+    }
+
+    return { updated, errors };
+  }
+
+  // ── HISTORIQUE CLIENT PAR TÉLÉPHONE ────────────────────────────────────────
+  /**
+   * Renvoie les 10 derniers colis d'un client identifié par son numéro de téléphone.
+   */
+  async getClientHistory(phone: string, user: any): Promise<any> {
+    const cleanPhone = phone.replace(/\s+/g, '').replace(/^00/, '+');
+
+    const client = await this.clientRepository
+      .createQueryBuilder('cl')
+      .where("REPLACE(cl.tel_exp, ' ', '') LIKE :phone", { phone: `%${cleanPhone.slice(-9)}%` })
+      .getOne();
+
+    if (!client) {
+      return { client: null, colis: [], message: 'Client non trouvé avec ce numéro' };
+    }
+
+    const colis = await this.colisRepository.find({
+      where: { client: { id: client.id } },
+      order: { created_at: 'DESC' },
+      take: 10,
+      relations: ['agence'],
+    });
+
+    return {
+      client: {
+        id: client.id,
+        nom: client.nom_exp,
+        telephone: client.tel_exp,
+        email: client.email_exp,
+      },
+      colis: colis.map((c) => ({
+        id: c.id,
+        ref: c.ref_colis,
+        destination: c.lieu_dest,
+        destinataire: c.nom_dest,
+        statut: c.statut_suivi,
+        montant_estime: c.montant_estime,
+        date: c.created_at,
+        agence: c.agence?.nom,
+      })),
+      total: colis.length,
+    };
+  }
+
+  // ── CALCUL DE TARIF AUTOMATIQUE ────────────────────────────────────────────
+  /**
+   * Calcule le prix estimé d'un colis selon la grille tarifaire (poids + destination).
+   */
+  async calculateTarif(params: {
+    poids_kg: number;
+    destination: string;
+    type_envoi?: string;
+  }): Promise<{
+    tarif_unitaire: number;
+    montant_estime: number;
+    tarif_source: string;
+  }> {
+    try {
+      // Cherche un tarif correspondant via TarifsService
+      const tarifs = await this.tarifsService.findAll();
+      const destination = (params.destination || '').toUpperCase();
+      const typeEnvoi = (params.type_envoi || '').toUpperCase();
+
+      // Recherche par destination (pays ou ville)
+      let tarif = tarifs.find(
+        (t: any) =>
+          (t.destination || '').toUpperCase().includes(destination) ||
+          destination.includes((t.destination || '').toUpperCase()),
+      );
+
+      // Fallback : tarif par défaut
+      if (!tarif && tarifs.length > 0) {
+        tarif = tarifs.find((t: any) => (t.type || '').toUpperCase() === typeEnvoi) || tarifs[0];
+      }
+
+      if (!tarif) {
+        return {
+          tarif_unitaire: 0,
+          montant_estime: 0,
+          tarif_source: 'Aucun tarif trouvé — saisie manuelle requise',
+        };
+      }
+
+      const prixKg = Number((tarif as any).prix_kg || (tarif as any).tarif || 0);
+      const montant = Math.round(prixKg * params.poids_kg);
+
+      return {
+        tarif_unitaire: prixKg,
+        montant_estime: montant,
+        tarif_source: `Grille: ${(tarif as any).destination || (tarif as any).libelle || 'Standard'} — ${prixKg} FCFA/kg`,
+      };
+    } catch {
+      return { tarif_unitaire: 0, montant_estime: 0, tarif_source: 'Erreur calcul tarif' };
+    }
+  }
 }
