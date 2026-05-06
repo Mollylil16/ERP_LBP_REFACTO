@@ -146,7 +146,7 @@ export const RhDashboardTab: React.FC = () => {
             {Object.entries(data?.par_statut ?? {}).map(([statut, nb]) => (
               <Row key={statut} justify="space-between" style={{ marginBottom: 6 }}>
                 <Tag color={STATUT_COLOR[statut] ?? 'default'}>{statut}</Tag>
-                <strong>{nb as number}</strong>
+                <strong>{nb}</strong>
               </Row>
             ))}
           </Card>
@@ -156,7 +156,7 @@ export const RhDashboardTab: React.FC = () => {
             {Object.entries(data?.par_type_contrat ?? {}).map(([type, nb]) => (
               <Row key={type} justify="space-between" style={{ marginBottom: 6 }}>
                 <Tag>{type}</Tag>
-                <strong>{nb as number}</strong>
+                <strong>{nb}</strong>
               </Row>
             ))}
           </Card>

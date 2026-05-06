@@ -8,9 +8,9 @@ export interface RhDashboard {
   cdd_actifs: number
   conges_en_attente: number
   alertes_cdd: Array<{ id: number; matricule: string; nom: string; prenoms: string; date_fin: string; jours_restants: number }>
-  par_agence: Array<{ agence: string; nb: number }>
-  par_statut: Array<{ statut: string; nb: number }>
-  par_type_contrat: Array<{ type: string; nb: number }>
+  par_agence: Array<{ agence_nom: string; n: number }>
+  par_statut: Record<string, number>
+  par_type_contrat: Record<string, number>
 }
 
 export interface RhEmploye {
