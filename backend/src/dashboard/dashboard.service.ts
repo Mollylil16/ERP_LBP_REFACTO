@@ -256,15 +256,13 @@ export class DashboardService {
       this.pointJournalierRepository
         .createQueryBuilder('pj')
         .leftJoin('pj.agence', 'a')
-        .select('a.id', 'agenceId')
+        .select('DISTINCT a.id', 'agenceId')
         .addSelect('a.nom', 'agenceNom')
         .where('pj.date_point = :date', { date: todayStr })
         .andWhere('pj.statut IN (:...statuts)', {
           statuts: ['SOUMIS', 'VALIDE'],
         })
         .andWhere('a.id IS NOT NULL')
-        .groupBy('a.id')
-        .addGroupBy('a.nom')
         .getRawMany(),
 
       // Nombre total d'agences actives
