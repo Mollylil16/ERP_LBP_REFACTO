@@ -77,9 +77,10 @@ export class AlertService {
       const soumisRaw = await this.pointJournalierRepository
         .createQueryBuilder('pj')
         .leftJoin('pj.agence', 'a')
-        .select('DISTINCT a.id', 'agenceId')
+        .select('a.id', 'agenceId')
         .where('pj.date_point = :date', { date: todayStr })
         .andWhere('pj.statut IN (:...statuts)', { statuts: ['SOUMIS', 'VALIDE'] })
+        .distinct(true)
         .getRawMany();
 
       const agencesOk = new Set(soumisRaw.map((r: any) => Number(r.agenceId)));
