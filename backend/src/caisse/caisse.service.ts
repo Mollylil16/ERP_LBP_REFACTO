@@ -1227,4 +1227,130 @@ export class CaisseService implements OnApplicationBootstrap {
       }),
     );
   }
+
+  // ==========================================
+  // WORKFLOWS DE TRANSFERT SÉCURISÉ D'AGENCE
+  // ==========================================
+
+  async initiateTransfer(
+    fromCaisseId: number,
+    montant: number,
+    modeTransfert: string,
+    username: string,
+  ): Promise<MouvementCaisse> {
+    const fromCaisse = await this.caisseRepository.findOne({
+      where: { id: fromCaisseId },
+      relations: ['agence'],
+    });
+    if (!fromCaisse) throw new NotFoundException('Caisse émettrice introuvable');
+
+    const label = `En transit - Transfert vers Caisse Principale (${modeTransfert})`;
+
+    return this.createMovement(
+      {
+        id_caisse: fromCaisseId,
+        montant,
+        libelle: label,
+        mode_retrait: modeTransfert,
+        details: {
+          en_transit: true,
+          from_caisse_id: fromCaisseId,
+          from_agence_nom: fromCaisse.agence?.nom ?? 'Agence',
+          confirmed: false,
+          initiated_at: new Date(),
+        },
+      },
+      MouvementType.DECAISSEMENT,
+      username,
+      fromCaisse.agence?.id,
+      'CAISSIER_AGENCE',
+    );
+  }
+
+  async getPendingTransfers(): Promise<MouvementCaisse[]> {
+    const movements = await this.mouvementRepository.find({
+      where: { type: MouvementType.DECAISSEMENT },
+      order: { created_at: 'DESC' },
+      relations: ['caisse', 'caisse.agence'],
+    });
+
+    return movements.filter(
+      (m) => m.details && m.details.en_transit === true && m.details.confirmed === false,
+    );
+  }
+
+  async confirmTransfer(
+    mouvementId: number,
+    username: string,
+    roleCode?: string,
+  ): Promise<any> {
+    const mouvementDecaissement = await this.mouvementRepository.findOne({
+      where: { id: mouvementId },
+      relations: ['caisse', 'caisse.agence'],
+    });
+
+    if (!mouvementDecaissement) {
+      throw new NotFoundException('Mouvement de transfert introuvable');
+    }
+
+    if (!mouvementDecaissement.details || mouvementDecaissement.details.en_transit !== true) {
+      throw new BadRequestException('Ce mouvement n’est pas un transfert en transit');
+    }
+
+    if (mouvementDecaissement.details.confirmed === true) {
+      throw new BadRequestException('Ce transfert a déjà été réceptionné et confirmé');
+    }
+
+    const hubCaisseId = await this.resolveHubPrincipalCaisseId();
+    const hubCaisse = await this.caisseRepository.findOne({
+      where: { id: hubCaisseId },
+      relations: ['agence'],
+    });
+
+    if (!hubCaisse) throw new NotFoundException('Caisse Principale Hub introuvable');
+
+    // Mettre à jour le mouvement émetteur (marqué confirmé)
+    mouvementDecaissement.details.confirmed = true;
+    mouvementDecaissement.details.confirmed_at = new Date();
+    mouvementDecaissement.details.confirmed_by = username;
+    await this.mouvementRepository.save(mouvementDecaissement);
+
+    // Automatiquement valider le workflow si existant
+    const wf = await this.workflowRepository.findOne({
+      where: { mouvement_id: mouvementId },
+    });
+    if (wf) {
+      wf.status = WorkflowStatus.VALIDATED;
+      wf.approved_by = username;
+      wf.approved_at = new Date();
+      await this.workflowRepository.save(wf);
+    }
+
+    // Créer le mouvement entrant (APPRO) sur la caisse principale du Siège
+    const labelEntree = `APPRO centralisation - Réception de ${mouvementDecaissement.caisse.nom}`;
+    const mouvementAppro = await this.createMovement(
+      {
+        id_caisse: hubCaisseId,
+        montant: mouvementDecaissement.montant,
+        libelle: labelEntree,
+        mode_retrait: mouvementDecaissement.mode_retrait,
+        details: {
+          transfer_source_mouvement_id: mouvementId,
+          from_caisse_id: mouvementDecaissement.caisse.id,
+        },
+      },
+      MouvementType.APPRO,
+      username,
+      hubCaisse.agence?.id,
+      roleCode ?? 'CAISSIER',
+    );
+
+    return {
+      success: true,
+      senderMouvementId: mouvementId,
+      receiverMouvementId: mouvementAppro.id,
+      montant: mouvementDecaissement.montant,
+    };
+  }
 }
+

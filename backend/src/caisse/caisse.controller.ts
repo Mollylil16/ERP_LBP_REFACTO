@@ -338,4 +338,38 @@ export class CaisseController {
   ) {
     return this.caisseService.detectAnomalies(dateDebut, dateFin);
   }
+
+  // ==========================================
+  // ENDPOINTS DE TRANSFERT ET CENTRALISATION SÉCURISÉE
+  // ==========================================
+
+  @Post('transfer/initiate')
+  @RequirePermission('caisse.operations')
+  @ApiOperation({ summary: 'Initier un transfert d’agence vers la caisse principale' })
+  initiateTransfer(@Body() body: any, @Request() req) {
+    return this.caisseService.initiateTransfer(
+      Number(body.id_caisse),
+      Number(body.montant),
+      body.mode_transfert || 'ESPECE',
+      req.user.username,
+    );
+  }
+
+  @Get('transfer/pending')
+  @RequirePermission('caisse.view')
+  @ApiOperation({ summary: 'Liste des transferts en transit en attente de réception' })
+  getPendingTransfers() {
+    return this.caisseService.getPendingTransfers();
+  }
+
+  @Post('transfer/confirm/:id')
+  @RequirePermission('caisse.operations')
+  @ApiOperation({ summary: 'Confirmer la réception physique des fonds au siège' })
+  confirmTransfer(@Param('id') id: string, @Request() req) {
+    return this.caisseService.confirmTransfer(
+      Number(id),
+      req.user.username,
+      this.reqRole(req),
+    );
+  }
 }

@@ -201,6 +201,27 @@ export const getCaisseAnomalies = async (params?: { date_debut?: string; date_fi
 }
 
 /**
+ * Initier un transfert sécurisé
+ */
+export const initiateTransfer = async (payload: { id_caisse: number; montant: number; mode_transfert: string }) => {
+  return apiService.post<any>(`${BASE_URL}/transfer/initiate`, payload)
+}
+
+/**
+ * Récupérer les transferts en attente (En transit)
+ */
+export const getPendingTransfers = async () => {
+  return apiService.get<any[]>(`${BASE_URL}/transfer/pending`)
+}
+
+/**
+ * Confirmer la réception des fonds au siège
+ */
+export const confirmTransfer = async (mouvementId: number) => {
+  return apiService.post<any>(`${BASE_URL}/transfer/confirm/${mouvementId}`)
+}
+
+/**
  * Service caisse exporté comme objet (pour compatibilité)
  */
 export const caisseService = {
@@ -226,4 +247,8 @@ export const caisseService = {
   attachJustificatif,
   getReconciliation,
   getCaisseAnomalies,
+  initiateTransfer,
+  getPendingTransfers,
+  confirmTransfer,
 }
+
