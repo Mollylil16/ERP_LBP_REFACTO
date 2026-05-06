@@ -131,7 +131,7 @@ export const SupervisionPerformanceTab: React.FC<{ range: [Dayjs, Dayjs] }> = ({
               key: "rank",
               width: 70,
               align: "center",
-              render: (_1, _2, index) => {
+              render: (_1: any, _2: any, index: number) => {
                 const colors = ["#ffd700", "#c0c0c0", "#cd7f32"];
                 return index < 3 ? (
                   <Tag color={colors[index]} style={{ fontWeight: 700, borderRadius: "50%", width: 24, height: 24, padding: 0, textAlign: "center", lineHeight: "22px" }}>
@@ -146,7 +146,7 @@ export const SupervisionPerformanceTab: React.FC<{ range: [Dayjs, Dayjs] }> = ({
               title: "Agence",
               dataIndex: "agenceNom",
               key: "agenceNom",
-              render: (text) => <span style={{ fontWeight: 600, color: "var(--premium-accent)" }}>{text}</span>,
+              render: (text: string) => <span style={{ fontWeight: 600, color: "var(--premium-accent)" }}>{text}</span>,
             },
             {
               title: "Score Global",
