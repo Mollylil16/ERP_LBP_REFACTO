@@ -96,6 +96,20 @@ export const RhEvaluationsTab: React.FC = () => {
       render: (v: string) => <Tag color={STATUT_COLOR[v]}>{STATUT_LABEL[v]}</Tag>,
     },
     {
+      title: 'Score résultats',
+      dataIndex: 'score_resultats',
+      key: 'score_resultats',
+      render: (v: number | null, r: RhEvaluation) =>
+        v !== null ? (
+          <span>
+            {v}/100
+            {r.metriques_auto && (
+              <Tag color="blue" style={{ marginLeft: 4, fontSize: 10 }}>auto</Tag>
+            )}
+          </span>
+        ) : '—',
+    },
+    {
       title: 'Note globale',
       dataIndex: 'note_globale',
       key: 'note_globale',
@@ -104,6 +118,16 @@ export const RhEvaluationsTab: React.FC = () => {
           <span>
             <StarOutlined style={{ color: '#faad14', marginRight: 4 }} />
             {v}/100
+          </span>
+        ) : '—',
+    },
+    {
+      title: 'Production auto',
+      key: 'metriques_auto',
+      render: (_: unknown, r: RhEvaluation) =>
+        r.metriques_auto ? (
+          <span style={{ fontSize: 11 }}>
+            {r.metriques_auto.colis_count ?? 0} colis
           </span>
         ) : '—',
     },

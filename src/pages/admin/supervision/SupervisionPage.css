@@ -89,3 +89,34 @@
   height: 16px;
   line-height: 16px;
 }
+
+/* ─── Responsive ─── */
+@media (max-width: 1023px) {
+  .lbp-supervision-command {
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 768px) {
+  .lbp-supervision-hero-text {
+    flex-direction: column;
+    gap: 8px;
+    align-items: flex-start;
+  }
+
+  .lbp-supervision-header {
+    flex-direction: column;
+    gap: 8px;
+    align-items: flex-start;
+  }
+
+  .lbp-supervision-icon {
+    font-size: 24px !important;
+    margin-top: 0 !important;
+  }
+
+  .lbp-supervision-range-card {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}

@@ -389,6 +389,7 @@ export interface RhPaieLigne {
   prime_transport: number
   heures_sup_montant: number
   autres_primes: number
+  prime_performance: number
   salaire_brut: number
   cnps_retraite_salarial: number
   cmu_salarial: number
@@ -476,6 +477,12 @@ export interface RhEvaluation {
   commentaire_evaluateur: string | null
   commentaire_employe: string | null
   plan_developpement: string | null
+  metriques_auto: {
+    colis_count?: number
+    ca_total?: number
+    periode?: string
+    calcule_le?: string
+  } | null
   created_at: string
 }
 

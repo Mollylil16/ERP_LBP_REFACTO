@@ -17,7 +17,12 @@ import { SupervisionAnnotation } from './entities/supervision-annotation.entity'
 import { SupervisionRapport } from './entities/supervision-rapport.entity';
 import { SupervisionService } from './supervision.service';
 import { SupervisionInsightsService } from './supervision-insights.service';
+import { SupervisionCronService } from './supervision-cron.service';
+import { PdfSupervisionService } from './pdf-supervision.service';
 import { SupervisionController } from './supervision.controller';
+import { RhCongeRequest } from '../rh/entities/rh-conge-request.entity';
+import { RhEvaluation } from '../rh/entities/rh-evaluation.entity';
+import { RhEmploye } from '../rh/entities/rh-employe.entity';
 
 @Module({
   imports: [
@@ -37,10 +42,13 @@ import { SupervisionController } from './supervision.controller';
       SupervisionDemandeJustification,
       SupervisionAnnotation,
       SupervisionRapport,
+      RhCongeRequest,
+      RhEvaluation,
+      RhEmploye,
     ]),
   ],
   controllers: [SupervisionController],
-  providers: [SupervisionService, SupervisionInsightsService],
+  providers: [SupervisionService, SupervisionInsightsService, SupervisionCronService, PdfSupervisionService],
   exports: [SupervisionService, SupervisionInsightsService],
 })
 export class SupervisionModule {}

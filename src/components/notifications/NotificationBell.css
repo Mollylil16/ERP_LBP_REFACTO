@@ -100,3 +100,21 @@
 .notification-popover-overlay .ant-popover-inner-content {
   padding: 12px;
 }
+
+/* ─── Responsive ─── */
+@media (max-width: 440px) {
+  .notification-popover {
+    width: calc(100vw - 32px);
+    max-width: 360px;
+  }
+
+  .notification-popover-overlay {
+    max-width: calc(100vw - 16px) !important;
+  }
+}
+
+@media (hover: none) and (pointer: coarse) {
+  .notification-close {
+    opacity: 1;
+  }
+}

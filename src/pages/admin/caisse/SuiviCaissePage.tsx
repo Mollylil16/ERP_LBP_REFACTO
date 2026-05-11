@@ -536,7 +536,7 @@ export const SuiviCaissePage: React.FC = () => {
                   <Select
                     value={idCaisse}
                     onChange={(val: number) => setSelectedCaisseId(val)}
-                    style={{ minWidth: 200 }}
+                    style={{ minWidth: 140, maxWidth: '100%', flex: 1 }}
                     options={caisses.map((c) => ({
                       label: (c.libelle || c.code) + (c.peut_operer === false ? ' (consultation)' : ''),
                       value: c.id,

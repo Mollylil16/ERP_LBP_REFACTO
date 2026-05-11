@@ -4,6 +4,8 @@ import {
   Button,
   Card,
   DatePicker,
+  Dropdown,
+  Grid,
   Input,
   Pagination,
   Select,
@@ -12,6 +14,7 @@ import {
   Tag,
   Typography,
 } from 'antd'
+import { MoreOutlined } from '@ant-design/icons'
 import type { ColumnsType } from 'antd/es/table'
 import { useQuery } from '@tanstack/react-query'
 import type { CallCenterConversationRow } from '@types'
@@ -58,6 +61,7 @@ export const CallCenterInboxPage: React.FC = () => {
     setPage(1)
     setQApplied(qInput.trim())
   }, [qInput])
+  const screens = Grid.useBreakpoint()
 
   const resetFilters = useCallback(() => {
     setPage(1)
@@ -109,13 +113,14 @@ export const CallCenterInboxPage: React.FC = () => {
       title: 'Canal',
       dataIndex: 'channel',
       key: 'channel',
-      width: 100,
+      width: 90,
       render: (c: string) => <Tag color={c === 'whatsapp' ? 'green' : 'blue'}>{c}</Tag>,
     },
     {
       title: 'Dossier',
       key: 'case_status',
-      width: 110,
+      width: 100,
+      responsive: ['sm'],
       render: (_: unknown, row: CallCenterConversationRow) => {
         const s = row.case_status || 'open'
         const color =
@@ -124,44 +129,48 @@ export const CallCenterInboxPage: React.FC = () => {
       },
     },
     {
-      title: 'Téléphone client',
+      title: 'Téléphone',
       dataIndex: 'customer_phone',
       key: 'customer_phone',
-      width: 200,
+      width: 140,
       render: (p: string) => <span>{p}</span>,
     },
     {
       title: 'Client',
       key: 'client',
-      width: 200,
+      width: 160,
+      responsive: ['md'],
       ellipsis: true,
       render: (_: unknown, row: CallCenterConversationRow) =>
         row.client_nom ?? (row.client_id != null ? `#${row.client_id}` : '—'),
     },
     {
-      title: 'Ligne / WhatsApp Business',
+      title: 'Ligne WA',
       dataIndex: 'callcenter_phone',
       key: 'callcenter_phone',
-      width: 160,
+      width: 130,
+      responsive: ['lg'],
       render: (p: string | null) => p ?? '—',
     },
     {
       title: 'Non lus',
       dataIndex: 'unread_count',
       key: 'unread_count',
-      width: 80,
+      width: 70,
+      responsive: ['sm'],
     },
     {
-      title: 'Dernier message',
+      title: 'Dernier msg',
       dataIndex: 'last_message_at',
       key: 'last_message_at',
-      width: 170,
+      width: 140,
+      responsive: ['md'],
       render: (d: string | null) => (d ? formatDate(d) : '—'),
     },
     {
       title: 'Actions',
       key: 'action',
-      width: 400,
+      width: screens.lg ? 360 : 80,
       fixed: 'right',
       render: (_: unknown, row: CallCenterConversationRow) => {
         const waUrl = buildWhatsAppChatUrl(row.customer_phone)
@@ -175,51 +184,58 @@ export const CallCenterInboxPage: React.FC = () => {
         if (row.last_facture_id != null) litigeQs.set('facture_id', String(row.last_facture_id))
         litigeQs.set('from', 'callcenter')
         const litigeHref = `/litiges?${litigeQs.toString()}`
+
+        const actionItems = [
+          ...(waUrl ? [{
+            key: 'wa',
+            label: 'WhatsApp',
+            onClick: (e: { domEvent: React.MouseEvent }) => {
+              e.domEvent.preventDefault()
+              window.open(waUrl, '_blank', 'noopener,noreferrer')
+            },
+          }] : []),
+          ...(clientSearch ? [{ key: 'clients', label: <Link to={`/clients?search=${encodeURIComponent(clientSearch)}`}>Clients</Link> }] : []),
+          ...(row.client_id != null ? [{ key: 'litige-new', label: <Link to={litigeHref}>Nouveau litige</Link> }] : []),
+          ...(row.last_litige_id != null ? [{ key: 'litige-linked', label: <Link to={`/litiges/${row.last_litige_id}`}>Litige lié</Link> }] : []),
+          ...(row.last_facture_id != null ? [{ key: 'facture', label: <Link to={`/factures/${row.last_facture_id}/preview`}>Facture</Link> }] : []),
+        ]
+
+        if (!screens.lg) {
+          return (
+            <Space size="small">
+              <Link to={`/callcenter/inbox/${row.id}`} state={{ conversation: row }}>
+                <Button type="primary" size="small">Voir</Button>
+              </Link>
+              {actionItems.length > 0 && (
+                <Dropdown menu={{ items: actionItems }} trigger={['click']}>
+                  <Button size="small" icon={<MoreOutlined />} />
+                </Dropdown>
+              )}
+            </Space>
+          )
+        }
+
         return (
           <Space size="small" wrap>
             <Link to={`/callcenter/inbox/${row.id}`} state={{ conversation: row }}>
-              <Button type="link" size="small">
-                Conversation
-              </Button>
+              <Button type="link" size="small">Conversation</Button>
             </Link>
             {waUrl ? (
-              <Button
-                size="small"
-                onClick={(e: React.MouseEvent<HTMLElement>) => {
-                  e.preventDefault()
-                  window.open(waUrl, '_blank', 'noopener,noreferrer')
-                }}
-              >
+              <Button size="small" onClick={(e: React.MouseEvent<HTMLElement>) => { e.preventDefault(); window.open(waUrl, '_blank', 'noopener,noreferrer') }}>
                 WhatsApp
               </Button>
             ) : null}
             <WithPermission permission={PERMISSIONS.CLIENTS.READ}>
-              {clientSearch ? (
-                <Link to={`/clients?search=${encodeURIComponent(clientSearch)}`}>
-                  <Button size="small">Clients</Button>
-                </Link>
-              ) : null}
+              {clientSearch ? (<Link to={`/clients?search=${encodeURIComponent(clientSearch)}`}><Button size="small">Clients</Button></Link>) : null}
             </WithPermission>
             <WithPermission permission={PERMISSIONS.LITIGES.CREATE}>
-              {row.client_id != null ? (
-                <Link to={litigeHref}>
-                  <Button size="small">Nouveau litige</Button>
-                </Link>
-              ) : null}
+              {row.client_id != null ? (<Link to={litigeHref}><Button size="small">Nouveau litige</Button></Link>) : null}
             </WithPermission>
             <WithPermission permission={PERMISSIONS.LITIGES.VIEW}>
-              {row.last_litige_id != null ? (
-                <Link to={`/litiges/${row.last_litige_id}`}>
-                  <Button size="small">Litige lié</Button>
-                </Link>
-              ) : null}
+              {row.last_litige_id != null ? (<Link to={`/litiges/${row.last_litige_id}`}><Button size="small">Litige lié</Button></Link>) : null}
             </WithPermission>
             <WithPermission permission={PERMISSIONS.FACTURES.READ}>
-              {row.last_facture_id != null ? (
-                <Link to={`/factures/${row.last_facture_id}/preview`}>
-                  <Button size="small">Facture</Button>
-                </Link>
-              ) : null}
+              {row.last_facture_id != null ? (<Link to={`/factures/${row.last_facture_id}/preview`}><Button size="small">Facture</Button></Link>) : null}
             </WithPermission>
           </Space>
         )
@@ -238,11 +254,11 @@ export const CallCenterInboxPage: React.FC = () => {
         <Space wrap align="start" size="middle">
           <Input
             allowClear
-            placeholder="Téléphone, nom client, n° colis / facture…"
+            placeholder="Téléphone, nom client, n° colis…"
             value={qInput}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setQInput(e.target.value)}
             onPressEnter={() => applySearch()}
-            style={{ minWidth: 280, maxWidth: 420 }}
+            style={{ minWidth: screens.sm ? 200 : '100%', maxWidth: 420, flex: 1 }}
           />
           <Button type="primary" onClick={() => applySearch()}>
             Rechercher
@@ -325,7 +341,7 @@ export const CallCenterInboxPage: React.FC = () => {
           columns={columns}
           dataSource={data?.data ?? []}
           pagination={false}
-          scroll={{ x: 1280 }}
+          scroll={{ x: screens.lg ? 1100 : screens.sm ? 700 : 420 }}
         />
         {data && data.totalPages > 1 ? (
           <Pagination

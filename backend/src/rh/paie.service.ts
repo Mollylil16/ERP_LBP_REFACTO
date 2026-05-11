@@ -7,6 +7,7 @@ import { RhPaieLigne } from './entities/rh-paie-ligne.entity';
 import { RhAvanceSalaire, StatutAvance } from './entities/rh-avance-salaire.entity';
 import { RhEmploye, StatutEmploye } from './entities/rh-employe.entity';
 import { RhContrat, StatutContrat } from './entities/rh-contrat.entity';
+import { RhProductionBridgeService } from './rh-production-bridge.service';
 
 @Injectable()
 export class PaieService {
@@ -18,6 +19,7 @@ export class PaieService {
     @InjectRepository(RhEmploye) private employeRepo: Repository<RhEmploye>,
     @InjectRepository(RhContrat) private contratRepo: Repository<RhContrat>,
     private readonly dataSource: DataSource,
+    private readonly productionBridge: RhProductionBridgeService,
   ) {}
 
   // ─── Configuration paie ───────────────────────────────────────────────────
@@ -214,11 +216,30 @@ export class PaieService {
 
       const ligneData = await this.calculerLigne(emp, contrat, config, totalAvances, 0);
 
-      const ligne = this.ligneRepo.create({ ...ligneData, id_run: runId });
+      // Prime de performance via production (colis/CA) si l'employé est lié à un compte utilisateur
+      let primePerf = 0;
+      if (emp.id_user) {
+        try {
+          const metrics = await this.productionBridge.getProductionMetrics(emp.id_user, run.periode);
+          primePerf = metrics.prime_performance;
+          if (primePerf > 0 && ligneData.detail_calcul) {
+            ligneData.detail_calcul = {
+              ...ligneData.detail_calcul,
+              production_colis: metrics.colis_count,
+              production_ca: metrics.ca_total,
+              prime_perf_source: 'production_bridge',
+            };
+          }
+        } catch {
+          // si la requête de production échoue, on continue sans prime
+        }
+      }
+
+      const ligne = this.ligneRepo.create({ ...ligneData, id_run: runId, prime_performance: primePerf });
       await this.ligneRepo.save(ligne);
 
-      totalBrut += Number(ligneData.salaire_brut ?? 0);
-      totalNet += Number(ligneData.salaire_net ?? 0);
+      totalBrut += Number(ligneData.salaire_brut ?? 0) + primePerf;
+      totalNet += Number(ligneData.salaire_net ?? 0) + primePerf;
       totalChargesSal += Number(ligneData.total_deductions_salariales ?? 0);
       totalChargesPat += Number(ligneData.total_charges_patronales ?? 0);
     }

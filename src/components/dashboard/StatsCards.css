@@ -152,7 +152,23 @@
 }
 
 /* RESPONSIVE */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .stat-card-content {
+    padding: 16px;
+    gap: 12px;
+  }
+
+  .stat-value {
+    font-size: 22px;
+  }
+}
+
 @media (max-width: 768px) {
+  .stat-card-content {
+    padding: 14px;
+    gap: 12px;
+  }
+
   .stat-value {
     font-size: 20px;
   }
@@ -161,5 +177,27 @@
     width: 40px;
     height: 40px;
     font-size: 20px;
+  }
+}
+
+@media (max-width: 480px) {
+  .stat-card-content {
+    padding: 12px;
+    gap: 10px;
+  }
+
+  .stat-value {
+    font-size: 18px;
+  }
+
+  .stat-icon-wrapper {
+    width: 36px;
+    height: 36px;
+    font-size: 18px;
+  }
+
+  .stat-card-skeleton {
+    height: 80px;
+    padding: 12px;
   }
 }

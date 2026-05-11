@@ -52,7 +52,7 @@ export const PredictionCard: React.FC<PredictionCardProps> = ({ data, loading })
             loading={loading}
         >
             <Row gutter={16} align="middle">
-                <Col span={12}>
+                <Col xs={24} sm={12}>
                     <Statistic
                         title="Volume Estimé"
                         value={prediction}
@@ -60,7 +60,7 @@ export const PredictionCard: React.FC<PredictionCardProps> = ({ data, loading })
                         valueStyle={{ fontWeight: 'bold' }}
                     />
                 </Col>
-                <Col span={12}>
+                <Col xs={24} sm={12}>
                     <div style={{ textAlign: 'right' }}>
                         <Text type="secondary" block style={{ marginBottom: 4 }}>Tendance</Text>
                         <Space>

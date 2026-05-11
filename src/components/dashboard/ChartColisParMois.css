@@ -109,3 +109,33 @@
   color: white;
   margin-left: auto;
 }
+
+/* ─── Responsive ─── */
+@media (max-width: 1023px) {
+  .chart-header {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .chart-legend-inline {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+}
+
+@media (max-width: 768px) {
+  .modern-chart-card {
+    padding: 14px;
+  }
+
+  .chart-header {
+    flex-direction: column;
+    align-items: flex-start;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+  }
+
+  .chart-title {
+    font-size: var(--font-size-base) !important;
+  }
+}

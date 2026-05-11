@@ -182,22 +182,22 @@ export const RhEmployesTab: React.FC = () => {
       >
         <Form form={form} layout="vertical" size="small">
           <Row gutter={12}>
-            <Col span={12}>
+            <Col xs={24} sm={12}>
               <Form.Item name="nom" label="Nom" rules={[{ required: true }]}>
                 <Input />
               </Form.Item>
             </Col>
-            <Col span={12}>
+            <Col xs={24} sm={12}>
               <Form.Item name="prenoms" label="Prénoms" rules={[{ required: true }]}>
                 <Input />
               </Form.Item>
             </Col>
-            <Col span={12}>
+            <Col xs={24} sm={12}>
               <Form.Item name="date_embauche" label="Date d'embauche" rules={[{ required: true }]}>
                 <DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" />
               </Form.Item>
             </Col>
-            <Col span={12}>
+            <Col xs={24} sm={12}>
               <Form.Item name="type_contrat_actuel" label="Type de contrat" rules={[{ required: true }]}>
                 <Select>
                   <Option value="CDI">CDI</Option>
@@ -207,12 +207,12 @@ export const RhEmployesTab: React.FC = () => {
                 </Select>
               </Form.Item>
             </Col>
-            <Col span={12}>
+            <Col xs={24} sm={12}>
               <Form.Item name="intitule_poste" label="Intitulé du poste">
                 <Input />
               </Form.Item>
             </Col>
-            <Col span={12}>
+            <Col xs={24} sm={12}>
               <Form.Item name="telephone" label="Téléphone">
                 <Input />
               </Form.Item>

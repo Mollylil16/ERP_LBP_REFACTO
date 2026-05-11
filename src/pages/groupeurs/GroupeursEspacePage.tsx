@@ -69,12 +69,13 @@ export const GroupeursEspacePage: React.FC = () => {
                 loading={l1}
                 rowKey={(_r: any, i: number) => `d-${i}`}
                 dataSource={devis ?? []}
+                scroll={{ x: 600 }}
                 columns={[
-                  { title: 'Numéro', dataIndex: 'numero' },
-                  { title: 'Client', dataIndex: 'client_nom' },
-                  { title: 'Origine', dataIndex: 'origine' },
-                  { title: 'Destination', dataIndex: 'destination' },
-                  { title: 'Statut', dataIndex: 'statut', render: (s: string) => <Tag>{s}</Tag> },
+                  { title: 'Numéro', dataIndex: 'numero', width: 120 },
+                  { title: 'Client', dataIndex: 'client_nom', width: 140 },
+                  { title: 'Origine', dataIndex: 'origine', width: 120, responsive: ['sm'] },
+                  { title: 'Destination', dataIndex: 'destination', width: 120 },
+                  { title: 'Statut', dataIndex: 'statut', width: 100, render: (s: string) => <Tag>{s}</Tag> },
                 ]}
                 pagination={{ pageSize: 10 }}
               />
@@ -89,12 +90,13 @@ export const GroupeursEspacePage: React.FC = () => {
                 loading={l2}
                 rowKey={(_r: any, i: number) => `e-${i}`}
                 dataSource={exp ?? []}
+                scroll={{ x: 600 }}
                 columns={[
-                  { title: 'Numéro', dataIndex: 'numero_expedition' },
-                  { title: 'Client', dataIndex: 'client_nom' },
-                  { title: 'Origine', dataIndex: 'origine' },
-                  { title: 'Destination', dataIndex: 'destination' },
-                  { title: 'Statut', dataIndex: 'statut', render: (s: string) => <Tag color={s === 'litige' ? 'red' : 'blue'}>{s}</Tag> },
+                  { title: 'Numéro', dataIndex: 'numero_expedition', width: 130 },
+                  { title: 'Client', dataIndex: 'client_nom', width: 140 },
+                  { title: 'Origine', dataIndex: 'origine', width: 120, responsive: ['sm'] },
+                  { title: 'Destination', dataIndex: 'destination', width: 120 },
+                  { title: 'Statut', dataIndex: 'statut', width: 100, render: (s: string) => <Tag color={s === 'litige' ? 'red' : 'blue'}>{s}</Tag> },
                 ]}
                 pagination={{ pageSize: 10 }}
               />
@@ -109,11 +111,12 @@ export const GroupeursEspacePage: React.FC = () => {
                 loading={l3}
                 rowKey={(_r: any, i: number) => `f-${i}`}
                 dataSource={fac ?? []}
+                scroll={{ x: 500 }}
                 columns={[
-                  { title: 'Numéro', dataIndex: 'numero_facture' },
-                  { title: 'Client', dataIndex: 'client_nom' },
-                  { title: 'Total TTC', dataIndex: 'total_ttc' },
-                  { title: 'Statut paiement', dataIndex: 'statut_paiement', render: (s: string) => <Tag>{s}</Tag> },
+                  { title: 'Numéro', dataIndex: 'numero_facture', width: 140 },
+                  { title: 'Client', dataIndex: 'client_nom', width: 140, responsive: ['sm'] },
+                  { title: 'Total TTC', dataIndex: 'total_ttc', width: 120 },
+                  { title: 'Statut', dataIndex: 'statut_paiement', width: 110, render: (s: string) => <Tag>{s}</Tag> },
                 ]}
                 pagination={{ pageSize: 10 }}
               />
@@ -128,10 +131,11 @@ export const GroupeursEspacePage: React.FC = () => {
                 loading={l4}
                 rowKey={(_r: any, i: number) => `doc-${i}`}
                 dataSource={docs ?? []}
+                scroll={{ x: 400 }}
                 columns={[
-                  { title: 'Type', dataIndex: 'type_document' },
-                  { title: 'Nom fichier', dataIndex: 'nom_fichier' },
-                  { title: 'Statut', dataIndex: 'statut', render: (s: string) => <Tag>{s}</Tag> },
+                  { title: 'Type', dataIndex: 'type_document', width: 120 },
+                  { title: 'Nom fichier', dataIndex: 'nom_fichier', ellipsis: true },
+                  { title: 'Statut', dataIndex: 'statut', width: 100, render: (s: string) => <Tag>{s}</Tag> },
                 ]}
                 pagination={{ pageSize: 10 }}
               />

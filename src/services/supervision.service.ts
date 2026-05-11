@@ -251,6 +251,58 @@ class SupervisionService {
     return apiService.get<{ par_agence_role: unknown[] }>('/supervision/performance-agents')
   }
 
+  getPerformanceAgentsRh(debut?: string, fin?: string) {
+    const q = new URLSearchParams()
+    if (debut) q.set('debut', debut)
+    if (fin) q.set('fin', fin)
+    const qs = q.toString()
+    return apiService.get<{
+      par_agence_role: unknown[]
+      agents_rh: Array<{
+        id_employe: number
+        matricule: string
+        nom_complet: string
+        intitule_poste: string | null
+        type_contrat_actuel: string
+        agence_nom: string | null
+        username: string | null
+        nb_absences_mois: number
+        derniere_note_eval: number | null
+        type_eval: string | null
+        date_eval: string | null
+      }>
+    }>(`/supervision/performance-agents-rh${qs ? `?${qs}` : ''}`)
+  }
+
+  getAgentsAbsents(date?: string) {
+    const q = new URLSearchParams()
+    if (date) q.set('date', date)
+    const qs = q.toString()
+    return apiService.get<
+      Array<{
+        id_employe: number
+        matricule: string
+        nom_complet: string
+        agence_nom: string | null
+        date_debut: string
+        date_fin: string
+        nb_jours: number
+        type_conge: string
+      }>
+    >(`/supervision/agents-absents${qs ? `?${qs}` : ''}`)
+  }
+
+  autoSignalerAnomalies(debut?: string, fin?: string) {
+    const q = new URLSearchParams()
+    if (debut) q.set('debut', debut)
+    if (fin) q.set('fin', fin)
+    const qs = q.toString()
+    return apiService.post<{ signalements_crees: number; anomalies: unknown }>(
+      `/supervision/anomalies/auto-signaler${qs ? `?${qs}` : ''}`,
+      {},
+    )
+  }
+
   getSignalements() {
     return apiService.get<SupervisionSignalementRow[]>('/supervision/signalements')
   }
@@ -265,6 +317,20 @@ class SupervisionService {
 
   getAgents() {
     return apiService.get<SupervisionAgentRow[]>('/supervision/agents')
+  }
+
+  async downloadRapportPdf(id: number) {
+    const res = await apiService.instance.get(`/supervision/rapports/${id}/pdf`, {
+      responseType: 'blob',
+    })
+    const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }))
+    const link = document.createElement('a')
+    link.href = url
+    link.setAttribute('download', `rapport_supervision_${id}.pdf`)
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    window.URL.revokeObjectURL(url)
   }
 }
 

@@ -18,8 +18,24 @@
   gap: 12px;
 }
 
+@media (min-width: 769px) and (max-width: 1024px) {
+  .statistiques-historiques-page {
+    padding: 0;
+  }
+}
+
 @media (max-width: 768px) {
+  .statistiques-historiques-page {
+    padding: 0;
+  }
+
   .page-header {
     flex-direction: column;
+    gap: 12px;
+  }
+
+  .page-header h2 {
+    font-size: 1.1rem;
+    gap: 8px;
   }
 }

@@ -24,6 +24,9 @@ import {
   NotificationCategory,
   NotificationType,
 } from '../notifications/entities/notification.entity';
+import { RhCongeRequest, StatutConge } from '../rh/entities/rh-conge-request.entity';
+import { RhEvaluation } from '../rh/entities/rh-evaluation.entity';
+import { RhEmploye } from '../rh/entities/rh-employe.entity';
 
 @Injectable()
 export class SupervisionService {
@@ -52,6 +55,12 @@ export class SupervisionService {
     private annRepo: Repository<SupervisionAnnotation>,
     @InjectRepository(SupervisionRapport)
     private rapportRepo: Repository<SupervisionRapport>,
+    @InjectRepository(RhCongeRequest)
+    private congeRepo: Repository<RhCongeRequest>,
+    @InjectRepository(RhEvaluation)
+    private evalRepo: Repository<RhEvaluation>,
+    @InjectRepository(RhEmploye)
+    private rhEmployeRepo: Repository<RhEmploye>,
     private readonly dataSource: DataSource,
     private readonly caisseService: CaisseService,
     private readonly notificationService: NotificationService,
@@ -183,7 +192,7 @@ export class SupervisionService {
   }
 
   /**
-   * Anomalies / contrôles caisse-factures sur une période (défaut : 7 derniers jours → aujourd’hui).
+   * Anomalies / contrôles caisse-factures sur une période (défaut : 7 derniers jours → aujourd'hui).
    */
   async getAnomalies(debut?: string, fin?: string) {
     const endD = fin ? new Date(fin) : new Date();
@@ -222,6 +231,13 @@ export class SupervisionService {
     return this.rapportRepo.find({
       order: { created_at: 'DESC' },
       take: 200,
+      relations: ['agence', 'auteur', 'destinataire'],
+    });
+  }
+
+  async getRapport(id: number) {
+    return this.rapportRepo.findOne({
+      where: { id },
       relations: ['agence', 'auteur', 'destinataire'],
     });
   }
@@ -388,8 +404,162 @@ export class SupervisionService {
     );
   }
 
-  /** Périmètre lecture colis côté liste (même filtre qu’un directeur) */
+  /** Périmètre lecture colis côté liste (même filtre qu'un directeur) */
   isSupervisionReadNetwork(user: any): boolean {
     return effectiveRoleCode(user) === UserRole.SUPERVISEURE_GENERALE;
+  }
+
+  /**
+   * Agents actuellement absents (congés approuvés couvrant la date de référence).
+   */
+  async getAgentsAbsents(dateRef?: string): Promise<
+    Array<{
+      id_employe: number;
+      matricule: string;
+      nom_complet: string;
+      agence_nom: string | null;
+      date_debut: string;
+      date_fin: string;
+      nb_jours: number;
+      type_conge: string;
+    }>
+  > {
+    const ref = dateRef ? dateRef : new Date().toISOString().slice(0, 10);
+    return this.dataSource.query(
+      `SELECT
+         e.id AS id_employe,
+         e.matricule,
+         CONCAT(e.nom, ' ', e.prenoms) AS nom_complet,
+         a.nom AS agence_nom,
+         cr.date_debut,
+         cr.date_fin,
+         cr.nb_jours,
+         ct.libelle AS type_conge
+       FROM rh_conge_requests cr
+       INNER JOIN rh_employes e ON e.id = cr.id_employe
+       LEFT JOIN agences a ON a.id = e.id_agence
+       LEFT JOIN rh_conge_types ct ON ct.id = cr.id_conge_type
+       WHERE cr.statut = $1
+         AND cr.date_debut <= $2
+         AND cr.date_fin >= $2
+       ORDER BY a.nom NULLS LAST, e.nom`,
+      [StatutConge.APPROUVE_RH, ref],
+    );
+  }
+
+  /**
+   * Performance agents enrichie avec données RH : contrat, absences du mois, dernière évaluation.
+   */
+  async getPerformanceAgentsRh(debut?: string, fin?: string): Promise<{
+    par_agence_role: unknown[];
+    agents_rh: unknown[];
+  }> {
+    const base = await this.getPerformanceAgents();
+
+    const moisDebut = debut ?? new Date().toISOString().slice(0, 7) + '-01';
+    const moisFin = fin ?? new Date().toISOString().slice(0, 10);
+
+    const agentsRh: unknown[] = await this.dataSource.query(
+      `SELECT
+         e.id AS id_employe,
+         e.matricule,
+         CONCAT(e.nom, ' ', e.prenoms) AS nom_complet,
+         e.intitule_poste,
+         e.type_contrat_actuel,
+         a.nom AS agence_nom,
+         u.username,
+         COALESCE(absences.nb_absences, 0) AS nb_absences_mois,
+         ev.note_globale AS derniere_note_eval,
+         ev.type AS type_eval,
+         ev.created_at AS date_eval
+       FROM rh_employes e
+       LEFT JOIN agences a ON a.id = e.id_agence
+       LEFT JOIN lbp_users u ON u.id = e.id_user
+       LEFT JOIN LATERAL (
+         SELECT COUNT(*) AS nb_absences
+         FROM rh_conge_requests cr
+         WHERE cr.id_employe = e.id
+           AND cr.statut = $1
+           AND cr.date_debut <= $3
+           AND cr.date_fin >= $2
+       ) absences ON TRUE
+       LEFT JOIN LATERAL (
+         SELECT note_globale, type, created_at
+         FROM rh_evaluations
+         WHERE id_employe = e.id
+           AND note_globale IS NOT NULL
+         ORDER BY created_at DESC
+         LIMIT 1
+       ) ev ON TRUE
+       WHERE e.statut = 'actif'
+       ORDER BY a.nom NULLS LAST, e.nom
+       LIMIT 500`,
+      [StatutConge.APPROUVE_RH, moisDebut, moisFin],
+    );
+
+    return { par_agence_role: base.par_agence_role, agents_rh: agentsRh };
+  }
+
+  /**
+   * Détecte les anomalies et crée automatiquement des signalements pour celles jugées critiques.
+   * Évite les doublons sur 24 h.
+   */
+  async autoSignalerAnomalies(debut?: string, fin?: string, auteurId?: number): Promise<{
+    signalements_crees: number;
+    anomalies: unknown;
+  }> {
+    const anomaliesResult = await this.getAnomalies(debut, fin);
+    const anomalies = (anomaliesResult as any)?.anomalies;
+    if (!anomalies) return { signalements_crees: 0, anomalies: anomaliesResult };
+
+    const depuis24h = new Date(Date.now() - 24 * 3600 * 1000);
+    const existants = await this.signalementRepo.find({
+      where: { created_at: Between(depuis24h, new Date()) },
+      select: ['type'],
+    });
+    const typesDejaSignales = new Set(existants.map((s) => s.type));
+
+    const toCreate: Array<{ type: string; description: string; gravite: string }> = [];
+
+    const doublons: unknown[] = anomalies.doublons_paiements ?? [];
+    if (doublons.length > 0 && !typesDejaSignales.has('doublon_paiement')) {
+      toCreate.push({
+        type: 'doublon_paiement',
+        description: `${doublons.length} doublon(s) de paiement détecté(s) sur la période.`,
+        gravite: 'critique',
+      });
+    }
+
+    const incoherences: unknown[] = anomalies.incoherences_montants_factures ?? [];
+    if (incoherences.length > 0 && !typesDejaSignales.has('incoherence_facture')) {
+      toCreate.push({
+        type: 'incoherence_facture',
+        description: `${incoherences.length} incohérence(s) de montant facture détectée(s).`,
+        gravite: 'critique',
+      });
+    }
+
+    const trous: unknown[] = anomalies.trous_sequence_factures ?? [];
+    if (trous.length > 0 && !typesDejaSignales.has('trou_sequence_facture')) {
+      toCreate.push({
+        type: 'trou_sequence_facture',
+        description: `${trous.length} série(s) de factures avec des trous de numérotation.`,
+        gravite: 'moyen',
+      });
+    }
+
+    const systemAuteurId = auteurId ?? 1;
+    for (const s of toCreate) {
+      const signalement = this.signalementRepo.create({
+        type: s.type,
+        description: s.description,
+        gravite: s.gravite,
+        id_auteur: systemAuteurId,
+        auteur: { id: systemAuteurId } as User,
+      });
+      await this.signalementRepo.save(signalement);
+    }
+
+    return { signalements_crees: toCreate.length, anomalies: anomaliesResult };
   }
 }

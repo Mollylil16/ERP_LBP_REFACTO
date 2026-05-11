@@ -137,6 +137,13 @@ export const RhPaieTab: React.FC = () => {
         r.employe ? `${r.employe.nom} ${r.employe.prenoms}` : `#${r.id_employe}`,
     },
     { title: 'Brut', dataIndex: 'salaire_brut', key: 'salaire_brut', render: (v: number) => fmt(v) },
+    {
+      title: 'Prime perf.',
+      dataIndex: 'prime_performance',
+      key: 'prime_performance',
+      render: (v: number) =>
+        v > 0 ? <Tag color="green">{fmt(v)}</Tag> : <span style={{ color: '#bbb' }}>—</span>,
+    },
     { title: 'Déductions', dataIndex: 'total_deductions_salariales', key: 'deductions', render: (v: number) => fmt(v) },
     {
       title: 'Net',

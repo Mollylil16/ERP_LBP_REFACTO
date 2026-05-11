@@ -153,3 +153,49 @@
 .error {
     color: #ef4444;
 }
+
+/* ─── Responsive ─── */
+@media (min-width: 769px) and (max-width: 1024px) {
+    .roles-list-page {
+        padding: 1rem;
+    }
+
+    .roles-grid {
+        grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    }
+}
+
+@media (max-width: 768px) {
+    .roles-list-page {
+        padding: 0;
+    }
+
+    .page-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+        margin-bottom: 1rem;
+    }
+
+    .page-header h1 {
+        font-size: 1.5rem;
+    }
+
+    .roles-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+
+    .role-card {
+        padding: 1rem;
+    }
+
+    .role-meta {
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    .role-actions {
+        flex-wrap: wrap;
+    }
+}

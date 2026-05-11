@@ -30,6 +30,7 @@ import {
   TeamOutlined,
   RadarChartOutlined,
   BellOutlined,
+  FilePdfOutlined,
 } from '@ant-design/icons'
 import type { Dayjs } from 'dayjs'
 import dayjs from 'dayjs'
@@ -270,6 +271,25 @@ export const SupervisionPage: React.FC = () => {
         c
           ? <Text type="secondary" style={{ fontSize: 12 }}>{c.slice(0, 80)}{c.length > 80 ? '…' : ''}</Text>
           : <Text type="secondary">—</Text>,
+    },
+    {
+      title: 'Actions',
+      key: 'actions',
+      width: 90,
+      render: (_: any, r: SupervisionRapportRow) => (
+        <Button
+          type="link"
+          icon={<FilePdfOutlined />}
+          size="small"
+          onClick={() => {
+            message.loading("Génération du PDF...")
+            supervisionService.downloadRapportPdf(r.id)
+              .catch(() => message.error("Échec du téléchargement."))
+          }}
+        >
+          PDF
+        </Button>
+      )
     },
   ]
 

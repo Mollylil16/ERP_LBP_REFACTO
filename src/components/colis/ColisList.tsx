@@ -675,7 +675,7 @@ export const ColisList: React.FC<ColisListProps> = ({
             Lancer l'importation
           </Button>,
         ]}
-        width={720}
+        width={screens.md ? 720 : 'calc(100vw - 32px)'}
       >
         <div style={{ marginBottom: 16 }}>
           <p>

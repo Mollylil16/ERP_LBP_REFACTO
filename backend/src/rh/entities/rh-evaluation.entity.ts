@@ -80,6 +80,14 @@ export class RhEvaluation {
   @Column({ type: 'jsonb', nullable: true })
   objectifs: Array<{ description: string; mesure: string; statut: string; score: number }> | null;
 
+  @Column({ type: 'jsonb', nullable: true })
+  metriques_auto: {
+    colis_count?: number;
+    ca_total?: number;
+    periode?: string;
+    calcule_le?: string;
+  } | null;
+
   @CreateDateColumn()
   created_at: Date;
 

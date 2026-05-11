@@ -1,6 +1,7 @@
 import React from 'react'
-import { Alert, Card, Col, Row, Space, Statistic, Table, Tag, Typography } from 'antd'
-import { useQuery } from '@tanstack/react-query'
+import { Alert, Button, Card, Col, Row, Space, Statistic, Table, Tag, Typography, message } from 'antd'
+import { BulbOutlined } from '@ant-design/icons'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { Dayjs } from 'dayjs'
 import {
   supervisionService,
@@ -21,11 +22,25 @@ type Props = { range: [Dayjs, Dayjs] }
 export const SupervisionAnomaliesTab: React.FC<Props> = ({ range }) => {
   const debut = range[0].format('YYYY-MM-DD')
   const fin = range[1].format('YYYY-MM-DD')
+  const qc = useQueryClient()
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['supervision', 'anomalies', debut, fin],
     queryFn: () => supervisionService.getAnomalies(debut, fin),
     refetchInterval: 120_000,
+  })
+
+  const autoSignalerMut = useMutation({
+    mutationFn: () => supervisionService.autoSignalerAnomalies(debut, fin),
+    onSuccess: (res) => {
+      if (res.signalements_crees > 0) {
+        message.success(`${res.signalements_crees} signalement(s) créé(s) automatiquement`)
+      } else {
+        message.info('Aucun nouveau signalement — anomalies déjà signalées dans les 24 h')
+      }
+      qc.invalidateQueries({ queryKey: ['supervision', 'signalements'] })
+    },
+    onError: () => message.error('Erreur lors de l\'auto-signalement'),
   })
 
   if (error) {
@@ -78,6 +93,20 @@ export const SupervisionAnomaliesTab: React.FC<Props> = ({ range }) => {
           }
         />
       )}
+
+      {/* Bouton auto-signalement */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+        <Button
+          icon={<BulbOutlined />}
+          loading={autoSignalerMut.isPending}
+          onClick={() => autoSignalerMut.mutate()}
+          disabled={rien}
+          type={rien ? 'default' : 'primary'}
+          danger={!rien}
+        >
+          Auto-signaler les anomalies critiques
+        </Button>
+      </div>
 
       {/* En-tête période */}
       <Card size="small" title="Période d'analyse" loading={isLoading}>

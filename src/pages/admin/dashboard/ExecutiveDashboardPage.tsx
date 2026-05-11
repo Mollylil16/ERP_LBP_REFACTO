@@ -211,8 +211,8 @@ export const ExecutiveDashboardPage: React.FC = () => {
                 </Space>
               }
             >
-              <Row gutter={16}>
-                <Col span={12} style={{ textAlign: 'center' }}>
+              <Row gutter={[16, 16]}>
+                <Col xs={12} style={{ textAlign: 'center' }}>
                   <Statistic
                     value={data.points_journaliers?.agences_soumis_auj ?? 0}
                     suffix={`/ ${data.points_journaliers?.total_agences ?? 0}`}
@@ -221,7 +221,7 @@ export const ExecutiveDashboardPage: React.FC = () => {
                   />
                   <Text type="secondary" style={{ fontSize: 12 }}>Soumis</Text>
                 </Col>
-                <Col span={12} style={{ textAlign: 'center' }}>
+                <Col xs={12} style={{ textAlign: 'center' }}>
                   <Statistic
                     value={data.points_journaliers?.agences_en_retard ?? 0}
                     valueStyle={{

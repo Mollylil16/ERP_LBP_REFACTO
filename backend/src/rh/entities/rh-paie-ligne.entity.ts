@@ -41,6 +41,9 @@ export class RhPaieLigne {
   autres_primes: number;
 
   @Column({ type: 'numeric', precision: 15, scale: 2, default: 0 })
+  prime_performance: number;
+
+  @Column({ type: 'numeric', precision: 15, scale: 2, default: 0 })
   salaire_brut: number;
 
   // Déductions salariales

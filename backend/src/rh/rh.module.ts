@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { RolesModule } from '../roles/roles.module';
+import { Colis } from '../colis/entities/colis.entity';
+import { Facture } from '../factures/entities/facture.entity';
 
 // Entities — module 1 (personnel / congés)
 import { RhEmploye } from './entities/rh-employe.entity';
@@ -34,6 +36,7 @@ import { RhHistoriquePoste } from './entities/rh-historique-poste.entity';
 import { RhOnboardingChecklist } from './entities/rh-onboarding.entity';
 
 // Services
+import { RhProductionBridgeService } from './rh-production-bridge.service';
 import { RhService } from './rh.service';
 import { PaieService } from './paie.service';
 import { PresenceService } from './presence.service';
@@ -59,6 +62,9 @@ import { DocumentRhController } from './document-rh.controller';
   imports: [
     RolesModule,
     TypeOrmModule.forFeature([
+      // Production bridge (cross-module)
+      Colis,
+      Facture,
       // Personnel & congés
       RhEmploye,
       RhContrat,
@@ -98,6 +104,7 @@ import { DocumentRhController } from './document-rh.controller';
     DocumentRhController,
   ],
   providers: [
+    RhProductionBridgeService,
     RhService,
     PaieService,
     PresenceService,
@@ -109,6 +116,6 @@ import { DocumentRhController } from './document-rh.controller';
     DocumentRhService,
     RhEncryptionService,
   ],
-  exports: [RhService, PdfService, RhEncryptionService],
+  exports: [RhService, PdfService, RhEncryptionService, RhProductionBridgeService],
 })
 export class RhModule {}

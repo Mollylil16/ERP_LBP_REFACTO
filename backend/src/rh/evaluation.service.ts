@@ -2,11 +2,15 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { RhEvaluation, StatutEvaluation, TypeEvaluation } from './entities/rh-evaluation.entity';
+import { RhEmploye } from './entities/rh-employe.entity';
+import { RhProductionBridgeService } from './rh-production-bridge.service';
 
 @Injectable()
 export class EvaluationService {
   constructor(
     @InjectRepository(RhEvaluation) private evalRepo: Repository<RhEvaluation>,
+    @InjectRepository(RhEmploye) private employeRepo: Repository<RhEmploye>,
+    private readonly productionBridge: RhProductionBridgeService,
   ) {}
 
   async getEvaluations(employeId?: number, statut?: StatutEvaluation): Promise<RhEvaluation[]> {
@@ -22,7 +26,45 @@ export class EvaluationService {
   }
 
   async createEvaluation(data: Partial<RhEvaluation>): Promise<RhEvaluation> {
-    return this.evalRepo.save(this.evalRepo.create(data));
+    const enriched = { ...data };
+
+    // Auto-calcul score_resultats depuis la production si l'employé a un compte user
+    if (data.id_employe && data.periode && !data.score_resultats) {
+      try {
+        const employe = await this.employeRepo.findOne({ where: { id: data.id_employe } });
+        if (employe?.id_user) {
+          // Normaliser la période vers 'YYYY-MM' (prend le premier mois de la période eval)
+          const periodeMonth = this.normalisePeriodeMois(data.periode);
+          if (periodeMonth) {
+            const metrics = await this.productionBridge.getProductionMetrics(employe.id_user, periodeMonth);
+            enriched.score_resultats = metrics.score_resultats || null;
+            enriched.metriques_auto = {
+              colis_count: metrics.colis_count,
+              ca_total: metrics.ca_total,
+              periode: periodeMonth,
+              calcule_le: new Date().toISOString(),
+            };
+          }
+        }
+      } catch {
+        // si la requête de production échoue, on crée l'évaluation sans auto-score
+      }
+    }
+
+    return this.evalRepo.save(this.evalRepo.create(enriched));
+  }
+
+  private normalisePeriodeMois(periode: string): string | null {
+    // '2025-Q1' → '2025-01', '2025-S1' → '2025-01', '2025' → '2025-01', '2025-06' → '2025-06'
+    if (/^\d{4}-\d{2}$/.test(periode)) return periode;
+    if (/^\d{4}-Q1$/i.test(periode)) return `${periode.slice(0, 4)}-01`;
+    if (/^\d{4}-Q2$/i.test(periode)) return `${periode.slice(0, 4)}-04`;
+    if (/^\d{4}-Q3$/i.test(periode)) return `${periode.slice(0, 4)}-07`;
+    if (/^\d{4}-Q4$/i.test(periode)) return `${periode.slice(0, 4)}-10`;
+    if (/^\d{4}-S1$/i.test(periode)) return `${periode.slice(0, 4)}-01`;
+    if (/^\d{4}-S2$/i.test(periode)) return `${periode.slice(0, 4)}-07`;
+    if (/^\d{4}$/.test(periode)) return `${periode}-01`;
+    return null;
   }
 
   async updateEvaluation(id: number, data: Partial<RhEvaluation>): Promise<RhEvaluation> {
@@ -31,6 +73,24 @@ export class EvaluationService {
     Object.assign(eval_, data);
     if (data.score_resultats !== undefined) {
       eval_.note_globale = this.calculerNoteGlobale(eval_);
+    }
+    // Rafraîchir les métriques auto si on change la période
+    if (data.periode && data.periode !== eval_.periode) {
+      try {
+        const employe = await this.employeRepo.findOne({ where: { id: eval_.id_employe } });
+        if (employe?.id_user) {
+          const periodeMonth = this.normalisePeriodeMois(data.periode);
+          if (periodeMonth) {
+            const metrics = await this.productionBridge.getProductionMetrics(employe.id_user, periodeMonth);
+            eval_.metriques_auto = {
+              colis_count: metrics.colis_count,
+              ca_total: metrics.ca_total,
+              periode: periodeMonth,
+              calcule_le: new Date().toISOString(),
+            };
+          }
+        }
+      } catch { /* pas bloquant */ }
     }
     return this.evalRepo.save(eval_);
   }

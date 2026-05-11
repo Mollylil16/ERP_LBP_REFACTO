@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
-import { Card, Input, Button, Typography, Space, Timeline, Empty, Descriptions, Tag, Divider, Alert } from 'antd'
+import { Card, Grid, Input, Button, Typography, Space, Timeline, Empty, Descriptions, Tag, Divider, Alert } from 'antd'
 import { SearchOutlined, EnvironmentOutlined, GlobalOutlined } from '@ant-design/icons'
 import { colisService, ColisTrackingInfo } from '@services/colis.service'
 import { formatDateTime } from '@utils/format'
@@ -45,6 +45,7 @@ export const TrackPage: React.FC = () => {
   const [trackingData, setTrackingData] = useState<ColisTrackingInfo | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const screens = Grid.useBreakpoint()
 
   const { ref: pathRef } = useParams<{ ref: string }>()
 
@@ -123,7 +124,7 @@ export const TrackPage: React.FC = () => {
         )}
 
         {trackingData ? (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: screens.md ? '1fr 1fr' : '1fr', gap: 24 }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
               <Card title={<Space><SearchOutlined /> Informations Générales</Space>} style={{ borderRadius: 12, border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
                 <Descriptions column={1} bordered size="small">
@@ -167,7 +168,7 @@ export const TrackPage: React.FC = () => {
                 style={{ borderRadius: 12, border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', overflow: 'hidden' }}
                 bodyStyle={{ padding: 0 }}
               >
-                <div style={{ height: 400, width: '100%' }}>
+                <div style={{ height: screens.md ? 400 : 260, width: '100%' }}>
                   <MapContainer center={destinationCoords as [number, number]} zoom={13} style={{ height: '100%', width: '100%' }}>
                     <TileLayer
                       url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"

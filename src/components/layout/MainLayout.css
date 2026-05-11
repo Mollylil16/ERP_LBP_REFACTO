@@ -156,8 +156,32 @@
   }
   .lbp-floating-exports-tour-btn {
     right: 12px;
-    bottom: 54px;
+    bottom: 58px;
     padding-inline: 10px;
+  }
+}
+
+/* Très petit mobile : boutons flottants icône seulement */
+@media (max-width: 390px) {
+  .lbp-floating-tour-btn,
+  .lbp-floating-exports-tour-btn {
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+  }
+
+  .lbp-floating-tour-btn span:not(.anticon),
+  .lbp-floating-exports-tour-btn span:not(.anticon) {
+    display: none;
+  }
+
+  .lbp-floating-exports-tour-btn {
+    bottom: 66px;
   }
 }
 

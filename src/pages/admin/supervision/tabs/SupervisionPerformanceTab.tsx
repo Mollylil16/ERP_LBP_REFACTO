@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react'
 import { Button, Card, Col, Input, Progress, Row, Statistic, Table, Tag, Typography, message, Tooltip } from 'antd'
 import { useQuery } from '@tanstack/react-query'
-import { FileExcelOutlined, SearchOutlined } from '@ant-design/icons'
+import { FileExcelOutlined, SearchOutlined, TeamOutlined } from '@ant-design/icons'
 import type { Dayjs } from 'dayjs'
 import { supervisionService } from '@services/supervision.service'
 import { exportSupervisionPerformanceExcel } from '@utils/supervisionExcelExport'
@@ -58,6 +58,17 @@ export const SupervisionPerformanceTab: React.FC<{ range: [Dayjs, Dayjs] }> = ({
   const { data: headcount, isLoading: l2 } = useQuery({
     queryKey: ['supervision', 'performance-agents'],
     queryFn: () => supervisionService.getPerformanceAgents(),
+  })
+
+  const { data: agentsAbsents, isLoading: lAbsents } = useQuery({
+    queryKey: ['supervision', 'agents-absents'],
+    queryFn: () => supervisionService.getAgentsAbsents(),
+    refetchInterval: 300_000,
+  })
+
+  const { data: rhData, isLoading: lRh } = useQuery({
+    queryKey: ['supervision', 'performance-agents-rh', debut, fin],
+    queryFn: () => supervisionService.getPerformanceAgentsRh(debut, fin),
   })
 
   const { data: agencyScores, isLoading: lScores } = useQuery({
@@ -215,6 +226,94 @@ export const SupervisionPerformanceTab: React.FC<{ range: [Dayjs, Dayjs] }> = ({
           ]}
         />
       </Card>
+
+      {/* Agents absents (congés approuvés) */}
+      <Card
+        size="small"
+        title={
+          <span>
+            <TeamOutlined style={{ marginRight: 8 }} />
+            Agents actuellement en congé
+            {agentsAbsents && agentsAbsents.length > 0 && (
+              <Tag color="orange" style={{ marginLeft: 8 }}>{agentsAbsents.length}</Tag>
+            )}
+          </span>
+        }
+        loading={lAbsents}
+        style={{ marginBottom: 16 }}
+      >
+        {!agentsAbsents || agentsAbsents.length === 0 ? (
+          <Tag color="green">Aucun agent en congé aujourd'hui</Tag>
+        ) : (
+          <Table
+            size="small"
+            dataSource={agentsAbsents}
+            rowKey="id_employe"
+            pagination={false}
+            scroll={{ x: true }}
+            columns={[
+              { title: 'Matricule', dataIndex: 'matricule', width: 100 },
+              { title: 'Nom', dataIndex: 'nom_complet' },
+              { title: 'Agence', dataIndex: 'agence_nom', render: (v: string | null) => v ?? '—' },
+              { title: 'Type congé', dataIndex: 'type_conge', width: 130 },
+              { title: 'Du', dataIndex: 'date_debut', width: 100 },
+              { title: 'Au', dataIndex: 'date_fin', width: 100 },
+              { title: 'Jours', dataIndex: 'nb_jours', width: 70, align: 'center' as const },
+            ]}
+          />
+        )}
+      </Card>
+
+      {/* Données RH des agents */}
+      {rhData && rhData.agents_rh.length > 0 && (
+        <Card
+          size="small"
+          title="Données RH des agents actifs (contrat, absences mois, dernière évaluation)"
+          loading={lRh}
+          style={{ marginBottom: 16 }}
+        >
+          <Table
+            size="small"
+            dataSource={rhData.agents_rh as Array<{
+              id_employe: number; matricule: string; nom_complet: string
+              intitule_poste: string | null; type_contrat_actuel: string
+              agence_nom: string | null; username: string | null
+              nb_absences_mois: number; derniere_note_eval: number | null
+              type_eval: string | null; date_eval: string | null
+            }>}
+            rowKey="id_employe"
+            pagination={{ pageSize: 15 }}
+            scroll={{ x: true }}
+            columns={[
+              { title: 'Matricule', dataIndex: 'matricule', width: 100 },
+              { title: 'Nom', dataIndex: 'nom_complet' },
+              { title: 'Poste', dataIndex: 'intitule_poste', render: (v: string | null) => v ?? '—' },
+              { title: 'Contrat', dataIndex: 'type_contrat_actuel', width: 80, render: (v: string) => <Tag>{v}</Tag> },
+              { title: 'Agence', dataIndex: 'agence_nom', render: (v: string | null) => v ?? '—' },
+              {
+                title: 'Abs. mois',
+                dataIndex: 'nb_absences_mois',
+                width: 90,
+                align: 'center' as const,
+                render: (v: number) => (
+                  <Tag color={v > 0 ? 'orange' : 'default'}>{v}</Tag>
+                ),
+              },
+              {
+                title: 'Dernière note',
+                dataIndex: 'derniere_note_eval',
+                width: 110,
+                render: (v: number | null) =>
+                  v != null ? (
+                    <Tag color={v >= 70 ? 'green' : v >= 50 ? 'gold' : 'red'}>
+                      {v}/100
+                    </Tag>
+                  ) : '—',
+              },
+            ]}
+          />
+        </Card>
+      )}
 
       {/* Résumé niveaux */}
       {utilisateurs.length > 0 && (

@@ -243,8 +243,8 @@ const WithdrawalTrackingPage: React.FC = () => {
                     </Space>
                 </div>
 
-                <Row gutter={16}>
-                    <Col span={8}>
+                <Row gutter={[16, 16]}>
+                    <Col xs={24} sm={12} md={8}>
                         <Card>
                             <Statistic
                                 title="Total Retraits (Période)"
@@ -256,7 +256,7 @@ const WithdrawalTrackingPage: React.FC = () => {
                             />
                         </Card>
                     </Col>
-                    <Col span={8}>
+                    <Col xs={24} sm={12} md={8}>
                         <Card>
                             <Statistic
                                 title="Nombre d'opérations"

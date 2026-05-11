@@ -8,7 +8,10 @@ import {
   Query,
   Request,
   UseGuards,
+  Res,
+  NotFoundException,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
@@ -16,6 +19,7 @@ import { AgencyRequiredGuard } from '../auth/guards/agency-required.guard';
 import { RequirePermission } from '../auth/decorators/permissions.decorator';
 import { SupervisionService } from './supervision.service';
 import { SupervisionInsightsService } from './supervision-insights.service';
+import { PdfSupervisionService } from './pdf-supervision.service';
 import { SoumettreRapportDto } from './dto/rapport.dto';
 import { SignalementDto } from './dto/signalement.dto';
 import { DemanderJustificationDto } from './dto/justification.dto';
@@ -29,6 +33,7 @@ export class SupervisionController {
   constructor(
     private readonly supervisionService: SupervisionService,
     private readonly supervisionInsights: SupervisionInsightsService,
+    private readonly pdfService: PdfSupervisionService,
   ) {}
 
   @Get('kpis')
@@ -70,6 +75,23 @@ export class SupervisionController {
     return this.supervisionService.getPerformanceAgents();
   }
 
+  @Get('performance-agents-rh')
+  @RequirePermission('supervision.dashboard.read')
+  @ApiOperation({ summary: 'Agents avec données RH : contrat, absences du mois, dernière évaluation' })
+  getPerformanceAgentsRh(
+    @Query('debut') debut?: string,
+    @Query('fin') fin?: string,
+  ) {
+    return this.supervisionService.getPerformanceAgentsRh(debut, fin);
+  }
+
+  @Get('agents-absents')
+  @RequirePermission('supervision.dashboard.read')
+  @ApiOperation({ summary: 'Agents actuellement en congé (congés approuvés à la date de référence)' })
+  getAgentsAbsents(@Query('date') date?: string) {
+    return this.supervisionService.getAgentsAbsents(date);
+  }
+
   @Get('anomalies')
   @RequirePermission('supervision.dashboard.read')
   @ApiOperation({ summary: 'Détection doublons paiements, incohérences, trous de numérotation factures' })
@@ -78,6 +100,17 @@ export class SupervisionController {
     @Query('fin') fin?: string,
   ) {
     return this.supervisionService.getAnomalies(debut, fin);
+  }
+
+  @Post('anomalies/auto-signaler')
+  @RequirePermission('supervision.signalement.create')
+  @ApiOperation({ summary: 'Détecte les anomalies et crée automatiquement des signalements critiques (déduplication 24 h)' })
+  autoSignalerAnomalies(
+    @Query('debut') debut?: string,
+    @Query('fin') fin?: string,
+    @Request() req?: { user: { id: number } },
+  ) {
+    return this.supervisionService.autoSignalerAnomalies(debut, fin, req?.user?.id);
   }
 
   @Get('insights/kpis')
@@ -158,6 +191,26 @@ export class SupervisionController {
   @ApiOperation({ summary: 'Historique des rapports soumis' })
   getRapports() {
     return this.supervisionService.getHistoriqueRapports();
+  }
+
+  @Get('rapports/:id/pdf')
+  @RequirePermission('supervision.rapport.read')
+  @ApiOperation({ summary: 'Télécharger un rapport de supervision en PDF' })
+  async getRapportPdf(
+    @Param('id', ParseIntPipe) id: number,
+    @Res() res: Response,
+  ) {
+    const rapport = await this.supervisionService.getRapport(id);
+    if (!rapport) throw new NotFoundException('Rapport introuvable');
+
+    const buffer = await this.pdfService.genererRapportPdf(rapport);
+    
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename="rapport_supervision_${id}.pdf"`,
+      'Content-Length': buffer.length,
+    });
+    res.end(buffer);
   }
 
   @Get('signalements')

@@ -160,13 +160,13 @@ const AgencyForm: React.FC<{ initialValues: any, onSuccess: () => void, onCancel
     return (
         <Form form={form} layout="vertical" initialValues={initialValues} onFinish={onFinish}>
             <Row gutter={16}>
-                <Col span={8}><Form.Item name="code" label="Code" rules={[{ required: true }]}><Input placeholder="ABC" /></Form.Item></Col>
-                <Col span={16}><Form.Item name="nom" label="Nom de l'agence" rules={[{ required: true }]}><Input placeholder="Agence Paris Sud" /></Form.Item></Col>
+                <Col xs={24} sm={8}><Form.Item name="code" label="Code" rules={[{ required: true }]}><Input placeholder="ABC" /></Form.Item></Col>
+                <Col xs={24} sm={16}><Form.Item name="nom" label="Nom de l'agence" rules={[{ required: true }]}><Input placeholder="Agence Paris Sud" /></Form.Item></Col>
             </Row>
 
             <Row gutter={16}>
-                <Col span={12}><Form.Item name="pays" label="Pays" rules={[{ required: true }]}><Input /></Form.Item></Col>
-                <Col span={12}><Form.Item name="ville" label="Ville" rules={[{ required: true }]}><Input /></Form.Item></Col>
+                <Col xs={24} sm={12}><Form.Item name="pays" label="Pays" rules={[{ required: true }]}><Input /></Form.Item></Col>
+                <Col xs={24} sm={12}><Form.Item name="ville" label="Ville" rules={[{ required: true }]}><Input /></Form.Item></Col>
             </Row>
 
             <Form.Item name="adresse" label="Adresse exacte">
@@ -184,8 +184,8 @@ const AgencyForm: React.FC<{ initialValues: any, onSuccess: () => void, onCancel
                         Récupérer les coordonnées automatiquement depuis l'adresse
                     </Button>
                     <Row gutter={16}>
-                        <Col span={12}><Form.Item name="latitude" label="Latitude"><Input type="number" step="any" /></Form.Item></Col>
-                        <Col span={12}><Form.Item name="longitude" label="Longitude"><Input type="number" step="any" /></Form.Item></Col>
+                        <Col xs={24} sm={12}><Form.Item name="latitude" label="Latitude"><Input type="number" step="any" /></Form.Item></Col>
+                        <Col xs={24} sm={12}><Form.Item name="longitude" label="Longitude"><Input type="number" step="any" /></Form.Item></Col>
                     </Row>
                     <Form.Item name="place_id" hidden><Input /></Form.Item>
                 </Space>
