@@ -78,7 +78,7 @@ export const exportTableToExcel = async (
 
   // En-têtes
   const headerRow = worksheet.addRow(data.headers)
-  headerRow.eachCell((cell) => {
+  headerRow.eachCell((cell: any) => {
     cell.style = headerStyle
   })
   headerRow.height = 25
@@ -90,7 +90,7 @@ export const exportTableToExcel = async (
 
   // Ajuster la largeur des colonnes
   if (autoWidth && worksheet.columns) {
-    worksheet.columns.forEach((column) => {
+    worksheet.columns.forEach((column: any) => {
       if (column) {
         let maxLength = 0
         if (column.header) {
@@ -99,7 +99,7 @@ export const exportTableToExcel = async (
             : String(column.header)
           maxLength = headerValue.length
         }
-        column.eachCell?.({ includeEmpty: true }, (cell) => {
+        column.eachCell?.({ includeEmpty: true }, (cell: any) => {
           const columnLength = cell.value ? cell.value.toString().length : 10
           if (columnLength > maxLength) {
             maxLength = columnLength
@@ -113,8 +113,8 @@ export const exportTableToExcel = async (
   }
 
   // Ajouter des bordures
-  worksheet.eachRow((row, rowNumber) => {
-    row.eachCell((cell) => {
+  worksheet.eachRow((row: any, rowNumber: any) => {
+    row.eachCell((cell: any) => {
       cell.border = {
         top: { style: 'thin' },
         left: { style: 'thin' },
@@ -153,7 +153,7 @@ export const exportMultiSheetToExcel = async (
 
     // En-têtes
     const headerRow = worksheet.addRow(headers)
-    headerRow.eachCell((cell) => {
+    headerRow.eachCell((cell: any) => {
       cell.style = options.headerStyle || {
         fill: {
           type: 'pattern',
@@ -172,7 +172,7 @@ export const exportMultiSheetToExcel = async (
 
       // Ajuster la largeur
       if (worksheet.columns) {
-        worksheet.columns.forEach((column) => {
+        worksheet.columns.forEach((column: any) => {
           if (column) {
             let maxLength = 0
             if (column.header) {
@@ -181,7 +181,7 @@ export const exportMultiSheetToExcel = async (
                 : String(column.header)
               maxLength = headerValue.length
             }
-            column.eachCell?.({ includeEmpty: true }, (cell) => {
+            column.eachCell?.({ includeEmpty: true }, (cell: any) => {
               const columnLength = cell.value ? cell.value.toString().length : 10
               if (columnLength > maxLength) {
                 maxLength = columnLength
@@ -195,8 +195,8 @@ export const exportMultiSheetToExcel = async (
       }
 
     // Bordures
-    worksheet.eachRow((row) => {
-      row.eachCell((cell) => {
+    worksheet.eachRow((row: any) => {
+      row.eachCell((cell: any) => {
         cell.border = {
           top: { style: 'thin' },
           left: { style: 'thin' },
