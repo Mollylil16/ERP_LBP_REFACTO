@@ -20,18 +20,26 @@
 - **Module Logistique** : Fichiers `expedition_controller.php`, `expedition_service.php`, `expedition_repository.php`, et `routes.php`.
 - **Module Administration** : Fichiers `dashboard_controller.php`, `dashboard_service.php`, `dashboard_repository.php` (agrégation statistiques), et `routes.php`.
 
+- **Module Supervision** : Fichiers `supervision_controller.php`, `supervision_service.php`, `supervision_repository.php`, et `routes.php` (Audit réseau).
+- **Module Clients (CRM)** : Fichiers `clients_controller.php`, `clients_service.php`, `clients_repository.php`, et `routes.php`.
+- **Module Tarifs** : Fichiers `tarifs_controller.php`, `tarifs_service.php`, `tarifs_repository.php`, et `routes.php` (Calcul dynamique).
+- **Module Litiges (SAV)** : Fichiers `litiges_controller.php`, `litiges_service.php`, `litiges_repository.php`, et `routes.php` (Déclaration pertes/casses).
+- **Module Uploads** : Fichier `uploads_controller.php`, et `routes.php` (Téléchargement sécurisé).
+
 ### Modifié
 
-- `backend/bootstrap/app.php` : autoloader étendu pour `app/`, `core/` et `modules/` ; support de fichiers `snake_case.php`.
+- `backend/bootstrap/app.php` : autoloader étendu pour `app/`, `core/` et `modules/` ; support de fichiers `snake_case.php`. Interception des exceptions globales.
 - `backend/app/Controllers/BaseController.php` : passage à `Request`/`Response` centralisées, méthode `authenticate()`, `checkPermission()` et séparation des responsabilités.
 - `backend/app/Helpers/Session.php`, `backend/app/Helpers/Response.php`, `backend/app/Helpers/JWT.php`, `backend/app/Helpers/Auth.php` : wrappers vers `App\Core` pour éviter les duplications fonctionnelles.
 
 ### Corrigé
 
 - `backend/public/index.php` : routes backend déclarées via `backend/routes` pour éviter les erreurs de chargement.
+- **Faille Critique (Crash Serveur)** : Résolue par la création de `backend/core/ExceptionHandler.php` qui retourne systématiquement du JSON propre.
+- **Faille Critique (Injections/Data)** : Résolue par la création de `backend/core/Validator.php` qui standardise la validation des requêtes HTTP.
 
 ### Notes
 
-- L'architecture MVC est complétée pour les cinq modules (RH, Colissage, Finance, Logistique, Administration).
+- L'architecture MVC est complétée pour les dix modules (RH, Colissage, Finance, Logistique, Administration, Supervision, Clients, Tarifs, Litiges, Uploads).
 - Utilisation stricte de PDO et requêtes préparées dans tous les Repositories.
 - La logique métier est entièrement isolée dans les `Services`.
