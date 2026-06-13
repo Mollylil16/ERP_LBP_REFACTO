@@ -9,7 +9,7 @@ ob_start();
     <div>
         <p class="eyebrow">Dashboard opérationnel</p>
         <h2>Bonjour <?= htmlspecialchars($user['name'], ENT_QUOTES, 'UTF-8'); ?>, bienvenue dans le tableau de bord.</h2>
-        <p class="dashboard-subtitle">Cette page reste dédiée aux indicateurs métier. L’accueil après connexion est désormais séparé dans selection_portail.php.</p>
+        <p class="dashboard-subtitle">Cette page reste dédiée aux indicateurs métier. L’accueil après connexion est désormais séparé dans le portail de sélection.</p>
     </div>
     <div class="hero-chip">Dashboard • Indicateurs</div>
 </section>
@@ -89,7 +89,7 @@ ob_start();
             </div>
         </div>
         <div class="mini-stack">
-            <a href="/selection_portail.php" class="mini-link">Retour au portail</a>
+            <a href="<?= \App\Helpers\View::url('selection_portail') ?>" class="mini-link">Retour au portail</a>
             <a href="/logout" class="mini-link muted">Déconnexion</a>
         </div>
     </article>

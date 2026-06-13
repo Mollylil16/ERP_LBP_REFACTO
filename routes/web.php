@@ -6,6 +6,8 @@ use App\Router;
 use App\Controllers\AuthController;
 use App\Controllers\DashboardController;
 use App\Controllers\HomeController;
+use App\Controllers\RhDashboardController;
+use App\Controllers\RhPersonnelController;
 use App\Controllers\SelectionPortailController;
 
 /** @var Router $router */
@@ -50,6 +52,27 @@ $router->get('/logout', [AuthController::class, 'logout']);
 */
 
 $router->get('/selection_portail', [SelectionPortailController::class, 'index']);
-$router->get('/selection_portail.php', [SelectionPortailController::class, 'index']);
 
 $router->get('/dashboard', [DashboardController::class, 'index']);
+
+$router->group('/rh', function (Router $router): void {
+    $router->get('/', [RhDashboardController::class, 'index']);
+    $router->get('/dashboard', [RhDashboardController::class, 'index']);
+    $router->get('/mutations', [RhPersonnelController::class, 'mutationsIndex']);
+    $router->get('/mouvements', [RhPersonnelController::class, 'movementsIndex']);
+
+    $router->group('/personnel', function (Router $router): void {
+        $router->get('/', [RhPersonnelController::class, 'index']);
+        $router->get('/nouveau', [RhPersonnelController::class, 'create']);
+        $router->post('/', [RhPersonnelController::class, 'store']);
+        $router->get('/{id}', [RhPersonnelController::class, 'show']);
+        $router->get('/{id}/modifier', [RhPersonnelController::class, 'edit']);
+        $router->post('/{id}/modifier', [RhPersonnelController::class, 'update']);
+        $router->get('/{id}/mutation', [RhPersonnelController::class, 'mutation']);
+        $router->post('/{id}/mutation', [RhPersonnelController::class, 'applyMutation']);
+        $router->get('/{id}/sortie', [RhPersonnelController::class, 'exit']);
+        $router->post('/{id}/sortie', [RhPersonnelController::class, 'applyExit']);
+        $router->post('/{id}/reintegration', [RhPersonnelController::class, 'reintegrate']);
+        $router->post('/{id}/historique', [RhPersonnelController::class, 'addHistory']);
+    });
+});
