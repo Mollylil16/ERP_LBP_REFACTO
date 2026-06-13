@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 session_start();
 
+require_once __DIR__ . '/../vendor/autoload.php';
+
+
 define('BASE_PATH', dirname(__DIR__));
 
 // Charger le fichier .env si présent
@@ -66,6 +69,9 @@ spl_autoload_register(function (string $class): void {
 
 use App\Models\Database;
 use App\Database\MigrationRunner;
+
+// Initialisation de la gestion globale des erreurs
+\App\Core\ExceptionHandler::register();
 
 // Initialiser la connexion PDO
 $pdo = Database::getConnection();
