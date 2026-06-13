@@ -1,9 +1,9 @@
 <?php
 
 return [
-    'name' => 'Programmation Web 1.0',
-    'tagline' => 'Apprenez à créer une plateforme... en PHP !',
-    'url' => 'http://localhost/Programmation',
+    'name' => 'ERP LBP Transit',
+    'tagline' => 'Plateforme de gestion des opérations de transit et de logistique.',
+    'url' => 'http://localhost/ERP_LBP_REFACTO',
 
     'theme' => [
         'primary' => '#1d2b57',

@@ -94,7 +94,7 @@ class AuthController extends BaseController
 
         Session::flash('success', 'Connexion réussie.');
 
-        $this->redirect('/dashboard');
+        $this->redirect('/selection_portail.php');
     }
 
     /**

@@ -69,14 +69,18 @@ class AuthService
      */
     public function login(array $data): array
     {
-        $email = strtolower(trim((string) ($data['email'] ?? '')));
+        $identifier = trim((string) ($data['email'] ?? $data['username'] ?? ''));
         $password = (string) ($data['password'] ?? '');
 
-        if (!filter_var($email, FILTER_VALIDATE_EMAIL) || $password === '') {
+        if ($identifier === '' || $password === '') {
             return ['success' => false, 'message' => 'Identifiants invalides.'];
         }
 
-        $user = $this->users->findByEmail($email);
+        if (str_contains($identifier, '@') && !filter_var($identifier, FILTER_VALIDATE_EMAIL)) {
+            return ['success' => false, 'message' => 'Identifiant invalide.'];
+        }
+
+        $user = $this->users->findByIdentifier(strtolower($identifier));
 
         if (!$user || !password_verify($password, $user->passwordHash)) {
             return ['success' => false, 'message' => 'Email ou mot de passe incorrect.'];
