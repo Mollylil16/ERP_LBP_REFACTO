@@ -17,6 +17,10 @@ $moduleRoutes = [
     BASE_PATH . '/modules/administration/routes.php',
     BASE_PATH . '/modules/finance/routes.php',
     BASE_PATH . '/modules/supervision/routes.php',
+    BASE_PATH . '/modules/clients/routes.php',
+    BASE_PATH . '/modules/tarifs/routes.php',
+    BASE_PATH . '/modules/litiges/routes.php',
+    BASE_PATH . '/modules/uploads/routes.php',
 ];
 
 foreach ($moduleRoutes as $routeFile) {
