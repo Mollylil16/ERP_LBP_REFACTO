@@ -21,6 +21,9 @@ use App\Controllers\SelectionPortailController;
 |
 */
 
+/**
+ * Route de la page d’accueil.
+ */
 $router->get('/', [HomeController::class, 'index']);
 
 /*
@@ -33,12 +36,22 @@ $router->get('/', [HomeController::class, 'index']);
 |
 */
 
+
+/**
+ * Routes d’inscription.
+ */
 $router->get('/register', [AuthController::class, 'showRegister']);
 $router->post('/register', [AuthController::class, 'register']);
 
+/**
+ * Routes de connexion.
+ */
 $router->get('/login', [AuthController::class, 'showLogin']);
 $router->post('/login', [AuthController::class, 'login']);
 
+/**
+ * Route de déconnexion.
+ */
 $router->get('/logout', [AuthController::class, 'logout']);
 
 /*
@@ -51,16 +64,30 @@ $router->get('/logout', [AuthController::class, 'logout']);
 |
 */
 
+/**
+ * Route du portail de sélection des modules ERP.
+ */
 $router->get('/selection_portail', [SelectionPortailController::class, 'index']);
 
+
+/**
+ * Route du tableau de bord principal.
+ */
 $router->get('/dashboard', [DashboardController::class, 'index']);
 
+
+/**
+ * Routes RH (/rh)
+ */
 $router->group('/rh', function (Router $router): void {
     $router->get('/', [RhDashboardController::class, 'index']);
     $router->get('/dashboard', [RhDashboardController::class, 'index']);
     $router->get('/mutations', [RhPersonnelController::class, 'mutationsIndex']);
     $router->get('/mouvements', [RhPersonnelController::class, 'movementsIndex']);
 
+    /**
+     * Routes pour la gestion du personnel. (/rh/personnel)
+     */
     $router->group('/personnel', function (Router $router): void {
         $router->get('/', [RhPersonnelController::class, 'index']);
         $router->get('/nouveau', [RhPersonnelController::class, 'create']);
