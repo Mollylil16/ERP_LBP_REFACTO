@@ -1,0 +1,11 @@
+RewriteEngine On
+
+RewriteBase /Programmation/
+
+# Si le fichier ou dossier existe réellement, Apache le sert directement
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+# Sinon, toutes les requêtes passent par index.php
+RewriteRule ^ index.php [L]

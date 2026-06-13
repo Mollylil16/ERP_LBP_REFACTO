@@ -1,0 +1,30 @@
+/* =========================================================
+   VARIABLES GLOBALES
+   ========================================================= */
+
+:root {
+    --color-primary: #1d2b57;
+    --color-secondary: #fabd02;
+    --color-dark: #0f172a;
+    --color-muted: #64748b;
+    --color-light: #f8fafc;
+    --color-white: #ffffff;
+    --radius-xl: 24px;
+    --shadow-soft: 0 24px 70px rgba(15, 23, 42, 0.14);
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body.app-body {
+    margin: 0;
+    font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: var(--color-light);
+    color: var(--color-dark);
+}
+
+a {
+    text-decoration: none;
+}
+
