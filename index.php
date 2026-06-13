@@ -20,6 +20,12 @@ $requestedPath = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
 $scriptBase = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? ''));
 $basePath = rtrim($scriptBase, '/');
 
+$indexPath = $basePath . '/index.php';
+if ($requestedPath === $indexPath || $requestedPath === '/index.php') {
+    header('Location: ' . ($basePath !== '' ? $basePath : '') . '/', true, 301);
+    exit;
+}
+
 $homePaths = ['/', $basePath . '/', $basePath];
 
 if (in_array($requestedPath, $homePaths, true)) {
@@ -28,7 +34,7 @@ if (in_array($requestedPath, $homePaths, true)) {
     }
 
     if (!empty($_SESSION['auth_user_id'])) {
-        $_SERVER['REQUEST_URI'] = '/selection_portail.php';
+        $_SERVER['REQUEST_URI'] = '/selection_portail';
     } else {
         $_SERVER['REQUEST_URI'] = '/login';
     }

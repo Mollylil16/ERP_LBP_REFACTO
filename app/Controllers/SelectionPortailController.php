@@ -8,7 +8,7 @@ use App\Middleware\AuthMiddleware;
 /**
  * Portail central de sélection des modules ERP.
  *
- * Point d'entrée privé après connexion : connexion -> selection_portail.php -> module métier.
+ * Point d'entrée privé après connexion : connexion -> selection_portail -> module métier.
  */
 class SelectionPortailController extends BaseController
 {
@@ -34,7 +34,7 @@ class SelectionPortailController extends BaseController
                 'code' => 'RH',
                 'icon' => 'rh',
                 'description' => 'Employés, présences, contrats, demandes administratives, rôles opérationnels et habilitations internes.',
-                'url' => '/dashboard',
+                'url' => '/rh/dashboard',
                 'class' => 'module-rh',
                 'status' => 'Socle initial',
                 'keywords' => 'rh ressources humaines employés présence contrats congés demandes personnel habilitations',
