@@ -1,27 +1,35 @@
-# Contributing Guide
+# Guide de contribution
 
-Ce document définit les règles de développement du projet .
+Ce document explique les règles de développement du projet et les bonnes pratiques à respecter pour garder l’application propre, claire et facile à maintenir.
 
-Tous les développeurs doivent respecter ces conventions afin de maintenir une architecture propre, cohérente et maintenable.
+## 1. Objectif
+
+Tous les développeurs doivent suivre les mêmes conventions afin de :
+
+- garder une architecture cohérente ;
+- faciliter la lecture du code ;
+- réduire les erreurs ;
+- rendre le projet plus simple à faire évoluer.
 
 ---
 
-# Architecture générale
+## 2. Architecture générale
 
-Le projet suit une architecture PHP native structurée.
+Le projet suit une structure PHP native simple et organisée.
 
-Flux principal :
+### Flux principal
 
 ```text
 Route
 → Controller
 → Service
 → Repository
-→ Database
+→ Base de données
+```
 
+### Structure des dossiers
 
-# Structure des dossiers
-
+```text
 app/
 ├── Controllers/
 ├── Database/
@@ -31,182 +39,187 @@ app/
 ├── Repositories/
 └── Services/
 
-# Règles importantes
+bootstrap/
+config/
+routes/
+views/
+public/
+```
 
-Controllers
+---
+
+## 3. Rôles des dossiers
+
+### Contrôleurs
 
 Les contrôleurs :
 
 - reçoivent les requêtes HTTP ;
 - valident les entrées simples ;
 - appellent les services ;
-- retournent des vues ou des réponses JSON.
+- renvoient les vues ou les réponses.
 
-Un contrôleur ne doit pas :
+Ils ne doivent pas :
 
 - contenir de requêtes SQL ;
-- contenir une logique métier lourde ;
-- générer du HTML complexe.
+- contenir une logique métier complexe ;
+- générer des blocs HTML trop volumineux.
 
+### Services
 
-# Services
+Les services contiennent la logique métier importante, par exemple :
 
-Les services contiennent la logique métier.
+- connexion d’un utilisateur ;
+- création d’un compte ;
+- activation/désactivation d’un utilisateur.
 
-Exemples :
+### Repositories
 
-- enregistrer un utilisateur
-- desactiver le compte d'un utilisateur
-
-Toute logique métier importante doit être placée dans un service.
-
-# Repositories
-
-Les repositories sont responsables des accès à la base de données.
+Les repositories sont responsables de l’accès aux données.
 
 Toutes les requêtes SQL doivent être centralisées ici.
 
-# Interdictions :
+### Models
 
-- SQL dans les contrôleurs ;
-- SQL dans les vues ;
-- SQL dans les services.
-
-# Models
-
-Chaque entité importante doit avoir un model.
-
-Exemples :
+Les models représentent les entités métier principales, par exemple :
 
 - User
 - UserGroup
 
-Le model représente uniquement les données métier.
+Ils doivent rester concentrés sur la structure des données.
 
-# Views
+### Views
 
-Les vues contiennent uniquement :
+Les vues doivent contenir uniquement :
 
 - HTML ;
 - affichage ;
-- petites conditions d’affichage simples.
+- petites conditions d’affichage.
 
-Interdictions :
+Elles ne doivent pas contenir :
 
 - SQL ;
 - logique métier ;
 - traitements complexes.
 
-# CSS
+---
+
+## 4. Frontend et styles
+
+### CSS
 
 Le CSS doit rester séparé du HTML.
 
 Tous les styles doivent être placés dans :
 
-public/assets/css/
+- public/assets/css/
 
-Interdictions :
+Éviter :
 
 - CSS inline ;
-- gros blocs <style> dans les vues.
+- balises <style> dans les vues.
 
-# JavaScript
+### JavaScript
 
 Le JavaScript doit rester séparé du HTML.
 
 Tous les scripts doivent être placés dans :
 
-public/assets/js/
+- public/assets/js/
 
-Interdictions :
+Éviter :
 
-- gros scripts inline ;
+- scripts inline volumineux ;
 - logique JavaScript directement dans les vues.
-- Sécurité
 
-# Règles obligatoires :
+---
 
-utiliser PDO avec requêtes préparées ;
-protéger les formulaires sensibles avec CSRF ;
-échapper les données affichées ;
-journaliser les actions sensibles ;
-vérifier les permissions avant tout accès critique.
+## 5. Règles de sécurité
 
-# Conventions Git
+Les règles suivantes sont obligatoires :
 
-Branches
+- utiliser PDO avec des requêtes préparées ;
+- protéger les formulaires sensibles avec CSRF ;
+- échapper les données affichées ;
+- journaliser les actions sensibles ;
+- vérifier les permissions avant chaque accès critique.
 
-- Main
+---
 
-main
+## 6. Bonnes pratiques de code
 
-Contient uniquement le code stable de production.
+- garder les fonctions courtes et lisibles ;
+- nommer les variables et méthodes de façon explicite ;
+- éviter les duplications ;
+- faire une seule responsabilité par couche ;
+- documenter les parties complexes.
 
-- Develop
+---
 
-develop
+## 7. Git et branches
 
-Contient le code stable de développement.
+### Branches recommandées
 
-Features
+- main : version stable de production
+- develop : version stable de développement
+- feature/* : nouvelles fonctionnalités
+- fix/* : correctifs
+- refactor/* : améliorations de structure
 
-- feature/*
+### Exemples
 
-Exemples :
-
+```bash
 feature/authentication
 feature/auth-api
-Fixes
-fix/*
-
-# Exemples :
-
 fix/router-normalization
-fix/session-timeout
-
-Refactors
-
-- refactor/*
-
-Exemples :
-
-refactor/router
 refactor/database-layer
+```
 
+---
 
-Convention des commits
+## 8. Convention de commits
 
-- Les messages doivent être explicites.
+Les messages de commit doivent être clairs et explicites.
 
-Exemples :
+### Exemples recommandés
 
-Add authentication controllers
-Create device repository layer
-Implement CSRF protection
-Refactor routing system
-Fix asset path generation
+- Add authentication controllers
+- Create device repository layer
+- Implement CSRF protection
+- Refactor routing system
+- Fix asset path generation
 
-Interdictions :
+### À éviter
 
-update
-test
-fix
-modification
-Documentation
+- update
+- test
+- fix
+- modification
+
+---
+
+## 9. Documentation
 
 Chaque fonctionnalité importante doit être documentée.
 
-Documentation prévue :
+Documentation attendue :
 
-docs/
-├── API.md
-├── DATABASE.md
-├── SECURITY.md
-├── ARCHITECTURE.md
-└── ANDROID-INTEGRATION.md
+```text
+doc/
+├── backend/
+├── frontend/
+└── architecture/
+```
 
+Les documents doivent expliquer :
 
-Commentaires de code
+- le rôle de la fonctionnalité ;
+- la façon de la tester ;
+- les points d’entrée et les dépendances.
+
+---
+
+## 10. Commentaires de code
 
 Les commentaires doivent :
 
@@ -215,17 +228,20 @@ Les commentaires doivent :
 - rester lisibles ;
 - éviter les commentaires inutiles.
 
-Exemple recommandé :
+Exemple :
 
+```php
 /**
- * Vérifie qu’un utilisateur possède bien les infos demandé.
+ * Vérifie qu’un utilisateur possède bien les informations demandées.
  *
  * Cette méthode est utilisée avant tout accès aux données
- * de localisation afin d’éviter les accès non autorisés.
+ * afin d’éviter les accès non autorisés.
  */
+```
 
+---
 
-Objectif qualité
+## 11. Objectif qualité
 
 Le projet doit rester :
 
@@ -233,14 +249,18 @@ Le projet doit rester :
 - sécurisé ;
 - lisible ;
 - modulaire ;
-- facilement extensible vers une architecture SaaS.
+- facile à faire évoluer.
 
 ---
 
-# 3. Commit
+## 12. Exemple de workflow
 
 ```bash
 git add .
 git commit -m "Add project contribution and architecture standards"
-git push -u origin feature/project-standards 
+git push -u origin feature/project-standards
+```
+
+Si vous débutez, commencez par lire la documentation du projet, puis modifiez une petite partie avant de toucher à la logique principale.
+
 
