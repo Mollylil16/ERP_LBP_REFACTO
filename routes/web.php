@@ -6,6 +6,7 @@ use App\Router;
 use App\Controllers\AuthController;
 use App\Controllers\DashboardController;
 use App\Controllers\HomeController;
+use App\Controllers\SelectionPortailController;
 
 /** @var Router $router */
 
@@ -47,5 +48,8 @@ $router->get('/logout', [AuthController::class, 'logout']);
 | Pour l’instant, la protection réelle sera ajoutée avec un middleware Auth.
 |
 */
+
+$router->get('/selection_portail', [SelectionPortailController::class, 'index']);
+$router->get('/selection_portail.php', [SelectionPortailController::class, 'index']);
 
 $router->get('/dashboard', [DashboardController::class, 'index']);

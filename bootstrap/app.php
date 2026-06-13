@@ -2,10 +2,14 @@
 
 declare(strict_types=1);
 
-use App\Models\Database;
 use App\Database\MigrationRunner;
+use App\Models\Database;
+use App\Repositories\UserRepository;
+use App\Services\AdminSeederService;
 
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
 define('BASE_PATH', dirname(__DIR__));
 
@@ -31,3 +35,6 @@ $pdo = Database::getConnection();
 
 $migrationRunner = new MigrationRunner($pdo);
 $migrationRunner->run();
+
+$adminSeeder = new AdminSeederService(new UserRepository($pdo));
+$adminSeeder->seed();

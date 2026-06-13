@@ -27,7 +27,7 @@ class DashboardController extends BaseController
          */
         $user = [
             'id' => Auth::id(),
-            'name' => Auth::user()->name ?? 'Farel MEDOLA',
+            'name' => Auth::user()?->fullName ?? 'Administrateur',
         ];
 
         $this->view('dashboard/index', [

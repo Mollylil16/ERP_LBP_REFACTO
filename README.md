@@ -1,9 +1,8 @@
 # Programmation
-Nous pourrons collaborer dans l'entente et la sympathie pour pouvoir arriver au bout de l'épreuve ensemble, 
-du coup soyons motivés 😁
 
 
-Bien reçu mais STP FARELL Faut documenter le README.md 
+
+Bien reçu mais STP Brunel Faut documenter le README.md 
 
 
 On doit créer des dossiers :

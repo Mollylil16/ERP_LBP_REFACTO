@@ -57,6 +57,29 @@ class UserRepository
     }
 
     /**
+     * Recherche un utilisateur par identifiant (email ou nom complet).
+     */
+    public function findByIdentifier(string $identifier): ?User
+    {
+        $stmt = $this->pdo->prepare(<<<SQL
+            SELECT *
+            FROM users
+            WHERE LOWER(email) = LOWER(:identifier)
+               OR LOWER(full_name) = LOWER(:name)
+            LIMIT 1
+            SQL);
+
+        $stmt->execute([
+            'identifier' => trim($identifier),
+            'name' => trim($identifier),
+        ]);
+
+        $row = $stmt->fetch();
+
+        return $row ? $this->mapToUser($row) : null;
+    }
+
+    /**
      * Crée un nouvel utilisateur.
      */
     public function create(User $user): int
