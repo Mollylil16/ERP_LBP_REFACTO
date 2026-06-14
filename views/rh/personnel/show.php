@@ -94,6 +94,29 @@ ob_start();
             <?php endif; ?>
         </div>
 
+
+        <section class="finea-section-card rh-recent-section">
+            <div class="rh-section-heading">
+                <div>
+                    <p class="rh-eyebrow">Dossier numérique</p>
+                    <h2 class="finea-section-title">Documents joints</h2>
+                </div>
+                <a class="finea-action-btn finea-action-btn--secondary" href="<?= View::url('rh/personnel/' . (int) $employee['id'] . '/modifier') ?>">Compléter le dossier</a>
+            </div>
+            <?php if (($documents ?? []) === []): ?>
+                <div class="finea-empty-state">Aucune pièce jointe enregistrée pour ce collaborateur.</div>
+            <?php else: ?>
+                <div class="rh-document-grid">
+                    <?php foreach ($documents as $document): ?>
+                        <a class="rh-document-card" href="<?= View::url('public/' . ltrim((string)$document['stored_path'], '/')) ?>" target="_blank" rel="noopener">
+                            <strong><?= View::e($document['original_name']) ?></strong>
+                            <span><?= View::e($document['document_type']) ?><?= $document['child_index'] ? ' - enfant ' . (int)$document['child_index'] : '' ?></span>
+                        </a>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
+        </section>
+
         <?php if ($mutations !== []): ?>
             <section class="finea-section-card rh-recent-section">
                 <h2 class="finea-section-title">Mutations et affectations</h2>

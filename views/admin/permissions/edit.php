@@ -1,5 +1,7 @@
 <?php
 
+/** @var \App\Models\User $user */
+
 use App\Helpers\Csrf;
 use App\Helpers\View;
 

@@ -78,7 +78,7 @@ class RhPersonnelRepository
         return $stmt->fetch() ?: null;
     }
 
-    public function create(array $data, int $actorId): int
+    public function create(array $data, int $actorId, array $uploadColumns = [], array $documents = []): int
     {
         $stmt = $this->pdo->prepare("
             INSERT INTO rh_employees (
@@ -99,6 +99,10 @@ class RhPersonnelRepository
         ");
         $stmt->execute($this->employeeParams($data));
         $id = (int) $this->pdo->lastInsertId();
+        if ($uploadColumns !== []) {
+            $this->updateDocumentColumns($id, $uploadColumns);
+        }
+        $this->storeDocuments($id, $documents);
         $this->addHistory($id, [
             'event_type' => 'integration',
             'event_date' => $data['hire_date'] ?: date('Y-m-d'),
@@ -109,7 +113,7 @@ class RhPersonnelRepository
         return $id;
     }
 
-    public function update(int $id, array $data): void
+    public function update(int $id, array $data, array $uploadColumns = [], array $documents = []): void
     {
         $params = $this->employeeParams($data);
         $params['id'] = $id;
@@ -144,6 +148,10 @@ class RhPersonnelRepository
             WHERE id = :id
         ");
         $stmt->execute($params);
+        if ($uploadColumns !== []) {
+            $this->updateDocumentColumns($id, $uploadColumns);
+        }
+        $this->storeDocuments($id, $documents);
     }
 
     public function applyMutation(int $id, array $data, int $actorId): void
@@ -357,7 +365,19 @@ class RhPersonnelRepository
             'functions' => $this->pairs('rh_functions'),
             'statuses' => $this->pairs('rh_statuses', 'sort_order, name'),
             'exitReasons' => $this->pairs('rh_exit_reasons', 'sort_order, name'),
+            'documentTypes' => $this->pairs('rh_document_types', 'sort_order, name'),
         ];
+    }
+
+    public function documents(int $employeeId): array
+    {
+        $stmt = $this->pdo->prepare("
+            SELECT * FROM rh_employee_documents
+            WHERE employee_id = :employee_id
+            ORDER BY created_at DESC, id DESC
+        ");
+        $stmt->execute(['employee_id' => $employeeId]);
+        return $stmt->fetchAll() ?: [];
     }
 
     public function toModel(array $row): RhEmployee
@@ -376,6 +396,54 @@ class RhPersonnelRepository
             exitDate: $row['exit_date'],
             isActive: (bool) $row['is_active'],
         );
+    }
+
+
+    private function updateDocumentColumns(int $id, array $columns): void
+    {
+        $allowed = ['photo_path', 'identity_document_path', 'diploma_path'];
+        $sets = [];
+        $params = ['id' => $id];
+        foreach ($columns as $column => $value) {
+            if (!in_array($column, $allowed, true)) {
+                continue;
+            }
+            $sets[] = "{$column} = :{$column}";
+            $params[$column] = $value;
+        }
+        if ($sets === []) {
+            return;
+        }
+        $sql = 'UPDATE rh_employees SET ' . implode(', ', $sets) . ', updated_at = NOW() WHERE id = :id';
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($params);
+    }
+
+    private function storeDocuments(int $employeeId, array $documents): void
+    {
+        if ($documents === []) {
+            return;
+        }
+        $stmt = $this->pdo->prepare("
+            INSERT INTO rh_employee_documents (
+                employee_id, document_type, child_index, original_name,
+                stored_path, mime_type, size_bytes, created_at
+            ) VALUES (
+                :employee_id, :document_type, :child_index, :original_name,
+                :stored_path, :mime_type, :size_bytes, NOW()
+            )
+        ");
+        foreach ($documents as $document) {
+            $stmt->execute([
+                'employee_id' => $employeeId,
+                'document_type' => $document['document_type'],
+                'child_index' => $document['child_index'],
+                'original_name' => $document['original_name'],
+                'stored_path' => $document['path'],
+                'mime_type' => $document['mime_type'],
+                'size_bytes' => $document['size_bytes'],
+            ]);
+        }
     }
 
     private function baseSelect(): string
