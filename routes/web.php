@@ -14,7 +14,9 @@ use App\Controllers\RhPersonnelController;
 use App\Controllers\RhModuleController;
 use App\Controllers\RhSettingsController;
 use App\Controllers\SelectionPortailController;
-use App\Controllers\BusinessModuleController;
+use App\Controllers\ModuleDashboardController;
+use App\Controllers\CrmController;
+use App\Controllers\TicketController;
 use App\Controllers\WebsiteController;
 
 /** @var Router $router */
@@ -83,89 +85,52 @@ $router->get('/dashboard', [DashboardController::class, 'index']);
 
 
 /**
- * Routes modules métiers ERP.
- * Chaque module dispose au minimum de /nom-module et /nom-module/dashboard.
+ * Routes modules métiers socle (/finance, /colisage, /logistique, /espace-employe)
  */
 $router->group('/finance', function (Router $router): void {
-    $router->get('/', [BusinessModuleController::class, 'finance']);
-    $router->get('/dashboard', [BusinessModuleController::class, 'finance']);
+    $router->get('/', [ModuleDashboardController::class, 'finance']);
+    $router->get('/dashboard', [ModuleDashboardController::class, 'finance']);
 });
 
 $router->group('/colisage', function (Router $router): void {
-    $router->get('/', [BusinessModuleController::class, 'colisage']);
-    $router->get('/dashboard', [BusinessModuleController::class, 'colisage']);
+    $router->get('/', [ModuleDashboardController::class, 'colisage']);
+    $router->get('/dashboard', [ModuleDashboardController::class, 'colisage']);
 });
 
 $router->group('/logistique', function (Router $router): void {
-    $router->get('/', [BusinessModuleController::class, 'logistique']);
-    $router->get('/dashboard', [BusinessModuleController::class, 'logistique']);
+    $router->get('/', [ModuleDashboardController::class, 'logistique']);
+    $router->get('/dashboard', [ModuleDashboardController::class, 'logistique']);
 });
 
 $router->group('/espace-employe', function (Router $router): void {
-    $router->get('/', [BusinessModuleController::class, 'employee']);
-    $router->get('/dashboard', [BusinessModuleController::class, 'employee']);
+    $router->get('/', [ModuleDashboardController::class, 'employee']);
+    $router->get('/dashboard', [ModuleDashboardController::class, 'employee']);
 });
 
+
+/**
+ * Routes CRM, Tickets et site internet.
+ */
 $router->group('/crm', function (Router $router): void {
-    $router->get('/', [BusinessModuleController::class, 'crm']);
-    $router->get('/dashboard', [BusinessModuleController::class, 'crm']);
+    $router->get('/', [CrmController::class, 'dashboard']);
+    $router->get('/dashboard', [CrmController::class, 'dashboard']);
 });
 
 $router->group('/tickets', function (Router $router): void {
-    $router->get('/', [BusinessModuleController::class, 'tickets']);
-    $router->get('/dashboard', [BusinessModuleController::class, 'tickets']);
+    $router->get('/', [TicketController::class, 'dashboard']);
+    $router->get('/dashboard', [TicketController::class, 'dashboard']);
 });
 
 $router->group('/site-admin', function (Router $router): void {
-    $router->get('/', [BusinessModuleController::class, 'website']);
-    $router->get('/dashboard', [BusinessModuleController::class, 'website']);
+    $router->get('/', [WebsiteController::class, 'dashboard']);
+    $router->get('/dashboard', [WebsiteController::class, 'dashboard']);
 });
 
-$router->group('/transit-douane', function (Router $router): void {
-    $router->get('/', [BusinessModuleController::class, 'customs']);
-    $router->get('/dashboard', [BusinessModuleController::class, 'customs']);
-});
-
-$router->group('/tracking-colis', function (Router $router): void {
-    $router->get('/', [BusinessModuleController::class, 'tracking']);
-    $router->get('/dashboard', [BusinessModuleController::class, 'tracking']);
-});
-
-$router->group('/facturation', function (Router $router): void {
-    $router->get('/', [BusinessModuleController::class, 'billing']);
-    $router->get('/dashboard', [BusinessModuleController::class, 'billing']);
-});
-
-$router->group('/entrepots', function (Router $router): void {
-    $router->get('/', [BusinessModuleController::class, 'warehouses']);
-    $router->get('/dashboard', [BusinessModuleController::class, 'warehouses']);
-});
-
-$router->group('/flotte-transport', function (Router $router): void {
-    $router->get('/', [BusinessModuleController::class, 'fleet']);
-    $router->get('/dashboard', [BusinessModuleController::class, 'fleet']);
-});
-
-$router->group('/portefeuille-clients', function (Router $router): void {
-    $router->get('/', [BusinessModuleController::class, 'clientPortfolio']);
-    $router->get('/dashboard', [BusinessModuleController::class, 'clientPortfolio']);
-});
-
-$router->group('/agents-correspondants', function (Router $router): void {
-    $router->get('/', [BusinessModuleController::class, 'agents']);
-    $router->get('/dashboard', [BusinessModuleController::class, 'agents']);
-});
-
-$router->group('/pilotage-dg', function (Router $router): void {
-    $router->get('/', [BusinessModuleController::class, 'executiveCenter']);
-    $router->get('/dashboard', [BusinessModuleController::class, 'executiveCenter']);
-});
-
-/** Site public séparé du backoffice ERP. */
 $router->get('/site', [WebsiteController::class, 'publicSite']);
-$router->get('/site/tracking', [WebsiteController::class, 'publicSite']);
-$router->get('/site/devis', [WebsiteController::class, 'publicSite']);
-$router->get('/site/contact', [WebsiteController::class, 'publicSite']);
+$router->get('/site/tracking', [WebsiteController::class, 'tracking']);
+$router->get('/site/agences', [WebsiteController::class, 'agencies']);
+$router->get('/site/devis', [WebsiteController::class, 'quote']);
+$router->get('/site/contact', [WebsiteController::class, 'contact']);
 
 /**
  * Routes RH (/rh)
