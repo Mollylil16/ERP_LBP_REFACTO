@@ -64,7 +64,7 @@ class RhPersonnelController extends BaseController
     {
         $this->guardOperation(OperationPolicy::RH_EMPLOYEE_CREATE);
         try {
-            $id = $this->service->create($_POST, (int) Auth::id());
+            $id = $this->service->create($_POST, $_FILES, (int) Auth::id());
             Session::flash('success', 'Le collaborateur a ete integre avec succes.');
             $this->redirect('/rh/personnel/' . $id);
         } catch (RuntimeException $e) {
@@ -106,7 +106,7 @@ class RhPersonnelController extends BaseController
     {
         $this->guardOperation(OperationPolicy::RH_EMPLOYEE_UPDATE);
         try {
-            $this->service->update((int) $id, $_POST);
+            $this->service->update((int) $id, $_POST, $_FILES);
             Session::flash('success', 'Le dossier personnel a ete mis a jour.');
             $this->redirect('/rh/personnel/' . (int) $id);
         } catch (RuntimeException $e) {

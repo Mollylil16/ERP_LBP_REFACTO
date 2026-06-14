@@ -238,6 +238,9 @@ class MigrationRunner
             'children_count' => 'INT UNSIGNED NOT NULL DEFAULT 0',
             'exit_reason_id' => 'INT UNSIGNED NULL',
             'exit_notes' => 'TEXT NULL',
+            'photo_path' => 'VARCHAR(255) NULL',
+            'identity_document_path' => 'VARCHAR(255) NULL',
+            'diploma_path' => 'VARCHAR(255) NULL',
         ];
         foreach ($employeeColumns as $column => $definition) {
             $this->addColumnIfMissing('rh_employees', $column, $definition);
@@ -273,6 +276,36 @@ class MigrationRunner
         ");
 
         $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS rh_document_types (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                name VARCHAR(150) NOT NULL,
+                code VARCHAR(60) NULL,
+                is_required_onboarding TINYINT(1) NOT NULL DEFAULT 0,
+                is_active TINYINT(1) NOT NULL DEFAULT 1,
+                sort_order INT NOT NULL DEFAULT 0,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME NULL,
+                UNIQUE KEY uniq_rh_document_types_code (code)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        " );
+
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS rh_employee_documents (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                employee_id INT UNSIGNED NOT NULL,
+                document_type VARCHAR(80) NOT NULL,
+                child_index INT UNSIGNED NULL,
+                original_name VARCHAR(255) NOT NULL,
+                stored_path VARCHAR(255) NOT NULL,
+                mime_type VARCHAR(120) NULL,
+                size_bytes INT UNSIGNED NULL,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                KEY idx_rh_employee_documents_employee (employee_id),
+                CONSTRAINT fk_rh_employee_documents_employee FOREIGN KEY (employee_id) REFERENCES rh_employees(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        " );
+
+        $this->pdo->exec("
             CREATE TABLE IF NOT EXISTS rh_employee_mutations (
                 id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
                 employee_id INT UNSIGNED NOT NULL,
@@ -296,6 +329,7 @@ class MigrationRunner
 
         $this->seedRhStatuses();
         $this->seedRhExitReasons();
+        $this->seedRhDocumentTypes();
     }
 
     private function seedRhStatuses(): void
@@ -317,6 +351,32 @@ class MigrationRunner
             $stmt->execute([
                 'name' => $name,
                 'code' => $code,
+                'sort_order' => $sortOrder,
+            ]);
+        }
+    }
+
+    private function seedRhDocumentTypes(): void
+    {
+        $stmt = $this->pdo->prepare("
+            INSERT IGNORE INTO rh_document_types (name, code, is_required_onboarding, sort_order)
+            VALUES (:name, :code, :required, :sort_order)
+        ");
+
+        $types = [
+            ['Photo d\'identite', 'photo', 1, 10],
+            ['Piece d\'identite', 'identity', 1, 20],
+            ['Diplome / attestation', 'diploma', 0, 30],
+            ['Extrait de naissance enfant', 'child_birth_certificate', 0, 40],
+            ['Contrat signe', 'contract', 0, 50],
+            ['Autre document RH', 'other', 0, 90],
+        ];
+
+        foreach ($types as [$name, $code, $required, $sortOrder]) {
+            $stmt->execute([
+                'name' => $name,
+                'code' => $code,
+                'required' => $required,
                 'sort_order' => $sortOrder,
             ]);
         }

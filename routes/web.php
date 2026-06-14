@@ -11,6 +11,8 @@ use App\Controllers\DashboardController;
 use App\Controllers\HomeController;
 use App\Controllers\RhDashboardController;
 use App\Controllers\RhPersonnelController;
+use App\Controllers\RhModuleController;
+use App\Controllers\RhSettingsController;
 use App\Controllers\SelectionPortailController;
 
 /** @var Router $router */
@@ -85,6 +87,12 @@ $router->group('/rh', function (Router $router): void {
     $router->get('/dashboard', [RhDashboardController::class, 'index']);
     $router->get('/mutations', [RhPersonnelController::class, 'mutationsIndex']);
     $router->get('/mouvements', [RhPersonnelController::class, 'movementsIndex']);
+    $router->get('/pointage', [RhModuleController::class, 'attendance']);
+    $router->get('/contrats', [RhModuleController::class, 'contracts']);
+    $router->get('/paie', [RhModuleController::class, 'payroll']);
+    $router->get('/parametrage', [RhSettingsController::class, 'index']);
+    $router->post('/parametrage', [RhSettingsController::class, 'store']);
+    $router->post('/parametrage/toggle', [RhSettingsController::class, 'toggle']);
 
     /**
      * Routes pour la gestion du personnel. (/rh/personnel)
