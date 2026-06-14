@@ -2,10 +2,16 @@
 
 use App\Helpers\Csrf;
 use App\Helpers\View;
+use App\View\Components\Form;
+use App\View\Components\Ui;
 
 require BASE_PATH . '/views/admin/_navigation.php';
 $isEdit = $user !== null;
 $currentModule = null;
+$employeeOptions = array_map(static fn(array $row): array => [
+    'value' => (string) ($row['id'] ?? ''),
+    'label' => (string) (($row['full_name'] ?? '') . ' · ' . (($row['employee_number'] ?? '') ?: 'Sans matricule')),
+], $employees ?? []);
 ob_start();
 ?>
 <div class="finea-shell">
@@ -16,7 +22,7 @@ ob_start();
                 <h1><?= View::e($pageTitle) ?></h1>
                 <p>Le compte reprend obligatoirement l’identité et les coordonnées du dossier RH.</p>
             </div>
-            <a class="finea-action-btn finea-action-btn--secondary" href="<?= View::url('admin/users') ?>">Retour à la liste</a>
+            <?= Ui::button('Retour à la liste', ['href' => 'admin/users', 'variant' => 'secondary']) ?>
         </section>
 
         <form class="admin-user-form" method="post" action="<?= View::url(ltrim($formAction, '/')) ?>">
@@ -41,23 +47,14 @@ ob_start();
                     <?php if ($employees === []): ?>
                         <div class="finea-empty-state">Aucun collaborateur actif sans compte n’est disponible. Créez ou complétez d’abord son dossier dans le module RH.</div>
                     <?php else: ?>
-                        <div class="finea-field">
-                            <label for="rh_employee_id">Personnel *</label>
-                            <select class="finea-select" id="rh_employee_id" name="rh_employee_id" required data-rh-employee-select>
-                                <option value="">Sélectionner un collaborateur</option>
-                                <?php foreach ($employees as $row): ?>
-                                    <option
-                                        value="<?= (int) $row['id'] ?>"
-                                        data-name="<?= View::e($row['full_name']) ?>"
-                                        data-number="<?= View::e($row['employee_number'] ?: 'Non renseigné') ?>"
-                                        data-email="<?= View::e($row['email'] ?: 'Email RH manquant') ?>"
-                                        data-phone="<?= View::e($row['phone'] ?: 'Non renseigné') ?>"
-                                        data-service="<?= View::e($row['service_name']) ?>"
-                                        data-function="<?= View::e($row['function_name']) ?>"
-                                    ><?= View::e($row['full_name'] . ' · ' . ($row['employee_number'] ?: 'Sans matricule')) ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
+                        <?= Form::selectSearch('rh_employee_id', array_merge(
+                            [['value' => '', 'label' => 'Sélectionner un collaborateur']],
+                            $employeeOptions
+                        ), '', [
+                            'label' => 'Personnel',
+                            'required' => true,
+                            'data-rh-employee-select' => '1',
+                        ]) ?>
                         <div class="admin-rh-profile is-preview" data-rh-preview hidden>
                             <div><small>Collaborateur</small><strong data-rh-field="name"></strong></div>
                             <div><small>Matricule</small><strong data-rh-field="number"></strong></div>
@@ -73,13 +70,16 @@ ob_start();
             <section class="finea-section-card">
                 <h2 class="finea-section-title">Paramètres du compte</h2>
                 <div class="admin-form-grid">
-                    <div class="finea-field">
-                        <label for="password"><?= $isEdit ? 'Nouveau mot de passe' : 'Mot de passe initial *' ?></label>
-                        <input class="finea-input" id="password" type="password" name="password" minlength="8" <?= $isEdit ? '' : 'required' ?> autocomplete="new-password">
-                        <small><?= $isEdit ? 'Laisser vide pour conserver le mot de passe actuel.' : '8 caractères minimum.' ?></small>
-                    </div>
+                    <?= Form::input('password', [
+                        'label' => $isEdit ? 'Nouveau mot de passe' : 'Mot de passe initial',
+                        'type' => 'password',
+                        'minlength' => 8,
+                        'required' => !$isEdit,
+                        'autocomplete' => 'new-password',
+                        'hint' => $isEdit ? 'Laisser vide pour conserver le mot de passe actuel.' : '8 caractères minimum.',
+                    ]) ?>
                     <label class="admin-switch admin-switch-card">
-                        <input type="checkbox" name="is_admin" value="1" <?= ($user?->isAdmin ?? false) ? 'checked' : '' ?> data-admin-profile>
+                        <?= Form::checkbox('is_admin', ['label' => 'Profil administrateur', 'checked' => (bool) ($user?->isAdmin ?? false), 'data-admin-profile' => '1']) ?>
                         <span><strong>Profil administrateur</strong><small>Donne tous les droits et ignore la matrice individuelle.</small></span>
                     </label>
                 </div>
@@ -90,8 +90,8 @@ ob_start();
                     <div class="admin-permission-toolbar">
                         <div><h2 class="finea-section-title">Permissions initiales</h2><p>Configurez les droits dès la création du compte.</p></div>
                         <div class="finea-actions">
-                            <button type="button" class="finea-action-btn finea-action-btn--secondary" data-permissions-clear>Tout retirer</button>
-                            <button type="button" class="finea-action-btn finea-action-btn--secondary" data-permissions-read>Lecture seule</button>
+                            <?= Ui::button('Tout retirer', ['variant' => 'secondary', 'type' => 'button', 'data-permissions-clear' => true]) ?>
+                            <?= Ui::button('Lecture seule', ['variant' => 'secondary', 'type' => 'button', 'data-permissions-read' => true]) ?>
                         </div>
                     </div>
                     <div class="finea-table-wrap">
@@ -105,7 +105,7 @@ ob_start();
                                 <tr data-permission-row>
                                     <td><strong><?= View::e($permission['name']) ?></strong><small><?= View::e($permission['description']) ?></small></td>
                                     <?php foreach (['view', 'create', 'update', 'delete'] as $action): ?>
-                                        <td><label class="admin-checkbox"><input type="checkbox" name="permissions[<?= (int) $permission['entity_id'] ?>][<?= $action ?>]" value="1" data-action="<?= $action ?>"><span></span></label></td>
+                                        <td><?= Form::checkbox("permissions[" . (int) $permission['entity_id'] . "][" . $action . "]", ["label" => "", "value" => "1", "data-action" => $action, "fieldClass" => "admin-checkbox-field"]) ?></td>
                                     <?php endforeach; ?>
                                 </tr>
                             <?php endforeach; ?>
@@ -116,8 +116,8 @@ ob_start();
             <?php endif; ?>
 
             <div class="admin-form-actions">
-                <a class="finea-action-btn finea-action-btn--secondary" href="<?= View::url('admin/users') ?>">Annuler</a>
-                <button class="finea-action-btn finea-action-btn--primary" <?= !$isEdit && $employees === [] ? 'disabled' : '' ?>><?= View::e($submitLabel) ?></button>
+                <?= Ui::button('Annuler', ['href' => 'admin/users', 'variant' => 'secondary']) ?>
+                <?= Ui::button((string) $submitLabel, ['variant' => 'primary', 'type' => 'submit', 'disabled' => !$isEdit && $employees === []]) ?>
             </div>
         </form>
     </div>

@@ -6,6 +6,8 @@ use App\Helpers\View;
 use App\Security\OperationPolicy;
 use App\Security\PermissionAction;
 use App\Security\PermissionEntityRegistry;
+use App\View\Components\Form;
+use App\View\Components\Ui;
 
 require BASE_PATH . '/views/rh/_navigation.php';
 $date = static fn(?string $value): string => $value ? date('d/m/Y', strtotime($value)) : 'Non renseignee';
@@ -84,11 +86,18 @@ ob_start();
                 <h2 class="finea-section-title">Ajouter un evenement</h2>
                 <form method="post" action="<?= View::url('rh/personnel/' . (int) $employee['id'] . '/historique') ?>" class="rh-compact-form">
                     <?= Csrf::input() ?>
-                    <div class="finea-field"><label>Type</label><select class="finea-select" name="event_type"><option value="note">Note RH</option><option value="promotion">Promotion</option><option value="formation">Formation</option><option value="sanction">Sanction</option><option value="renouvellement">Renouvellement</option><option value="affectation">Affectation</option></select></div>
-                    <div class="finea-field"><label>Date</label><input class="finea-input" required type="date" name="event_date" value="<?= date('Y-m-d') ?>"></div>
-                    <div class="finea-field"><label>Titre</label><input class="finea-input" required name="title"></div>
-                    <div class="finea-field"><label>Description</label><textarea class="finea-input" rows="4" name="description"></textarea></div>
-                    <button class="finea-action-btn finea-action-btn--primary">Ajouter a l'historique</button>
+                    <?= Form::selectSearch('event_type', [
+                        ['value' => 'note', 'label' => 'Note RH'],
+                        ['value' => 'promotion', 'label' => 'Promotion'],
+                        ['value' => 'formation', 'label' => 'Formation'],
+                        ['value' => 'sanction', 'label' => 'Sanction'],
+                        ['value' => 'renouvellement', 'label' => 'Renouvellement'],
+                        ['value' => 'affectation', 'label' => 'Affectation'],
+                    ], 'note', ['label' => 'Type']) ?>
+                    <?= Form::input('event_date', ['label' => 'Date', 'type' => 'date', 'value' => date('Y-m-d'), 'required' => true]) ?>
+                    <?= Form::input('title', ['label' => 'Titre', 'required' => true]) ?>
+                    <?= Form::textarea('description', ['label' => 'Description', 'rows' => 4]) ?>
+                    <?= Ui::button("Ajouter à l'historique", ['variant' => 'primary', 'type' => 'submit']) ?>
                 </form>
             </section>
             <?php endif; ?>
@@ -101,7 +110,7 @@ ob_start();
                     <p class="rh-eyebrow">Dossier numérique</p>
                     <h2 class="finea-section-title">Documents joints</h2>
                 </div>
-                <a class="finea-action-btn finea-action-btn--secondary" href="<?= View::url('rh/personnel/' . (int) $employee['id'] . '/modifier') ?>">Compléter le dossier</a>
+                <?= Ui::button('Compléter le dossier', ['href' => 'rh/personnel/' . (int) $employee['id'] . '/modifier', 'variant' => 'secondary']) ?>
             </div>
             <?php if (($documents ?? []) === []): ?>
                 <div class="finea-empty-state">Aucune pièce jointe enregistrée pour ce collaborateur.</div>

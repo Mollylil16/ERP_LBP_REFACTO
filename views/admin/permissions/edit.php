@@ -4,6 +4,8 @@
 
 use App\Helpers\Csrf;
 use App\Helpers\View;
+use App\View\Components\Form;
+use App\View\Components\Ui;
 
 require BASE_PATH . '/views/admin/_navigation.php';
 $currentModule = null;
@@ -33,9 +35,9 @@ ob_start();
                             <p>La lecture peut être cochée automatiquement lorsqu’une action d’écriture est accordée.</p>
                         </div>
                         <div class="finea-actions">
-                            <button type="button" class="finea-action-btn finea-action-btn--secondary" data-permissions-clear>Tout retirer</button>
-                            <button type="button" class="finea-action-btn finea-action-btn--secondary" data-permissions-read>Lecture seule</button>
-                            <button type="button" class="finea-action-btn finea-action-btn--secondary" data-permissions-all>Tout autoriser</button>
+                            <?= Ui::button('Tout retirer', ['variant' => 'secondary', 'type' => 'button', 'data-permissions-clear' => true]) ?>
+                            <?= Ui::button('Lecture seule', ['variant' => 'secondary', 'type' => 'button', 'data-permissions-read' => true]) ?>
+                            <?= Ui::button('Tout autoriser', ['variant' => 'secondary', 'type' => 'button', 'data-permissions-all' => true]) ?>
                         </div>
                     </div>
                     <div class="finea-table-wrap">
@@ -59,7 +61,7 @@ ob_start();
                                     <tr data-permission-row>
                                         <td><strong><?= View::e($permission['name']) ?></strong><small><?= View::e($permission['description']) ?></small></td>
                                         <?php foreach (['view', 'create', 'update', 'delete'] as $action): ?>
-                                            <td><label class="admin-checkbox"><input type="checkbox" name="permissions[<?= (int) $permission['entity_id'] ?>][<?= $action ?>]" value="1" data-action="<?= $action ?>" <?= $permission['can_' . $action] ? 'checked' : '' ?>><span></span></label></td>
+                                            <td><?= Form::checkbox("permissions[" . (int) $permission['entity_id'] . "][" . $action . "]", ["label" => "", "value" => "1", "checked" => (bool) $permission['can_' . $action], "data-action" => $action, "fieldClass" => "admin-checkbox-field"]) ?></td>
                                         <?php endforeach; ?>
                                     </tr>
                                 <?php endforeach; ?>
@@ -69,7 +71,7 @@ ob_start();
                 </section>
                 <div class="admin-form-actions">
                     <a class="finea-action-btn finea-action-btn--secondary" href="<?= View::url('admin/users/' . (int) $user->id) ?>">Annuler</a>
-                    <button class="finea-action-btn finea-action-btn--primary">Enregistrer les permissions</button>
+                    <?= Ui::button('Enregistrer les permissions', ['variant' => 'primary', 'type' => 'submit']) ?>
                 </div>
             </form>
         <?php endif; ?>

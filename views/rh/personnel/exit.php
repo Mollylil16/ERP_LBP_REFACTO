@@ -1,40 +1,82 @@
 <?php
+/** @var \App\Support\ViewBag $viewData */
 
 use App\Helpers\Csrf;
 use App\Helpers\View;
 use App\Security\PermissionEntityRegistry;
+use App\View\Components\Form;
+use App\View\Components\Ui;
 
 require BASE_PATH . '/views/rh/_navigation.php';
+
+$employee = isset($viewData) ? $viewData->array('employee') : ($employee ?? []);
+$options = isset($viewData) ? $viewData->array('options') : ($options ?? []);
+$restrictedTables = isset($viewData) ? $viewData->array('restrictedTables') : ($restrictedTables ?? []);
+$employeeId = (int) ($employee['id'] ?? 0);
+$isExited = !empty($employee['exit_date']);
+$exitReasons = array_map(static fn(array $row): array => [
+    'value' => (string) ($row['id'] ?? ''),
+    'label' => (string) ($row['name'] ?? ''),
+], $options['exitReasons'] ?? []);
+
 ob_start();
 ?>
-<div class="finea-shell"><div class="finea-container">
-    <section class="finea-page-header rh-hero">
-        <div><p class="rh-eyebrow">Mouvement du personnel</p><h1>Sortie / reintegration</h1><p><?= View::e($employee['full_name']) ?> - <?= View::e($employee['employee_number']) ?></p></div>
-        <a class="finea-action-btn finea-action-btn--secondary" href="<?= View::url('rh/personnel/' . (int) $employee['id']) ?>">Retour au dossier</a>
-    </section>
+<div class="finea-shell">
+    <div class="finea-container">
+        <?= Ui::pageHeader(
+            $isExited ? 'Réintégration RH' : 'Sortie RH',
+            ($isExited ? 'Réintégrer ' : 'Sortie de ') . (string) ($employee['full_name'] ?? ''),
+            $isExited ? 'Réactiver le collaborateur dans les effectifs.' : 'Clôturer proprement le dossier RH du collaborateur.',
+            Ui::button('Retour au dossier', ['href' => 'rh/personnel/' . $employeeId, 'variant' => 'secondary']),
+            ['class' => 'rh-hero']
+        ) ?>
 
-    <?php require BASE_PATH . '/views/rh/_restricted-data.php'; ?>
-    <?php if ((int) $employee['is_active'] === 1): ?>
-        <form method="post" action="<?= View::url('rh/personnel/' . (int) $employee['id'] . '/sortie') ?>" class="finea-section-card rh-operation-form">
-            <?= Csrf::input() ?>
-            <h2 class="finea-section-title">Declarer une sortie</h2>
-            <div class="rh-form-grid">
-                <div class="finea-field"><label>Date de sortie *</label><input class="finea-input" required type="date" name="exit_date" value="<?= date('Y-m-d') ?>"></div>
-                <?php if (!isset($restrictedTables[PermissionEntityRegistry::RH_EXIT_REASONS])): ?><div class="finea-field"><label>Motif</label><select class="finea-select" name="exit_reason_id"><option value="">Non renseigne</option><?php foreach ($options['exitReasons'] as $reason): ?><option value="<?= (int) $reason['id'] ?>"><?= View::e($reason['name']) ?></option><?php endforeach; ?></select></div><?php endif; ?>
-                <div class="finea-field rh-field-wide"><label>Observations</label><textarea class="finea-input" rows="5" name="exit_notes"></textarea></div>
-            </div>
-            <div class="rh-form-actions"><button class="finea-action-btn finea-action-btn--danger">Confirmer la sortie</button></div>
-        </form>
-    <?php else: ?>
-        <section class="finea-section-card rh-operation-form">
-            <h2 class="finea-section-title">Collaborateur sorti</h2>
-            <p>Sortie le <?= View::e($employee['exit_date']) ?>. <?= View::e($employee['exit_reason_name'] ?: '') ?></p>
-            <form method="post" action="<?= View::url('rh/personnel/' . (int) $employee['id'] . '/reintegration') ?>" class="rh-compact-form">
+        <?php require BASE_PATH . '/views/rh/_restricted-data.php'; ?>
+
+        <?php if (!$isExited): ?>
+            <form method="post" action="<?= View::url('rh/personnel/' . $employeeId . '/sortie') ?>" class="finea-section-card rh-operation-form">
                 <?= Csrf::input() ?>
-                <div class="finea-field"><label>Date de reintegration *</label><input class="finea-input" required type="date" name="start_date" value="<?= date('Y-m-d') ?>"></div>
-                <button class="finea-action-btn finea-action-btn--primary">Reintegrer dans les effectifs</button>
+                <div class="rh-form-grid">
+                    <?= Form::input('exit_date', [
+                        'label' => 'Date de sortie',
+                        'type' => 'date',
+                        'value' => date('Y-m-d'),
+                        'required' => true,
+                    ]) ?>
+
+                    <?php if (!isset($restrictedTables[PermissionEntityRegistry::RH_EXIT_REASONS])): ?>
+                        <?= Form::selectSearch('exit_reason_id', array_merge(
+                            [['value' => '', 'label' => 'Non renseigné']],
+                            $exitReasons
+                        ), '', ['label' => 'Motif']) ?>
+                    <?php endif; ?>
+
+                    <?= Form::textarea('exit_notes', [
+                        'label' => 'Observations',
+                        'rows' => 5,
+                        'fieldClass' => 'rh-field-wide',
+                    ]) ?>
+                </div>
+                <div class="rh-form-actions">
+                    <?= Ui::button('Confirmer la sortie', ['variant' => 'danger', 'type' => 'submit']) ?>
+                </div>
             </form>
-        </section>
-    <?php endif; ?>
-</div></div>
+        <?php else: ?>
+            <form method="post" action="<?= View::url('rh/personnel/' . $employeeId . '/reintegration') ?>" class="finea-section-card rh-operation-form">
+                <?= Csrf::input() ?>
+                <div class="rh-form-grid">
+                    <?= Form::input('start_date', [
+                        'label' => 'Date de réintégration',
+                        'type' => 'date',
+                        'value' => date('Y-m-d'),
+                        'required' => true,
+                    ]) ?>
+                </div>
+                <div class="rh-form-actions">
+                    <?= Ui::button('Réintégrer dans les effectifs', ['variant' => 'primary', 'type' => 'submit']) ?>
+                </div>
+            </form>
+        <?php endif; ?>
+    </div>
+</div>
 <?php $content = ob_get_clean(); require BASE_PATH . '/views/layouts/module.php';

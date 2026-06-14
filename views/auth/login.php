@@ -1,6 +1,9 @@
 <?php
 
 use App\Helpers\Csrf;
+use App\Helpers\View;
+use App\View\Components\Form;
+use App\View\Components\Ui;
 
 ob_start();
 ?>
@@ -31,16 +34,30 @@ ob_start();
             <p>Connectez-vous pour accéder au tableau de bord et gérer vos opérations.</p>
         </div>
 
-        <form method="POST" action="<?= App\Helpers\View::url('login') ?>" class="auth-form">
+        <form method="POST" action="<?= View::url('login') ?>" class="auth-form">
             <?= Csrf::input() ?>
 
-            <label for="email">Identifiant ou email</label>
-            <input id="email" name="email" type="text" placeholder="admin ou admin@erp-lbp.local" required autocomplete="username">
+            <?= Form::input('email', [
+                'label' => 'Identifiant ou email',
+                'type' => 'text',
+                'placeholder' => 'admin ou admin@erp-lbp.local',
+                'required' => true,
+                'autocomplete' => 'username',
+            ]) ?>
 
-            <label for="password">Mot de passe</label>
-            <input id="password" name="password" type="password" placeholder="••••••••" required autocomplete="current-password">
+            <?= Form::input('password', [
+                'label' => 'Mot de passe',
+                'type' => 'password',
+                'placeholder' => '••••••••',
+                'required' => true,
+                'autocomplete' => 'current-password',
+            ]) ?>
 
-            <button type="submit" class="btn btn-primary">Se connecter</button>
+            <?= Ui::button('Se connecter', [
+                'variant' => 'primary',
+                'type' => 'submit',
+                'class' => 'btn btn-primary',
+            ]) ?>
         </form>
 
         <div class="auth-footer">
@@ -51,5 +68,4 @@ ob_start();
 
 <?php
 $content = ob_get_clean();
-
 require BASE_PATH . '/views/layouts/guest.php';

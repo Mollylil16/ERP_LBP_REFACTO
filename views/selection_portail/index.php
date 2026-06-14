@@ -1,6 +1,7 @@
 <?php
 
 use App\Helpers\View;
+use App\View\Components\Form;
 
 /** @var array $user */
 /** @var array<int, array<string, string>> $modules */
@@ -49,13 +50,14 @@ ob_start();
 <section class="finea-module-toolbar" aria-label="Recherche de modules">
     <div class="finea-search-box">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21 21-4.2-4.2"/><circle cx="11" cy="11" r="7"/></svg>
-        <input
-            id="moduleSearchInput"
-            type="search"
-            placeholder="Rechercher un module : douane, tracking, facturation, entrepôts, flotte, CRM, tickets..."
-            autocomplete="off"
-            aria-label="Rechercher un module"
-        >
+        <?= Form::input('module_search', [
+            'label' => 'Recherche de module',
+            'id' => 'moduleSearchInput',
+            'type' => 'search',
+            'placeholder' => 'Rechercher un module : douane, tracking, facturation, entrepôts, flotte, CRM, tickets...',
+            'autocomplete' => 'off',
+            'aria-label' => 'Rechercher un module',
+        ]) ?>
     </div>
     <div class="finea-toolbar-meta">
         <span id="moduleSearchCount"><?= count($modules); ?> modules disponibles</span>

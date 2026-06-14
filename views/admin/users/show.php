@@ -3,6 +3,7 @@
 use App\Helpers\Auth;
 use App\Helpers\Csrf;
 use App\Helpers\View;
+use App\View\Components\Ui;
 
 require BASE_PATH . '/views/admin/_navigation.php';
 $granted = array_filter($permissions, static fn(array $permission): bool =>
@@ -76,7 +77,7 @@ ob_start();
                 </div>
                 <form method="post" action="<?= View::url('admin/users/' . (int) $user->id . ($user->status === 'active' ? '/desactiver' : '/activer')) ?>" data-confirm-access-state>
                     <?= Csrf::input() ?>
-                    <button class="finea-action-btn <?= $user->status === 'active' ? 'finea-action-btn--danger' : 'finea-action-btn--primary' ?>"><?= $user->status === 'active' ? 'Désactiver le compte' : 'Réactiver le compte' ?></button>
+                    <?= Ui::button($user->status === 'active' ? 'Désactiver le compte' : 'Réactiver le compte', ['variant' => $user->status === 'active' ? 'danger' : 'primary', 'type' => 'submit']) ?>
                 </form>
             </section>
         <?php endif; ?>
