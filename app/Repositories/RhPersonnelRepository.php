@@ -366,6 +366,7 @@ class RhPersonnelRepository
             'statuses' => $this->pairs('rh_statuses', 'sort_order, name'),
             'exitReasons' => $this->pairs('rh_exit_reasons', 'sort_order, name'),
             'documentTypes' => $this->pairs('rh_document_types', 'sort_order, name'),
+            'sites' => $this->pairs('company_sites'),
         ];
     }
 
