@@ -9,6 +9,7 @@ $appConfig = require BASE_PATH . '/config/app.php';
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <title><?= View::e($pageTitle ?? 'Site') ?> - <?= View::e($appConfig['name']) ?></title>
     <link href="<?= View::asset('css/app.css') ?>" rel="stylesheet">
+    <link href="<?= View::asset('css/components.css') ?>" rel="stylesheet">
     <link href="<?= View::asset('css/finea-ui.css') ?>" rel="stylesheet">
     <link href="<?= View::asset('css/site.css') ?>" rel="stylesheet">
 </head>
