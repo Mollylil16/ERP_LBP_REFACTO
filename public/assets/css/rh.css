@@ -96,18 +96,62 @@
 .rh-file-preview img { display: block; width: 76px; height: 76px; object-fit: cover; border-radius: 12px; border: 1px solid #dfe6f1; margin-bottom: 7px; }
 .rh-child-documents { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-top: 16px; }
 .rh-child-documents h3 { grid-column: 1 / -1; margin: 0; color: #1d2b57; font-size: 1rem; }
-.rh-settings-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
-.rh-settings-card { display: grid; gap: 14px; }
-.rh-inline-form { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-.rh-inline-form .finea-input { flex: 1 1 150px; }
+.rh-settings-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 18px 0; }
+.rh-settings-tabs .finea-tab { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-width: 0; padding: 13px 14px; color: #1d2b57; border: 1px solid #dfe6f1; border-radius: 12px; background: #fff; transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease; }
+.rh-settings-tabs .finea-tab:hover { border-color: #a78bfa; transform: translateY(-1px); }
+.rh-settings-tabs .finea-tab > span:first-child { display: grid; gap: 3px; min-width: 0; }
+.rh-settings-tabs .finea-tab strong, .rh-settings-tabs .finea-tab small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rh-settings-tabs .finea-tab small { color: #64748b; font-size: .74rem; }
+.rh-settings-tabs .finea-tab-count { display: grid; flex: 0 0 auto; place-items: center; min-width: 28px; height: 28px; padding: 0 7px; border-radius: 999px; color: #5b21b6; background: #ede9fe; font-size: .75rem; font-weight: 800; }
+.rh-settings-tabs .finea-tab.is-active { color: #fff; border-color: #1d2b57; background: #1d2b57; box-shadow: 0 8px 22px rgba(29,43,87,.16); }
+.rh-settings-tabs .finea-tab.is-active small { color: #cbd5e1; }
+.rh-settings-tabs .finea-tab.is-active .finea-tab-count { color: #1d2b57; background: #f5d85e; }
+.rh-settings-card { display: grid; gap: 18px; }
+.rh-settings-card .finea-section-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.rh-inline-form { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
+.rh-inline-form > .finea-field { flex: 1 1 190px; }
+.rh-settings-create-form { padding: 16px; border: 1px solid #ddd6fe; border-radius: 12px; background: #faf8ff; }
 .rh-settings-list { display: grid; gap: 10px; }
-.rh-settings-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 10px; border: 1px solid #e2e8f0; border-radius: 10px; background: #fff; }
+.rh-settings-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: end; padding: 12px; border: 1px solid #e2e8f0; border-radius: 10px; background: #fff; }
 .rh-settings-row.is-muted { opacity: .58; }
 .rh-mini-toggle { border: 0; border-radius: 999px; padding: 8px 10px; color: #1d2b57; background: #eef2ff; font-weight: 800; cursor: pointer; }
+.finea-geolocation { position: relative; flex: 1 1 100%; display: grid; grid-template-columns: minmax(260px, .8fr) minmax(320px, 1.2fr); gap: 12px; align-items: stretch; padding: 12px; border: 1px solid #c4b5fd; border-radius: 12px; background: #fff; }
+.finea-geolocation-search { position: relative; display: grid; align-content: start; gap: 7px; min-width: 0; }
+.finea-geolocation-search > label { color: #334155; font-size: .8rem; font-weight: 750; }
+.finea-geolocation-searchbar { position: relative; }
+.finea-geolocation-searchbar .finea-input { width: 100%; min-width: 0; padding-right: 48px; }
+.finea-geolocation-results { position: absolute; z-index: 1001; top: 68px; right: 0; left: 0; max-height: 280px; overflow-y: auto; padding: 6px; border: 1px solid #d7deea; border-radius: 10px; background: #fff; box-shadow: 0 14px 35px rgba(15,23,42,.16); }
+.finea-geolocation-result { display: grid; gap: 3px; width: 100%; padding: 10px; border: 0; border-radius: 8px; color: #1d2b57; background: transparent; text-align: left; cursor: pointer; }
+.finea-geolocation-result:hover, .finea-geolocation-result:focus { outline: 0; background: #f3f0ff; }
+.finea-geolocation-result small { color: #64748b; line-height: 1.35; }
+.finea-geolocation-empty { margin: 0; padding: 10px; color: #64748b; font-size: .8rem; line-height: 1.4; }
+.finea-geolocation-map { z-index: 0; min-height: 260px; border-radius: 10px; background: #e9eef5; overflow: hidden; }
+.finea-geolocation-status { grid-column: 1 / -1; color: #64748b; line-height: 1.4; }
+.finea-geolocation-button { position: absolute; top: 50%; right: 5px; display: grid; place-items: center; width: 36px; height: 36px; padding: 0; border: 0; border-radius: 9px; color: #5b21b6; background: transparent; cursor: pointer; transform: translateY(-50%); transition: color .18s ease, background .18s ease; }
+.finea-geolocation-button:hover, .finea-geolocation-button:focus-visible { color: #fff; background: #6d28d9; outline: 0; }
+.finea-geolocation-button svg { width: 21px; height: 21px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.finea-geolocation-button:disabled { cursor: wait; opacity: .65; }
+.finea-geolocation-button:disabled svg { animation: finea-geolocation-spin 1s linear infinite; }
+.finea-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+@keyframes finea-geolocation-spin { to { transform: rotate(360deg); } }
+.finea-geolocation.is-compact { padding: 10px; background: #f8fafc; }
+.finea-geolocation.is-compact .finea-geolocation-map { min-height: 220px; }
 .rh-feature-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
 .rh-feature-grid p { color: #64748b; line-height: 1.55; }
 .rh-module-token { display: grid; place-items: center; width: 70px; height: 70px; border-radius: 20px; color: #1d2b57; background: #f5d85e; font-weight: 900; font-size: 1.3rem; }
-@media (max-width: 900px) { .rh-upload-grid, .rh-child-documents, .rh-settings-grid, .rh-feature-grid { grid-template-columns: 1fr; } }
+@media (max-width: 900px) {
+    .rh-upload-grid, .rh-child-documents, .rh-feature-grid { grid-template-columns: 1fr; }
+    .rh-settings-tabs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 620px) {
+    .rh-settings-tabs { grid-template-columns: 1fr; }
+    .rh-settings-row { grid-template-columns: 1fr; }
+    .rh-settings-row > form:last-child { justify-self: start; }
+    .finea-geolocation { grid-template-columns: 1fr; }
+    .finea-geolocation-results { top: 68px; }
+    .finea-geolocation-map { min-height: 230px; }
+}
 
 .rh-document-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
 .rh-document-card { display: grid; gap: 6px; padding: 14px; border: 1px solid #dfe6f1; border-radius: 12px; background: #f8fafc; color: #1d2b57; }

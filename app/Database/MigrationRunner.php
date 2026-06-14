@@ -413,6 +413,8 @@ class MigrationRunner
                 address VARCHAR(255) NULL,
                 phone VARCHAR(60) NULL,
                 email VARCHAR(150) NULL,
+                latitude DECIMAL(10,7) NULL,
+                longitude DECIMAL(10,7) NULL,
                 manager_employee_id INT UNSIGNED NULL,
                 is_active TINYINT(1) NOT NULL DEFAULT 1,
                 created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -422,6 +424,8 @@ class MigrationRunner
                 KEY idx_company_sites_active (is_active)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         ");
+        $this->addColumnIfMissing('company_sites', 'latitude', 'DECIMAL(10,7) NULL');
+        $this->addColumnIfMissing('company_sites', 'longitude', 'DECIMAL(10,7) NULL');
         $this->addColumnIfMissing('rh_employees', 'site_id', 'INT UNSIGNED NULL');
         $this->addIndexIfMissing('rh_employees', 'idx_rh_employees_site_id', 'site_id');
         $this->addForeignKeyIfMissing('rh_employees', 'fk_rh_employees_site', 'site_id', 'company_sites', 'id', 'SET NULL');
