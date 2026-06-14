@@ -70,7 +70,10 @@ ob_start();
                 <?php if (!isset($restrictedTables[PermissionEntityRegistry::RH_STATUSES])): ?>
                     <?= Form::selectSearch('status_id', 'Statut', $withEmpty('Non renseigne', $componentOptions($options['statuses'] ?? [])), $field('status_id')) ?>
                 <?php endif; ?>
-                <?= Form::input('site', 'Site', $field('site')) ?>
+                <?php 
+                    $siteOptions = array_map(static fn($row) => ['value' => $row['name'], 'label' => $row['name']], $options['sites'] ?? []);
+                ?>
+                <?= Form::selectSearch('site', 'Site', $withEmpty('Non renseigne', $siteOptions), $field('site')) ?>
                 <?= Form::input('hire_date', 'Date de recrutement', $field('hire_date'), ['type' => 'date']) ?>
                 <?= Form::input('start_date', 'Prise de service', $field('start_date'), ['type' => 'date']) ?>
                 <?= Form::input('contract_duration_months', 'Duree du contrat (mois)', $field('contract_duration_months'), ['type' => 'number', 'min' => 0]) ?>

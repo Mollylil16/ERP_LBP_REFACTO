@@ -93,10 +93,18 @@ ob_start();
                     ) ?>
                 <?php endif; ?>
 
-                <?= Form::input('site', [
-                    'label' => 'Nouveau site',
-                    'value' => (string) ($employee['site'] ?? ''),
-                ]) ?>
+                <?php 
+                    $siteOptions = array_map(static fn($row) => ['value' => $row['name'], 'label' => $row['name']], $options['sites'] ?? []);
+                ?>
+                <?= Form::selectSearch(
+                    'site',
+                    array_merge(
+                        [['value' => '', 'label' => 'Conserver']],
+                        $siteOptions
+                    ),
+                    $employee['site'] ?? '',
+                    ['label' => 'Nouveau site']
+                ) ?>
 
                 <?= Form::input('start_date', [
                     'label' => 'Nouvelle prise de service',
