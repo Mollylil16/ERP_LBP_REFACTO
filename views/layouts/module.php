@@ -32,7 +32,8 @@ $moduleIconKey = $moduleTheme['iconKey'] ?? strtolower((string) ($moduleCode ?? 
     <link href="<?= View::asset('css/app.css') ?>" rel="stylesheet">
     <link href="<?= View::asset('css/components.css') ?>" rel="stylesheet">
     <?php foreach ($styles as $style): ?>
-        <link href="<?= View::asset($style) ?>" rel="stylesheet">
+        <?php $styleUrl = preg_match('#^https?://#i', (string) $style) ? (string) $style : View::asset((string) $style); ?>
+        <link href="<?= View::e($styleUrl) ?>" rel="stylesheet">
     <?php endforeach; ?>
 </head>
 <body class="module-body" style="--module-accent: <?= View::e($moduleAccent) ?>; --module-avatar: <?= View::e($moduleAccent) ?>; --module-accent-2: <?= View::e($moduleAccent2) ?>; --module-gradient: <?= View::e($moduleGradient) ?>;">
@@ -97,7 +98,8 @@ $moduleIconKey = $moduleTheme['iconKey'] ?? strtolower((string) ($moduleCode ?? 
     <script src="<?= View::asset('js/app.js') ?>"></script>
     <script src="<?= View::asset('js/components.js') ?>"></script>
     <?php foreach ($scripts as $script): ?>
-        <script src="<?= View::asset($script) ?>"></script>
+        <?php $scriptUrl = preg_match('#^https?://#i', (string) $script) ? (string) $script : View::asset((string) $script); ?>
+        <script src="<?= View::e($scriptUrl) ?>"></script>
     <?php endforeach; ?>
 </body>
 </html>

@@ -22,47 +22,72 @@ class RhSettingsController extends BaseController
     {
         AuthMiddleware::check();
         require BASE_PATH . '/views/rh/_navigation.php';
+        $catalogs = $this->repository->catalogs();
+        $requestedCatalog = (string) ($_GET['catalog'] ?? '');
+        $activeCatalog = isset($catalogs[$requestedCatalog])
+            ? $requestedCatalog
+            : (string) array_key_first($catalogs);
+
         $this->view('rh/settings/index', [
             'pageTitle' => 'Parametrage RH',
             'moduleName' => 'Ressources Humaines',
             'moduleCode' => 'RH',
             'activeModule' => 'settings',
-            'additionalStyles' => ['css/finea-ui.css', 'css/rh.css'],
-            'additionalScripts' => ['js/rh.js'],
+            'additionalStyles' => [
+                'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
+                'css/finea-ui.css',
+                'css/rh.css',
+            ],
+            'additionalScripts' => [
+                'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
+                'js/rh.js',
+            ],
             'moduleNavigation' => $moduleNavigation,
-            'catalogs' => $this->repository->catalogs(),
+            'catalogs' => $catalogs,
+            'activeCatalog' => $activeCatalog,
         ]);
     }
 
     public function store(): void
     {
         AuthMiddleware::check();
+        $catalog = (string) ($_POST['catalog'] ?? '');
         if (!Csrf::verify($_POST['_csrf_token'] ?? null)) {
             Session::flash('error', 'Session expiree. Veuillez recommencer.');
-            $this->redirect('/rh/parametrage');
+            $this->redirectToCatalog($catalog);
         }
         try {
-            $this->repository->save((string)($_POST['catalog'] ?? ''), $_POST);
+            $this->repository->save($catalog, $_POST);
             Session::flash('success', 'Parametre RH enregistre.');
         } catch (RuntimeException $e) {
             Session::flash('error', $e->getMessage());
         }
-        $this->redirect('/rh/parametrage');
+        $this->redirectToCatalog($catalog);
     }
 
     public function toggle(): void
     {
         AuthMiddleware::check();
+        $catalog = (string) ($_POST['catalog'] ?? '');
         if (!Csrf::verify($_POST['_csrf_token'] ?? null)) {
             Session::flash('error', 'Session expiree. Veuillez recommencer.');
-            $this->redirect('/rh/parametrage');
+            $this->redirectToCatalog($catalog);
         }
         try {
-            $this->repository->toggle((string)($_POST['catalog'] ?? ''), (int)($_POST['id'] ?? 0));
+            $this->repository->toggle($catalog, (int)($_POST['id'] ?? 0));
             Session::flash('success', 'Statut du parametre mis a jour.');
         } catch (RuntimeException $e) {
             Session::flash('error', $e->getMessage());
         }
-        $this->redirect('/rh/parametrage');
+        $this->redirectToCatalog($catalog);
+    }
+
+    private function redirectToCatalog(string $catalog): void
+    {
+        $path = '/rh/parametrage';
+        if ($catalog !== '') {
+            $path .= '?catalog=' . rawurlencode($catalog);
+        }
+        $this->redirect($path);
     }
 }
