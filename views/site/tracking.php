@@ -1,5 +1,7 @@
 <?php
 use App\Helpers\View;
+use App\View\Components\Form;
+use App\View\Components\Ui;
 ob_start();
 $ref = strtoupper(trim((string)($_GET['ref'] ?? 'LBP-EXP-2026-00124')));
 $current = ($shipments[$ref] ?? null) ?: reset($shipments);
@@ -8,8 +10,8 @@ $current = ($shipments[$ref] ?? null) ?: reset($shipments);
     <p class="finea-eyebrow">Suivi colis</p>
     <h1>Consultez l’état d’un colis, BL ou dossier transit.</h1>
     <form class="site-searchbar" method="get" action="<?= View::url('site/tracking') ?>">
-        <input class="finea-input" name="ref" value="<?= View::e($current['reference']) ?>" placeholder="Référence colis / BL / dossier">
-        <button class="finea-action-btn finea-action-btn--accent" type="submit">Suivre</button>
+        <?= Form::input('ref', ['label' => 'Référence', 'value' => $current['reference'] ?? '', 'placeholder' => 'Référence colis / BL / dossier']) ?>
+        <?= Ui::button('Suivre', ['variant' => 'accent', 'type' => 'submit']) ?>
     </form>
 </section>
 <section class="site-tracking-result">

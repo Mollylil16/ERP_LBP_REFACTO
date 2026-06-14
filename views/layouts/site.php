@@ -1,5 +1,6 @@
 <?php
 use App\Helpers\View;
+use App\View\Components\Ui;
 $appConfig = require BASE_PATH . '/config/app.php';
 ?>
 <!DOCTYPE html>
@@ -19,7 +20,7 @@ $appConfig = require BASE_PATH . '/config/app.php';
         <span class="site-brand__mark">LBP</span>
         <span><strong>LBP Transit</strong><small>Import • Export • Logistics</small></span>
     </a>
-    <button class="site-menu-button" type="button" data-site-menu>Menu</button>
+    <?= Ui::button('Menu', ['variant' => 'plain', 'type' => 'button', 'class' => 'site-menu-button', 'data-site-menu' => true]) ?>
     <nav class="site-nav" data-site-nav>
         <a href="<?= View::url('site') ?>">Accueil</a>
         <a href="<?= View::url('site/tracking') ?>">Suivi colis</a>

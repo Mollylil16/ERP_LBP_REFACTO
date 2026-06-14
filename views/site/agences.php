@@ -1,5 +1,7 @@
 <?php
 use App\Helpers\View;
+use App\View\Components\Form;
+use App\View\Components\Ui;
 ob_start();
 $agenciesJson = json_encode($agencies ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 ?>
@@ -10,7 +12,13 @@ $agenciesJson = json_encode($agencies ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESC
 </section>
 <section class="site-locator" data-agencies='<?= View::e($agenciesJson) ?>'>
     <aside class="site-locator__list">
-        <div class="site-locator__filters"><input class="finea-input" data-agency-search placeholder="Rechercher ville, pays, service..."><select class="finea-input" data-country-filter><option value="">Tous les pays</option><?php foreach (array_values(array_unique(array_column($agencies ?? [], 'country'))) as $country): ?><option value="<?= View::e($country) ?>"><?= View::e($country) ?></option><?php endforeach; ?></select></div>
+        <div class="site-locator__filters">
+            <?= Form::input('agency_search', ['label' => 'Recherche', 'placeholder' => 'Rechercher ville, pays, service...', 'data-agency-search' => true]) ?>
+            <?= Form::selectSearch('country_filter', array_merge(
+                [['value' => '', 'label' => 'Tous les pays']],
+                array_map(static fn(string $country): array => ['value' => $country, 'label' => $country], array_values(array_unique(array_column($agencies ?? [], 'country'))))
+            ), '', ['label' => 'Pays', 'data-country-filter' => true]) ?>
+        </div>
         <div class="site-agency-results" data-agency-results>
             <?php foreach (($agencies ?? []) as $agency): ?>
                 <article class="site-agency-card" data-agency-card data-code="<?= View::e($agency['code']) ?>" data-search="<?= View::e(strtolower($agency['name'].' '.$agency['city'].' '.$agency['country'].' '.$agency['services'])) ?>" data-country="<?= View::e($agency['country']) ?>">
@@ -23,7 +31,7 @@ $agenciesJson = json_encode($agencies ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESC
         <div class="site-map" data-site-map aria-label="Carte interactive des agences LBP"><div class="site-map__grid"></div>
             <?php foreach (($agencies ?? []) as $index => $agency): ?>
                 <?php $left = max(6, min(94, (($agency['lng'] + 10) / 130) * 100)); $top = max(6, min(94, 100 - (($agency['lat'] + 5) / 60) * 100)); ?>
-                <button class="site-map-marker" type="button" data-map-marker data-code="<?= View::e($agency['code']) ?>" style="left:<?= $left ?>%;top:<?= $top ?>%;" aria-label="<?= View::e($agency['name']) ?>"><span><?= $index + 1 ?></span></button>
+                <?= Ui::button('<span>' . ((int) $index + 1) . '</span>', ['html' => true, 'variant' => 'plain', 'type' => 'button', 'class' => 'site-map-marker', 'data-map-marker' => true, 'data-code' => (string) ($agency['code'] ?? ''), 'style' => 'left:' . $left . '%;top:' . $top . '%;', 'aria-label' => (string) ($agency['name'] ?? '')]) ?>
             <?php endforeach; ?>
         </div>
         <p class="site-map-note">Carte de démonstration sans dépendance externe. Les coordonnées sont prêtes pour un branchement Leaflet/OpenStreetMap ensuite.</p>
