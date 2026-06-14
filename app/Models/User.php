@@ -18,6 +18,8 @@ class User
         public ?string $phone,
         public string $passwordHash,
         public string $status = 'active',
+        public bool $isAdmin = false,
+        public ?int $rhEmployeeId = null,
         public ?string $createdAt = null,
         public ?string $updatedAt = null,
     ) {}

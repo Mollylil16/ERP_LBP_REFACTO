@@ -7,6 +7,7 @@ use App\Middleware\AuthMiddleware;
 use App\Models\Database;
 use App\Repositories\RhDashboardRepository;
 use App\Services\RhDashboardService;
+use App\Services\DataVisibilityService;
 
 class RhDashboardController extends BaseController
 {
@@ -34,6 +35,7 @@ class RhDashboardController extends BaseController
             ],
             'mode' => $mode,
             'dashboard' => $service->build(),
+            'restrictedTables' => (new DataVisibilityService())->restrictedTables(),
             'additionalStyles' => ['css/finea-ui.css', 'css/rh.css'],
             'additionalScripts' => ['js/rh.js'],
         ]);

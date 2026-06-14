@@ -14,6 +14,9 @@ class AdminSeederService
         $admin = $this->users->findByIdentifier('admin');
 
         if ($admin) {
+            if (!$admin->isAdmin || $admin->status !== 'active') {
+                $this->users->promoteToAdmin((int) $admin->id);
+            }
             return;
         }
 
@@ -24,6 +27,7 @@ class AdminSeederService
             phone: null,
             passwordHash: password_hash('admin', PASSWORD_DEFAULT),
             status: 'active',
+            isAdmin: true,
         ));
     }
 }
