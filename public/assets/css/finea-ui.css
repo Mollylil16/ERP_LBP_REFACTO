@@ -159,3 +159,13 @@ textarea.finea-input { resize: vertical; }
     .module-dashboard-title { align-items: flex-start; flex-direction: column; }
 }
 .module-crm .finea-module-icon{background:linear-gradient(135deg,#9d174d,#ec4899)}.module-crm .finea-module-glow{color:#ec4899}.module-tickets .finea-module-icon{background:linear-gradient(135deg,#991b1b,#ef4444)}.module-tickets .finea-module-glow{color:#ef4444}.module-website .finea-module-icon{background:linear-gradient(135deg,#0f766e,#14b8a6)}.module-website .finea-module-glow{color:#14b8a6}
+
+/* Identités modules transit - reprises dans selection_portail et dashboards. */
+.module-transit-douane .finea-module-icon{background:linear-gradient(135deg,#4c1d95,#7c3aed)}.module-transit-douane .finea-module-glow{color:#7c3aed}
+.module-tracking-colis .finea-module-icon{background:linear-gradient(135deg,#155e75,#06b6d4)}.module-tracking-colis .finea-module-glow{color:#06b6d4}
+.module-facturation .finea-module-icon{background:linear-gradient(135deg,#14532d,#16a34a)}.module-facturation .finea-module-glow{color:#16a34a}
+.module-entrepots .finea-module-icon{background:linear-gradient(135deg,#713f12,#a16207)}.module-entrepots .finea-module-glow{color:#a16207}
+.module-flotte-transport .finea-module-icon{background:linear-gradient(135deg,#7c2d12,#ea580c)}.module-flotte-transport .finea-module-glow{color:#ea580c}
+.module-portefeuille-clients .finea-module-icon{background:linear-gradient(135deg,#365314,#84cc16)}.module-portefeuille-clients .finea-module-glow{color:#84cc16}
+.module-agents-correspondants .finea-module-icon{background:linear-gradient(135deg,#312e81,#6366f1)}.module-agents-correspondants .finea-module-glow{color:#6366f1}
+.module-pilotage-dg .finea-module-icon{background:linear-gradient(135deg,#854d0e,#eab308)}.module-pilotage-dg .finea-module-glow{color:#eab308}
