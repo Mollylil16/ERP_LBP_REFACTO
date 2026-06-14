@@ -2,6 +2,7 @@
 
 use App\Helpers\Csrf;
 use App\Helpers\View;
+use App\Security\PermissionEntityRegistry;
 
 require BASE_PATH . '/views/rh/_navigation.php';
 $value = static fn(string $key): string => View::e((string) ($employee[$key] ?? ''));
@@ -25,6 +26,7 @@ ob_start();
             <a class="finea-action-btn finea-action-btn--secondary" href="<?= View::url('rh/personnel') ?>">Retour a la liste</a>
         </section>
 
+        <?php require BASE_PATH . '/views/rh/_restricted-data.php'; ?>
         <form method="post" action="<?= View::url(ltrim($formAction, '/')) ?>" class="rh-employee-form">
             <?= Csrf::input() ?>
             <section class="finea-section-card">
@@ -45,9 +47,9 @@ ob_start();
             <section class="finea-section-card">
                 <h2 class="finea-section-title">Affectation et contrat</h2>
                 <div class="rh-form-grid">
-                    <div class="finea-field"><label>Service</label><select class="finea-select" name="service_id"><option value="">Non renseigne</option><?php $selectOptions($options['services'], $employee['service_id'] ?? null); ?></select></div>
-                    <div class="finea-field"><label>Fonction</label><select class="finea-select" name="function_id"><option value="">Non renseignee</option><?php $selectOptions($options['functions'], $employee['function_id'] ?? null); ?></select></div>
-                    <div class="finea-field"><label>Statut</label><select class="finea-select" name="status_id"><option value="">Non renseigne</option><?php $selectOptions($options['statuses'], $employee['status_id'] ?? null); ?></select></div>
+                    <?php if (!isset($restrictedTables[PermissionEntityRegistry::RH_SERVICES])): ?><div class="finea-field"><label>Service</label><select class="finea-select" name="service_id"><option value="">Non renseigne</option><?php $selectOptions($options['services'], $employee['service_id'] ?? null); ?></select></div><?php endif; ?>
+                    <?php if (!isset($restrictedTables[PermissionEntityRegistry::RH_FUNCTIONS])): ?><div class="finea-field"><label>Fonction</label><select class="finea-select" name="function_id"><option value="">Non renseignee</option><?php $selectOptions($options['functions'], $employee['function_id'] ?? null); ?></select></div><?php endif; ?>
+                    <?php if (!isset($restrictedTables[PermissionEntityRegistry::RH_STATUSES])): ?><div class="finea-field"><label>Statut</label><select class="finea-select" name="status_id"><option value="">Non renseigne</option><?php $selectOptions($options['statuses'], $employee['status_id'] ?? null); ?></select></div><?php endif; ?>
                     <div class="finea-field"><label>Site</label><input class="finea-input" name="site" value="<?= $value('site') ?>"></div>
                     <div class="finea-field"><label>Date de recrutement</label><input class="finea-input" type="date" name="hire_date" value="<?= $value('hire_date') ?>"></div>
                     <div class="finea-field"><label>Prise de service</label><input class="finea-input" type="date" name="start_date" value="<?= $value('start_date') ?>"></div>

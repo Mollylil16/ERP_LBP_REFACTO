@@ -39,6 +39,8 @@ ob_start();
             </div>
         </section>
 
+        <?php require BASE_PATH . '/views/rh/_restricted-data.php'; ?>
+
         <nav class="rh-dashboard-tabs" aria-label="Vues du tableau de bord">
             <?php foreach ($tabs as $key => $tab): ?>
                 <a class="rh-dashboard-tab <?= $mode === $key ? 'is-active' : '' ?>" href="<?= View::url('rh/dashboard' . ($key === 'classic' ? '' : '?view=' . $key)) ?>">

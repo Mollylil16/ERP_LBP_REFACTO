@@ -50,6 +50,34 @@ class RhPersonnelRepository
         return $employee ?: null;
     }
 
+    public function availableForUserAccount(): array
+    {
+        $stmt = $this->pdo->query($this->baseSelect() . "
+            LEFT JOIN users u ON u.rh_employee_id = e.id
+            WHERE e.is_active = 1
+              AND e.exit_date IS NULL
+              AND u.id IS NULL
+            ORDER BY e.full_name
+        ");
+
+        return $stmt->fetchAll() ?: [];
+    }
+
+    public function findForUserAccount(int $id): ?array
+    {
+        $stmt = $this->pdo->prepare($this->baseSelect() . "
+            WHERE e.id = :id
+              AND e.is_active = 1
+              AND e.exit_date IS NULL
+              AND NOT EXISTS (
+                  SELECT 1 FROM users u WHERE u.rh_employee_id = e.id
+              )
+            LIMIT 1
+        ");
+        $stmt->execute(['id' => $id]);
+        return $stmt->fetch() ?: null;
+    }
+
     public function create(array $data, int $actorId): int
     {
         $stmt = $this->pdo->prepare("
@@ -371,8 +399,11 @@ class RhPersonnelRepository
         $conditions = [];
         $params = [];
         if (($filters['q'] ?? '') !== '') {
-            $conditions[] = '(e.full_name LIKE :q OR e.employee_number LIKE :q OR e.email LIKE :q)';
-            $params['q'] = '%' . $filters['q'] . '%';
+            $conditions[] = '(e.full_name LIKE :q_name OR e.employee_number LIKE :q_number OR e.email LIKE :q_email)';
+            $search = '%' . $filters['q'] . '%';
+            $params['q_name'] = $search;
+            $params['q_number'] = $search;
+            $params['q_email'] = $search;
         }
         foreach (['service_id', 'function_id', 'status_id'] as $key) {
             if (!empty($filters[$key])) {
