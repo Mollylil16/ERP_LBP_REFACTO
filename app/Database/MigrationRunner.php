@@ -29,6 +29,7 @@ class MigrationRunner
         $this->createUsersTable();
         $this->createAdminTables();
         $this->createRhTables();
+        $this->createBusinessTables();
         $this->linkUsersToRhEmployees();
     }
 
@@ -226,6 +227,7 @@ class MigrationRunner
             'marital_status' => 'VARCHAR(80) NULL',
             'address' => 'VARCHAR(255) NULL',
             'site' => 'VARCHAR(150) NULL',
+            'site_id' => 'INT UNSIGNED NULL',
             'cni_number' => 'VARCHAR(100) NULL',
             'cnps_number' => 'VARCHAR(100) NULL',
             'contract_duration_months' => 'INT UNSIGNED NULL',
@@ -397,6 +399,190 @@ class MigrationRunner
         }
     }
 
+
+
+    private function createBusinessTables(): void
+    {
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS company_sites (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                name VARCHAR(160) NOT NULL,
+                code VARCHAR(50) NULL,
+                country VARCHAR(100) NOT NULL DEFAULT 'Cote d Ivoire',
+                city VARCHAR(120) NULL,
+                address VARCHAR(255) NULL,
+                phone VARCHAR(60) NULL,
+                email VARCHAR(150) NULL,
+                manager_employee_id INT UNSIGNED NULL,
+                is_active TINYINT(1) NOT NULL DEFAULT 1,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME NULL,
+                UNIQUE KEY uniq_company_sites_code (code),
+                KEY idx_company_sites_country_city (country, city),
+                KEY idx_company_sites_active (is_active)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+        $this->addColumnIfMissing('rh_employees', 'site_id', 'INT UNSIGNED NULL');
+        $this->addIndexIfMissing('rh_employees', 'idx_rh_employees_site_id', 'site_id');
+        $this->addForeignKeyIfMissing('rh_employees', 'fk_rh_employees_site', 'site_id', 'company_sites', 'id', 'SET NULL');
+
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS crm_clients (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                site_id INT UNSIGNED NULL,
+                type ENUM('prospect','client','partner') NOT NULL DEFAULT 'prospect',
+                name VARCHAR(180) NOT NULL,
+                contact_name VARCHAR(160) NULL,
+                email VARCHAR(150) NULL,
+                phone VARCHAR(60) NULL,
+                country VARCHAR(100) NULL,
+                city VARCHAR(120) NULL,
+                sector VARCHAR(120) NULL,
+                status ENUM('new','active','dormant','lost') NOT NULL DEFAULT 'new',
+                notes TEXT NULL,
+                created_by INT NULL,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME NULL,
+                KEY idx_crm_clients_site (site_id),
+                KEY idx_crm_clients_status (status),
+                CONSTRAINT fk_crm_clients_site FOREIGN KEY (site_id) REFERENCES company_sites(id) ON DELETE SET NULL
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS crm_opportunities (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                client_id INT UNSIGNED NOT NULL,
+                title VARCHAR(180) NOT NULL,
+                stage VARCHAR(80) NOT NULL DEFAULT 'qualification',
+                estimated_amount DECIMAL(15,2) NULL,
+                currency VARCHAR(10) NOT NULL DEFAULT 'XOF',
+                expected_close_date DATE NULL,
+                probability TINYINT UNSIGNED NOT NULL DEFAULT 10,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME NULL,
+                KEY idx_crm_opportunities_client (client_id),
+                CONSTRAINT fk_crm_opportunities_client FOREIGN KEY (client_id) REFERENCES crm_clients(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS crm_interactions (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                client_id INT UNSIGNED NOT NULL,
+                user_id INT NULL,
+                channel VARCHAR(60) NOT NULL DEFAULT 'appel',
+                subject VARCHAR(180) NOT NULL,
+                notes TEXT NULL,
+                interaction_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                next_action_date DATE NULL,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                KEY idx_crm_interactions_client (client_id),
+                KEY idx_crm_interactions_next_action (next_action_date),
+                CONSTRAINT fk_crm_interactions_client FOREIGN KEY (client_id) REFERENCES crm_clients(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS tickets (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                reference VARCHAR(40) NULL,
+                site_id INT UNSIGNED NULL,
+                title VARCHAR(180) NOT NULL,
+                description TEXT NULL,
+                category VARCHAR(80) NULL,
+                priority ENUM('low','normal','high','critical') NOT NULL DEFAULT 'normal',
+                status ENUM('open','assigned','in_progress','waiting','closed','cancelled') NOT NULL DEFAULT 'open',
+                requester_user_id INT NULL,
+                requester_employee_id INT UNSIGNED NULL,
+                assigned_service_id INT UNSIGNED NULL,
+                assigned_user_id INT NULL,
+                due_at DATETIME NULL,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME NULL,
+                KEY idx_tickets_status_priority (status, priority),
+                KEY idx_tickets_site (site_id),
+                CONSTRAINT fk_tickets_site FOREIGN KEY (site_id) REFERENCES company_sites(id) ON DELETE SET NULL
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS ticket_messages (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                ticket_id INT UNSIGNED NOT NULL,
+                user_id INT NULL,
+                message TEXT NOT NULL,
+                visibility ENUM('internal','public') NOT NULL DEFAULT 'internal',
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                KEY idx_ticket_messages_ticket (ticket_id),
+                CONSTRAINT fk_ticket_messages_ticket FOREIGN KEY (ticket_id) REFERENCES tickets(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS website_pages (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                slug VARCHAR(120) NOT NULL,
+                title VARCHAR(180) NOT NULL,
+                content LONGTEXT NULL,
+                is_published TINYINT(1) NOT NULL DEFAULT 0,
+                updated_at DATETIME NULL,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE KEY uniq_website_pages_slug (slug)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS website_services (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                title VARCHAR(180) NOT NULL,
+                summary VARCHAR(255) NULL,
+                icon VARCHAR(80) NULL,
+                is_active TINYINT(1) NOT NULL DEFAULT 1,
+                sort_order INT NOT NULL DEFAULT 0,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS website_leads (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                source VARCHAR(80) NOT NULL DEFAULT 'site',
+                name VARCHAR(180) NOT NULL,
+                email VARCHAR(150) NULL,
+                phone VARCHAR(60) NULL,
+                subject VARCHAR(180) NULL,
+                message TEXT NULL,
+                status ENUM('new','processing','converted','closed') NOT NULL DEFAULT 'new',
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS shipment_tracking_requests (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                reference VARCHAR(120) NOT NULL,
+                requester_ip VARCHAR(80) NULL,
+                result_status VARCHAR(80) NULL,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                KEY idx_tracking_reference (reference)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+
+        $this->seedCompanySites();
+        $this->seedWebsiteContent();
+    }
+
+    private function seedCompanySites(): void
+    {
+        $stmt = $this->pdo->prepare("INSERT IGNORE INTO company_sites (name, code, country, city, is_active) VALUES (:name, :code, :country, :city, 1)");
+        foreach ([['Siege Abidjan','ABJ-HQ','Cote d Ivoire','Abidjan'], ['Agence San Pedro','SPY','Cote d Ivoire','San Pedro'], ['Bureau international','INTL','International', null]] as [$name,$code,$country,$city]) {
+            $stmt->execute(['name'=>$name,'code'=>$code,'country'=>$country,'city'=>$city]);
+        }
+    }
+
+    private function seedWebsiteContent(): void
+    {
+        $this->pdo->exec("INSERT IGNORE INTO website_pages (slug,title,content,is_published) VALUES ('accueil','Accueil','Site vitrine transit pilote depuis ERP.',1)");
+        $stmt = $this->pdo->prepare("INSERT IGNORE INTO website_services (title, summary, sort_order) VALUES (:title,:summary,:sort_order)");
+        foreach ([['Dédouanement','Formalités douanières import-export',10],['Fret & transport','Organisation des enlèvements et livraisons',20],['Suivi colis','Tracking digital des expéditions',30]] as [$title,$summary,$order]) {
+            $stmt->execute(['title'=>$title,'summary'=>$summary,'sort_order'=>$order]);
+        }
+    }
 
     /**
      * Méthodes utilitaires pour ajouter des colonnes, index et clés étrangères si elles n'existent pas déjà.

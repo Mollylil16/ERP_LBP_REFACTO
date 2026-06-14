@@ -14,6 +14,10 @@ use App\Controllers\RhPersonnelController;
 use App\Controllers\RhModuleController;
 use App\Controllers\RhSettingsController;
 use App\Controllers\SelectionPortailController;
+use App\Controllers\ModuleDashboardController;
+use App\Controllers\CrmController;
+use App\Controllers\TicketController;
+use App\Controllers\WebsiteController;
 
 /** @var Router $router */
 
@@ -78,6 +82,51 @@ $router->get('/selection_portail', [SelectionPortailController::class, 'index'])
  */
 $router->get('/dashboard', [DashboardController::class, 'index']);
 
+
+
+/**
+ * Routes modules métiers socle (/finance, /colisage, /logistique, /espace-employe)
+ */
+$router->group('/finance', function (Router $router): void {
+    $router->get('/', [ModuleDashboardController::class, 'finance']);
+    $router->get('/dashboard', [ModuleDashboardController::class, 'finance']);
+});
+
+$router->group('/colisage', function (Router $router): void {
+    $router->get('/', [ModuleDashboardController::class, 'colisage']);
+    $router->get('/dashboard', [ModuleDashboardController::class, 'colisage']);
+});
+
+$router->group('/logistique', function (Router $router): void {
+    $router->get('/', [ModuleDashboardController::class, 'logistique']);
+    $router->get('/dashboard', [ModuleDashboardController::class, 'logistique']);
+});
+
+$router->group('/espace-employe', function (Router $router): void {
+    $router->get('/', [ModuleDashboardController::class, 'employee']);
+    $router->get('/dashboard', [ModuleDashboardController::class, 'employee']);
+});
+
+
+/**
+ * Routes CRM, Tickets et site internet.
+ */
+$router->group('/crm', function (Router $router): void {
+    $router->get('/', [CrmController::class, 'dashboard']);
+    $router->get('/dashboard', [CrmController::class, 'dashboard']);
+});
+
+$router->group('/tickets', function (Router $router): void {
+    $router->get('/', [TicketController::class, 'dashboard']);
+    $router->get('/dashboard', [TicketController::class, 'dashboard']);
+});
+
+$router->group('/site-admin', function (Router $router): void {
+    $router->get('/', [WebsiteController::class, 'dashboard']);
+    $router->get('/dashboard', [WebsiteController::class, 'dashboard']);
+});
+
+$router->get('/site', [WebsiteController::class, 'publicSite']);
 
 /**
  * Routes RH (/rh)

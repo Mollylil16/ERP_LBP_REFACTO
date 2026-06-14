@@ -834,20 +834,10 @@ a { text-decoration: none; }
     font-weight: 900;
 }
 
-.module-finance .finea-module-icon { background: linear-gradient(135deg, #1d2b57, #2563eb); }
-.module-finance .finea-module-glow { color: #2563eb; }
 
-.module-rh .finea-module-icon { background: linear-gradient(135deg, #7c3aed, #a855f7); }
-.module-rh .finea-module-glow { color: #7c3aed; }
 
-.module-colisage .finea-module-icon { background: linear-gradient(135deg, #fabd02, #f97316); }
-.module-colisage .finea-module-glow { color: #fabd02; }
 
-.module-logistique .finea-module-icon { background: linear-gradient(135deg, #059669, #22c55e); }
-.module-logistique .finea-module-glow { color: #059669; }
 
-.module-admin .finea-module-icon { background: linear-gradient(135deg, #0f172a, #64748b); }
-.module-admin .finea-module-glow { color: #0f172a; }
 
 .finea-empty-state {
     margin: 18px 0 0;
@@ -913,3 +903,31 @@ a { text-decoration: none; }
     .finea-module-grid { grid-template-columns: 1fr; }
     .finea-module-card { min-height: auto; }
 }
+/* Couleurs caractéristiques des modules du portail.
+   Chaque module garde une identité visuelle différente de son point d’entrée. */
+.module-finance .finea-module-icon { background: linear-gradient(135deg, #1d2b57, #2563eb); }
+.module-finance .finea-module-glow { color: #2563eb; }
+
+.module-rh .finea-module-icon { background: linear-gradient(135deg, #6d28d9, #a855f7); }
+.module-rh .finea-module-glow { color: #7c3aed; }
+
+.module-colisage .finea-module-icon { background: linear-gradient(135deg, #ca8a04, #f59e0b); }
+.module-colisage .finea-module-glow { color: #f59e0b; }
+
+.module-logistique .finea-module-icon { background: linear-gradient(135deg, #047857, #22c55e); }
+.module-logistique .finea-module-glow { color: #10b981; }
+
+.module-employee .finea-module-icon { background: linear-gradient(135deg, #0369a1, #38bdf8); }
+.module-employee .finea-module-glow { color: #0ea5e9; }
+
+.module-crm .finea-module-icon { background: linear-gradient(135deg, #9d174d, #ec4899); }
+.module-crm .finea-module-glow { color: #ec4899; }
+
+.module-tickets .finea-module-icon { background: linear-gradient(135deg, #991b1b, #ef4444); }
+.module-tickets .finea-module-glow { color: #ef4444; }
+
+.module-website .finea-module-icon { background: linear-gradient(135deg, #0f766e, #14b8a6); }
+.module-website .finea-module-glow { color: #14b8a6; }
+
+.module-admin .finea-module-icon { background: linear-gradient(135deg, #0f172a, #64748b); }
+.module-admin .finea-module-glow { color: #0f172a; }
