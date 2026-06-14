@@ -9,7 +9,7 @@ ob_start();
             <div>
                 <p class="rh-eyebrow">Référentiels</p>
                 <h1>Paramétrage RH</h1>
-                <p>Services, fonctions, statuts, motifs de sortie et types de documents utilisés par les formulaires RH.</p>
+                <p>Services, fonctions, statuts, sites/points de vente, motifs de sortie et types de documents utilisés par les formulaires RH.</p>
             </div>
             <a class="finea-action-btn finea-action-btn--secondary" href="<?= View::url('rh/personnel/nouveau') ?>">Intégrer un collaborateur</a>
         </section>

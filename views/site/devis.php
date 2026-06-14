@@ -1,0 +1,7 @@
+<?php
+use App\Helpers\View;
+ob_start();
+?>
+<section class="site-page-hero site-page-hero--quote"><p class="finea-eyebrow">Demande de devis</p><h1>Recevez une estimation pour votre opération import-export.</h1><p>Ce formulaire de démonstration est prêt à être branché au CRM comme lead entrant.</p></section>
+<section class="site-form-layout"><form class="site-form-card" method="post" action="#"><div class="site-form-grid"><input class="finea-input" placeholder="Nom complet / entreprise"><input class="finea-input" placeholder="Téléphone / WhatsApp"><input class="finea-input" placeholder="Pays de départ"><input class="finea-input" placeholder="Pays d’arrivée"><select class="finea-input"><option>Type d’opération</option><option>Import</option><option>Export</option><option>Transit régional</option></select><select class="finea-input"><option>Mode</option><option>Maritime</option><option>Aérien</option><option>Routier</option></select></div><textarea class="finea-input" rows="5" placeholder="Décrivez la marchandise, volume, urgence, documents disponibles..."></textarea><button class="finea-action-btn finea-action-btn--accent" type="button">Envoyer la demande test</button></form><aside class="site-card site-card--light"><strong>Données demandées ensuite</strong><ul class="site-check-list"><li>Facture commerciale</li><li>Liste de colisage</li><li>BL / AWB si disponible</li><li>Adresse d’enlèvement et de livraison</li></ul></aside></section>
+<?php $content = ob_get_clean(); require BASE_PATH . '/views/layouts/site.php';

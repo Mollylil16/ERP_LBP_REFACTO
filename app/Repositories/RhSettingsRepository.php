@@ -13,6 +13,7 @@ class RhSettingsRepository
         'statuses' => ['title' => 'Statuts / types de contrat', 'table' => 'rh_statuses', 'has_code' => true],
         'exit_reasons' => ['title' => 'Motifs de sortie', 'table' => 'rh_exit_reasons', 'has_code' => false],
         'document_types' => ['title' => 'Types de documents', 'table' => 'rh_document_types', 'has_code' => true],
+        'sites' => ['title' => 'Sites / points de vente', 'table' => 'company_sites', 'has_code' => true],
     ];
 
     public function __construct(private PDO $pdo) {}
