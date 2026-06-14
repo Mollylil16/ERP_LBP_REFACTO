@@ -1,6 +1,8 @@
 <?php
 
 use App\Helpers\View;
+use App\Helpers\Auth;
+use App\Security\OperationPolicy;
 
 require BASE_PATH . '/views/rh/_navigation.php';
 $items = $pagination['items'] ?? [];
@@ -20,9 +22,13 @@ ob_start();
             </div>
             <div class="finea-header-actions">
                 <span class="rh-pending-chip"><?= (int) $pagination['total'] ?> resultat<?= (int) $pagination['total'] > 1 ? 's' : '' ?></span>
-                <a class="finea-action-btn finea-action-btn--accent" href="<?= View::url('rh/personnel/nouveau') ?>">Integrer un collaborateur</a>
+                <?php if (Auth::canOperation(OperationPolicy::RH_EMPLOYEE_CREATE)): ?>
+                    <a class="finea-action-btn finea-action-btn--accent" href="<?= View::url('rh/personnel/nouveau') ?>">Integrer un collaborateur</a>
+                <?php endif; ?>
             </div>
         </section>
+
+        <?php require BASE_PATH . '/views/rh/_restricted-data.php'; ?>
 
         <form method="get" action="<?= View::url('rh/personnel') ?>" class="finea-filter-card rh-personnel-filters">
             <div class="finea-filter-grid">
@@ -76,9 +82,9 @@ ob_start();
                                 <td><span class="finea-status-badge <?= (int) $employee['is_active'] === 1 ? 'finea-status-badge--ok' : 'finea-status-badge--warning' ?>"><?= (int) $employee['is_active'] === 1 ? 'En poste' : 'Sorti' ?></span></td>
                                 <td>
                                     <div class="rh-row-actions">
-                                        <a href="<?= View::url('rh/personnel/' . (int) $employee['id']) ?>">Dossier</a>
-                                        <a href="<?= View::url('rh/personnel/' . (int) $employee['id'] . '/modifier') ?>">Modifier</a>
-                                        <a href="<?= View::url('rh/personnel/' . (int) $employee['id'] . '/mutation') ?>">Mutation</a>
+                                        <?php if (Auth::canOperation(OperationPolicy::RH_EMPLOYEE_VIEW)): ?><a href="<?= View::url('rh/personnel/' . (int) $employee['id']) ?>">Dossier</a><?php endif; ?>
+                                        <?php if (Auth::canOperation(OperationPolicy::RH_EMPLOYEE_UPDATE)): ?><a href="<?= View::url('rh/personnel/' . (int) $employee['id'] . '/modifier') ?>">Modifier</a><?php endif; ?>
+                                        <?php if (Auth::canOperation(OperationPolicy::RH_MUTATION_CREATE)): ?><a href="<?= View::url('rh/personnel/' . (int) $employee['id'] . '/mutation') ?>">Mutation</a><?php endif; ?>
                                     </div>
                                 </td>
                             </tr>

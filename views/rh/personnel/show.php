@@ -1,7 +1,11 @@
 <?php
 
 use App\Helpers\Csrf;
+use App\Helpers\Auth;
 use App\Helpers\View;
+use App\Security\OperationPolicy;
+use App\Security\PermissionAction;
+use App\Security\PermissionEntityRegistry;
 
 require BASE_PATH . '/views/rh/_navigation.php';
 $date = static fn(?string $value): string => $value ? date('d/m/Y', strtotime($value)) : 'Non renseignee';
@@ -31,11 +35,13 @@ ob_start();
                 <p><?= View::e($employee['employee_number'] ?: 'Sans matricule') ?> - <?= View::e($employee['service_name']) ?></p>
             </div>
             <div class="finea-header-actions">
-                <a class="finea-action-btn finea-action-btn--accent" href="<?= View::url('rh/personnel/' . (int) $employee['id'] . '/modifier') ?>">Modifier</a>
-                <a class="finea-action-btn finea-action-btn--secondary" href="<?= View::url('rh/personnel/' . (int) $employee['id'] . '/mutation') ?>">Mutation</a>
-                <a class="finea-action-btn finea-action-btn--secondary" href="<?= View::url('rh/personnel/' . (int) $employee['id'] . '/sortie') ?>">Sortie / reintegration</a>
+                <?php if (Auth::canOperation(OperationPolicy::RH_EMPLOYEE_UPDATE)): ?><a class="finea-action-btn finea-action-btn--accent" href="<?= View::url('rh/personnel/' . (int) $employee['id'] . '/modifier') ?>">Modifier</a><?php endif; ?>
+                <?php if (Auth::canOperation(OperationPolicy::RH_MUTATION_CREATE)): ?><a class="finea-action-btn finea-action-btn--secondary" href="<?= View::url('rh/personnel/' . (int) $employee['id'] . '/mutation') ?>">Mutation</a><?php endif; ?>
+                <?php if (Auth::canOperation(OperationPolicy::RH_EXIT_MANAGE)): ?><a class="finea-action-btn finea-action-btn--secondary" href="<?= View::url('rh/personnel/' . (int) $employee['id'] . '/sortie') ?>">Sortie / reintegration</a><?php endif; ?>
             </div>
         </section>
+
+        <?php require BASE_PATH . '/views/rh/_restricted-data.php'; ?>
 
         <section class="rh-profile-summary">
             <article class="finea-section-card rh-profile-status">
@@ -54,6 +60,7 @@ ob_start();
         </section>
 
         <div class="rh-dossier-grid">
+            <?php if (Auth::can(PermissionEntityRegistry::RH_EMPLOYEE_HISTORY, PermissionAction::VIEW)): ?>
             <section class="finea-section-card">
                 <h2 class="finea-section-title">Historique RH</h2>
                 <?php if ($history === []): ?>
@@ -70,7 +77,9 @@ ob_start();
                     </div>
                 <?php endif; ?>
             </section>
+            <?php endif; ?>
 
+            <?php if (Auth::canOperation(OperationPolicy::RH_HISTORY_CREATE)): ?>
             <section class="finea-section-card">
                 <h2 class="finea-section-title">Ajouter un evenement</h2>
                 <form method="post" action="<?= View::url('rh/personnel/' . (int) $employee['id'] . '/historique') ?>" class="rh-compact-form">
@@ -82,7 +91,31 @@ ob_start();
                     <button class="finea-action-btn finea-action-btn--primary">Ajouter a l'historique</button>
                 </form>
             </section>
+            <?php endif; ?>
         </div>
+
+
+        <section class="finea-section-card rh-recent-section">
+            <div class="rh-section-heading">
+                <div>
+                    <p class="rh-eyebrow">Dossier numérique</p>
+                    <h2 class="finea-section-title">Documents joints</h2>
+                </div>
+                <a class="finea-action-btn finea-action-btn--secondary" href="<?= View::url('rh/personnel/' . (int) $employee['id'] . '/modifier') ?>">Compléter le dossier</a>
+            </div>
+            <?php if (($documents ?? []) === []): ?>
+                <div class="finea-empty-state">Aucune pièce jointe enregistrée pour ce collaborateur.</div>
+            <?php else: ?>
+                <div class="rh-document-grid">
+                    <?php foreach ($documents as $document): ?>
+                        <a class="rh-document-card" href="<?= View::url('public/' . ltrim((string)$document['stored_path'], '/')) ?>" target="_blank" rel="noopener">
+                            <strong><?= View::e($document['original_name']) ?></strong>
+                            <span><?= View::e($document['document_type']) ?><?= $document['child_index'] ? ' - enfant ' . (int)$document['child_index'] : '' ?></span>
+                        </a>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
+        </section>
 
         <?php if ($mutations !== []): ?>
             <section class="finea-section-card rh-recent-section">

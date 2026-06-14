@@ -2,6 +2,7 @@
 
 namespace App\Middleware;
 
+use App\Helpers\Auth;
 use App\Helpers\Session;
 
 /**
@@ -18,6 +19,13 @@ class AuthMiddleware
         if (!Session::has('auth_user_id')) {
             Session::flash('error', 'Veuillez vous connecter pour accéder à cette page.');
 
+            self::redirect('/login');
+        }
+
+        $user = Auth::user();
+        if (!$user || $user->status !== 'active') {
+            Session::forget('auth_user_id');
+            Session::flash('error', 'Votre compte est désactivé. Contactez un administrateur.');
             self::redirect('/login');
         }
     }

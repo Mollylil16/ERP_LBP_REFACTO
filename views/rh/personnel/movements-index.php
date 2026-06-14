@@ -12,6 +12,7 @@ ob_start();
         <div><p class="rh-eyebrow">Mouvements RH</p><h1>Entrees et sorties</h1><p>Journal consolide des integrations, sorties et reintegrations.</p></div>
         <a class="finea-action-btn finea-action-btn--accent" href="<?= View::url('rh/personnel/nouveau') ?>">Nouvelle entree</a>
     </section>
+    <?php require BASE_PATH . '/views/rh/_restricted-data.php'; ?>
     <section class="finea-section-card rh-recent-section">
         <?php if ($movements === []): ?>
             <div class="finea-empty-state">Aucun mouvement du personnel n'a encore ete enregistre.</div>

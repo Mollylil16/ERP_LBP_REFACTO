@@ -5,10 +5,12 @@ namespace App\Controllers;
 use App\Helpers\Auth;
 use App\Helpers\Csrf;
 use App\Helpers\Session;
+use App\Middleware\PermissionMiddleware;
 use App\Middleware\AuthMiddleware;
 use App\Models\Database;
 use App\Repositories\RhPersonnelRepository;
 use App\Services\RhPersonnelService;
+use App\Security\OperationPolicy;
 use RuntimeException;
 
 class RhPersonnelController extends BaseController
@@ -30,10 +32,11 @@ class RhPersonnelController extends BaseController
 
     public function create(): void
     {
-        AuthMiddleware::check();
+        PermissionMiddleware::checkOperation(OperationPolicy::RH_EMPLOYEE_CREATE);
         $this->view('rh/personnel/form', $this->viewData('Integrer un collaborateur', 'personnel') + [
             'employee' => [],
             'options' => $this->service->options(),
+            'restrictedTables' => $this->service->restrictedTables(),
             'formAction' => '/rh/personnel',
             'submitLabel' => 'Creer le dossier',
         ]);
@@ -59,9 +62,9 @@ class RhPersonnelController extends BaseController
 
     public function store(): void
     {
-        $this->guardWrite();
+        $this->guardOperation(OperationPolicy::RH_EMPLOYEE_CREATE);
         try {
-            $id = $this->service->create($_POST, (int) Auth::id());
+            $id = $this->service->create($_POST, $_FILES, (int) Auth::id());
             Session::flash('success', 'Le collaborateur a ete integre avec succes.');
             $this->redirect('/rh/personnel/' . $id);
         } catch (RuntimeException $e) {
@@ -72,7 +75,7 @@ class RhPersonnelController extends BaseController
 
     public function show(string $id): void
     {
-        AuthMiddleware::check();
+        PermissionMiddleware::checkOperation(OperationPolicy::RH_EMPLOYEE_VIEW);
         try {
             $this->view('rh/personnel/show', $this->viewData('Dossier personnel', 'personnel') + $this->service->dossier((int) $id));
         } catch (RuntimeException $e) {
@@ -83,12 +86,13 @@ class RhPersonnelController extends BaseController
 
     public function edit(string $id): void
     {
-        AuthMiddleware::check();
+        PermissionMiddleware::checkOperation(OperationPolicy::RH_EMPLOYEE_UPDATE);
         try {
             $dossier = $this->service->dossier((int) $id);
             $this->view('rh/personnel/form', $this->viewData('Modifier le dossier', 'personnel') + [
                 'employee' => $dossier['employee'],
                 'options' => $dossier['options'],
+                'restrictedTables' => $dossier['restrictedTables'],
                 'formAction' => '/rh/personnel/' . (int) $id . '/modifier',
                 'submitLabel' => 'Enregistrer les modifications',
             ]);
@@ -100,9 +104,9 @@ class RhPersonnelController extends BaseController
 
     public function update(string $id): void
     {
-        $this->guardWrite();
+        $this->guardOperation(OperationPolicy::RH_EMPLOYEE_UPDATE);
         try {
-            $this->service->update((int) $id, $_POST);
+            $this->service->update((int) $id, $_POST, $_FILES);
             Session::flash('success', 'Le dossier personnel a ete mis a jour.');
             $this->redirect('/rh/personnel/' . (int) $id);
         } catch (RuntimeException $e) {
@@ -113,7 +117,7 @@ class RhPersonnelController extends BaseController
 
     public function mutation(string $id): void
     {
-        AuthMiddleware::check();
+        PermissionMiddleware::checkOperation(OperationPolicy::RH_MUTATION_CREATE);
         try {
             $this->view('rh/personnel/mutation', $this->viewData('Mutation du personnel', 'mutations') + $this->service->dossier((int) $id));
         } catch (RuntimeException $e) {
@@ -124,7 +128,7 @@ class RhPersonnelController extends BaseController
 
     public function applyMutation(string $id): void
     {
-        $this->guardWrite();
+        $this->guardOperation(OperationPolicy::RH_MUTATION_CREATE);
         try {
             $this->service->mutate((int) $id, $_POST, (int) Auth::id());
             Session::flash('success', 'La mutation a ete enregistree et historisee.');
@@ -137,7 +141,7 @@ class RhPersonnelController extends BaseController
 
     public function exit(string $id): void
     {
-        AuthMiddleware::check();
+        PermissionMiddleware::checkOperation(OperationPolicy::RH_EXIT_MANAGE);
         try {
             $this->view('rh/personnel/exit', $this->viewData('Sortie du personnel', 'sorties') + $this->service->dossier((int) $id));
         } catch (RuntimeException $e) {
@@ -148,7 +152,7 @@ class RhPersonnelController extends BaseController
 
     public function applyExit(string $id): void
     {
-        $this->guardWrite();
+        $this->guardOperation(OperationPolicy::RH_EXIT_MANAGE);
         try {
             $this->service->exit((int) $id, $_POST, (int) Auth::id());
             Session::flash('success', 'La sortie du collaborateur a ete enregistree.');
@@ -161,7 +165,7 @@ class RhPersonnelController extends BaseController
 
     public function reintegrate(string $id): void
     {
-        $this->guardWrite();
+        $this->guardOperation(OperationPolicy::RH_EXIT_MANAGE);
         try {
             $this->service->reintegrate((int) $id, $_POST, (int) Auth::id());
             Session::flash('success', 'Le collaborateur a ete reintegre.');
@@ -173,7 +177,7 @@ class RhPersonnelController extends BaseController
 
     public function addHistory(string $id): void
     {
-        $this->guardWrite();
+        $this->guardOperation(OperationPolicy::RH_HISTORY_CREATE);
         try {
             $this->service->addHistory((int) $id, $_POST, (int) Auth::id());
             Session::flash('success', 'L’evenement RH a ete ajoute.');
@@ -183,9 +187,9 @@ class RhPersonnelController extends BaseController
         $this->redirect('/rh/personnel/' . (int) $id);
     }
 
-    private function guardWrite(): void
+    private function guardOperation(string $operation): void
     {
-        AuthMiddleware::check();
+        PermissionMiddleware::checkOperation($operation);
         if (!Csrf::verify($_POST['_csrf_token'] ?? null)) {
             Session::flash('error', 'Jeton CSRF invalide.');
             $this->back();

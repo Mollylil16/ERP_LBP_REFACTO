@@ -3,11 +3,17 @@
 namespace App\Services;
 
 use App\Repositories\RhPersonnelRepository;
+use App\Security\PermissionEntityRegistry;
 use RuntimeException;
 
 class RhPersonnelService
 {
-    public function __construct(private RhPersonnelRepository $repository) {}
+    public function __construct(
+        private RhPersonnelRepository $repository,
+        private ?DataVisibilityService $visibility = null,
+    ) {
+        $this->visibility ??= new DataVisibilityService();
+    }
 
     public function list(array $query): array
     {
@@ -24,13 +30,21 @@ class RhPersonnelService
             'scope' => $scope,
         ];
 
+        $pagination = $this->repository->paginate(
+            $filters,
+            (int) ($query['page'] ?? 1)
+        );
+        $pagination['items'] = $this->visibility->employeeRows($pagination['items']);
+        if (!$this->visibility->canView(PermissionEntityRegistry::RH_EMPLOYEES)) {
+            $pagination['total'] = 0;
+            $pagination['totalPages'] = 1;
+        }
+
         return [
             'filters' => $filters,
-            'pagination' => $this->repository->paginate(
-                $filters,
-                (int) ($query['page'] ?? 1)
-            ),
-            'options' => $this->repository->options(),
+            'pagination' => $pagination,
+            'options' => $this->visibility->options($this->repository->options()),
+            'restrictedTables' => $this->visibility->restrictedTables(),
         ];
     }
 
@@ -42,22 +56,29 @@ class RhPersonnelService
         }
 
         return [
-            'employee' => $employee,
-            'history' => $this->repository->history($id),
-            'mutations' => $this->repository->mutations($id),
-            'options' => $this->repository->options(),
+            'employee' => $this->visibility->employee($employee),
+            'history' => $this->visibility->history($this->repository->history($id)),
+            'mutations' => $this->visibility->mutations($this->repository->mutations($id)),
+            'documents' => $this->repository->documents($id),
+            'options' => $this->visibility->options($this->repository->options()),
+            'restrictedTables' => $this->visibility->restrictedTables(),
         ];
     }
 
-    public function create(array $input, int $actorId): int
+    public function create(array $input, array $files, int $actorId): int
     {
-        return $this->repository->create($this->validateEmployee($input), $actorId);
+        $data = $this->protectRestrictedReferences($this->validateEmployee($input));
+        $uploads = $this->collectUploads($files, (int) $data['children_count']);
+        return $this->repository->create($data, $actorId, $uploads['columns'], $uploads['documents']);
     }
 
-    public function update(int $id, array $input): void
+    public function update(int $id, array $input, array $files): void
     {
-        $this->requireEmployee($id);
-        $this->repository->update($id, $this->validateEmployee($input, $id));
+        $employee = $this->requireEmployee($id);
+        $data = $this->validateEmployee($input, $id);
+        $uploads = $this->collectUploads($files, (int) $data['children_count']);
+
+        $this->repository->update($id, $this->protectRestrictedReferences($data, $employee), $uploads['columns'], $uploads['documents']);
     }
 
     public function mutate(int $id, array $input, int $actorId): void
@@ -65,7 +86,7 @@ class RhPersonnelService
         $employee = $this->requireEmployee($id);
         $effectiveDate = $this->requiredDate($input['effective_date'] ?? null, 'La date de mutation est obligatoire.');
 
-        $this->repository->applyMutation($id, [
+        $data = [
             'effective_date' => $effectiveDate,
             'title' => $this->nullableString($input['title'] ?? null) ?? 'Mutation / affectation RH',
             'service_id' => $this->nullableInt($input['service_id'] ?? null) ?? $this->nullableInt($employee['service_id']),
@@ -74,17 +95,27 @@ class RhPersonnelService
             'site' => $this->nullableString($input['site'] ?? null) ?? $employee['site'],
             'start_date' => $this->nullableDate($input['start_date'] ?? null),
             'reason' => $this->nullableString($input['reason'] ?? null),
-        ], $actorId);
+        ];
+
+        $this->repository->applyMutation(
+            $id,
+            $this->protectRestrictedReferences($data, $employee),
+            $actorId
+        );
     }
 
     public function exit(int $id, array $input, int $actorId): void
     {
         $this->requireEmployee($id);
-        $this->repository->exitEmployee($id, [
+        $data = [
             'exit_date' => $this->requiredDate($input['exit_date'] ?? null, 'La date de sortie est obligatoire.'),
             'exit_reason_id' => $this->nullableInt($input['exit_reason_id'] ?? null),
             'exit_notes' => $this->nullableString($input['exit_notes'] ?? null),
-        ], $actorId);
+        ];
+        if (!$this->visibility->canView(PermissionEntityRegistry::RH_EXIT_REASONS)) {
+            $data['exit_reason_id'] = null;
+        }
+        $this->repository->exitEmployee($id, $data, $actorId);
     }
 
     public function reintegrate(int $id, array $input, int $actorId): void
@@ -118,17 +149,28 @@ class RhPersonnelService
 
     public function options(): array
     {
-        return $this->repository->options();
+        return $this->visibility->options($this->repository->options());
+    }
+
+    public function restrictedTables(): array
+    {
+        return $this->visibility->restrictedTables();
     }
 
     public function mutationRegister(): array
     {
-        return ['mutations' => $this->repository->allMutations()];
+        return [
+            'mutations' => $this->visibility->mutations($this->repository->allMutations()),
+            'restrictedTables' => $this->visibility->restrictedTables(),
+        ];
     }
 
     public function movementRegister(): array
     {
-        return ['movements' => $this->repository->movements()];
+        return [
+            'movements' => $this->visibility->movements($this->repository->movements()),
+            'restrictedTables' => $this->visibility->restrictedTables(),
+        ];
     }
 
     private function validateEmployee(array $input, ?int $id = null): array
@@ -174,6 +216,106 @@ class RhPersonnelService
             'emergency_contact_name' => $this->nullableString($input['emergency_contact_name'] ?? null),
             'emergency_contact_phone' => $this->nullableString($input['emergency_contact_phone'] ?? null),
             'children_count' => max(0, (int) ($input['children_count'] ?? 0)),
+        ];
+    }
+
+    private function protectRestrictedReferences(array $data, ?array $existing = null): array
+    {
+        $protectedReferences = [
+            PermissionEntityRegistry::RH_SERVICES => 'service_id',
+            PermissionEntityRegistry::RH_FUNCTIONS => 'function_id',
+            PermissionEntityRegistry::RH_STATUSES => 'status_id',
+        ];
+
+        foreach ($protectedReferences as $table => $field) {
+            if (!$this->visibility->canView($table)) {
+                $value = $existing[$field] ?? null;
+                $data[$field] = $value !== null ? (int) $value : null;
+            }
+        }
+
+        return $data;
+    }
+
+
+    private function collectUploads(array $files, int $childrenCount): array
+    {
+        $columns = [];
+        $documents = [];
+        $map = [
+            'photo' => ['column' => 'photo_path', 'type' => 'photo'],
+            'identity_document' => ['column' => 'identity_document_path', 'type' => 'identity'],
+            'diploma' => ['column' => 'diploma_path', 'type' => 'diploma'],
+        ];
+
+        foreach ($map as $field => $meta) {
+            $file = $files[$field] ?? null;
+            if ($this->hasUploadedFile($file)) {
+                $stored = $this->storeUploadedFile($file, $meta['type']);
+                $columns[$meta['column']] = $stored['path'];
+                $documents[] = $stored + ['document_type' => $meta['type'], 'child_index' => null];
+            }
+        }
+
+        $childFiles = $files['child_birth_certificates'] ?? null;
+        if (is_array($childFiles['name'] ?? null)) {
+            for ($i = 0; $i < $childrenCount; $i++) {
+                $file = [
+                    'name' => $childFiles['name'][$i] ?? '',
+                    'type' => $childFiles['type'][$i] ?? '',
+                    'tmp_name' => $childFiles['tmp_name'][$i] ?? '',
+                    'error' => $childFiles['error'][$i] ?? UPLOAD_ERR_NO_FILE,
+                    'size' => $childFiles['size'][$i] ?? 0,
+                ];
+                if ($this->hasUploadedFile($file)) {
+                    $documents[] = $this->storeUploadedFile($file, 'child_birth_certificate') + [
+                        'document_type' => 'child_birth_certificate',
+                        'child_index' => $i + 1,
+                    ];
+                }
+            }
+        }
+
+        return ['columns' => $columns, 'documents' => $documents];
+    }
+
+    private function hasUploadedFile(mixed $file): bool
+    {
+        return is_array($file) && ($file['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK && is_uploaded_file((string) ($file['tmp_name'] ?? ''));
+    }
+
+    private function storeUploadedFile(array $file, string $type): array
+    {
+        $allowed = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
+        $mime = mime_content_type($file['tmp_name']) ?: ($file['type'] ?? 'application/octet-stream');
+        if (!in_array($mime, $allowed, true)) {
+            throw new RuntimeException('Format de fichier non autorise. Utilisez PDF, JPG, PNG ou WEBP.');
+        }
+        if ((int) $file['size'] > 5 * 1024 * 1024) {
+            throw new RuntimeException('Chaque fichier RH doit faire 5 Mo maximum.');
+        }
+
+        $extension = match ($mime) {
+            'image/jpeg' => 'jpg',
+            'image/png' => 'png',
+            'image/webp' => 'webp',
+            default => 'pdf',
+        };
+        $dir = BASE_PATH . '/public/uploads/rh/personnel/' . date('Y/m');
+        if (!is_dir($dir)) {
+            mkdir($dir, 0775, true);
+        }
+        $filename = $type . '_' . bin2hex(random_bytes(10)) . '.' . $extension;
+        $absolute = $dir . '/' . $filename;
+        if (!move_uploaded_file($file['tmp_name'], $absolute)) {
+            throw new RuntimeException('Impossible d’enregistrer le fichier transmis.');
+        }
+
+        return [
+            'path' => 'uploads/rh/personnel/' . date('Y/m') . '/' . $filename,
+            'original_name' => (string) ($file['name'] ?? $filename),
+            'mime_type' => $mime,
+            'size_bytes' => (int) ($file['size'] ?? 0),
         ];
     }
 

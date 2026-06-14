@@ -2,6 +2,7 @@
 
 namespace App\Database;
 
+use App\Security\PermissionEntityRegistry;
 use PDO;
 
 class MigrationRunner
@@ -26,7 +27,9 @@ class MigrationRunner
     public function run(): void
     {
         $this->createUsersTable();
+        $this->createAdminTables();
         $this->createRhTables();
+        $this->linkUsersToRhEmployees();
     }
 
 
@@ -48,10 +51,101 @@ class MigrationRunner
         $this->addColumnIfMissing('users', 'phone', "VARCHAR(30) NULL");
         $this->addColumnIfMissing('users', 'password_hash', "VARCHAR(255) NOT NULL");
         $this->addColumnIfMissing('users', 'status', "ENUM('active', 'inactive', 'blocked') DEFAULT 'active'");
+        $this->addColumnIfMissing('users', 'is_admin', "TINYINT(1) NOT NULL DEFAULT 0");
+        $this->addColumnIfMissing('users', 'rh_employee_id', "INT UNSIGNED NULL");
         $this->addColumnIfMissing('users', 'created_at', "DATETIME DEFAULT CURRENT_TIMESTAMP");
         $this->addColumnIfMissing('users', 'updated_at', "DATETIME NULL");
 
         $this->addUniqueIndexIfMissing('users', 'uniq_users_email', 'email');
+    }
+
+    private function linkUsersToRhEmployees(): void
+    {
+        $this->addUniqueIndexIfMissing('users', 'uniq_users_rh_employee', 'rh_employee_id');
+        $this->addForeignKeyIfMissing(
+            'users',
+            'fk_users_rh_employee',
+            'rh_employee_id',
+            'rh_employees',
+            'id',
+            'RESTRICT'
+        );
+    }
+
+    /**
+     * Crée le catalogue des entités protégées et les droits CRUD individuels.
+     */
+    private function createAdminTables(): void
+    {
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS permission_entities (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                code VARCHAR(100) NOT NULL,
+                module VARCHAR(50) NOT NULL,
+                name VARCHAR(120) NOT NULL,
+                description VARCHAR(255) NULL,
+                sort_order INT NOT NULL DEFAULT 0,
+                is_active TINYINT(1) NOT NULL DEFAULT 1,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME NULL,
+                UNIQUE KEY uniq_permission_entities_code (code),
+                KEY idx_permission_entities_module (module, sort_order)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS user_permissions (
+                user_id INT NOT NULL,
+                entity_id INT UNSIGNED NOT NULL,
+                can_view TINYINT(1) NOT NULL DEFAULT 0,
+                can_create TINYINT(1) NOT NULL DEFAULT 0,
+                can_update TINYINT(1) NOT NULL DEFAULT 0,
+                can_delete TINYINT(1) NOT NULL DEFAULT 0,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME NULL,
+                PRIMARY KEY (user_id, entity_id),
+                KEY idx_user_permissions_entity (entity_id),
+                CONSTRAINT fk_user_permissions_user
+                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                CONSTRAINT fk_user_permissions_entity
+                    FOREIGN KEY (entity_id) REFERENCES permission_entities(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+
+        $this->seedPermissionEntities();
+    }
+
+    private function seedPermissionEntities(): void
+    {
+        $stmt = $this->pdo->prepare("
+            INSERT INTO permission_entities (code, module, name, description, sort_order)
+            VALUES (:code, :module, :name, :description, :sort_order)
+            ON DUPLICATE KEY UPDATE
+                module = VALUES(module),
+                name = VALUES(name),
+                description = VALUES(description),
+                sort_order = VALUES(sort_order),
+                is_active = 1
+        ");
+
+        foreach (PermissionEntityRegistry::all() as $code => $entity) {
+            $stmt->execute([
+                'code' => $code,
+                'module' => $entity['module'],
+                'name' => $entity['name'],
+                'description' => $entity['description'],
+                'sort_order' => $entity['sort_order'],
+            ]);
+        }
+
+        $this->pdo->exec("
+            UPDATE permission_entities
+            SET is_active = 0
+            WHERE code IN (
+                'admin.dashboard', 'admin.users', 'admin.permissions',
+                'rh.dashboard', 'rh.personnel', 'rh.mutations', 'rh.movements'
+            )
+        ");
     }
 
     /**
@@ -144,6 +238,9 @@ class MigrationRunner
             'children_count' => 'INT UNSIGNED NOT NULL DEFAULT 0',
             'exit_reason_id' => 'INT UNSIGNED NULL',
             'exit_notes' => 'TEXT NULL',
+            'photo_path' => 'VARCHAR(255) NULL',
+            'identity_document_path' => 'VARCHAR(255) NULL',
+            'diploma_path' => 'VARCHAR(255) NULL',
         ];
         foreach ($employeeColumns as $column => $definition) {
             $this->addColumnIfMissing('rh_employees', $column, $definition);
@@ -179,6 +276,36 @@ class MigrationRunner
         ");
 
         $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS rh_document_types (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                name VARCHAR(150) NOT NULL,
+                code VARCHAR(60) NULL,
+                is_required_onboarding TINYINT(1) NOT NULL DEFAULT 0,
+                is_active TINYINT(1) NOT NULL DEFAULT 1,
+                sort_order INT NOT NULL DEFAULT 0,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME NULL,
+                UNIQUE KEY uniq_rh_document_types_code (code)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        " );
+
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS rh_employee_documents (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                employee_id INT UNSIGNED NOT NULL,
+                document_type VARCHAR(80) NOT NULL,
+                child_index INT UNSIGNED NULL,
+                original_name VARCHAR(255) NOT NULL,
+                stored_path VARCHAR(255) NOT NULL,
+                mime_type VARCHAR(120) NULL,
+                size_bytes INT UNSIGNED NULL,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                KEY idx_rh_employee_documents_employee (employee_id),
+                CONSTRAINT fk_rh_employee_documents_employee FOREIGN KEY (employee_id) REFERENCES rh_employees(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        " );
+
+        $this->pdo->exec("
             CREATE TABLE IF NOT EXISTS rh_employee_mutations (
                 id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
                 employee_id INT UNSIGNED NOT NULL,
@@ -202,6 +329,7 @@ class MigrationRunner
 
         $this->seedRhStatuses();
         $this->seedRhExitReasons();
+        $this->seedRhDocumentTypes();
     }
 
     private function seedRhStatuses(): void
@@ -223,6 +351,32 @@ class MigrationRunner
             $stmt->execute([
                 'name' => $name,
                 'code' => $code,
+                'sort_order' => $sortOrder,
+            ]);
+        }
+    }
+
+    private function seedRhDocumentTypes(): void
+    {
+        $stmt = $this->pdo->prepare("
+            INSERT IGNORE INTO rh_document_types (name, code, is_required_onboarding, sort_order)
+            VALUES (:name, :code, :required, :sort_order)
+        ");
+
+        $types = [
+            ['Photo d\'identite', 'photo', 1, 10],
+            ['Piece d\'identite', 'identity', 1, 20],
+            ['Diplome / attestation', 'diploma', 0, 30],
+            ['Extrait de naissance enfant', 'child_birth_certificate', 0, 40],
+            ['Contrat signe', 'contract', 0, 50],
+            ['Autre document RH', 'other', 0, 90],
+        ];
+
+        foreach ($types as [$name, $code, $required, $sortOrder]) {
+            $stmt->execute([
+                'name' => $name,
+                'code' => $code,
+                'required' => $required,
                 'sort_order' => $sortOrder,
             ]);
         }

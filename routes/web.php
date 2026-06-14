@@ -4,10 +4,15 @@ declare(strict_types=1);
 
 use App\Router;
 use App\Controllers\AuthController;
+use App\Controllers\AdminDashboardController;
+use App\Controllers\AdminPermissionController;
+use App\Controllers\AdminUserController;
 use App\Controllers\DashboardController;
 use App\Controllers\HomeController;
 use App\Controllers\RhDashboardController;
 use App\Controllers\RhPersonnelController;
+use App\Controllers\RhModuleController;
+use App\Controllers\RhSettingsController;
 use App\Controllers\SelectionPortailController;
 
 /** @var Router $router */
@@ -40,8 +45,6 @@ $router->get('/', [HomeController::class, 'index']);
 /**
  * Routes d’inscription.
  */
-$router->get('/register', [AuthController::class, 'showRegister']);
-$router->post('/register', [AuthController::class, 'register']);
 
 /**
  * Routes de connexion.
@@ -84,6 +87,12 @@ $router->group('/rh', function (Router $router): void {
     $router->get('/dashboard', [RhDashboardController::class, 'index']);
     $router->get('/mutations', [RhPersonnelController::class, 'mutationsIndex']);
     $router->get('/mouvements', [RhPersonnelController::class, 'movementsIndex']);
+    $router->get('/pointage', [RhModuleController::class, 'attendance']);
+    $router->get('/contrats', [RhModuleController::class, 'contracts']);
+    $router->get('/paie', [RhModuleController::class, 'payroll']);
+    $router->get('/parametrage', [RhSettingsController::class, 'index']);
+    $router->post('/parametrage', [RhSettingsController::class, 'store']);
+    $router->post('/parametrage/toggle', [RhSettingsController::class, 'toggle']);
 
     /**
      * Routes pour la gestion du personnel. (/rh/personnel)
@@ -101,5 +110,27 @@ $router->group('/rh', function (Router $router): void {
         $router->post('/{id}/sortie', [RhPersonnelController::class, 'applyExit']);
         $router->post('/{id}/reintegration', [RhPersonnelController::class, 'reintegrate']);
         $router->post('/{id}/historique', [RhPersonnelController::class, 'addHistory']);
+    });
+});
+
+/**
+ * Routes Administration (/admin)
+ */
+$router->group('/admin', function (Router $router): void {
+    $router->get('/', [AdminDashboardController::class, 'index']);
+    $router->get('/dashboard', [AdminDashboardController::class, 'index']);
+    $router->get('/permissions', [AdminPermissionController::class, 'matrix']);
+
+    $router->group('/users', function (Router $router): void {
+        $router->get('/', [AdminUserController::class, 'index']);
+        $router->get('/nouveau', [AdminUserController::class, 'create']);
+        $router->post('/', [AdminUserController::class, 'store']);
+        $router->get('/{id}', [AdminUserController::class, 'show']);
+        $router->get('/{id}/modifier', [AdminUserController::class, 'edit']);
+        $router->post('/{id}/modifier', [AdminUserController::class, 'update']);
+        $router->post('/{id}/desactiver', [AdminUserController::class, 'deactivate']);
+        $router->post('/{id}/activer', [AdminUserController::class, 'activate']);
+        $router->get('/{id}/permissions', [AdminPermissionController::class, 'edit']);
+        $router->post('/{id}/permissions', [AdminPermissionController::class, 'update']);
     });
 });
