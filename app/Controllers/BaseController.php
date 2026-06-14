@@ -2,6 +2,8 @@
 
 namespace App\Controllers;
 
+use App\Support\ViewBag;
+
 class BaseController
 {
 
@@ -13,7 +15,8 @@ class BaseController
      */
     protected function view(string $view, array $data = []): void
     {
-        extract($data);
+        $viewData = ViewBag::from($data);
+        extract($data, EXTR_SKIP); // Compatibilite temporaire avec les anciennes vues non converties.
 
         require BASE_PATH . '/views/' . $view . '.php';
     }
