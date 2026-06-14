@@ -1,45 +1,58 @@
 <?php
+/** @var \App\Support\ViewBag $viewData */
+
 use App\Helpers\Csrf;
 use App\Helpers\View;
+use App\View\Components\Form;
+use App\View\Components\Ui;
+
+$catalogs = isset($viewData) ? $viewData->array('catalogs') : ($catalogs ?? []);
+
 ob_start();
 ?>
 <div class="finea-shell">
     <div class="finea-container">
-        <section class="finea-page-header rh-hero">
-            <div>
-                <p class="rh-eyebrow">Référentiels</p>
-                <h1>Paramétrage RH</h1>
-                <p>Services, fonctions, statuts, sites/points de vente, motifs de sortie et types de documents utilisés par les formulaires RH.</p>
-            </div>
-            <a class="finea-action-btn finea-action-btn--secondary" href="<?= View::url('rh/personnel/nouveau') ?>">Intégrer un collaborateur</a>
-        </section>
+        <?= Ui::pageHeader(
+            'Référentiels',
+            'Paramétrage RH',
+            'Services, fonctions, statuts, sites/points de vente, motifs de sortie et types de documents utilisés par les formulaires RH.',
+            Ui::button('Intégrer un collaborateur', ['href' => 'rh/personnel/nouveau', 'variant' => 'secondary']),
+            ['class' => 'rh-hero']
+        ) ?>
+
         <section class="rh-settings-grid">
             <?php foreach ($catalogs as $catalog): ?>
                 <article class="finea-section-card rh-settings-card">
-                    <h2 class="finea-section-title"><?= View::e($catalog['title']) ?></h2>
+                    <h2 class="finea-section-title"><?= View::e($catalog['title'] ?? '') ?></h2>
+
                     <form method="post" action="<?= View::url('rh/parametrage') ?>" class="rh-inline-form">
                         <?= Csrf::input() ?>
-                        <input type="hidden" name="catalog" value="<?= View::e($catalog['key']) ?>">
-                        <input class="finea-input" name="name" placeholder="Libellé" required>
-                        <?php if ($catalog['has_code']): ?><input class="finea-input" name="code" placeholder="Code"><?php endif; ?>
-                        <button class="finea-action-btn finea-action-btn--primary">Ajouter</button>
+                        <?= Form::hidden('catalog', (string) ($catalog['key'] ?? '')) ?>
+                        <?= Form::input('name', ['label' => 'Libellé', 'placeholder' => 'Libellé', 'required' => true]) ?>
+                        <?php if (!empty($catalog['has_code'])): ?>
+                            <?= Form::input('code', ['label' => 'Code', 'placeholder' => 'Code']) ?>
+                        <?php endif; ?>
+                        <?= Ui::button('Ajouter', ['variant' => 'primary', 'type' => 'submit']) ?>
                     </form>
+
                     <div class="rh-settings-list">
-                        <?php foreach ($catalog['rows'] as $row): ?>
-                            <div class="rh-settings-row <?= (int)$row['is_active'] === 1 ? '' : 'is-muted' ?>">
+                        <?php foreach (($catalog['rows'] ?? []) as $row): ?>
+                            <div class="rh-settings-row <?= (int) ($row['is_active'] ?? 0) === 1 ? '' : 'is-muted' ?>">
                                 <form method="post" action="<?= View::url('rh/parametrage') ?>" class="rh-inline-form">
                                     <?= Csrf::input() ?>
-                                    <input type="hidden" name="catalog" value="<?= View::e($catalog['key']) ?>">
-                                    <input type="hidden" name="id" value="<?= (int)$row['id'] ?>">
-                                    <input class="finea-input" name="name" value="<?= View::e($row['name']) ?>" required>
-                                    <?php if ($catalog['has_code']): ?><input class="finea-input" name="code" value="<?= View::e($row['code']) ?>" placeholder="Code"><?php endif; ?>
-                                    <button class="finea-action-btn finea-action-btn--secondary">Sauver</button>
+                                    <?= Form::hidden('catalog', (string) ($catalog['key'] ?? '')) ?>
+                                    <?= Form::hidden('id', (int) ($row['id'] ?? 0)) ?>
+                                    <?= Form::input('name', ['label' => 'Libellé', 'value' => (string) ($row['name'] ?? ''), 'required' => true]) ?>
+                                    <?php if (!empty($catalog['has_code'])): ?>
+                                        <?= Form::input('code', ['label' => 'Code', 'value' => (string) ($row['code'] ?? ''), 'placeholder' => 'Code']) ?>
+                                    <?php endif; ?>
+                                    <?= Ui::button('Sauver', ['variant' => 'secondary', 'type' => 'submit']) ?>
                                 </form>
                                 <form method="post" action="<?= View::url('rh/parametrage/toggle') ?>">
                                     <?= Csrf::input() ?>
-                                    <input type="hidden" name="catalog" value="<?= View::e($catalog['key']) ?>">
-                                    <input type="hidden" name="id" value="<?= (int)$row['id'] ?>">
-                                    <button class="rh-mini-toggle" type="submit"><?= (int)$row['is_active'] === 1 ? 'Actif' : 'Inactif' ?></button>
+                                    <?= Form::hidden('catalog', (string) ($catalog['key'] ?? '')) ?>
+                                    <?= Form::hidden('id', (int) ($row['id'] ?? 0)) ?>
+                                    <?= Ui::button((int) ($row['is_active'] ?? 0) === 1 ? 'Actif' : 'Inactif', ['variant' => 'plain', 'type' => 'submit', 'class' => 'rh-mini-toggle']) ?>
                                 </form>
                             </div>
                         <?php endforeach; ?>
@@ -49,4 +62,4 @@ ob_start();
         </section>
     </div>
 </div>
-<?php $content = ob_get_clean(); require BASE_PATH . '/views/layouts/module.php'; ?>
+<?php $content = ob_get_clean(); require BASE_PATH . '/views/layouts/module.php';

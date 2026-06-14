@@ -4,6 +4,7 @@ use App\Helpers\Auth;
 use App\Helpers\Session;
 use App\Helpers\View;
 use App\Helpers\ModuleIcon;
+use App\View\Components\Ui;
 
 $appConfig = require BASE_PATH . '/config/app.php';
 $title = $pageTitle ?? $moduleName ?? 'Module';
@@ -72,7 +73,7 @@ $moduleIconKey = $moduleTheme['iconKey'] ?? strtolower((string) ($moduleCode ?? 
 
         <div class="module-main">
             <header class="module-topbar">
-                <button class="module-menu-button" type="button" data-module-menu aria-label="Ouvrir le menu">Menu</button>
+                <?= Ui::button('Menu', ['variant' => 'plain', 'type' => 'button', 'class' => 'module-menu-button', 'data-module-menu' => true, 'aria-label' => 'Ouvrir le menu']) ?>
                 <div>
                     <span class="module-topbar-kicker"><?= View::e($moduleCode ?? 'ERP') ?></span>
                     <strong><?= View::e($pageTitle ?? $moduleName ?? 'Module') ?></strong>

@@ -2,6 +2,7 @@
 
 use App\Helpers\View;
 use App\Models\RhDashboard;
+use App\View\Components\Ui;
 
 /** @var RhDashboard $dashboard */
 /** @var string $mode */
@@ -197,17 +198,17 @@ ob_start();
                 <article class="finea-section-card">
                     <h2 class="finea-section-title">Rapport effectifs</h2>
                     <p>Effectif actif, sorties, recrutements et repartition organisationnelle.</p>
-                    <button type="button" class="finea-action-btn finea-action-btn--secondary" disabled>Export au prochain lot</button>
+                    <?= Ui::button('Export au prochain lot', ['variant' => 'secondary', 'type' => 'button', 'disabled' => true]) ?>
                 </article>
                 <article class="finea-section-card">
                     <h2 class="finea-section-title">Rapport assiduite</h2>
                     <p>Presences, absences, retards et heures supplementaires par periode.</p>
-                    <button type="button" class="finea-action-btn finea-action-btn--secondary" disabled>Export au prochain lot</button>
+                    <?= Ui::button('Export au prochain lot', ['variant' => 'secondary', 'type' => 'button', 'disabled' => true]) ?>
                 </article>
                 <article class="finea-section-card">
                     <h2 class="finea-section-title">Rapport demandes</h2>
                     <p>Demandes soumises, traitees, validees et refusees par categorie.</p>
-                    <button type="button" class="finea-action-btn finea-action-btn--secondary" disabled>Export au prochain lot</button>
+                    <?= Ui::button('Export au prochain lot', ['variant' => 'secondary', 'type' => 'button', 'disabled' => true]) ?>
                 </article>
             </section>
         <?php endif; ?>

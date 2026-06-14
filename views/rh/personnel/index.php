@@ -3,6 +3,8 @@
 use App\Helpers\View;
 use App\Helpers\Auth;
 use App\Security\OperationPolicy;
+use App\View\Components\Form;
+use App\View\Components\Ui;
 
 require BASE_PATH . '/views/rh/_navigation.php';
 $items = $pagination['items'] ?? [];
@@ -23,7 +25,7 @@ ob_start();
             <div class="finea-header-actions">
                 <span class="rh-pending-chip"><?= (int) $pagination['total'] ?> resultat<?= (int) $pagination['total'] > 1 ? 's' : '' ?></span>
                 <?php if (Auth::canOperation(OperationPolicy::RH_EMPLOYEE_CREATE)): ?>
-                    <a class="finea-action-btn finea-action-btn--accent" href="<?= View::url('rh/personnel/nouveau') ?>">Integrer un collaborateur</a>
+                    <?= Ui::button('Intégrer un collaborateur', ['href' => 'rh/personnel/nouveau', 'variant' => 'accent']) ?>
                 <?php endif; ?>
             </div>
         </section>
@@ -32,32 +34,29 @@ ob_start();
 
         <form method="get" action="<?= View::url('rh/personnel') ?>" class="finea-filter-card rh-personnel-filters">
             <div class="finea-filter-grid">
-                <div class="finea-field">
-                    <label for="q">Recherche</label>
-                    <input class="finea-input" id="q" name="q" value="<?= View::e($filters['q']) ?>" placeholder="Nom, matricule ou e-mail">
-                </div>
+                <?= Form::input('q', ['label' => 'Recherche', 'value' => $filters['q'] ?? '', 'placeholder' => 'Nom, matricule ou e-mail']) ?>
                 <?php foreach ([['service_id', 'Service', $options['services']], ['function_id', 'Fonction', $options['functions']], ['status_id', 'Statut', $options['statuses']]] as [$name, $label, $rows]): ?>
-                    <div class="finea-field">
-                        <label for="<?= $name ?>"><?= $label ?></label>
-                        <select class="finea-select" id="<?= $name ?>" name="<?= $name ?>">
-                            <option value="">Tous</option>
-                            <?php foreach ($rows as $row): ?>
-                                <option value="<?= (int) $row['id'] ?>" <?= (int) $filters[$name] === (int) $row['id'] ? 'selected' : '' ?>><?= View::e($row['name']) ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
+                    <?= Form::selectSearch(
+                        $name,
+                        array_merge(
+                            [['value' => '', 'label' => 'Tous']],
+                            array_map(static fn(array $row): array => [
+                                'value' => (string) ($row['id'] ?? ''),
+                                'label' => (string) ($row['name'] ?? ''),
+                            ], $rows)
+                        ),
+                        $filters[$name] ?? '',
+                        ['label' => $label]
+                    ) ?>
                 <?php endforeach; ?>
-                <div class="finea-field">
-                    <label for="scope">Perimetre</label>
-                    <select class="finea-select" id="scope" name="scope">
-                        <option value="active" <?= $filters['scope'] === 'active' ? 'selected' : '' ?>>En poste</option>
-                        <option value="inactive" <?= $filters['scope'] === 'inactive' ? 'selected' : '' ?>>Sorties</option>
-                        <option value="all" <?= $filters['scope'] === 'all' ? 'selected' : '' ?>>Tous</option>
-                    </select>
-                </div>
+                <?= Form::selectSearch('scope', [
+                    ['value' => 'active', 'label' => 'En poste'],
+                    ['value' => 'inactive', 'label' => 'Sorties'],
+                    ['value' => 'all', 'label' => 'Tous'],
+                ], $filters['scope'] ?? 'active', ['label' => 'Périmètre']) ?>
                 <div class="finea-actions">
-                    <button class="finea-action-btn finea-action-btn--primary">Filtrer</button>
-                    <a class="finea-action-btn finea-action-btn--secondary" href="<?= View::url('rh/personnel') ?>">Reinitialiser</a>
+                    <?= Ui::button('Filtrer', ['variant' => 'primary', 'type' => 'submit']) ?>
+                    <?= Ui::button('Réinitialiser', ['href' => 'rh/personnel', 'variant' => 'secondary']) ?>
                 </div>
             </div>
         </form>

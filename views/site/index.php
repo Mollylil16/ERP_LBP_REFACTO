@@ -1,5 +1,7 @@
 <?php
 use App\Helpers\View;
+use App\View\Components\Form;
+use App\View\Components\Ui;
 ob_start();
 $defaultShipment = array_key_first($shipments ?? []) ?: 'LBP-EXP-2026-00124';
 function siteIcon(string $name): string {
@@ -18,16 +20,16 @@ function siteIcon(string $name): string {
         <h1>Expédiez, dédouanez et suivez vos marchandises avec une visibilité totale.</h1>
         <p>Un site public moderne connecté à l’ERP LBP : demandes de devis, suivi colis, réseau d’agences, publicité, leads et informations opérationnelles.</p>
         <div class="site-actions">
-            <a href="<?= View::url('site/tracking') ?>" class="finea-action-btn finea-action-btn--accent">Suivre un colis</a>
-            <a href="<?= View::url('site/devis') ?>" class="finea-action-btn finea-action-btn--secondary">Demander un devis</a>
+            <?= Ui::button('Suivre un colis', ['href' => 'site/tracking', 'variant' => 'accent']) ?>
+            <?= Ui::button('Demander un devis', ['href' => 'site/devis', 'variant' => 'secondary']) ?>
         </div>
     </div>
     <aside class="site-card site-tracking-card">
         <span class="site-card__badge">Tracking live</span>
         <strong>Où est votre colis ?</strong>
         <form method="get" action="<?= View::url('site/tracking') ?>">
-            <input class="finea-input" name="ref" value="<?= View::e($defaultShipment) ?>" placeholder="Référence colis / BL / dossier" aria-label="Référence de suivi">
-            <button class="finea-action-btn finea-action-btn--primary" type="submit">Rechercher</button>
+            <?= Form::input('ref', ['label' => 'Référence', 'value' => $defaultShipment, 'placeholder' => 'Référence colis / BL / dossier', 'aria-label' => 'Référence de suivi']) ?>
+            <?= Ui::button('Rechercher', ['variant' => 'primary', 'type' => 'submit']) ?>
         </form>
         <small>Essayez : LBP-EXP-2026-00124, LBP-COL-2026-00087 ou BL-LBP-778245-CI.</small>
     </aside>
@@ -56,7 +58,7 @@ function siteIcon(string $name): string {
         <ul class="site-check-list"><li>Publicité et acquisition clients</li><li>Suivi colis connecté aux dossiers opérationnels</li><li>Réseau d’agences paramétrable par pays</li><li>Formulaires convertis en leads CRM</li></ul>
     </div>
 </section>
-<section class="site-section-head"><p class="finea-eyebrow">Réseau</p><h2>Des agences LBP visibles sur carte et rattachables aux employés.</h2><a class="finea-action-btn finea-action-btn--secondary" href="<?= View::url('site/agences') ?>">Localiser une agence</a></section>
+<section class="site-section-head"><p class="finea-eyebrow">Réseau</p><h2>Des agences LBP visibles sur carte et rattachables aux employés.</h2><?= Ui::button('Localiser une agence', ['href' => 'site/agences', 'variant' => 'secondary']) ?></section>
 <section class="site-agency-strip">
     <?php foreach (array_slice($agencies ?? [], 0, 4) as $agency): ?>
         <article><strong><?= View::e($agency['name']) ?></strong><span><?= View::e($agency['city']) ?>, <?= View::e($agency['country']) ?></span></article>

@@ -1,6 +1,8 @@
 <?php
 
 use App\Helpers\View;
+use App\View\Components\Form;
+use App\View\Components\Ui;
 
 require BASE_PATH . '/views/admin/_navigation.php';
 $items = $pagination['items'] ?? [];
@@ -18,35 +20,26 @@ ob_start();
                 <h1>Utilisateurs</h1>
                 <p>Créer, retrouver et administrer les comptes de la plateforme.</p>
             </div>
-            <a class="finea-action-btn finea-action-btn--accent" href="<?= View::url('admin/users/nouveau') ?>">Nouvel utilisateur</a>
+            <?= Ui::button('Nouvel utilisateur', ['href' => 'admin/users/nouveau', 'variant' => 'accent']) ?>
         </section>
 
         <form class="finea-filter-card" method="get" action="<?= View::url('admin/users') ?>">
             <div class="finea-filter-grid">
-                <div class="finea-field">
-                    <label for="q">Recherche</label>
-                    <input class="finea-input" id="q" name="q" value="<?= View::e($filters['q']) ?>" placeholder="Nom, email ou téléphone">
-                </div>
-                <div class="finea-field">
-                    <label for="status">Statut</label>
-                    <select class="finea-select" id="status" name="status">
-                        <option value="">Tous</option>
-                        <?php foreach (['active' => 'Actif', 'inactive' => 'Inactif', 'blocked' => 'Bloqué'] as $value => $label): ?>
-                            <option value="<?= $value ?>" <?= $filters['status'] === $value ? 'selected' : '' ?>><?= $label ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-                <div class="finea-field">
-                    <label for="profile">Profil</label>
-                    <select class="finea-select" id="profile" name="profile">
-                        <option value="">Tous</option>
-                        <option value="admin" <?= $filters['profile'] === 'admin' ? 'selected' : '' ?>>Administrateurs</option>
-                        <option value="user" <?= $filters['profile'] === 'user' ? 'selected' : '' ?>>Utilisateurs</option>
-                    </select>
-                </div>
+                <?= Form::input('q', ['label' => 'Recherche', 'value' => $filters['q'] ?? '', 'placeholder' => 'Nom, email ou téléphone']) ?>
+                <?= Form::selectSearch('status', [
+                    ['value' => '', 'label' => 'Tous'],
+                    ['value' => 'active', 'label' => 'Actif'],
+                    ['value' => 'inactive', 'label' => 'Inactif'],
+                    ['value' => 'blocked', 'label' => 'Bloqué'],
+                ], $filters['status'] ?? '', ['label' => 'Statut']) ?>
+                <?= Form::selectSearch('profile', [
+                    ['value' => '', 'label' => 'Tous'],
+                    ['value' => 'admin', 'label' => 'Administrateurs'],
+                    ['value' => 'user', 'label' => 'Utilisateurs'],
+                ], $filters['profile'] ?? '', ['label' => 'Profil']) ?>
                 <div class="finea-actions">
-                    <button class="finea-action-btn finea-action-btn--primary">Filtrer</button>
-                    <a class="finea-action-btn finea-action-btn--secondary" href="<?= View::url('admin/users') ?>">Réinitialiser</a>
+                    <?= Ui::button('Filtrer', ['variant' => 'primary', 'type' => 'submit']) ?>
+                    <?= Ui::button('Réinitialiser', ['href' => 'admin/users', 'variant' => 'secondary']) ?>
                 </div>
             </div>
         </form>
