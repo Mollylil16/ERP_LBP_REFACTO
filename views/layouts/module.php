@@ -3,6 +3,7 @@
 use App\Helpers\Auth;
 use App\Helpers\Session;
 use App\Helpers\View;
+use App\Helpers\ModuleIcon;
 
 $appConfig = require BASE_PATH . '/config/app.php';
 $title = $pageTitle ?? $moduleName ?? 'Module';
@@ -12,6 +13,11 @@ $scripts = $additionalScripts ?? [];
 $successMessage = Session::getFlash('success');
 $errorMessage = Session::getFlash('error');
 $moduleNavigation = $moduleNavigation ?? [];
+$moduleTheme = $moduleTheme ?? [];
+$moduleAccent = $moduleTheme['accent'] ?? '#7c3aed';
+$moduleAccent2 = $moduleTheme['accent2'] ?? '#1d2b57';
+$moduleGradient = $moduleTheme['gradient'] ?? 'linear-gradient(135deg, #1d2b57, #7c3aed)';
+$moduleIconKey = $moduleTheme['iconKey'] ?? strtolower((string) ($moduleCode ?? 'admin'));
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -27,7 +33,7 @@ $moduleNavigation = $moduleNavigation ?? [];
         <link href="<?= View::asset($style) ?>" rel="stylesheet">
     <?php endforeach; ?>
 </head>
-<body class="module-body">
+<body class="module-body" style="--module-accent: <?= View::e($moduleAccent) ?>; --module-avatar: <?= View::e($moduleAccent) ?>; --module-accent-2: <?= View::e($moduleAccent2) ?>; --module-gradient: <?= View::e($moduleGradient) ?>;">
     <?php if ($successMessage): ?>
         <div class="flash-message flash-success"><?= View::e($successMessage) ?></div>
     <?php endif; ?>
@@ -38,7 +44,7 @@ $moduleNavigation = $moduleNavigation ?? [];
     <div class="module-layout">
         <aside class="module-sidebar" id="moduleSidebar">
             <a class="module-brand" href="<?= View::url('selection_portail') ?>">
-                <span class="module-brand-mark"><?= View::e($moduleCode ?? 'ERP') ?></span>
+                <span class="module-brand-mark module-brand-mark--icon"><?= ModuleIcon::svg((string) $moduleIconKey) ?></span>
                 <span>
                     <strong><?= View::e($moduleName ?? 'Module') ?></strong>
                     <small>ERP LBP Transit</small>

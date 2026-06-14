@@ -117,3 +117,55 @@ textarea.finea-input { resize: vertical; }
     .module-topbar { padding: 10px 12px; }
     .module-profile a { display: none; }
 }
+
+/* Module identity dashboards */
+.module-brand-mark--icon { color: #fff; background: var(--module-gradient); box-shadow: 0 12px 24px rgba(0,0,0,.18); }
+.module-brand-mark--icon svg,
+.module-dashboard-icon svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+.module-dashboard-hero { background: var(--module-hero-gradient, var(--module-gradient)); position: relative; overflow: hidden; }
+.module-dashboard-hero::after { content: ""; position: absolute; inset: -55% -18% auto auto; width: 360px; height: 360px; border-radius: 999px; background: rgba(255,255,255,.16); pointer-events: none; }
+.module-dashboard-title { display: flex; align-items: center; gap: 16px; position: relative; z-index: 1; }
+.module-dashboard-icon { width: 58px; height: 58px; display: inline-grid; place-items: center; border-radius: 18px; color: #fff; background: rgba(255,255,255,.16); border: 1px solid rgba(255,255,255,.26); box-shadow: inset 0 1px 0 rgba(255,255,255,.22); }
+.module-dashboard-icon.large { width: 76px; height: 76px; color: #fff; background: var(--module-gradient); }
+.module-dashboard-icon.large svg { width: 34px; height: 34px; }
+.module-dashboard-chip { display: inline-flex; align-items: center; min-height: 38px; padding: 8px 12px; border-radius: 999px; color: #fff; background: rgba(255,255,255,.16); border: 1px solid rgba(255,255,255,.22); font-weight: 800; }
+.module-accent-card { border-top: 4px solid var(--module-accent); }
+.module-dashboard-grid { display: grid; grid-template-columns: minmax(0, 1.6fr) 360px; gap: 16px; margin: 0 0 18px; }
+.module-section-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; margin-bottom: 14px; }
+.module-action-list { display: grid; gap: 10px; }
+.module-action-list a { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; padding: 14px; border: 1px solid var(--finea-border); border-radius: 12px; color: var(--finea-text); background: linear-gradient(180deg, #fff, #f8fafc); }
+.module-action-list a:hover { border-color: var(--module-accent); box-shadow: 0 12px 24px rgba(15,23,42,.07); transform: translateY(-1px); }
+.module-action-list strong { color: var(--finea-navy); }
+.module-action-list span { color: var(--finea-muted); }
+.module-action-list small { grid-row: 1 / span 2; grid-column: 2; align-self: center; color: var(--module-accent); font-weight: 900; }
+.module-identity-card { display: flex; flex-direction: column; gap: 12px; }
+.module-identity-card h2 { margin: 4px 0 0; color: var(--finea-navy); }
+.module-identity-card p { margin: 0; color: var(--finea-muted); line-height: 1.55; }
+.module-identity-swatches { display: flex; gap: 8px; margin-top: auto; }
+.module-identity-swatches span { width: 38px; height: 38px; border-radius: 12px; border: 1px solid rgba(15,23,42,.08); }
+.module-workflow-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.module-workflow-grid article { padding: 16px; border-radius: 12px; background: #f8fafc; border: 1px solid var(--finea-border); }
+.module-workflow-grid strong { color: var(--module-accent-2); }
+.module-workflow-grid p { margin: 8px 0 0; color: var(--finea-muted); line-height: 1.55; }
+.module-employee .finea-module-icon { background: linear-gradient(135deg, #0284c7, #0ea5e9); }
+.module-employee .finea-module-glow { color: #0ea5e9; }
+
+@media (max-width: 980px) {
+    .module-dashboard-grid { grid-template-columns: 1fr; }
+    .module-workflow-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 640px) {
+    .module-dashboard-title { align-items: flex-start; flex-direction: column; }
+}
+.module-crm .finea-module-icon{background:linear-gradient(135deg,#9d174d,#ec4899)}.module-crm .finea-module-glow{color:#ec4899}.module-tickets .finea-module-icon{background:linear-gradient(135deg,#991b1b,#ef4444)}.module-tickets .finea-module-glow{color:#ef4444}.module-website .finea-module-icon{background:linear-gradient(135deg,#0f766e,#14b8a6)}.module-website .finea-module-glow{color:#14b8a6}
+
+/* Identités modules transit - reprises dans selection_portail et dashboards. */
+.module-transit-douane .finea-module-icon{background:linear-gradient(135deg,#4c1d95,#7c3aed)}.module-transit-douane .finea-module-glow{color:#7c3aed}
+.module-tracking-colis .finea-module-icon{background:linear-gradient(135deg,#155e75,#06b6d4)}.module-tracking-colis .finea-module-glow{color:#06b6d4}
+.module-facturation .finea-module-icon{background:linear-gradient(135deg,#14532d,#16a34a)}.module-facturation .finea-module-glow{color:#16a34a}
+.module-entrepots .finea-module-icon{background:linear-gradient(135deg,#713f12,#a16207)}.module-entrepots .finea-module-glow{color:#a16207}
+.module-flotte-transport .finea-module-icon{background:linear-gradient(135deg,#7c2d12,#ea580c)}.module-flotte-transport .finea-module-glow{color:#ea580c}
+.module-portefeuille-clients .finea-module-icon{background:linear-gradient(135deg,#365314,#84cc16)}.module-portefeuille-clients .finea-module-glow{color:#84cc16}
+.module-agents-correspondants .finea-module-icon{background:linear-gradient(135deg,#312e81,#6366f1)}.module-agents-correspondants .finea-module-glow{color:#6366f1}
+.module-pilotage-dg .finea-module-icon{background:linear-gradient(135deg,#854d0e,#eab308)}.module-pilotage-dg .finea-module-glow{color:#eab308}

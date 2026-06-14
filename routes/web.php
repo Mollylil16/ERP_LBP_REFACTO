@@ -14,6 +14,8 @@ use App\Controllers\RhPersonnelController;
 use App\Controllers\RhModuleController;
 use App\Controllers\RhSettingsController;
 use App\Controllers\SelectionPortailController;
+use App\Controllers\BusinessModuleController;
+use App\Controllers\WebsiteController;
 
 /** @var Router $router */
 
@@ -78,6 +80,93 @@ $router->get('/selection_portail', [SelectionPortailController::class, 'index'])
  */
 $router->get('/dashboard', [DashboardController::class, 'index']);
 
+
+
+/**
+ * Routes modules métiers ERP.
+ * Chaque module dispose au minimum de /nom-module et /nom-module/dashboard.
+ */
+$router->group('/finance', function (Router $router): void {
+    $router->get('/', [BusinessModuleController::class, 'finance']);
+    $router->get('/dashboard', [BusinessModuleController::class, 'finance']);
+});
+
+$router->group('/colisage', function (Router $router): void {
+    $router->get('/', [BusinessModuleController::class, 'colisage']);
+    $router->get('/dashboard', [BusinessModuleController::class, 'colisage']);
+});
+
+$router->group('/logistique', function (Router $router): void {
+    $router->get('/', [BusinessModuleController::class, 'logistique']);
+    $router->get('/dashboard', [BusinessModuleController::class, 'logistique']);
+});
+
+$router->group('/espace-employe', function (Router $router): void {
+    $router->get('/', [BusinessModuleController::class, 'employee']);
+    $router->get('/dashboard', [BusinessModuleController::class, 'employee']);
+});
+
+$router->group('/crm', function (Router $router): void {
+    $router->get('/', [BusinessModuleController::class, 'crm']);
+    $router->get('/dashboard', [BusinessModuleController::class, 'crm']);
+});
+
+$router->group('/tickets', function (Router $router): void {
+    $router->get('/', [BusinessModuleController::class, 'tickets']);
+    $router->get('/dashboard', [BusinessModuleController::class, 'tickets']);
+});
+
+$router->group('/site-admin', function (Router $router): void {
+    $router->get('/', [BusinessModuleController::class, 'website']);
+    $router->get('/dashboard', [BusinessModuleController::class, 'website']);
+});
+
+$router->group('/transit-douane', function (Router $router): void {
+    $router->get('/', [BusinessModuleController::class, 'customs']);
+    $router->get('/dashboard', [BusinessModuleController::class, 'customs']);
+});
+
+$router->group('/tracking-colis', function (Router $router): void {
+    $router->get('/', [BusinessModuleController::class, 'tracking']);
+    $router->get('/dashboard', [BusinessModuleController::class, 'tracking']);
+});
+
+$router->group('/facturation', function (Router $router): void {
+    $router->get('/', [BusinessModuleController::class, 'billing']);
+    $router->get('/dashboard', [BusinessModuleController::class, 'billing']);
+});
+
+$router->group('/entrepots', function (Router $router): void {
+    $router->get('/', [BusinessModuleController::class, 'warehouses']);
+    $router->get('/dashboard', [BusinessModuleController::class, 'warehouses']);
+});
+
+$router->group('/flotte-transport', function (Router $router): void {
+    $router->get('/', [BusinessModuleController::class, 'fleet']);
+    $router->get('/dashboard', [BusinessModuleController::class, 'fleet']);
+});
+
+$router->group('/portefeuille-clients', function (Router $router): void {
+    $router->get('/', [BusinessModuleController::class, 'clientPortfolio']);
+    $router->get('/dashboard', [BusinessModuleController::class, 'clientPortfolio']);
+});
+
+$router->group('/agents-correspondants', function (Router $router): void {
+    $router->get('/', [BusinessModuleController::class, 'agents']);
+    $router->get('/dashboard', [BusinessModuleController::class, 'agents']);
+});
+
+$router->group('/pilotage-dg', function (Router $router): void {
+    $router->get('/', [BusinessModuleController::class, 'executiveCenter']);
+    $router->get('/dashboard', [BusinessModuleController::class, 'executiveCenter']);
+});
+
+/** Site public séparé du backoffice ERP. */
+$router->get('/site', [WebsiteController::class, 'publicSite']);
+$router->get('/site/tracking', [WebsiteController::class, 'tracking']);
+$router->get('/site/agences', [WebsiteController::class, 'agencies']);
+$router->get('/site/devis', [WebsiteController::class, 'quote']);
+$router->get('/site/contact', [WebsiteController::class, 'contact']);
 
 /**
  * Routes RH (/rh)
