@@ -30,6 +30,7 @@ class MigrationRunner
         $this->createAdminTables();
         $this->createRhTables();
         $this->createBusinessTables();
+        $this->addColisageExtensions();
         $this->linkUsersToRhEmployees();
     }
 
@@ -307,6 +308,55 @@ class MigrationRunner
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         " );
 
+        $this->addColumnIfMissing('rh_employee_documents', 'expiration_date', 'DATE NULL');
+
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS rh_contracts (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                employee_id INT UNSIGNED NOT NULL,
+                contract_type ENUM('CDI', 'CDD', 'Stage', 'Interim') NOT NULL DEFAULT 'CDI',
+                start_date DATE NOT NULL,
+                end_date DATE NULL,
+                trial_end_date DATE NULL,
+                base_salary DECIMAL(12, 2) NOT NULL DEFAULT 0.00,
+                status ENUM('active', 'terminated', 'renewed') NOT NULL DEFAULT 'active',
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME NULL,
+                KEY idx_rh_contracts_employee (employee_id),
+                KEY idx_rh_contracts_status (status),
+                CONSTRAINT fk_rh_contracts_employee FOREIGN KEY (employee_id) REFERENCES rh_employees(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS rh_contract_allowances (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                contract_id INT UNSIGNED NOT NULL,
+                name VARCHAR(150) NOT NULL,
+                amount DECIMAL(12, 2) NOT NULL DEFAULT 0.00,
+                is_taxable TINYINT(1) NOT NULL DEFAULT 0,
+                KEY idx_rh_contract_allowances_contract (contract_id),
+                CONSTRAINT fk_rh_contract_allowances_contract FOREIGN KEY (contract_id) REFERENCES rh_contracts(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS rh_payroll_parameters (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                year INT UNSIGNED NOT NULL,
+                smig DECIMAL(10, 2) NOT NULL DEFAULT 75000.00,
+                cnps_ceiling DECIMAL(12, 2) NOT NULL DEFAULT 1647315.00,
+                cnps_employee_rate DECIMAL(5, 2) NOT NULL DEFAULT 3.20,
+                cnps_employer_rate DECIMAL(5, 2) NOT NULL DEFAULT 7.70,
+                cmu_employee_rate DECIMAL(5, 2) NOT NULL DEFAULT 2.00,
+                cmu_employer_rate DECIMAL(5, 2) NOT NULL DEFAULT 2.00,
+                cn_rate DECIMAL(5, 2) NOT NULL DEFAULT 1.50,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME NULL,
+                UNIQUE KEY uniq_rh_payroll_params_year (year)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+
         $this->pdo->exec("
             CREATE TABLE IF NOT EXISTS rh_employee_mutations (
                 id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -329,9 +379,141 @@ class MigrationRunner
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         ");
 
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS rh_attendances (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                employee_id INT UNSIGNED NOT NULL,
+                date DATE NOT NULL,
+                check_in TIME NULL,
+                check_out TIME NULL,
+                total_hours DECIMAL(5, 2) NOT NULL DEFAULT 0.00,
+                overtime_hours DECIMAL(5, 2) NOT NULL DEFAULT 0.00,
+                status ENUM('present', 'absent', 'leave', 'holiday') NOT NULL DEFAULT 'present',
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME NULL,
+                UNIQUE KEY uniq_rh_attendances_emp_date (employee_id, date),
+                CONSTRAINT fk_rh_attendances_employee FOREIGN KEY (employee_id) REFERENCES rh_employees(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS rh_payroll_campaigns (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                month TINYINT UNSIGNED NOT NULL,
+                year INT UNSIGNED NOT NULL,
+                status ENUM('draft', 'validated', 'paid') NOT NULL DEFAULT 'draft',
+                created_by INT NULL,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME NULL,
+                UNIQUE KEY uniq_rh_payroll_campaigns_my (month, year)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS rh_payslips (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                employee_id INT UNSIGNED NOT NULL,
+                campaign_id INT UNSIGNED NOT NULL,
+                base_salary DECIMAL(12, 2) NOT NULL DEFAULT 0.00,
+                overtime_pay DECIMAL(12, 2) NOT NULL DEFAULT 0.00,
+                total_allowances DECIMAL(12, 2) NOT NULL DEFAULT 0.00,
+                gross_salary DECIMAL(12, 2) NOT NULL DEFAULT 0.00,
+                cnps_deduction DECIMAL(12, 2) NOT NULL DEFAULT 0.00,
+                cmu_deduction DECIMAL(12, 2) NOT NULL DEFAULT 0.00,
+                its_deduction DECIMAL(12, 2) NOT NULL DEFAULT 0.00,
+                net_salary DECIMAL(12, 2) NOT NULL DEFAULT 0.00,
+                payment_method VARCHAR(50) NULL,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE KEY uniq_rh_payslips_emp_camp (employee_id, campaign_id),
+                CONSTRAINT fk_rh_payslips_employee FOREIGN KEY (employee_id) REFERENCES rh_employees(id) ON DELETE CASCADE,
+                CONSTRAINT fk_rh_payslips_campaign FOREIGN KEY (campaign_id) REFERENCES rh_payroll_campaigns(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS rh_payslip_lines (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                payslip_id INT UNSIGNED NOT NULL,
+                type ENUM('gain', 'deduction') NOT NULL,
+                label VARCHAR(150) NOT NULL,
+                base DECIMAL(12, 2) NOT NULL DEFAULT 0.00,
+                rate DECIMAL(5, 2) NULL,
+                amount DECIMAL(12, 2) NOT NULL DEFAULT 0.00,
+                is_taxable TINYINT(1) NOT NULL DEFAULT 0,
+                sort_order INT NOT NULL DEFAULT 0,
+                CONSTRAINT fk_rh_payslip_lines_payslip FOREIGN KEY (payslip_id) REFERENCES rh_payslips(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS rh_leave_types (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                name VARCHAR(150) NOT NULL,
+                is_paid TINYINT(1) NOT NULL DEFAULT 1,
+                deduct_from_balance TINYINT(1) NOT NULL DEFAULT 1,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME NULL
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS rh_leave_opening_balance (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                employee_id INT UNSIGNED NOT NULL,
+                year INT UNSIGNED NOT NULL,
+                days_acquired DECIMAL(5, 2) NOT NULL DEFAULT 0.00,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE KEY uniq_rh_leave_opening_emp_yr (employee_id, year),
+                CONSTRAINT fk_rh_leave_opening_employee FOREIGN KEY (employee_id) REFERENCES rh_employees(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS rh_leave_requests (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                employee_id INT UNSIGNED NOT NULL,
+                leave_type_id INT UNSIGNED NOT NULL,
+                start_date DATE NOT NULL,
+                end_date DATE NOT NULL,
+                duration_days DECIMAL(5, 2) NOT NULL,
+                status ENUM('pending', 'approved', 'rejected', 'cancelled') NOT NULL DEFAULT 'pending',
+                reason TEXT NULL,
+                approved_by INT NULL,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME NULL,
+                CONSTRAINT fk_rh_leave_requests_employee FOREIGN KEY (employee_id) REFERENCES rh_employees(id) ON DELETE CASCADE,
+                CONSTRAINT fk_rh_leave_requests_type FOREIGN KEY (leave_type_id) REFERENCES rh_leave_types(id) ON DELETE RESTRICT
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+
         $this->seedRhStatuses();
         $this->seedRhExitReasons();
         $this->seedRhDocumentTypes();
+        $this->seedRhLeaveTypes();
+    }
+
+    private function seedRhLeaveTypes(): void
+    {
+        $stmt = $this->pdo->prepare("
+            INSERT IGNORE INTO rh_leave_types (name, is_paid, deduct_from_balance)
+            VALUES (:name, :is_paid, :deduct)
+        ");
+
+        $types = [
+            ['Congé Annuel', 1, 1],
+            ['Congé Maladie', 1, 0],
+            ['Congé Maternité', 1, 0],
+            ['Absence Non Rémunérée', 0, 0],
+            ['Permission Exceptionnelle', 1, 0],
+        ];
+
+        foreach ($types as [$name, $isPaid, $deduct]) {
+            $stmt->execute([
+                'name' => $name,
+                'is_paid' => $isPaid,
+                'deduct' => $deduct,
+            ]);
+        }
     }
 
     private function seedRhStatuses(): void
@@ -403,6 +585,7 @@ class MigrationRunner
 
     private function createBusinessTables(): void
     {
+        // ... (Agences / Sites)
         $this->pdo->exec("
             CREATE TABLE IF NOT EXISTS company_sites (
                 id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -426,6 +609,222 @@ class MigrationRunner
         ");
         $this->addColumnIfMissing('company_sites', 'latitude', 'DECIMAL(10,7) NULL');
         $this->addColumnIfMissing('company_sites', 'longitude', 'DECIMAL(10,7) NULL');
+
+
+        // Colisage: Colis
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS lbp_colis (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                tracking_number VARCHAR(50) NOT NULL,
+                sender_id INT UNSIGNED NOT NULL,
+                receiver_id INT UNSIGNED NOT NULL,
+                departure_agency_id INT UNSIGNED NOT NULL,
+                arrival_agency_id INT UNSIGNED NOT NULL,
+                status ENUM('RECEPTIONNE', 'EN_PREPARATION', 'EN_TRANSIT', 'ARRIVE', 'RETIRE') NOT NULL DEFAULT 'RECEPTIONNE',
+                total_weight DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+                declared_value DECIMAL(15,2) NOT NULL DEFAULT 0.00,
+                total_price DECIMAL(15,2) NOT NULL DEFAULT 0.00,
+                currency ENUM('XOF', 'EUR') NOT NULL DEFAULT 'XOF',
+                retrieval_cni VARCHAR(100) NULL,
+                retrieval_name VARCHAR(150) NULL,
+                retrieved_at DATETIME NULL,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME NULL,
+                UNIQUE KEY uniq_colis_tracking (tracking_number),
+                CONSTRAINT fk_colis_sender FOREIGN KEY (sender_id) REFERENCES crm_clients(id) ON DELETE RESTRICT,
+                CONSTRAINT fk_colis_receiver FOREIGN KEY (receiver_id) REFERENCES crm_clients(id) ON DELETE RESTRICT,
+                CONSTRAINT fk_colis_dep_agency FOREIGN KEY (departure_agency_id) REFERENCES company_sites(id) ON DELETE RESTRICT,
+                CONSTRAINT fk_colis_arr_agency FOREIGN KEY (arrival_agency_id) REFERENCES company_sites(id) ON DELETE RESTRICT
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+
+        // Colisage: Marchandises
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS lbp_marchandises (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                colis_id INT UNSIGNED NOT NULL,
+                description VARCHAR(255) NOT NULL,
+                quantity INT UNSIGNED NOT NULL DEFAULT 1,
+                unit_weight DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                CONSTRAINT fk_marchandises_colis FOREIGN KEY (colis_id) REFERENCES lbp_colis(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+
+        // Colisage: Expéditions (Manifestes)
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS lbp_expeditions (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                reference VARCHAR(100) NOT NULL,
+                transport_type ENUM('AERIEN', 'MARITIME', 'TERRESTRE') NOT NULL,
+                departure_agency_id INT UNSIGNED NOT NULL,
+                arrival_agency_id INT UNSIGNED NOT NULL,
+                departure_date DATETIME NULL,
+                estimated_arrival_date DATETIME NULL,
+                status ENUM('PLANIFIE', 'EN_COURS', 'ARRIVE', 'CLOTURE') NOT NULL DEFAULT 'PLANIFIE',
+                driver_user_id INT NULL,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME NULL,
+                UNIQUE KEY uniq_expedition_ref (reference),
+                CONSTRAINT fk_exp_dep_agency FOREIGN KEY (departure_agency_id) REFERENCES company_sites(id) ON DELETE RESTRICT,
+                CONSTRAINT fk_exp_arr_agency FOREIGN KEY (arrival_agency_id) REFERENCES company_sites(id) ON DELETE RESTRICT
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+
+        // Pivot: Colis -> Expéditions
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS lbp_colis_expeditions (
+                colis_id INT UNSIGNED NOT NULL,
+                expedition_id INT UNSIGNED NOT NULL,
+                added_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (colis_id, expedition_id),
+                CONSTRAINT fk_pivot_colis FOREIGN KEY (colis_id) REFERENCES lbp_colis(id) ON DELETE CASCADE,
+                CONSTRAINT fk_pivot_expedition FOREIGN KEY (expedition_id) REFERENCES lbp_expeditions(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+
+        // Flotte / Transport: Livreurs
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS lbp_livreurs (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                user_id INT NOT NULL,
+                vehicle_model VARCHAR(150) NULL,
+                license_plate VARCHAR(50) NULL,
+                status ENUM('DISPONIBLE', 'EN_COURSE', 'INACTIF') NOT NULL DEFAULT 'DISPONIBLE',
+                last_latitude DECIMAL(10,7) NULL,
+                last_longitude DECIMAL(10,7) NULL,
+                last_location_updated_at DATETIME NULL,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME NULL,
+                UNIQUE KEY uniq_livreur_user (user_id),
+                CONSTRAINT fk_livreur_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+
+        // Tracking Colis: Suivi GPS
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS lbp_tracking_gps (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                colis_id INT UNSIGNED NOT NULL,
+                step_name VARCHAR(150) NOT NULL,
+                status VARCHAR(50) NOT NULL,
+                latitude DECIMAL(10,7) NULL,
+                longitude DECIMAL(10,7) NULL,
+                recorded_by INT NULL,
+                recorded_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                CONSTRAINT fk_tracking_colis FOREIGN KEY (colis_id) REFERENCES lbp_colis(id) ON DELETE CASCADE,
+                CONSTRAINT fk_tracking_user FOREIGN KEY (recorded_by) REFERENCES users(id) ON DELETE SET NULL
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+
+        // Entrepôts: Inventaires
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS lbp_inventaires (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                agency_id INT UNSIGNED NOT NULL,
+                created_by INT NOT NULL,
+                status ENUM('EN_COURS', 'CLOTURE') NOT NULL DEFAULT 'EN_COURS',
+                started_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                closed_at DATETIME NULL,
+                notes TEXT NULL,
+                CONSTRAINT fk_inventaire_agency FOREIGN KEY (agency_id) REFERENCES company_sites(id) ON DELETE RESTRICT,
+                CONSTRAINT fk_inventaire_user FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+
+        // Entrepôts: Lignes d'inventaire
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS lbp_inventaire_lignes (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                inventaire_id INT UNSIGNED NOT NULL,
+                colis_id INT UNSIGNED NOT NULL,
+                status ENUM('PRESENT', 'MANQUANT', 'ENDOMMAGE') NOT NULL DEFAULT 'PRESENT',
+                scanned_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                comments VARCHAR(255) NULL,
+                UNIQUE KEY uniq_inv_colis (inventaire_id, colis_id),
+                CONSTRAINT fk_inv_ligne_inv FOREIGN KEY (inventaire_id) REFERENCES lbp_inventaires(id) ON DELETE CASCADE,
+                CONSTRAINT fk_inv_ligne_colis FOREIGN KEY (colis_id) REFERENCES lbp_colis(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+
+        // Phase 3: Exploitation
+        // Transit Douane & Achats: Prestataires
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS lbp_prestataires (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                type ENUM('DOUANE', 'COMPAGNIE_AERIENNE', 'FOURNISSEUR_MATERIEL', 'AUTRE') NOT NULL,
+                name VARCHAR(150) NOT NULL,
+                contact_info TEXT NULL,
+                is_active TINYINT(1) NOT NULL DEFAULT 1,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+
+        // Facturation & Finance: Factures prestataires
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS lbp_factures_prestataires (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                prestataire_id INT UNSIGNED NOT NULL,
+                invoice_number VARCHAR(100) NOT NULL,
+                amount DECIMAL(15,2) NOT NULL,
+                currency ENUM('XOF', 'EUR') NOT NULL DEFAULT 'XOF',
+                status ENUM('EN_ATTENTE', 'PAYEE', 'ANNULEE') NOT NULL DEFAULT 'EN_ATTENTE',
+                due_date DATE NULL,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                CONSTRAINT fk_facture_prestataire FOREIGN KEY (prestataire_id) REFERENCES lbp_prestataires(id) ON DELETE RESTRICT
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+
+        // Finance: Retraits Hub
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS lbp_retraits_prestataires (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                facture_id INT UNSIGNED NOT NULL,
+                amount_paid DECIMAL(15,2) NOT NULL,
+                currency ENUM('XOF', 'EUR') NOT NULL DEFAULT 'XOF',
+                payment_date DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                recorded_by INT NOT NULL,
+                reference_transaction VARCHAR(100) NULL,
+                CONSTRAINT fk_retrait_facture FOREIGN KEY (facture_id) REFERENCES lbp_factures_prestataires(id) ON DELETE CASCADE,
+                CONSTRAINT fk_retrait_user FOREIGN KEY (recorded_by) REFERENCES users(id) ON DELETE RESTRICT
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+
+        // Logistique: Demandes de fournitures
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS lbp_demandes_fournitures (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                agency_id INT UNSIGNED NOT NULL,
+                requested_by INT NOT NULL,
+                items_requested TEXT NOT NULL,
+                status ENUM('EN_ATTENTE', 'APPROUVEE', 'LIVREE', 'REJETEE') NOT NULL DEFAULT 'EN_ATTENTE',
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME NULL,
+                CONSTRAINT fk_fourniture_agency FOREIGN KEY (agency_id) REFERENCES company_sites(id) ON DELETE CASCADE,
+                CONSTRAINT fk_fourniture_user FOREIGN KEY (requested_by) REFERENCES users(id) ON DELETE RESTRICT
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+
+        // Finance: Crédits et Compensations Inter-agences
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS lbp_credits_inter_agences (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                from_agency_id INT UNSIGNED NOT NULL,
+                to_agency_id INT UNSIGNED NOT NULL,
+                amount DECIMAL(15,2) NOT NULL,
+                currency ENUM('XOF', 'EUR') NOT NULL DEFAULT 'XOF',
+                reason TEXT NULL,
+                status ENUM('EN_ATTENTE', 'VALIDE') NOT NULL DEFAULT 'EN_ATTENTE',
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                CONSTRAINT fk_credit_from FOREIGN KEY (from_agency_id) REFERENCES company_sites(id) ON DELETE RESTRICT,
+                CONSTRAINT fk_credit_to FOREIGN KEY (to_agency_id) REFERENCES company_sites(id) ON DELETE RESTRICT
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+
+        $this->addColumnIfMissing('company_sites', 'latitude', 'DECIMAL(10,7) NULL');
+        $this->addColumnIfMissing('company_sites', 'longitude', 'DECIMAL(10,7) NULL');
+>>>>>>> Stashed changes
+>>>>>>> 536d467 (feat: Add Colisage and Logistique modules structure)
         $this->addColumnIfMissing('rh_employees', 'site_id', 'INT UNSIGNED NULL');
         $this->addIndexIfMissing('rh_employees', 'idx_rh_employees_site_id', 'site_id');
         $this->addForeignKeyIfMissing('rh_employees', 'fk_rh_employees_site', 'site_id', 'company_sites', 'id', 'SET NULL');
@@ -709,6 +1108,83 @@ class MigrationRunner
                 UNIQUE KEY uniq_client_portfolio_segments_code (code)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         ");
+    }
+
+    /**
+     * Ajoute les colonnes manquantes pour le module Colisage (retrait, tracking, marchandises).
+     */
+    private function addColisageExtensions(): void
+    {
+        // Colonnes de retrait sur lbp_colis
+        $this->addColumnIfMissing('lbp_colis', 'retrieval_name', 'VARCHAR(180) NULL');
+        $this->addColumnIfMissing('lbp_colis', 'retrieval_cni', 'VARCHAR(100) NULL');
+        $this->addColumnIfMissing('lbp_colis', 'retrieval_phone', 'VARCHAR(60) NULL');
+        $this->addColumnIfMissing('lbp_colis', 'retrieved_at', 'DATETIME NULL');
+        $this->addColumnIfMissing('lbp_colis', 'notes', 'TEXT NULL');
+
+        // Colonne description courte du colis
+        $this->addColumnIfMissing('lbp_colis', 'description', 'VARCHAR(255) NULL');
+
+        // Livreur sur expéditions
+        $this->addColumnIfMissing('lbp_expeditions', 'livreur_id', 'INT UNSIGNED NULL');
+        $this->addColumnIfMissing('lbp_expeditions', 'notes', 'TEXT NULL');
+
+        // Lien retrait → user qui a effectué le retrait
+        $this->addColumnIfMissing('lbp_colis', 'retrieved_by', 'INT NULL');
+
+        // S'assurer que lbp_marchandises existe avec toutes colonnes
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS lbp_marchandises (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                colis_id INT UNSIGNED NOT NULL,
+                description VARCHAR(255) NOT NULL,
+                quantity INT UNSIGNED NOT NULL DEFAULT 1,
+                unit_weight DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                KEY idx_lbp_marchandises_colis (colis_id),
+                CONSTRAINT fk_marchandises_colis FOREIGN KEY (colis_id) REFERENCES lbp_colis(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+
+        // Tracking GPS — s'assurer que les colonnes sont correctes
+        $this->addColumnIfMissing('lbp_tracking_gps', 'step_name', 'VARCHAR(180) NOT NULL DEFAULT \'Etape\'');
+        $this->addColumnIfMissing('lbp_tracking_gps', 'status', 'VARCHAR(50) NOT NULL DEFAULT \'INFO\'');
+        $this->addColumnIfMissing('lbp_tracking_gps', 'latitude', 'DECIMAL(10,7) NULL');
+        $this->addColumnIfMissing('lbp_tracking_gps', 'longitude', 'DECIMAL(10,7) NULL');
+
+        // Logistique: vérifications colonnes lbp_prestataires
+        $this->addColumnIfMissing('lbp_prestataires', 'country', 'VARCHAR(100) NULL');
+        $this->addColumnIfMissing('lbp_prestataires', 'contact_name', 'VARCHAR(180) NULL');
+        $this->addColumnIfMissing('lbp_prestataires', 'phone', 'VARCHAR(60) NULL');
+        $this->addColumnIfMissing('lbp_prestataires', 'email', 'VARCHAR(150) NULL');
+        $this->addColumnIfMissing('lbp_prestataires', 'is_active', 'TINYINT(1) NOT NULL DEFAULT 1');
+        $this->addColumnIfMissing('lbp_prestataires', 'updated_at', 'DATETIME NULL');
+
+        // Logistique: factures prestataires colonnes supplémentaires
+        $this->addColumnIfMissing('lbp_factures_prestataires', 'lta_number', 'VARCHAR(100) NULL');
+        $this->addColumnIfMissing('lbp_factures_prestataires', 'issue_date', 'DATE NULL');
+        $this->addColumnIfMissing('lbp_factures_prestataires', 'amount_paid', 'DECIMAL(15,2) NOT NULL DEFAULT 0.00');
+        $this->addColumnIfMissing('lbp_factures_prestataires', 'notes', 'TEXT NULL');
+        $this->addColumnIfMissing('lbp_factures_prestataires', 'updated_at', 'DATETIME NULL');
+
+        // Logistique: retraits hub colonnes
+        $this->addColumnIfMissing('lbp_retraits_prestataires', 'status', "ENUM('EN_ATTENTE','APPROUVE','REFUSE') NOT NULL DEFAULT 'EN_ATTENTE'");
+        $this->addColumnIfMissing('lbp_retraits_prestataires', 'approved_by', 'INT NULL');
+        $this->addColumnIfMissing('lbp_retraits_prestataires', 'approved_at', 'DATETIME NULL');
+        $this->addColumnIfMissing('lbp_retraits_prestataires', 'rejection_reason', 'TEXT NULL');
+        $this->addColumnIfMissing('lbp_retraits_prestataires', 'notes', 'TEXT NULL');
+        $this->addColumnIfMissing('lbp_retraits_prestataires', 'updated_at', 'DATETIME NULL');
+
+        // Logistique: fournitures colonnes
+        $this->addColumnIfMissing('lbp_demandes_fournitures', 'validated_by', 'INT NULL');
+        $this->addColumnIfMissing('lbp_demandes_fournitures', 'validated_at', 'DATETIME NULL');
+        $this->addColumnIfMissing('lbp_demandes_fournitures', 'rejection_reason', 'TEXT NULL');
+        $this->addColumnIfMissing('lbp_demandes_fournitures', 'delivered_at', 'DATETIME NULL');
+
+        // Crédits inter-agences : colonnes supplémentaires
+        $this->addColumnIfMissing('lbp_credits_inter_agences', 'reference_colis', 'VARCHAR(100) NULL');
+        $this->addColumnIfMissing('lbp_credits_inter_agences', 'settled_at', 'DATETIME NULL');
+        $this->addColumnIfMissing('lbp_credits_inter_agences', 'updated_at', 'DATETIME NULL');
     }
 
     private function seedCompanySites(): void

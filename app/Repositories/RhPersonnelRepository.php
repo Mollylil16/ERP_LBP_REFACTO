@@ -47,6 +47,25 @@ class RhPersonnelRepository
         $stmt->execute(['id' => $id]);
         $employee = $stmt->fetch();
 
+        if ($employee) {
+            $docStmt = $this->pdo->prepare("
+                SELECT document_type, expiration_date 
+                FROM rh_employee_documents 
+                WHERE employee_id = :id AND expiration_date IS NOT NULL
+                ORDER BY id DESC
+            ");
+            $docStmt->execute(['id' => $id]);
+            $docs = $docStmt->fetchAll();
+            foreach ($docs as $doc) {
+                if ($doc['document_type'] === 'identity' && !isset($employee['identity_document_expiration_date'])) {
+                    $employee['identity_document_expiration_date'] = $doc['expiration_date'];
+                }
+                if ($doc['document_type'] === 'diploma' && !isset($employee['diploma_expiration_date'])) {
+                    $employee['diploma_expiration_date'] = $doc['expiration_date'];
+                }
+            }
+        }
+
         return $employee ?: null;
     }
 
@@ -428,10 +447,10 @@ class RhPersonnelRepository
         $stmt = $this->pdo->prepare("
             INSERT INTO rh_employee_documents (
                 employee_id, document_type, child_index, original_name,
-                stored_path, mime_type, size_bytes, created_at
+                stored_path, mime_type, size_bytes, expiration_date, created_at
             ) VALUES (
                 :employee_id, :document_type, :child_index, :original_name,
-                :stored_path, :mime_type, :size_bytes, NOW()
+                :stored_path, :mime_type, :size_bytes, :expiration_date, NOW()
             )
         ");
         foreach ($documents as $document) {
@@ -443,6 +462,7 @@ class RhPersonnelRepository
                 'stored_path' => $document['path'],
                 'mime_type' => $document['mime_type'],
                 'size_bytes' => $document['size_bytes'],
+                'expiration_date' => !empty($document['expiration_date']) ? $document['expiration_date'] : null,
             ]);
         }
     }

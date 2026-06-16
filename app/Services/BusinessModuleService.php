@@ -35,6 +35,82 @@ final class BusinessModuleService
         ]);
     }
 
+    public function colisageDashboard(): array
+    {
+        return $this->dashboard('colisage', 'Colisage', 'COL', 'colisage', '#f97316', '#ca8a04', 'linear-gradient(135deg,#ca8a04,#f97316)', 'Packing-list, colis, volumes, poids, conteneurs et contrôle documentaire des marchandises.', [
+            ['label' => 'Colis', 'value' => '0', 'meta' => 'Colis créés'],
+            ['label' => 'Expéditions', 'value' => '0', 'meta' => 'Manifestes en cours'],
+            ['label' => 'Retraits', 'value' => '0', 'meta' => 'Colis livrés'],
+        ], [
+            ['label' => 'Créer Colis', 'hint' => 'Réceptionner de la marchandise', 'url' => '/colisage/colis/nouveau'],
+            ['label' => 'Liste Colis', 'hint' => 'Suivre les statuts', 'url' => '/colisage/colis'],
+            ['label' => 'Expéditions', 'hint' => 'Gérer les manifestes', 'url' => '/colisage/expeditions'],
+        ]);
+    }
+
+    public function flotteDashboard(): array
+    {
+        return $this->dashboard('flotte', 'Flotte / Transport', 'TRP', 'flotte', '#3b82f6', '#1d4ed8', 'linear-gradient(135deg,#1d4ed8,#3b82f6)', 'Gestion des chauffeurs, coursiers, véhicules, disponibilités et planning des tournées.', [
+            ['label' => 'Livreurs', 'value' => '0', 'meta' => 'Disponibles'],
+        ], [
+            ['label' => 'Voir la flotte', 'hint' => 'Lister les véhicules', 'url' => '/flotte'],
+        ]);
+    }
+
+    public function trackingDashboard(): array
+    {
+        return $this->dashboard('tracking', 'Tracking Colis', 'TRK', 'tracking-colis', '#8b5cf6', '#4c1d95', 'linear-gradient(135deg,#4c1d95,#8b5cf6)', 'Suivi GPS, étapes de voyage, statuts en temps réel et notification clients.', [
+            ['label' => 'Points GPS', 'value' => '0', 'meta' => 'Aujourd\'hui'],
+        ], [
+            ['label' => 'Rechercher Tracking', 'hint' => 'Saisir un numéro', 'url' => '/tracking'],
+        ]);
+    }
+
+    public function entrepotsDashboard(): array
+    {
+        return $this->dashboard('entrepots', 'Entrepôts', 'WHS', 'entrepots', '#10b981', '#047857', 'linear-gradient(135deg,#047857,#10b981)', 'Campagnes d\'inventaire, scan de colis, détection des anomalies (manquants/endommagés).', [
+            ['label' => 'Inventaires', 'value' => '0', 'meta' => 'En cours'],
+        ], [
+            ['label' => 'Lancer Inventaire', 'hint' => 'Nouvelle campagne', 'url' => '/entrepots'],
+        ]);
+    }
+
+    public function transitDouaneDashboard(): array
+    {
+        return $this->dashboard('transit-douane', 'Transit Douane', 'CUS', 'transit-douane', '#f59e0b', '#b45309', 'linear-gradient(135deg,#b45309,#f59e0b)', 'Référentiel des prestataires douanes et fret aérien, gestion LTA.', [
+            ['label' => 'Prestataires', 'value' => '0', 'meta' => 'Actifs'],
+        ], [
+            ['label' => 'Nouveau Prestataire', 'hint' => 'Douane ou Fret', 'url' => '/transit-douane/create'],
+        ]);
+    }
+
+    public function facturationDashboard(): array
+    {
+        return $this->dashboard('facturation', 'Facturation', 'INV', 'facturation', '#ef4444', '#b91c1c', 'linear-gradient(135deg,#b91c1c,#ef4444)', 'Saisie des factures prestataires, suivi multi-devises (EUR/XOF).', [
+            ['label' => 'Factures', 'value' => '0', 'meta' => 'En attente'],
+        ], [
+            ['label' => 'Saisir Facture', 'hint' => 'Nouvelle facture', 'url' => '/facturation/create'],
+        ]);
+    }
+
+    public function financeDashboard(): array
+    {
+        return $this->dashboard('finance', 'Finance', 'FIN', 'finance', '#ec4899', '#be185d', 'linear-gradient(135deg,#be185d,#ec4899)', 'Retraits Hub (Caisse Centrale), Compensation et Crédits Inter-agences.', [
+            ['label' => 'Retraits', 'value' => '0 XOF', 'meta' => 'Aujourd\'hui'],
+        ], [
+            ['label' => 'Nouveau Retrait', 'hint' => 'Caisse centrale', 'url' => '/finance/retraits/create'],
+        ]);
+    }
+
+    public function logistiqueDashboard(): array
+    {
+        return $this->dashboard('logistique', 'Logistique', 'LOG', 'logistique', '#64748b', '#334155', 'linear-gradient(135deg,#334155,#64748b)', 'Demandes d\'approvisionnement des agences en fournitures et consommables.', [
+            ['label' => 'Demandes', 'value' => '0', 'meta' => 'En attente'],
+        ], [
+            ['label' => 'Nouvelle Demande', 'hint' => 'Fournitures agence', 'url' => '/logistique/demandes/create'],
+        ]);
+    }
+
     private function dashboard(string $slug, string $label, string $code, string $icon, string $accent, string $accent2, string $gradient, string $description, array $stats, array $actions): array
     {
         return [

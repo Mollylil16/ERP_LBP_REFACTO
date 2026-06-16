@@ -169,3 +169,21 @@ textarea.finea-input { resize: vertical; }
 .module-portefeuille-clients .finea-module-icon{background:linear-gradient(135deg,#365314,#84cc16)}.module-portefeuille-clients .finea-module-glow{color:#84cc16}
 .module-agents-correspondants .finea-module-icon{background:linear-gradient(135deg,#312e81,#6366f1)}.module-agents-correspondants .finea-module-glow{color:#6366f1}
 .module-pilotage-dg .finea-module-icon{background:linear-gradient(135deg,#854d0e,#eab308)}.module-pilotage-dg .finea-module-glow{color:#eab308}
+
+.finea-icon {
+    font-family: 'Material Icons';
+    font-weight: normal;
+    font-style: normal;
+    font-size: 20px;
+    line-height: 1;
+    letter-spacing: normal;
+    text-transform: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+    word-wrap: normal;
+    direction: ltr;
+    -webkit-font-feature-settings: 'liga';
+    -webkit-font-smoothing: antialiased;
+}

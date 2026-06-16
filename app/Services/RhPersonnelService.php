@@ -68,7 +68,7 @@ class RhPersonnelService
     public function create(array $input, array $files, int $actorId): int
     {
         $data = $this->protectRestrictedReferences($this->validateEmployee($input));
-        $uploads = $this->collectUploads($files, (int) $data['children_count']);
+        $uploads = $this->collectUploads($files, $input, (int) $data['children_count']);
         return $this->repository->create($data, $actorId, $uploads['columns'], $uploads['documents']);
     }
 
@@ -76,7 +76,7 @@ class RhPersonnelService
     {
         $employee = $this->requireEmployee($id);
         $data = $this->validateEmployee($input, $id);
-        $uploads = $this->collectUploads($files, (int) $data['children_count']);
+        $uploads = $this->collectUploads($files, $input, (int) $data['children_count']);
 
         $this->repository->update($id, $this->protectRestrictedReferences($data, $employee), $uploads['columns'], $uploads['documents']);
     }
@@ -238,7 +238,7 @@ class RhPersonnelService
     }
 
 
-    private function collectUploads(array $files, int $childrenCount): array
+    private function collectUploads(array $files, array $post, int $childrenCount): array
     {
         $columns = [];
         $documents = [];
@@ -252,8 +252,13 @@ class RhPersonnelService
             $file = $files[$field] ?? null;
             if ($this->hasUploadedFile($file)) {
                 $stored = $this->storeUploadedFile($file, $meta['type']);
+                $expirationDate = $post[$field . '_expiration_date'] ?? null;
                 $columns[$meta['column']] = $stored['path'];
-                $documents[] = $stored + ['document_type' => $meta['type'], 'child_index' => null];
+                $documents[] = $stored + [
+                    'document_type' => $meta['type'],
+                    'child_index' => null,
+                    'expiration_date' => $this->nullableDate($expirationDate)
+                ];
             }
         }
 

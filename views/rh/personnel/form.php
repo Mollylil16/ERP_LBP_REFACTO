@@ -108,16 +108,34 @@ ob_start();
                     'hint' => 'Glisser-déposer ou cliquer pour ajouter une photo.',
                     'preview' => !empty($employee['photo_path']) ? basename((string) $employee['photo_path']) : '',
                 ]) ?>
-                <?= Form::dropzone('identity_document', "Pièce d'identité", [
-                    'accept' => 'image/*,.pdf',
-                    'hint' => 'CNI, passeport ou attestation en PDF/image.',
-                    'preview' => !empty($employee['identity_document_path']) ? basename((string) $employee['identity_document_path']) : '',
-                ]) ?>
-                <?= Form::dropzone('diploma', 'Diplôme / attestation', [
-                    'accept' => 'image/*,.pdf',
-                    'hint' => 'Document optionnel, complétable plus tard.',
-                    'preview' => !empty($employee['diploma_path']) ? basename((string) $employee['diploma_path']) : '',
-                ]) ?>
+                <div>
+                    <?= Form::dropzone('identity_document', "Pièce d'identité", [
+                        'accept' => 'image/*,.pdf',
+                        'hint' => 'CNI, passeport ou attestation en PDF/image.',
+                        'preview' => !empty($employee['identity_document_path']) ? basename((string) $employee['identity_document_path']) : '',
+                    ]) ?>
+                    <div style="margin-top: 10px;">
+                        <?= Form::input('identity_document_expiration_date', [
+                            'label' => 'Date d\'expiration (CNI/Passeport)',
+                            'type' => 'date',
+                            'value' => (string)($employee['identity_document_expiration_date'] ?? ''),
+                        ]) ?>
+                    </div>
+                </div>
+                <div>
+                    <?= Form::dropzone('diploma', 'Diplôme / attestation', [
+                        'accept' => 'image/*,.pdf',
+                        'hint' => 'Document optionnel, complétable plus tard.',
+                        'preview' => !empty($employee['diploma_path']) ? basename((string) $employee['diploma_path']) : '',
+                    ]) ?>
+                    <div style="margin-top: 10px;">
+                        <?= Form::input('diploma_expiration_date', [
+                            'label' => 'Date d\'expiration (Optionnel)',
+                            'type' => 'date',
+                            'value' => (string)($employee['diploma_expiration_date'] ?? ''),
+                        ]) ?>
+                    </div>
+                </div>
             </div>
             <div class="rh-child-documents" data-child-documents data-existing-children="<?= (int) $field('children_count', 0) ?>"></div>
             <section class="finea-section-card"><?= ob_get_clean() ?></section>

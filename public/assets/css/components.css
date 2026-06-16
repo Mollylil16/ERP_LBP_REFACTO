@@ -35,3 +35,15 @@
 .finea-badge--warning { background: #fef3c7; color: #92400e; }
 .finea-badge--danger { background: #fee2e2; color: #991b1b; }
 .finea-empty-state { border: 1px dashed rgba(148,163,184,.55); border-radius: 20px; padding: 22px; text-align: center; color: #64748b; background: #f8fafc; }
+
+/* --- Tabs Component --- */
+.finea-tabs { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 24px; }
+.finea-tab { flex: 1 1 auto; min-width: 160px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 18px; background: #fff; border: 1px solid var(--finea-border, #dfe6f1); border-radius: var(--finea-radius, 12px); color: var(--finea-text, #172033); text-decoration: none; transition: all 0.2s ease; box-shadow: 0 4px 12px rgba(29, 43, 87, 0.02); }
+.finea-tab:hover { border-color: #cbd5e1; transform: translateY(-2px); box-shadow: 0 8px 24px rgba(29, 43, 87, 0.06); }
+.finea-tab.is-active { border-color: var(--module-accent, #7c3aed); background: linear-gradient(135deg, #fff, #f8fafc); box-shadow: 0 0 0 1px var(--module-accent, #7c3aed), 0 8px 24px rgba(29, 43, 87, 0.06); }
+.finea-tab > span { display: flex; flex-direction: column; gap: 4px; }
+.finea-tab strong { font-size: 0.95rem; font-weight: 800; color: var(--finea-navy, #1d2b57); }
+.finea-tab.is-active strong { color: var(--module-accent, #7c3aed); }
+.finea-tab small { font-size: 0.75rem; color: var(--finea-muted, #64748b); }
+.finea-tab-count { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px; padding: 0 8px; border-radius: 999px; background: #f1f5f9; color: var(--finea-muted, #64748b); font-size: 0.75rem; font-weight: 800; }
+.finea-tab.is-active .finea-tab-count { background: var(--module-accent, #7c3aed); color: #fff; }
