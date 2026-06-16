@@ -823,8 +823,6 @@ class MigrationRunner
 
         $this->addColumnIfMissing('company_sites', 'latitude', 'DECIMAL(10,7) NULL');
         $this->addColumnIfMissing('company_sites', 'longitude', 'DECIMAL(10,7) NULL');
->>>>>>> Stashed changes
->>>>>>> 536d467 (feat: Add Colisage and Logistique modules structure)
         $this->addColumnIfMissing('rh_employees', 'site_id', 'INT UNSIGNED NULL');
         $this->addIndexIfMissing('rh_employees', 'idx_rh_employees_site_id', 'site_id');
         $this->addForeignKeyIfMissing('rh_employees', 'fk_rh_employees_site', 'site_id', 'company_sites', 'id', 'SET NULL');
