@@ -99,8 +99,9 @@ final class Ui
         return '<span class="finea-badge finea-badge--' . View::e($tone) . '">' . View::e($label) . '</span>';
     }
 
-    public static function emptyState(string $title, string $message = ''): string
+    public static function emptyState(string $title, string $message = '', string $icon = ''): string
     {
-        return '<div class="finea-empty-state"><strong>' . View::e($title) . '</strong>' . ($message !== '' ? '<p>' . View::e($message) . '</p>' : '') . '</div>';
+        $iconHtml = $icon !== '' ? '<span class="material-icons" style="font-size: 2.5rem; opacity: 0.4; display: block; margin-bottom: 8px;">' . View::e($icon) . '</span>' : '';
+        return '<div class="finea-empty-state">' . $iconHtml . '<strong>' . View::e($title) . '</strong>' . ($message !== '' ? '<p>' . View::e($message) . '</p>' : '') . '</div>';
     }
 }

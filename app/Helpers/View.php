@@ -22,4 +22,13 @@ class View
 
         return rtrim($config['url'], '/') . '/' . ltrim($path, '/');
     }
+
+    public static function date(?string $date, string $format = 'd/m/Y'): string
+    {
+        if (empty($date)) {
+            return '';
+        }
+        $timestamp = strtotime($date);
+        return $timestamp ? date($format, $timestamp) : self::e($date);
+    }
 }

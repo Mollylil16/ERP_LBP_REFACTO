@@ -4,7 +4,7 @@ use App\Helpers\Csrf;
 use App\Helpers\View;
 
 ob_start();
-require __DIR__ . '/../../_navigation.php';
+require __DIR__ . '/../_navigation.php';
 
 $reliquat = (float)$facture['reliquat'];
 ?>
