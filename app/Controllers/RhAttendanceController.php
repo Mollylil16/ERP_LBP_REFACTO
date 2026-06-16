@@ -30,17 +30,21 @@ class RhAttendanceController extends BaseController
         
         $month = (int)($_GET['month'] ?? date('n'));
         $year = (int)($_GET['year'] ?? date('Y'));
+        $date = (string) ($_GET['date'] ?? date('Y-m-d'));
         
         $attendances = $this->repository->getMonthAttendances($month, $year);
+        $sheet = $this->service->dailySheet($date);
 
         $this->view('rh/attendance/index', [
             'pageTitle' => 'Pointage & Présences',
             'moduleName' => 'Ressources Humaines',
             'moduleCode' => 'RH',
             'activeModule' => 'attendance',
-            'additionalStyles' => ['css/finea-ui.css', 'css/rh.css', 'css/components.css'],
-            'additionalScripts' => ['js/rh.js', 'js/components.js'],
+            'additionalStyles' => ['css/finea-ui.css', 'css/rh.css'],
+            'additionalScripts' => ['js/rh.js'],
             'attendances' => $attendances,
+            'attendanceRows' => $sheet['rows'],
+            'date' => $sheet['date'],
             'month' => $month,
             'year' => $year,
         ]);
@@ -109,6 +113,17 @@ class RhAttendanceController extends BaseController
         if (!Csrf::verify($_POST['_csrf_token'] ?? null)) {
             Session::flash('error', 'Session expirée. Veuillez recommencer.');
             $this->redirect('/rh/pointage');
+        }
+
+        if (isset($_POST['attendance']) && is_array($_POST['attendance'])) {
+            try {
+                $saved = $this->service->saveDailySheet((string) ($_POST['date'] ?? ''), $_POST['attendance']);
+                Session::flash('success', $saved . ' ligne(s) de pointage enregistrée(s).');
+                $this->redirect('/rh/pointage?date=' . rawurlencode((string) ($_POST['date'] ?? date('Y-m-d'))));
+            } catch (\Exception $e) {
+                Session::flash('error', $e->getMessage());
+                $this->redirect('/rh/pointage');
+            }
         }
 
         $employeeId = (int)($_POST['employee_id'] ?? 0);

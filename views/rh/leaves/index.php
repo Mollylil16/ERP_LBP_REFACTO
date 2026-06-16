@@ -9,13 +9,11 @@ ob_start();
 ?>
 
 <?= Ui::pageHeader(
+    'Congés',
     'Congés & Absences',
     $isHR ? 'Gestion des demandes de congés de tous les employés.' : 'Suivi de vos demandes et de votre solde de congés.',
-    ['actions' => '
-        <a href="<?= View::url('rh/conges/nouveau') ?>" class="finea-action-btn finea-action-btn--accent">
-            <i class="finea-icon">add</i> Nouvelle Demande
-        </a>
-    ']
+    Ui::button('Nouvelle demande', ['href' => 'rh/conges/nouveau', 'variant' => 'accent']),
+    ['class' => 'rh-hero']
 ) ?>
 
 <?php if (!$isHR && $balance !== null): ?>
@@ -101,15 +99,11 @@ ob_start();
                         <div style="display: flex; gap: 0.5rem;">
                             <form action="<?= View::url('rh/conges/' . $row['id'] . '/valider') ?>" method="post" style="display:inline;">
                                 <?= Csrf::input() ?>
-                                <button type="submit" class="finea-action-btn finea-action-btn--accent" style="min-height: 32px; padding: 4px 8px;" title="Approuver">
-                                    <i class="finea-icon">check</i>
-                                </button>
+                                <?= Ui::button('Approuver', ['variant' => 'accent', 'type' => 'submit', 'title' => 'Approuver']) ?>
                             </form>
                             <form action="<?= View::url('rh/conges/' . $row['id'] . '/refuser') ?>" method="post" style="display:inline;">
                                 <?= Csrf::input() ?>
-                                <button type="submit" class="finea-action-btn finea-action-btn--danger" style="min-height: 32px; padding: 4px 8px;" title="Refuser">
-                                    <i class="finea-icon">close</i>
-                                </button>
+                                <?= Ui::button('Refuser', ['variant' => 'danger', 'type' => 'submit', 'title' => 'Refuser']) ?>
                             </form>
                         </div>
                         <?php else: ?>

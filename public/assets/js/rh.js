@@ -12,30 +12,84 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const childrenInput = document.querySelector("[data-children-count]");
   const childrenContainer = document.querySelector("[data-child-documents]");
+  const childTemplate = document.querySelector("[data-child-document-template]");
   const renderChildren = () => {
     if (!childrenInput || !childrenContainer) return;
     const count = Math.max(0, Math.min(20, parseInt(childrenInput.value || "0", 10)));
     childrenContainer.innerHTML = "";
-    if (count === 0) return;
+    if (count === 0 || !childTemplate) return;
     const title = document.createElement("h3");
     title.textContent = "Extraits de naissance des enfants";
     childrenContainer.appendChild(title);
     for (let i = 1; i <= count; i += 1) {
-      const label = document.createElement("label");
-      label.className = "finea-dropzone finea-child-dropzone";
-      label.setAttribute("data-finea-dropzone", "");
-      label.innerHTML = `
-        <input type="file" name="child_birth_certificates[]" accept="image/*,.pdf" required>
-        <span class="finea-dropzone-icon">⇪</span>
-        <strong>Enfant ${i}</strong>
-        <span>Extrait de naissance obligatoire pour cet enfant.</span>
-        <div class="finea-file-preview" data-finea-file-preview></div>`;
-      childrenContainer.appendChild(label);
+      const wrapper = document.createElement("div");
+      wrapper.innerHTML = childTemplate.innerHTML.split("__INDEX__").join(String(i));
+      const dropzone = wrapper.firstElementChild;
+      if (dropzone) childrenContainer.appendChild(dropzone);
     }
     window.FineaComponents?.init?.();
   };
   childrenInput?.addEventListener("input", renderChildren);
   renderChildren();
+
+  const reindexAllowances = (allowanceList) => {
+    allowanceList?.querySelectorAll("[data-contract-allowance-row]").forEach((row, index) => {
+      const checkbox = row.querySelector("[data-contract-taxable]");
+      if (checkbox) checkbox.name = `allowance_taxable[${index}]`;
+    });
+  };
+
+  document.addEventListener("click", (event) => {
+    if (!(event.target instanceof Element)) return;
+    const addButton = event.target.closest("[data-contract-add-allowance]");
+    if (!addButton) return;
+
+    const form = addButton.closest("form") || document;
+    const allowanceList = form.querySelector("[data-contract-allowances]");
+    const allowanceTemplate = form.querySelector("[data-contract-allowance-template]");
+    if (!allowanceList || !allowanceTemplate) return;
+
+    const index = allowanceList.querySelectorAll("[data-contract-allowance-row]").length;
+    const html = allowanceTemplate.innerHTML.split("__INDEX__").join(String(index));
+    allowanceList.insertAdjacentHTML("beforeend", html);
+  });
+
+  document.addEventListener("click", (event) => {
+    if (!(event.target instanceof Element)) return;
+    const button = event.target.closest("[data-contract-remove-allowance]");
+    if (!button) return;
+    const allowanceList = button.closest("[data-contract-allowances]");
+    button.closest("[data-contract-allowance-row]")?.remove();
+    reindexAllowances(allowanceList);
+  });
+
+  const calculateAttendanceRow = (row) => {
+    const present = row.querySelector("[data-attendance-present]");
+    const times = Array.from(row.querySelectorAll("[data-attendance-time]"));
+    const total = row.querySelector("[data-attendance-total]");
+    const enabled = !!present?.checked;
+    times.forEach((input) => { input.disabled = !enabled; });
+    row.classList.toggle("is-absent", !enabled);
+    if (!enabled) {
+      if (total) total.textContent = "0,00 h";
+      return;
+    }
+    const [start, end] = times.map((input) => input.value);
+    if (!start || !end) {
+      if (total) total.textContent = "0,00 h";
+      return;
+    }
+    const startDate = new Date(`2000-01-01T${start}:00`);
+    const endDate = new Date(`2000-01-01T${end}:00`);
+    const hours = endDate > startDate ? (endDate - startDate) / 3600000 : 0;
+    if (total) total.textContent = `${hours.toFixed(2).replace(".", ",")} h`;
+  };
+
+  document.querySelectorAll("[data-attendance-row]").forEach((row) => {
+    row.addEventListener("input", () => calculateAttendanceRow(row));
+    row.addEventListener("change", () => calculateAttendanceRow(row));
+    calculateAttendanceRow(row);
+  });
 
   const featureLabel = (feature) => {
     const properties = feature?.properties || {};

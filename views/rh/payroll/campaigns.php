@@ -10,13 +10,11 @@ ob_start();
 ?>
 
 <?= Ui::pageHeader(
+    'Paie',
     'Campagnes de Paie',
     'Gestion des calculs de salaire mensuels et édition des bulletins.',
-    ['actions' => '
-        <button type="button" class="finea-action-btn finea-action-btn--accent" onclick="document.getElementById(&quot;newCampaignForm&quot;).style.display=&quot;flex&quot;">
-            <i class="finea-icon">add</i> Nouvelle Campagne
-        </button>
-    ']
+    Ui::button('Nouvelle campagne', ['variant' => 'accent', 'type' => 'button', 'onclick' => 'document.getElementById("newCampaignForm").style.display="flex"']),
+    ['class' => 'rh-hero']
 ) ?>
 
 <div id="newCampaignForm" class="finea-section-card" style="display: none; margin-bottom: 2rem; background: #f8fafc;">
@@ -36,8 +34,8 @@ ob_start();
             'value' => date('Y'),
             'min' => '2020'
         ]) ?>
-        <button type="submit" class="finea-action-btn finea-action-btn--primary">Créer</button>
-        <button type="button" class="finea-action-btn finea-action-btn--secondary" onclick="document.getElementById(&quot;newCampaignForm&quot;).style.display=&quot;none&quot;">Annuler</button>
+        <?= Ui::button('Créer', ['variant' => 'primary', 'type' => 'submit']) ?>
+        <?= Ui::button('Annuler', ['variant' => 'secondary', 'type' => 'button', 'onclick' => 'document.getElementById("newCampaignForm").style.display="none"']) ?>
     </form>
 </div>
 
@@ -64,14 +62,10 @@ ob_start();
             <div style="display: flex; gap: 0.5rem;">
                 <form action="<?= View::url('rh/paie/campagnes/' . $camp['id'] . '/generer') ?>" method="post" style="flex: 1;">
                     <?= Csrf::input() ?>
-                    <button type="submit" class="finea-action-btn finea-action-btn--primary" style="width: 100%; justify-content: center;">
-                        <i class="finea-icon">calculate</i> Calculer
-                    </button>
+                    <?= Ui::button('Calculer', ['variant' => 'primary', 'type' => 'submit', 'class' => 'rh-action-full']) ?>
                 </form>
                 <?php if ($camp['payslip_count'] > 0): ?>
-                    <a href="<?= View::url('rh/paie/campagnes/' . $camp['id'] . '/bulletins') ?>" class="finea-action-btn finea-action-btn--secondary" style="flex: 1; justify-content: center;">
-                        <i class="finea-icon">visibility</i> Voir Bulletins
-                    </a>
+                    <?= Ui::button('Voir bulletins', ['href' => 'rh/paie/campagnes/' . (int) $camp['id'] . '/bulletins', 'variant' => 'secondary', 'class' => 'rh-action-full']) ?>
                 <?php endif; ?>
             </div>
         </div>

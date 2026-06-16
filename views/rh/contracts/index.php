@@ -2,12 +2,22 @@
 /** @var \App\Support\ViewBag $viewData */
 
 use App\Helpers\View;
-use App\View\Components\Ui;
+use App\View\Components\ContractCard;
 use App\View\Components\Form;
+use App\View\Components\Ui;
 
-$data = isset($viewData) ? $viewData->array('data') : ($data ?? []);
-$total = isset($viewData) ? $viewData->int('total') : ($total ?? 0);
-$page = isset($viewData) ? $viewData->int('page') : ($page ?? 1);
+$contracts = isset($viewData) ? $viewData->array('data') : [];
+$filters = isset($viewData) ? $viewData->array('filters') : [];
+$total = isset($viewData) ? $viewData->int('total') : 0;
+$page = isset($viewData) ? $viewData->int('page', 1) : 1;
+$totalPages = isset($viewData) ? $viewData->int('totalPages', 1) : 1;
+
+$queryForPage = static function (int $targetPage) use ($filters): string {
+    return http_build_query(array_filter(
+        $filters + ['page' => $targetPage],
+        static fn(mixed $value): bool => $value !== '' && $value !== 0
+    ));
+};
 
 ob_start();
 ?>
@@ -15,98 +25,59 @@ ob_start();
     <div class="finea-container">
         <?= Ui::pageHeader(
             'Contrats',
-            'Gestion des contrats & Rémunérations',
+            'Gestion des contrats & rémunérations',
             'Suivi du cycle de vie des contrats, de la rémunération de base et des indemnités fixes.',
-            Ui::button('Nouveau Contrat', ['href' => 'rh/contrats/nouveau', 'variant' => 'secondary']),
+            '<div class="finea-header-actions">'
+                . '<span class="rh-pending-chip">' . $total . ' contrat' . ($total > 1 ? 's' : '') . '</span>'
+                . Ui::button('Nouveau contrat', ['href' => 'rh/contrats/nouveau', 'variant' => 'secondary'])
+                . '</div>',
             ['class' => 'rh-hero']
         ) ?>
 
-        <section class="finea-filter-card">
-            <form method="get" action="<?= View::url('rh/contrats') ?>" class="finea-filter-grid">
+        <section class="finea-filter-card rh-personnel-filters">
+            <form method="get" action="<?= View::url('rh/contrats') ?>" class="rh-contract-filter-grid">
                 <?= Form::input('search', [
                     'label' => 'Recherche',
                     'placeholder' => 'Nom ou matricule',
-                    'value' => (string)($_GET['search'] ?? ''),
+                    'value' => (string) ($filters['search'] ?? ''),
+                    'fieldClass' => 'rh-filter-search',
                 ]) ?>
                 <?= Form::select('status', [
-                    '' => 'Tous les statuts',
-                    'active' => 'En cours',
-                    'terminated' => 'Terminé',
-                    'renewed' => 'Renouvelé',
-                ], [
-                    'label' => 'Statut',
-                    'value' => (string)($_GET['status'] ?? ''),
-                ]) ?>
-                <div class="finea-actions">
+                    ['value' => '', 'label' => 'Tous les statuts'],
+                    ['value' => 'active', 'label' => 'En cours'],
+                    ['value' => 'terminated', 'label' => 'Terminé'],
+                    ['value' => 'renewed', 'label' => 'Renouvelé'],
+                ], $filters['status'] ?? '', ['label' => 'Statut']) ?>
+                <div class="finea-actions rh-personnel-filter-actions">
                     <?= Ui::button('Filtrer', ['variant' => 'primary', 'type' => 'submit']) ?>
-                    <?php if (!empty($_GET['search']) || !empty($_GET['status'])): ?>
-                        <?= Ui::button('Effacer', ['href' => 'rh/contrats', 'variant' => 'plain']) ?>
-                    <?php endif; ?>
+                    <?= Ui::button('Effacer', ['href' => 'rh/contrats', 'variant' => 'secondary']) ?>
                 </div>
             </form>
         </section>
 
-        <section class="finea-table-wrap">
-            <table class="finea-table">
-                <thead>
-                    <tr>
-                        <th>Employé</th>
-                        <th>Type</th>
-                        <th>Période</th>
-                        <th>Salaire Base</th>
-                        <th>Statut</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php if (empty($data)): ?>
-                        <tr>
-                            <td colspan="6">
-                                <?= Ui::emptyState('Aucun contrat trouvé', 'Essayez de modifier vos filtres ou créez un nouveau contrat.') ?>
-                            </td>
-                        </tr>
-                    <?php else: ?>
-                        <?php foreach ($data as $row): ?>
-                            <tr>
-                                <td>
-                                    <strong><?= View::e($row['employee_name'] ?? '') ?></strong><br>
-                                    <small><?= View::e($row['employee_number'] ?? '') ?></small>
-                                </td>
-                                <td><?= View::e($row['contract_type'] ?? '') ?></td>
-                                <td>
-                                    Du <?= View::date($row['start_date'] ?? '') ?><br>
-                                    <small>Au <?= $row['end_date'] ? View::date($row['end_date']) : 'Indéterminé' ?></small>
-                                </td>
-                                <td><strong><?= number_format((float)($row['base_salary'] ?? 0), 0, ',', ' ') ?> FCFA</strong></td>
-                                <td>
-                                    <?php
-                                    $status = $row['status'] ?? '';
-                                    $badge = match ($status) {
-                                        'active' => ['En cours', 'success'],
-                                        'terminated' => ['Terminé', 'danger'],
-                                        'renewed' => ['Renouvelé', 'info'],
-                                        default => [$status, 'neutral']
-                                    };
-                                    echo Ui::badge($badge[0], $badge[1]);
-                                    ?>
-                                </td>
-                                <td>
-                                    <div class="finea-actions">
-                                        <?= Ui::button('Détails', ['href' => "rh/contrats/{$row['id']}", 'variant' => 'secondary', 'size' => 'sm']) ?>
-                                        <?= Ui::button('Modifier', ['href' => "rh/contrats/{$row['id']}/modifier", 'variant' => 'plain', 'size' => 'sm']) ?>
-                                    </div>
-                                </td>
-                            </tr>
-                        <?php endforeach; ?>
-                    <?php endif; ?>
-                </tbody>
-            </table>
-        </section>
-        
-        <?php if ($total > 20): ?>
-            <!-- TODO: Pagination component -->
-            <p style="text-align: center; margin-top: 15px; color: var(--finea-muted);">Pagination - Total: <?= $total ?> résultats</p>
+        <?php if ($contracts === []): ?>
+            <section class="finea-section-card">
+                <?= Ui::emptyState('Aucun contrat trouvé', 'Essayez de modifier vos filtres ou créez un nouveau contrat.') ?>
+            </section>
+        <?php else: ?>
+            <section class="rh-contract-card-grid" aria-label="Contrats RH">
+                <?php foreach ($contracts as $contract): ?>
+                    <?= ContractCard::render($contract) ?>
+                <?php endforeach; ?>
+            </section>
+        <?php endif; ?>
+
+        <?php if ($totalPages > 1): ?>
+            <nav class="rh-pagination" aria-label="Pagination">
+                <?php for ($i = 1; $i <= $totalPages; $i++): ?>
+                    <a class="<?= $i === $page ? 'is-active' : '' ?>"
+                       href="<?= View::url('rh/contrats?' . $queryForPage($i)) ?>"
+                       <?= $i === $page ? 'aria-current="page"' : '' ?>>
+                        <?= $i ?>
+                    </a>
+                <?php endfor; ?>
+            </nav>
         <?php endif; ?>
     </div>
 </div>
-<?php $content = ob_get_clean(); require BASE_PATH . '/views/layouts/module.php'; ?>
+<?php $content = ob_get_clean(); require BASE_PATH . '/views/layouts/module.php';

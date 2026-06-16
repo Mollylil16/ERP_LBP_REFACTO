@@ -10,6 +10,8 @@ class RhContractRepository
 
     public function paginate(int $page, int $perPage, array $filters = []): array
     {
+        $page = max(1, $page);
+        $perPage = max(5, min(50, $perPage));
         $offset = ($page - 1) * $perPage;
         $sql = "SELECT c.*, e.full_name as employee_name, e.employee_number
                 FROM rh_contracts c
@@ -46,13 +48,18 @@ class RhContractRepository
             'total' => $total,
             'page' => $page,
             'per_page' => $perPage,
+            'totalPages' => max(1, (int) ceil($total / $perPage)),
+            'filters' => [
+                'search' => trim((string) ($filters['search'] ?? '')),
+                'status' => trim((string) ($filters['status'] ?? '')),
+            ],
         ];
     }
 
     public function find(int $id): ?array
     {
         $stmt = $this->pdo->prepare("
-            SELECT c.*, e.full_name as employee_name 
+            SELECT c.*, e.full_name as employee_name, e.employee_number
             FROM rh_contracts c 
             JOIN rh_employees e ON c.employee_id = e.id 
             WHERE c.id = ?
@@ -138,5 +145,20 @@ class RhContractRepository
     {
         $stmt = $this->pdo->prepare("UPDATE rh_contracts SET status = 'terminated', end_date = COALESCE(end_date, CURRENT_DATE) WHERE employee_id = ? AND id != ? AND status = 'active'");
         $stmt->execute([$employeeId, $excludeContractId]);
+    }
+
+    public function activeEmployeeOptions(): array
+    {
+        $stmt = $this->pdo->query("
+            SELECT id, employee_number, full_name
+            FROM rh_employees
+            WHERE is_active = 1
+            ORDER BY full_name ASC
+        ");
+
+        return array_map(static fn(array $row): array => [
+            'value' => (string) ($row['id'] ?? ''),
+            'label' => trim((string) ($row['employee_number'] ?? '') . ' - ' . (string) ($row['full_name'] ?? '')),
+        ], $stmt->fetchAll(PDO::FETCH_ASSOC) ?: []);
     }
 }

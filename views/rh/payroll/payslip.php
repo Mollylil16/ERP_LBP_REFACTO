@@ -8,16 +8,14 @@ ob_start();
 ?>
 
 <?= Ui::pageHeader(
+    'Paie',
     'Bulletin de Paie',
     'Détails du salaire et impression',
-    ['actions' => '
-        <a href="<?= View::url('rh/paie/campagnes/' . $payslip['campaign_id'] . '/bulletins') ?>" class="finea-action-btn finea-action-btn--secondary">
-            <i class="finea-icon">arrow_back</i> Retour
-        </a>
-        <button type="button" class="finea-action-btn finea-action-btn--primary" onclick="window.print()">
-            <i class="finea-icon">print</i> Imprimer
-        </button>
-    ']
+    '<div class="finea-header-actions">'
+        . Ui::button('Retour', ['href' => 'rh/paie/campagnes/' . (int) $payslip['campaign_id'] . '/bulletins', 'variant' => 'secondary'])
+        . Ui::button('Imprimer', ['variant' => 'primary', 'type' => 'button', 'onclick' => 'window.print()'])
+        . '</div>',
+    ['class' => 'rh-hero']
 ) ?>
 
 <style>

@@ -11,25 +11,23 @@ ob_start();
 $typeOptions = [];
 foreach ($leaveTypes as $t) {
     $deductInfo = $t['deduct_from_balance'] ? ' (Déduit du solde)' : '';
-    $typeOptions[$t['id']] = $t['name'] . $deductInfo;
+    $typeOptions[] = ['value' => (string) $t['id'], 'label' => $t['name'] . $deductInfo];
 }
 
 $employeeOptions = [];
 if ($isHR) {
     foreach ($employees as $e) {
-        $employeeOptions[$e['id']] = $e['employee_number'] . ' - ' . $e['full_name'];
+        $employeeOptions[] = ['value' => (string) $e['id'], 'label' => $e['employee_number'] . ' - ' . $e['full_name']];
     }
 }
 ?>
 
 <?= Ui::pageHeader(
+    'Congés',
     'Nouvelle Demande de Congé / Absence',
     'Veuillez remplir le formulaire ci-dessous pour soumettre votre demande.',
-    ['actions' => '
-        <a href="/rh/conges" class="finea-action-btn finea-action-btn--secondary">
-            <i class="finea-icon">arrow_back</i> Retour
-        </a>
-    ']
+    Ui::button('Retour', ['href' => 'rh/conges', 'variant' => 'secondary']),
+    ['class' => 'rh-hero']
 ) ?>
 
 <div class="finea-section-card">
@@ -37,16 +35,15 @@ if ($isHR) {
         <?= Csrf::input() ?>
 
         <?php if ($isHR): ?>
-            <?= Form::select('employee_id', $employeeOptions, [
+            <?= Form::select('employee_id', $employeeOptions, (string) $actorId, [
                 'label' => 'Employé (Saisie RH)',
                 'required' => true,
-                'value' => (string)$actorId
             ]) ?>
         <?php else: ?>
-            <input type="hidden" name="employee_id" value="<?= htmlspecialchars((string)$actorId) ?>">
+            <?= Form::hidden('employee_id', (string) $actorId) ?>
         <?php endif; ?>
 
-        <?= Form::select('leave_type_id', $typeOptions, [
+        <?= Form::select('leave_type_id', $typeOptions, '', [
             'label' => 'Type de congé/absence',
             'required' => true
         ]) ?>
@@ -64,15 +61,10 @@ if ($isHR) {
             ]) ?>
         </div>
 
-        <div class="finea-form-group">
-            <label for="reason" class="finea-label">Motif / Commentaire (Optionnel)</label>
-            <textarea id="reason" name="reason" rows="3" class="finea-input"></textarea>
-        </div>
+        <?= Form::textarea('reason', ['label' => 'Motif / Commentaire (Optionnel)', 'rows' => 3]) ?>
 
         <div style="margin-top: 2rem;">
-            <button type="submit" class="finea-action-btn finea-action-btn--primary">
-                <i class="finea-icon">send</i> Soumettre la demande
-            </button>
+            <?= Ui::button('Soumettre la demande', ['variant' => 'primary', 'type' => 'submit']) ?>
         </div>
     </form>
 </div>

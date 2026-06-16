@@ -137,6 +137,13 @@ ob_start();
                     </div>
                 </div>
             </div>
+            <template data-child-document-template>
+                <?= Form::dropzone('child_birth_certificates[]', 'Enfant __INDEX__', [
+                    'accept' => 'image/*,.pdf',
+                    'hint' => 'Extrait de naissance obligatoire pour cet enfant.',
+                    'class' => 'finea-child-dropzone',
+                ]) ?>
+            </template>
             <div class="rh-child-documents" data-child-documents data-existing-children="<?= (int) $field('children_count', 0) ?>"></div>
             <section class="finea-section-card"><?= ob_get_clean() ?></section>
 

@@ -73,13 +73,25 @@ final class Ui
             $variant = $variantOrOptions;
         }
 
-        $class = 'finea-action-btn finea-action-btn--' . preg_replace('/[^a-z0-9_-]/i', '', $variant);
+        $html = !empty($options['html']);
+        $attrs = $options ?? [];
+        unset($attrs['href'], $attrs['variant'], $attrs['type'], $attrs['html']);
+
+        $class = Html::classes([
+            'finea-action-btn',
+            'finea-action-btn--' . preg_replace('/[^a-z0-9_-]/i', '', $variant),
+            (string) ($attrs['class'] ?? ''),
+        ]);
+        $attrs['class'] = $class;
+        $labelHtml = $html ? $label : View::e($label);
 
         if ($href !== '') {
-            return '<a class="' . View::e($class) . '" href="' . View::url(ltrim($href, '/')) . '">' . View::e($label) . '</a>';
+            $attrs['href'] = preg_match('#^https?://#i', $href) ? $href : View::url(ltrim($href, '/'));
+            return '<a' . Html::attrs($attrs) . '>' . $labelHtml . '</a>';
         }
 
-        return '<button class="' . View::e($class) . '" type="' . View::e($type) . '">' . View::e($label) . '</button>';
+        $attrs['type'] = $type;
+        return '<button' . Html::attrs($attrs) . '>' . $labelHtml . '</button>';
     }
 
     public static function badge(string $label, string $tone = 'neutral'): string

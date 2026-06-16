@@ -11,30 +11,20 @@ use App\Repositories\RhContractRepository;
 use App\Services\RhContractService;
 use App\Security\OperationPolicy;
 use RuntimeException;
-use PDO;
 
 class RhContractController extends BaseController
 {
     private RhContractService $service;
-    private PDO $pdo;
 
     public function __construct()
     {
-        $this->pdo = Database::getConnection();
-        $this->service = new RhContractService(new RhContractRepository($this->pdo));
+        $this->service = new RhContractService(new RhContractRepository(Database::getConnection()));
     }
 
     public function index(): void
     {
         AuthMiddleware::check();
-        $this->view('rh/contracts/index', [
-            'pageTitle' => 'Contrats & Rémunérations',
-            'moduleName' => 'Ressources Humaines',
-            'moduleCode' => 'RH',
-            'activeModule' => 'contracts',
-            'additionalStyles' => ['css/finea-ui.css', 'css/rh.css', 'css/components.css'],
-            'additionalScripts' => ['js/rh.js', 'js/components.js', 'js/components/form-components.js'],
-        ] + $this->service->list($_GET));
+        $this->view('rh/contracts/index', $this->viewData('Contrats & Rémunérations') + $this->service->list($_GET));
     }
 
     public function create(): void
@@ -42,15 +32,10 @@ class RhContractController extends BaseController
         PermissionMiddleware::checkOperation(OperationPolicy::RH_CONTRACT_MANAGE);
         
         $employeeId = (int)($_GET['employee_id'] ?? 0);
-        $this->view('rh/contracts/form', [
+        $this->view('rh/contracts/form', $this->viewData('Nouveau Contrat') + [
             'pageTitle' => 'Nouveau Contrat',
-            'moduleName' => 'Ressources Humaines',
-            'moduleCode' => 'RH',
-            'activeModule' => 'contracts',
-            'additionalStyles' => ['css/finea-ui.css', 'css/rh.css', 'css/components.css'],
-            'additionalScripts' => ['js/rh.js', 'js/components.js', 'js/components/form-components.js'],
             'contract' => ['employee_id' => $employeeId, 'contract_type' => 'CDI', 'status' => 'active'],
-            'employees' => $this->getEmployeesOptions(),
+            'employees' => $this->service->employeeOptions(),
             'formAction' => '/rh/contrats',
             'submitLabel' => 'Enregistrer le contrat',
         ]);
@@ -85,15 +70,9 @@ class RhContractController extends BaseController
             $this->redirect('/rh/contrats');
         }
 
-        $this->view('rh/contracts/form', [
-            'pageTitle' => 'Modifier Contrat',
-            'moduleName' => 'Ressources Humaines',
-            'moduleCode' => 'RH',
-            'activeModule' => 'contracts',
-            'additionalStyles' => ['css/finea-ui.css', 'css/rh.css', 'css/components.css'],
-            'additionalScripts' => ['js/rh.js', 'js/components.js', 'js/components/form-components.js'],
+        $this->view('rh/contracts/form', $this->viewData('Modifier Contrat') + [
             'contract' => $contract,
-            'employees' => $this->getEmployeesOptions(),
+            'employees' => $this->service->employeeOptions(),
             'formAction' => "/rh/contrats/{$id}/modifier",
             'submitLabel' => 'Mettre à jour',
         ]);
@@ -128,25 +107,24 @@ class RhContractController extends BaseController
             $this->redirect('/rh/contrats');
         }
 
-        $this->view('rh/contracts/show', [
-            'pageTitle' => 'Détails du Contrat',
-            'moduleName' => 'Ressources Humaines',
-            'moduleCode' => 'RH',
-            'activeModule' => 'contracts',
-            'additionalStyles' => ['css/finea-ui.css', 'css/rh.css', 'css/components.css'],
-            'additionalScripts' => ['js/rh.js'],
+        $this->view('rh/contracts/show', $this->viewData('Détails du Contrat') + [
             'contract' => $contract,
         ]);
     }
 
-    private function getEmployeesOptions(): array
+    private function viewData(string $pageTitle): array
     {
-        $stmt = $this->pdo->query("SELECT id, CONCAT(employee_number, ' - ', full_name) as name FROM rh_employees ORDER BY full_name ASC");
-        $options = [];
-        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-            $options[$row['id']] = $row['name'];
-        }
-        return $options;
+        require BASE_PATH . '/views/rh/_navigation.php';
+
+        return [
+            'pageTitle' => $pageTitle,
+            'moduleName' => 'Ressources Humaines',
+            'moduleCode' => 'RH',
+            'activeModule' => 'contracts',
+            'additionalStyles' => ['css/finea-ui.css', 'css/rh.css'],
+            'additionalScripts' => ['js/rh.js'],
+            'moduleNavigation' => $moduleNavigation,
+        ];
     }
 
     private function parseAllowances(array $post): array
@@ -157,9 +135,12 @@ class RhContractController extends BaseController
         $taxables = $post['allowance_taxable'] ?? [];
 
         foreach ($names as $i => $name) {
-            if (empty(trim($name))) continue;
+            $name = trim((string) $name);
+            if ($name === '') {
+                continue;
+            }
             $allowances[] = [
-                'name' => trim($name),
+                'name' => $name,
                 'amount' => (float)($amounts[$i] ?? 0),
                 'is_taxable' => !empty($taxables[$i]) ? 1 : 0
             ];

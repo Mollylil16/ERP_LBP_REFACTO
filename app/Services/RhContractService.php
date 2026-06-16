@@ -57,4 +57,9 @@ class RhContractService
     {
         return $this->repository->find($id);
     }
+
+    public function employeeOptions(): array
+    {
+        return $this->repository->activeEmployeeOptions();
+    }
 }
