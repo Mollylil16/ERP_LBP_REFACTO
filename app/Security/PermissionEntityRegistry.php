@@ -129,6 +129,32 @@ final class PermissionEntityRegistry
                 'description' => 'Gestion des demandes de congés et des soldes associés.',
                 'sort_order' => 210,
             ],
+            // Colisage & Fret
+            self::COLISAGE_COLIS => [
+                'module' => 'Colisage & Fret',
+                'name' => 'Colis',
+                'description' => 'Réception, suivi et retrait des colis.',
+                'sort_order' => 300,
+            ],
+            self::COLISAGE_EXPEDITIONS => [
+                'module' => 'Colisage & Fret',
+                'name' => 'Expéditions (Manifestes)',
+                'description' => 'Groupage de colis, manifestes aérien/maritime/routier.',
+                'sort_order' => 310,
+            ],
+            // CRM
+            self::CRM_CLIENTS => [
+                'module' => 'CRM',
+                'name' => 'Clients & Partenaires',
+                'description' => 'Référentiel des expéditeurs, destinataires et prospects.',
+                'sort_order' => 350,
+            ],
+            self::CRM_OPPORTUNITIES => [
+                'module' => 'CRM',
+                'name' => 'Opportunités commerciales',
+                'description' => 'Pipeline de prospection et suivi des opportunités.',
+                'sort_order' => 360,
+            ],
             // Phase 2
         self::FLOTTE_LIVREURS => [
             'name' => 'Livreurs & Flotte',
