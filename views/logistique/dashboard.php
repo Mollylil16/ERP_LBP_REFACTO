@@ -7,89 +7,117 @@ ob_start();
 require __DIR__ . '/_navigation.php';
 ?>
 
-<?= Ui::pageHeader('Module Logistique Interne', 'Tableau de bord', [
-    'actions' => '<div style="display:flex; gap:.5rem;">'
-        . Ui::button('Nouveau prestataire', 'logistique/prestataires/nouveau', ['variant' => 'outline'])
-        . Ui::button('Nouvelle facture', 'logistique/factures/nouvelle', ['variant' => 'primary'])
-        . '</div>'
-]) ?>
+<div class="finea-shell">
+    <div class="finea-container">
+        <?= Ui::pageHeader('Module Logistique Interne', 'Tableau de bord', [
+            'actions' => '<div style="display:flex; gap:.5rem;">'
+                . Ui::button('Nouveau prestataire', 'logistique/prestataires/nouveau', ['variant' => 'secondary'])
+                . Ui::button('Nouvelle facture', 'logistique/factures/nouvelle', ['variant' => 'primary'])
+                . '</div>'
+        ]) ?>
 
-<!-- KPIs -->
-<div style="display:grid; grid-template-columns:repeat(4,1fr); gap:1rem; margin-bottom:2rem;">
-    <div class="kpi-card" style="border-left:4px solid #ef4444;">
-        <span style="font-size:.78rem; font-weight:600; text-transform:uppercase; color:#ef4444;">Encours Fournisseurs</span>
-        <strong style="font-size:1.8rem; color:#ef4444; display:block;"><?= number_format($kpis['encours_fournisseurs'], 0, ',', ' ') ?> XOF</strong>
-        <small style="color:var(--color-muted);">Factures non réglées</small>
-    </div>
-    <div class="kpi-card" style="border-left:4px solid #f59e0b;">
-        <span style="font-size:.78rem; font-weight:600; text-transform:uppercase; color:#f59e0b;">Retraits en attente</span>
-        <strong style="font-size:2.2rem; color:#f59e0b; display:block;"><?= $kpis['retraits_en_attente'] ?></strong>
-        <small style="color:var(--color-muted);">Approbation requise</small>
-    </div>
-    <div class="kpi-card" style="border-left:4px solid #3b82f6;">
-        <span style="font-size:.78rem; font-weight:600; text-transform:uppercase; color:#3b82f6;">Fournitures en attente</span>
-        <strong style="font-size:2.2rem; color:#3b82f6; display:block;"><?= $kpis['fournitures_en_attente'] ?></strong>
-        <small style="color:var(--color-muted);">Demandes à valider</small>
-    </div>
-    <div class="kpi-card" style="border-left:4px solid #8b5cf6;">
-        <span style="font-size:.78rem; font-weight:600; text-transform:uppercase; color:#8b5cf6;">Crédits inter-agences</span>
-        <strong style="font-size:1.8rem; color:#8b5cf6; display:block;"><?= number_format($kpis['credits_inter_agences'], 0, ',', ' ') ?> XOF</strong>
-        <small style="color:var(--color-muted);">Dettes en attente d'apurement</small>
-    </div>
-</div>
-
-<!-- Actions rapides -->
-<div style="display:grid; grid-template-columns:1fr 1fr; gap:1.5rem;">
-    <section class="finea-section-card">
-        <div class="finea-section-heading">
-            <h2 class="finea-section-title">Actions rapides</h2>
-        </div>
-        <div class="action-list">
-            <a href="<?= View::url('logistique/prestataires') ?>" class="action-item">
-                <span class="material-icons action-icon">business</span>
-                <div><strong>Prestataires</strong><span>Gestion des fournisseurs et partenaires</span></div>
-            </a>
-            <a href="<?= View::url('logistique/factures') ?>" class="action-item">
-                <span class="material-icons action-icon">receipt_long</span>
-                <div><strong>Factures Prestataires</strong><span>Saisie et suivi des factures</span></div>
-            </a>
-            <a href="<?= View::url('logistique/retraits') ?>" class="action-item">
-                <span class="material-icons action-icon">account_balance</span>
-                <div><strong>Retraits Hub</strong><span>Paiements depuis la caisse centrale</span></div>
-            </a>
-            <a href="<?= View::url('logistique/fournitures') ?>" class="action-item">
-                <span class="material-icons action-icon">shopping_cart</span>
-                <div><strong>Fournitures Agences</strong><span>Demandes et livraisons de consommables</span></div>
-            </a>
-            <a href="<?= View::url('logistique/credits') ?>" class="action-item">
-                <span class="material-icons action-icon">swap_horiz</span>
-                <div><strong>Crédits inter-agences</strong><span>Équilibrage des dettes entre agences</span></div>
-            </a>
-        </div>
-    </section>
-
-    <section class="finea-section-card">
-        <div class="finea-section-heading">
-            <h2 class="finea-section-title">Workflows clés</h2>
-        </div>
-        <div style="padding:.5rem 0;">
-            <?php $flows = [
-                ['Prestataire → Facture', '#7c3aed', 'Enregistrer la facture reçue'],
-                ['Facture → Retrait Hub', '#ef4444', 'Demander le décaissement de la caisse'],
-                ['Retrait → Approbation', '#f59e0b', 'Validation par la caissière principale'],
-                ['Approbation → Paiement', '#10b981', 'Facture mise à jour comme PAYÉE'],
-            ];
-            foreach ($flows as $i => [$step, $color, $desc]): ?>
-            <div style="display:flex; align-items:center; gap:.75rem; padding:.4rem 0; border-bottom:1px solid var(--color-border,#e5e7eb);">
-                <span style="width:22px; height:22px; border-radius:50%; background:<?= $color ?>; color:white; display:flex; align-items:center; justify-content:center; font-size:.7rem; font-weight:700; flex-shrink:0;"><?= $i+1 ?></span>
+        <!-- KPIs -->
+        <section class="finea-grid finea-kpi-grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-top: 1.5rem; margin-bottom: 2rem;">
+            <article class="finea-kpi-card" style="border-left: 4px solid var(--finea-danger); min-height: 110px;">
                 <div>
-                    <strong style="font-size:.85rem;"><?= $step ?></strong>
-                    <span style="font-size:.78rem; color:#6b7280; margin-left:.5rem;"><?= $desc ?></span>
+                    <span class="finea-kpi-label" style="color: var(--finea-danger); text-transform: uppercase; font-size: 0.75rem; font-weight: 700;">Encours Fournisseurs</span>
                 </div>
-            </div>
-            <?php endforeach; ?>
+                <strong class="finea-kpi-value" style="color: var(--finea-danger); font-size: 1.8rem; margin-top: 0.5rem; display: block;">
+                    <?= number_format($kpis['encours_fournisseurs'], 0, ',', ' ') ?> XOF
+                </strong>
+                <small style="color: var(--finea-muted); display: block; margin-top: 4px;">Factures non réglées</small>
+            </article>
+
+            <article class="finea-kpi-card" style="border-left: 4px solid var(--finea-warning); min-height: 110px;">
+                <div>
+                    <span class="finea-kpi-label" style="color: var(--finea-warning); text-transform: uppercase; font-size: 0.75rem; font-weight: 700;">Retraits en attente</span>
+                </div>
+                <strong class="finea-kpi-value" style="color: var(--finea-warning); font-size: 2.2rem; margin-top: 0.5rem; display: block;">
+                    <?= $kpis['retraits_en_attente'] ?>
+                </strong>
+                <small style="color: var(--finea-muted); display: block; margin-top: 4px;">Approbation requise</small>
+            </article>
+
+            <article class="finea-kpi-card" style="border-left: 4px solid var(--finea-info); min-height: 110px;">
+                <div>
+                    <span class="finea-kpi-label" style="color: var(--finea-info); text-transform: uppercase; font-size: 0.75rem; font-weight: 700;">Fournitures en attente</span>
+                </div>
+                <strong class="finea-kpi-value" style="color: var(--finea-info); font-size: 2.2rem; margin-top: 0.5rem; display: block;">
+                    <?= $kpis['fournitures_en_attente'] ?>
+                </strong>
+                <small style="color: var(--finea-muted); display: block; margin-top: 4px;">Demandes à valider</small>
+            </article>
+
+            <article class="finea-kpi-card" style="border-left: 4px solid #8b5cf6; min-height: 110px;">
+                <div>
+                    <span class="finea-kpi-label" style="color: #8b5cf6; text-transform: uppercase; font-size: 0.75rem; font-weight: 700;">Crédits inter-agences</span>
+                </div>
+                <strong class="finea-kpi-value" style="color: #8b5cf6; font-size: 1.8rem; margin-top: 0.5rem; display: block;">
+                    <?= number_format($kpis['credits_inter_agences'], 0, ',', ' ') ?> XOF
+                </strong>
+                <small style="color: var(--finea-muted); display: block; margin-top: 4px;">Dettes en attente d'apurement</small>
+            </article>
+        </section>
+
+        <!-- Actions rapides & Workflows -->
+        <div class="finea-grid" style="grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+            <section class="finea-section-card">
+                <div class="finea-section-heading">
+                    <h2 class="finea-section-title">Actions rapides</h2>
+                </div>
+                <div class="module-action-list">
+                    <a href="<?= View::url('logistique/prestataires') ?>">
+                        <strong>Prestataires</strong>
+                        <span>Gestion des fournisseurs et partenaires</span>
+                        <small>Ouvrir</small>
+                    </a>
+                    <a href="<?= View::url('logistique/factures') ?>">
+                        <strong>Factures Prestataires</strong>
+                        <span>Saisie et suivi des factures</span>
+                        <small>Ouvrir</small>
+                    </a>
+                    <a href="<?= View::url('logistique/retraits') ?>">
+                        <strong>Retraits Hub</strong>
+                        <span>Paiements depuis la caisse centrale</span>
+                        <small>Ouvrir</small>
+                    </a>
+                    <a href="<?= View::url('logistique/fournitures') ?>">
+                        <strong>Fournitures Agences</strong>
+                        <span>Demandes et livraisons de consommables</span>
+                        <small>Ouvrir</small>
+                    </a>
+                    <a href="<?= View::url('logistique/credits') ?>">
+                        <strong>Crédits inter-agences</strong>
+                        <span>Équilibrage des dettes entre agences</span>
+                        <small>Ouvrir</small>
+                    </a>
+                </div>
+            </section>
+
+            <section class="finea-section-card">
+                <div class="finea-section-heading">
+                    <h2 class="finea-section-title">Workflows clés</h2>
+                </div>
+                <div style="padding:.5rem 0; display: flex; flex-direction: column; gap: 12px;">
+                    <?php $flows = [
+                        ['Prestataire → Facture', 'var(--finea-primary)', 'Enregistrer la facture reçue'],
+                        ['Facture → Retrait Hub', 'var(--finea-danger)', 'Demander le décaissement de la caisse'],
+                        ['Retrait → Approbation', 'var(--finea-warning)', 'Validation par la caissière principale'],
+                        ['Approbation → Paiement', 'var(--finea-success)', 'Facture mise à jour comme PAYÉE'],
+                    ];
+                    foreach ($flows as $i => [$step, $color, $desc]): ?>
+                    <div style="display:flex; align-items:center; gap: 12px; padding: 12px; border: 1px solid var(--finea-border); border-radius: 12px; background: #fff;">
+                        <span style="width:26px; height:26px; border-radius:50%; background:<?= $color ?>; color:white; display:flex; align-items:center; justify-content:center; font-size:.8rem; font-weight:700; flex-shrink:0;"><?= $i+1 ?></span>
+                        <div>
+                            <strong style="font-size:.9rem; color: var(--finea-navy); display: block;"><?= $step ?></strong>
+                            <span style="font-size:.8rem; color: var(--finea-muted);"><?= $desc ?></span>
+                        </div>
+                    </div>
+                    <?php endforeach; ?>
+                </div>
+            </section>
         </div>
-    </section>
+    </div>
 </div>
 
 <?php

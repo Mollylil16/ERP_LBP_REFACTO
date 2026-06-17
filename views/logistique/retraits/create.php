@@ -2,6 +2,8 @@
 /** @var array $facture */
 use App\Helpers\Csrf;
 use App\Helpers\View;
+use App\View\Components\Ui;
+use App\View\Components\Form;
 
 ob_start();
 require __DIR__ . '/../_navigation.php';
@@ -9,66 +11,77 @@ require __DIR__ . '/../_navigation.php';
 $reliquat = (float)$facture['reliquat'];
 ?>
 
-<div class="page-header">
-    <div>
-        <p class="eyebrow">Logistique Interne — Décaissement</p>
-        <h1>Demande de retrait Hub</h1>
-        <p class="subtitle">Facture <strong><?= View::e($facture['invoice_number']) ?></strong> — <?= View::e($facture['prestataire_name']) ?></p>
-    </div>
-    <a href="<?= View::url('logistique/factures/' . $facture['id']) ?>" class="btn btn-ghost">
-        <span class="material-icons">arrow_back</span> Retour à la facture
-    </a>
-</div>
+<div class="finea-shell">
+    <div class="finea-container">
+        <?= Ui::pageHeader(
+            'Logistique Interne — Décaissement',
+            'Demande de retrait Hub',
+            'Facture ' . View::e($facture['invoice_number']) . ' — ' . View::e($facture['prestataire_name']),
+            Ui::button('Retour à la facture', ['href' => 'logistique/factures/' . $facture['id'], 'variant' => 'secondary']),
+            ['class' => 'rh-hero']
+        ) ?>
 
-<div style="display:grid; grid-template-columns:1fr 2fr; gap:1.5rem;">
-    <section class="card" style="background:#fef2f2; border:1px solid #fca5a5;">
-        <h2 class="card-title" style="color:#b91c1c;">Situation Facture</h2>
-        <dl class="detail-list" style="margin-top:1rem;">
-            <dt>Montant total</dt>
-            <dd><?= number_format((float)$facture['amount'], 0, ',', ' ') ?> <?= View::e($facture['currency']) ?></dd>
-            <dt>Déjà payé</dt>
-            <dd style="color:#10b981;"><?= number_format((float)$facture['amount_paid'], 0, ',', ' ') ?> <?= View::e($facture['currency']) ?></dd>
-            <dt style="font-size:1.1rem; margin-top:.5rem;">Reste à payer</dt>
-            <dd style="font-size:1.5rem; font-weight:800; color:#ef4444; margin-top:.2rem;">
-                <?= number_format($reliquat, 0, ',', ' ') ?> <?= View::e($facture['currency']) ?>
-            </dd>
-        </dl>
-    </section>
-
-    <form action="<?= View::url('logistique/retraits') ?>" method="POST" class="card">
-        <?= Csrf::input() ?>
-        <input type="hidden" name="facture_id" value="<?= $facture['id'] ?>">
-        
-        <h2 class="card-title"><span class="material-icons">payments</span> Saisie du décaissement</h2>
-        <p style="font-size:.85rem; color:var(--color-muted); margin-bottom:1.5rem;">
-            Le montant demandé sera soumis à la validation de la caisse centrale. Le statut de la facture sera mis à jour automatiquement après approbation.
-        </p>
-
-        <div class="form-grid-2">
-            <div class="form-group">
-                <label for="amount_paid">Montant demandé *</label>
-                <div style="position:relative; display:flex; align-items:center;">
-                    <input type="number" step="0.01" min="1" max="<?= $reliquat ?>" name="amount_paid" id="amount_paid" class="form-input" value="<?= $reliquat ?>" required autofocus style="padding-right:4rem; font-size:1.2rem; font-weight:bold; color:#0369a1;">
-                    <span style="position:absolute; right:1rem; font-weight:bold; color:var(--color-muted);"><?= View::e($facture['currency']) ?></span>
+        <div class="finea-grid" style="grid-template-columns: 1fr 2fr; gap: 24px; margin-top: 24px;">
+            <section class="finea-section-card" style="margin: 0; background: #fff5f5; border: 1px solid #feb2b2;">
+                <h3 class="finea-section-title" style="color: var(--finea-danger);">Situation Facture</h3>
+                <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 15px;">
+                    <div>
+                        <span style="display: block; font-size: 0.85rem; color: var(--finea-muted);">Montant total</span>
+                        <strong style="font-size: 1.1rem;"><?= number_format((float)$facture['amount'], 0, ',', ' ') ?> <?= View::e($facture['currency']) ?></strong>
+                    </div>
+                    <div>
+                        <span style="display: block; font-size: 0.85rem; color: var(--finea-muted);">Déjà payé</span>
+                        <strong style="font-size: 1.1rem; color: var(--finea-success);"><?= number_format((float)$facture['amount_paid'], 0, ',', ' ') ?> <?= View::e($facture['currency']) ?></strong>
+                    </div>
+                    <div style="border-top: 1px dashed #feb2b2; padding-top: 12px;">
+                        <span style="display: block; font-size: 0.85rem; color: var(--finea-muted);">Reste à payer</span>
+                        <strong style="font-size: 1.4rem; font-weight: 800; color: var(--finea-danger);">
+                            <?= number_format($reliquat, 0, ',', ' ') ?> <?= View::e($facture['currency']) ?>
+                        </strong>
+                    </div>
                 </div>
-                <small class="form-hint">Ne peut dépasser le reste à payer.</small>
-            </div>
-            <div class="form-group">
-                <label for="reference_transaction">Référence (Chèque, Virement...)</label>
-                <input type="text" name="reference_transaction" id="reference_transaction" class="form-input" placeholder="Ex: CHQ-2023-XXXX">
-            </div>
-            <div class="form-group" style="grid-column:span 2;">
-                <label for="notes">Justification / Notes</label>
-                <textarea name="notes" id="notes" class="form-textarea" rows="2" placeholder="Ex: Paiement acompte 50%, Solde facture..."></textarea>
-            </div>
-        </div>
+            </section>
 
-        <div class="form-actions" style="margin-top:1.5rem;">
-            <button type="submit" class="btn btn-primary btn-lg">
-                <span class="material-icons">send</span> Soumettre la demande
-            </button>
+            <form action="<?= View::url('logistique/retraits') ?>" method="POST" class="finea-section-card" style="margin: 0;">
+                <?= Csrf::input() ?>
+                <input type="hidden" name="facture_id" value="<?= $facture['id'] ?>">
+
+                <h3 class="finea-section-title">Saisie du décaissement</h3>
+                <p style="font-size: 0.85rem; color: var(--finea-muted); margin-bottom: 20px;">
+                    Le montant demandé sera soumis à la validation de la caisse centrale. Le statut de la facture sera mis à jour automatiquement après approbation.
+                </p>
+
+                <div class="rh-form-grid" style="grid-template-columns: repeat(2, 1fr); gap: 15px;">
+                    <?= Form::input('amount_paid', 'Montant demandé (' . View::e($facture['currency']) . ')', $reliquat, [
+                        'type' => 'number',
+                        'step' => '0.01',
+                        'min' => '1',
+                        'max' => $reliquat,
+                        'required' => true,
+                        'autofocus' => true,
+                        'hint' => 'Ne peut dépasser le reste à payer.',
+                        'style' => 'font-size: 1.2rem; font-weight: bold; color: var(--module-accent);'
+                    ]) ?>
+
+                    <?= Form::input('reference_transaction', 'Référence (Chèque, Virement...)', '', [
+                        'placeholder' => 'Ex: CHQ-2023-XXXX'
+                    ]) ?>
+
+                    <div style="grid-column: span 2;">
+                        <?= Form::textarea('notes', 'Justification / Notes', '', [
+                            'rows' => 2,
+                            'placeholder' => 'Ex: Paiement acompte 50%, Solde facture...'
+                        ]) ?>
+                    </div>
+                </div>
+
+                <div class="rh-form-actions" style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px;">
+                    <?= Ui::button('Annuler', ['href' => 'logistique/factures/' . $facture['id'], 'variant' => 'secondary']) ?>
+                    <?= Ui::button('Soumettre la demande', ['variant' => 'primary', 'type' => 'submit']) ?>
+                </div>
+            </form>
         </div>
-    </form>
+    </div>
 </div>
 
 <?php

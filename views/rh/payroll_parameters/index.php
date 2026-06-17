@@ -4,6 +4,8 @@
 use App\Helpers\View;
 use App\View\Components\Ui;
 
+require BASE_PATH . '/views/rh/_navigation.php';
+
 $data = isset($viewData) ? $viewData->array('data') : ($data ?? []);
 $total = isset($viewData) ? $viewData->int('total') : ($total ?? 0);
 $page = isset($viewData) ? $viewData->int('page') : ($page ?? 1);

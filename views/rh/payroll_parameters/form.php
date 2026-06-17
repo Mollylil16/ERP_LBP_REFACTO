@@ -6,6 +6,8 @@ use App\Helpers\View;
 use App\View\Components\Ui;
 use App\View\Components\Form;
 
+require BASE_PATH . '/views/rh/_navigation.php';
+
 $param = isset($viewData) ? $viewData->array('param') : ($param ?? []);
 $formAction = isset($viewData) ? $viewData->string('formAction') : ($formAction ?? '');
 $submitLabel = isset($viewData) ? $viewData->string('submitLabel') : ($submitLabel ?? 'Enregistrer');
