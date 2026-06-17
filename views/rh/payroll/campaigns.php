@@ -56,7 +56,7 @@ ob_start();
             
             <div style="margin-bottom: 1.5rem; color: #475569; font-size: 0.875rem;">
                 <p style="margin: 0.25rem 0;"><strong>Employés :</strong> <?= htmlspecialchars($camp['payslip_count']) ?> bulletins</p>
-                <p style="margin: 0.25rem 0;"><strong>Masse salariale nette :</strong> <?= number_format($camp['total_net'], 0, ',', ' ') ?> FCFA</p>
+                <p style="margin: 0.25rem 0;"><strong>Masse salariale nette :</strong> <?= number_format((float) ($camp['total_net'] ?? 0.0), 0, ',', ' ') ?> FCFA</p>
             </div>
 
             <div style="display: flex; gap: 0.5rem;">
