@@ -2,44 +2,50 @@
 /** @var array $agencies */
 use App\Helpers\Csrf;
 use App\Helpers\View;
+use App\View\Components\Ui;
+use App\View\Components\Form;
 
 ob_start();
 require __DIR__ . '/../_navigation.php';
+
+$agencyOptions = array_map(fn($a) => [
+    'value' => $a['id'],
+    'label' => $a['name']
+], $agencies);
 ?>
 
-<div class="page-header">
-    <div>
-        <p class="eyebrow">Colisage — Inventaire</p>
-        <h1>Nouvelle Campagne d'Inventaire</h1>
-    </div>
-    <a href="<?= View::url('colisage/inventaire') ?>" class="btn btn-ghost">
-        <span class="material-icons">arrow_back</span> Retour
-    </a>
-</div>
+<div class="finea-shell">
+    <div class="finea-container">
+        <?= Ui::pageHeader('Colisage — Inventaire', 'Nouvelle Campagne d\'Inventaire', [
+            'actions' => Ui::button('Retour', 'colisage/inventaire', [
+                'variant' => 'ghost'
+            ])
+        ]) ?>
 
-<section class="card" style="max-width:600px;">
-    <h2 class="card-title"><span class="material-icons">fact_check</span> Démarrer une campagne</h2>
-    <form action="<?= View::url('colisage/inventaire') ?>" method="POST">
-        <?= Csrf::input() ?>
-        <div class="form-group">
-            <label for="agency_id">Agence à inventorier *</label>
-            <select name="agency_id" id="agency_id" class="form-select" required>
-                <option value="">— Sélectionner une agence —</option>
-                <?php foreach ($agencies as $a): ?>
-                <option value="<?= $a['id'] ?>"><?= View::e($a['name']) ?></option>
-                <?php endforeach; ?>
-            </select>
+        <div style="display: flex; justify-content: center; margin-top: 1.5rem;">
+            <section class="finea-section-card" style="width: 100%; max-width:600px;">
+                <div class="finea-section-heading">
+                    <h2 class="finea-section-title">Démarrer une campagne</h2>
+                </div>
+                <form action="<?= View::url('colisage/inventaire') ?>" method="POST">
+                    <?= Csrf::input() ?>
+                    <div style="margin-bottom: 1.5rem;">
+                        <?= Form::select('agency_id', 'Agence à inventorier *', $agencyOptions, '', ['required' => true]) ?>
+                    </div>
+                    <p style="font-size:.85rem; color:var(--finea-muted); line-height: 1.5; margin-bottom: 1.5rem;">
+                        Une campagne sera créée en statut "EN COURS". Vous pourrez ensuite scanner les colis un par un via leur numéro de tracking.
+                    </p>
+                    <div class="rh-form-actions">
+                        <?= Ui::button('Démarrer l\'inventaire', null, [
+                            'type' => 'submit',
+                            'variant' => 'primary'
+                        ]) ?>
+                    </div>
+                </form>
+            </section>
         </div>
-        <p style="font-size:.85rem; color:var(--color-muted);">
-            Une campagne sera créée en statut "EN COURS". Vous pourrez ensuite scanner les colis un par un via leur numéro de tracking.
-        </p>
-        <div class="form-actions">
-            <button type="submit" class="btn btn-primary">
-                <span class="material-icons">play_arrow</span> Démarrer l'inventaire
-            </button>
-        </div>
-    </form>
-</section>
+    </div>
+</div>
 
 <?php
 $content = ob_get_clean();
