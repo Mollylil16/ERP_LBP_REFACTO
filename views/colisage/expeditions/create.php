@@ -28,8 +28,8 @@ if (!empty($livreurs)) {
 
 <div class="finea-shell">
     <div class="finea-container">
-        <?= Ui::pageHeader('Colisage — Nouvelle Expédition', 'Créer un Manifeste de groupage', [
-            'actions' => Ui::button('Retour', 'colisage/expeditions', [
+        <?= Ui::pageHeader('Colisage — Expédition', 'Créer un Manifeste de groupage', [
+            'actions' => Ui::button('Retour à la liste', 'colisage/expeditions', [
                 'variant' => 'ghost'
             ])
         ]) ?>
@@ -42,24 +42,33 @@ if (!empty($livreurs)) {
                 <div class="finea-section-heading">
                     <h2 class="finea-section-title">Transport & Trajet</h2>
                 </div>
+                
                 <div class="rh-form-grid">
-                    <div style="grid-column: span 3; display: flex; flex-direction: column; gap: 6px;">
+                    <div style="grid-column: span 3; display: flex; flex-direction: column; gap: 6px; margin-bottom: 0.5rem;">
                         <label style="color: #475569; font-size: .78rem; font-weight: 750;">Mode de transport *</label>
                         <div style="display:flex; gap:.75rem; margin-top:.25rem;">
-                            <?php foreach (['AERIEN' => '✈ Aérien', 'MARITIME' => '⛵ Maritime', 'TERRESTRE' => '🚚 Terrestre'] as $val => $label): ?>
+                            <?php 
+                            $modes = [
+                                'AERIEN' => ['label' => 'Aérien', 'icon' => 'flight'],
+                                'MARITIME' => ['label' => 'Maritime', 'icon' => 'directions_boat'],
+                                'TERRESTRE' => ['label' => 'Terrestre', 'icon' => 'local_shipping'],
+                            ];
+                            foreach ($modes as $val => $m): 
+                            ?>
                             <label class="radio-card">
                                 <input type="radio" name="transport_type" value="<?= $val ?>" <?= $val === 'AERIEN' ? 'checked' : '' ?>>
-                                <span><?= $label ?></span>
+                                <span class="material-icons" style="font-size: 1.2rem; color: var(--finea-navy);"><?= $m['icon'] ?></span>
+                                <span><?= $m['label'] ?></span>
                             </label>
                             <?php endforeach; ?>
                         </div>
                     </div>
 
-                    <?= Form::select('departure_agency_id', 'Agence de départ *', $agencyOptions, '', ['required' => true]) ?>
-                    <?= Form::select('arrival_agency_id', 'Agence d\'arrivée *', $agencyOptions, '', ['required' => true]) ?>
+                    <?= Form::selectSearch('departure_agency_id', 'Agence de départ *', $agencyOptions, '', ['required' => true]) ?>
+                    <?= Form::selectSearch('arrival_agency_id', 'Agence d\'arrivée *', $agencyOptions, '', ['required' => true]) ?>
                     
                     <?php if (!empty($livreurs)): ?>
-                        <?= Form::select('driver_user_id', 'Livreur / Chauffeur assigné', $driverOptions) ?>
+                        <?= Form::selectSearch('driver_user_id', 'Livreur / Chauffeur assigné', $driverOptions) ?>
                     <?php else: ?>
                         <div></div>
                     <?php endif; ?>
@@ -67,7 +76,8 @@ if (!empty($livreurs)) {
                     <?= Form::input('departure_date', 'Date de départ prévue', '', ['type' => 'datetime-local']) ?>
                     <?= Form::input('estimated_arrival_date', 'Date d\'arrivée estimée', '', ['type' => 'datetime-local']) ?>
                 </div>
-                <div style="margin-top: 1rem;">
+                
+                <div style="margin-top: 1.5rem;">
                     <?= Form::textarea('notes', 'Notes / Instructions', '', ['rows' => 2, 'placeholder' => 'Ex: LTA n°XXX, vol AF547, numéro conteneur...']) ?>
                 </div>
             </div>
@@ -80,7 +90,7 @@ if (!empty($livreurs)) {
                 <?php if (empty($colisDisponibles)): ?>
                 <?= Ui::emptyState('Aucun colis disponible', 'Tous les colis reçus ont déjà été affectés ou livrés.', 'inventory') ?>
                 <?php else: ?>
-                <p style="font-size:.85rem; color:var(--finea-muted); margin-bottom:.75rem;">
+                <p style="font-size:.85rem; color:var(--finea-muted); margin-bottom:1rem;">
                     Cochez les colis à inclure dans cette expédition. Seuls les colis au statut "RÉCEPTIONNÉ" et non encore groupés sont affichés.
                 </p>
                 <div class="finea-table-wrap">
@@ -139,9 +149,30 @@ if (checkAll) {
 </script>
 
 <style>
-.radio-card { display: flex; align-items: center; gap: .5rem; padding: .5rem .75rem; border: 2px solid #e5e7eb; border-radius: .5rem; cursor: pointer; font-size: .9rem; transition: border-color .2s; }
-.radio-card:has(input:checked) { border-color: var(--module-accent, #0369a1); background: #eff6ff; }
-.radio-card input { accent-color: var(--module-accent, #0369a1); }
+.radio-card { 
+    display: inline-flex; 
+    align-items: center; 
+    gap: .5rem; 
+    padding: 10px 16px; 
+    border: 1px solid rgba(148, 163, 184, 0.35); 
+    border-radius: 12px; 
+    cursor: pointer; 
+    font-size: .9rem; 
+    transition: all .2s;
+    background: #fff;
+    font-weight: 600;
+}
+.radio-card:hover {
+    border-color: #cbd5e1;
+}
+.radio-card:has(input:checked) { 
+    border-color: var(--finea-navy); 
+    background: #eff6ff; 
+    box-shadow: 0 0 0 1px var(--finea-navy);
+}
+.radio-card input { 
+    accent-color: var(--finea-navy); 
+}
 </style>
 <?php
 $content = ob_get_clean();
