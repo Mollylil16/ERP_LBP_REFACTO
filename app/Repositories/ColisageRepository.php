@@ -138,7 +138,28 @@ final class ColisageRepository
             'notes' => $data['notes'] ?? null,
         ]);
 
-        return (int) $this->pdo->lastInsertId();
+        $colisId = (int) $this->pdo->lastInsertId();
+
+        // Créer automatiquement la facture client associée
+        $stmtInvoice = $this->pdo->prepare("
+            INSERT INTO invoices (
+                reference, client_id, site_id, type, status,
+                amount_ht, amount_ttc, currency, due_date
+            ) VALUES (
+                :reference, :client_id, :site_id, 'invoice', 'draft',
+                :amount_ht, :amount_ttc, :currency, DATE_ADD(NOW(), INTERVAL 3 DAY)
+            )
+        ");
+        $stmtInvoice->execute([
+            'reference' => $trackingNumber,
+            'client_id' => $data['sender_id'],
+            'site_id' => $data['departure_agency_id'],
+            'amount_ht' => ($data['total_price'] ?? 0) / 1.18,
+            'amount_ttc' => $data['total_price'] ?? 0,
+            'currency' => $data['currency'] ?? 'XOF',
+        ]);
+
+        return $colisId;
     }
 
     public function addMarchandise(int $colisId, array $data): void

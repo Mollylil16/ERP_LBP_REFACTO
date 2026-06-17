@@ -30,6 +30,11 @@ class AuthMiddleware
         }
     }
 
+    public static function checkPermission(string $entityCode, string $action = 'view'): void
+    {
+        PermissionMiddleware::check($entityCode, $action);
+    }
+
     private static function redirect(string $path): void
     {
         $config = require BASE_PATH . '/config/app.php';

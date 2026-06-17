@@ -91,10 +91,6 @@ $router->get('/dashboard', [DashboardController::class, 'index']);
  * Routes modules métiers ERP.
  * Chaque module dispose au minimum de /nom-module et /nom-module/dashboard.
  */
-$router->group('/finance', function (Router $router): void {
-    $router->get('/', [BusinessModuleController::class, 'finance']);
-    $router->get('/dashboard', [BusinessModuleController::class, 'finance']);
-});
 
 $router->group('/colisage', function (Router $router): void {
     $router->get('/', [\App\Controllers\ColisageController::class, 'dashboard']);
@@ -171,11 +167,6 @@ $router->group('/logistique', function (Router $router): void {
     $router->post('/fournitures/{id}/livrer', [\App\Controllers\LogistiqueController::class, 'livrerFourniture']);
     $router->post('/fournitures/{id}/rejeter', [\App\Controllers\LogistiqueController::class, 'rejeterFourniture']);
 
-    // Crédits inter-agences
-    $router->get('/credits', [\App\Controllers\LogistiqueController::class, 'credits']);
-    $router->get('/credits/nouveau', [\App\Controllers\LogistiqueController::class, 'createCredit']);
-    $router->post('/credits', [\App\Controllers\LogistiqueController::class, 'storeCredit']);
-    $router->post('/credits/{id}/apurer', [\App\Controllers\LogistiqueController::class, 'apurerCredit']);
 });
 
 $router->group('/transit-douane', function (Router $router): void {
@@ -191,6 +182,32 @@ $router->group('/facturation', function (Router $router): void {
 $router->group('/finance', function (Router $router): void {
     $router->get('/', [\App\Controllers\FinanceController::class, 'dashboard']);
     $router->get('/dashboard', [\App\Controllers\FinanceController::class, 'dashboard']);
+
+    // Factures Clients (Encaissements)
+    $router->get('/factures', [\App\Controllers\FinanceController::class, 'facturesIndex']);
+    $router->get('/factures/{id}', [\App\Controllers\FinanceController::class, 'factureShow']);
+    $router->get('/factures/{id}/imprimer', [\App\Controllers\FinanceController::class, 'imprimerFacture']);
+    $router->post('/factures/{id}/payer', [\App\Controllers\FinanceController::class, 'storePaiement']);
+
+    // Décaissements Prestataires (Retraits Hub)
+    $router->get('/decaissements', [\App\Controllers\FinanceController::class, 'decaissementsIndex']);
+    $router->post('/decaissements/{id}/payer', [\App\Controllers\FinanceController::class, 'storeDecaissementPrestataire']);
+
+    // Crédits inter-agences
+    $router->get('/credits', [\App\Controllers\FinanceController::class, 'creditsIndex']);
+    $router->get('/credits/nouveau', [\App\Controllers\FinanceController::class, 'createCredit']);
+    $router->post('/credits', [\App\Controllers\FinanceController::class, 'storeCredit']);
+    $router->post('/credits/{id}/apurer', [\App\Controllers\FinanceController::class, 'apurerCredit']);
+
+    // Suivi Caisse & Mouvements
+    $router->get('/caisse', [\App\Controllers\FinanceController::class, 'caisseShow']);
+    $router->post('/caisse/appro', [\App\Controllers\FinanceController::class, 'storeAppro']);
+    $router->post('/caisse/decaissement', [\App\Controllers\FinanceController::class, 'storeDecaissementMouvement']);
+
+    // Rapprochements & Clôtures
+    $router->get('/clotures', [\App\Controllers\FinanceController::class, 'cloturesIndex']);
+    $router->post('/clotures', [\App\Controllers\FinanceController::class, 'storeCloture']);
+    $router->post('/clotures/{id}/valider', [\App\Controllers\FinanceController::class, 'validerCloture']);
 });
 
 $router->group('/espace-employe', function (Router $router): void {

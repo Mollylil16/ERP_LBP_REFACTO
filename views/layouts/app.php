@@ -39,7 +39,8 @@ $user = Auth::user();
 
     <div class="app-shell app-shell--portal">
         <div class="app-main app-main--portal">
-            <header class="app-topbar app-topbar--portal">
+            <header class="app-topbar app-topbar--portal" style="display: flex; align-items: center; gap: 20px;">
+                <img src="<?= View::asset('images/site/logo.jpeg') ?>" alt="Logo LBP" style="height: 55px; object-fit: contain;">
                 <div>
                     <span class="app-topbar-kicker">Portail ERP</span>
                     <h1>Modules de gestion • ERP de transit</h1>

@@ -10,11 +10,7 @@ ob_start();
 <?= Ui::pageHeader(
     'Bulletins de la campagne - ' . str_pad($campaign['month'], 2, '0', STR_PAD_LEFT) . '/' . $campaign['year'],
     'Visualisation de tous les bulletins de paie calculés.',
-    ['actions' => '
-        <a href="<?= View::url('rh/paie/campagnes') ?>" class="finea-action-btn finea-action-btn--secondary">
-            <i class="finea-icon">arrow_back</i> Retour
-        </a>
-    ']
+    ['actions' => '<a href="' . View::url('rh/paie/campagnes') . '" class="finea-action-btn finea-action-btn--secondary">Retour</a>']
 ) ?>
 
 <div class="finea-section-card">

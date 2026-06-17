@@ -42,7 +42,7 @@ ob_start();
                         <p class="finea-eyebrow">Accès rapides</p>
                         <h2 class="finea-section-title">Opérations du module</h2>
                     </div>
-                    <span class="finea-status-badge finea-status-badge--info">Socle clean code</span>
+                    <span class="finea-status-badge finea-status-badge--info">Opérationnel</span>
                 </div>
                 <div class="module-action-list">
                     <?php foreach ($module['actions'] as $action): ?>
@@ -58,7 +58,7 @@ ob_start();
             <aside class="finea-section-card module-identity-card">
                 <span class="module-dashboard-icon large"><?= ModuleIcon::svg((string) $module['iconKey']) ?></span>
                 <h2><?= View::e((string) $module['label']) ?></h2>
-                <p>Les couleurs, l’icône et le code reprennent le point d’entrée du portail pour identifier immédiatement l’espace courant.</p>
+                <p><?= View::e((string) $module['description']) ?></p>
                 <div class="module-identity-swatches">
                     <span style="background: <?= View::e((string) $module['accent2']) ?>"></span>
                     <span style="background: <?= View::e((string) $module['accent']) ?>"></span>
@@ -67,22 +67,7 @@ ob_start();
             </aside>
         </div>
 
-        <section class="finea-section-card">
-            <div class="module-section-heading">
-                <div>
-                    <p class="finea-eyebrow">Backend</p>
-                    <h2 class="finea-section-title">Structure prévue pour l’évolution métier</h2>
-                </div>
-            </div>
-            <div class="module-workflow-grid">
-                <?php foreach ($module['workflow'] as $step): ?>
-                    <article>
-                        <strong><?= View::e((string) $step['title']) ?></strong>
-                        <p><?= View::e((string) $step['text']) ?></p>
-                    </article>
-                <?php endforeach; ?>
-            </div>
-        </section>
+        
     </div>
 </div>
 <?php

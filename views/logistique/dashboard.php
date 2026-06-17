@@ -48,17 +48,8 @@ require __DIR__ . '/_navigation.php';
                 <small style="color: var(--finea-muted); display: block; margin-top: 4px;">Demandes à valider</small>
             </article>
 
-            <article class="finea-kpi-card" style="border-left: 4px solid #8b5cf6; min-height: 110px;">
-                <div>
-                    <span class="finea-kpi-label" style="color: #8b5cf6; text-transform: uppercase; font-size: 0.75rem; font-weight: 700;">Crédits inter-agences</span>
-                </div>
-                <strong class="finea-kpi-value" style="color: #8b5cf6; font-size: 1.8rem; margin-top: 0.5rem; display: block;">
-                    <?= number_format($kpis['credits_inter_agences'], 0, ',', ' ') ?> XOF
-                </strong>
-                <small style="color: var(--finea-muted); display: block; margin-top: 4px;">Dettes en attente d'apurement</small>
-            </article>
         </section>
-
+ 
         <!-- Actions rapides & Workflows -->
         <div class="finea-grid" style="grid-template-columns: 1fr 1fr; gap: 1.5rem;">
             <section class="finea-section-card">
@@ -84,11 +75,6 @@ require __DIR__ . '/_navigation.php';
                     <a href="<?= View::url('logistique/fournitures') ?>">
                         <strong>Fournitures Agences</strong>
                         <span>Demandes et livraisons de consommables</span>
-                        <small>Ouvrir</small>
-                    </a>
-                    <a href="<?= View::url('logistique/credits') ?>">
-                        <strong>Crédits inter-agences</strong>
-                        <span>Équilibrage des dettes entre agences</span>
                         <small>Ouvrir</small>
                     </a>
                 </div>

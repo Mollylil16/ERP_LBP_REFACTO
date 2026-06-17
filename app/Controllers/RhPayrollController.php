@@ -114,10 +114,10 @@ class RhPayrollController extends BaseController
         $generatedCount = 0;
         foreach ($employees as $employee) {
             $empId = (int)$employee['id'];
-            $contract = $contractRepo->findActiveContract($empId);
+            $contract = $contractRepo->findActiveByEmployee($empId);
             if (!$contract) continue; // No active contract, skip payroll
 
-            $allowances = $contractRepo->getAllowances((int)$contract['id']);
+            $allowances = $contract['allowances'] ?? [];
             $empAttendances = $attByEmp[$empId] ?? [];
 
             $payslipData = $engine->calculate($employee, $contract, $allowances, $params, $empAttendances);

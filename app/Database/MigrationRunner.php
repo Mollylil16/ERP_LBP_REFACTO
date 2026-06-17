@@ -32,6 +32,7 @@ class MigrationRunner
         $this->createBusinessTables();
         $this->addColisageExtensions();
         $this->linkUsersToRhEmployees();
+        $this->createFinanceTables();
     }
 
 
@@ -1243,5 +1244,61 @@ class MigrationRunner
                 ON DELETE {$onDelete}
             ");
         }
+    }
+
+    private function createFinanceTables(): void
+    {
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS lbp_paiements (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                invoice_id INT UNSIGNED NOT NULL,
+                amount DECIMAL(15,2) NOT NULL,
+                payment_method ENUM('ESPECES', 'CHEQUE', 'VIREMENT', 'MOBILE_MONEY') NOT NULL,
+                reference VARCHAR(100) NULL,
+                recorded_by INT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                CONSTRAINT fk_paiements_invoice FOREIGN KEY (invoice_id) REFERENCES invoices(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS lbp_caisses (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                agency_id INT UNSIGNED UNIQUE NOT NULL,
+                balance DECIMAL(15,2) NOT NULL DEFAULT 0.00,
+                status ENUM('OUVERTE', 'FERMEE') NOT NULL DEFAULT 'FERMEE',
+                updated_at DATETIME NULL,
+                CONSTRAINT fk_caisses_agency FOREIGN KEY (agency_id) REFERENCES company_sites(id) ON DELETE RESTRICT
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS lbp_mouvements_caisse (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                caisse_id INT UNSIGNED NOT NULL,
+                type ENUM('ENTREE', 'DECAISSEMENT', 'APPRO') NOT NULL,
+                amount DECIMAL(15,2) NOT NULL,
+                justification VARCHAR(255) NULL,
+                recorded_by INT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                CONSTRAINT fk_mouvements_caisse FOREIGN KEY (caisse_id) REFERENCES lbp_caisses(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS lbp_points_caisse (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                caisse_id INT UNSIGNED NOT NULL,
+                declared_balance DECIMAL(15,2) NOT NULL,
+                theoretical_balance DECIMAL(15,2) NOT NULL,
+                status ENUM('EN_ATTENTE', 'VALIDE', 'REJETE') NOT NULL DEFAULT 'EN_ATTENTE',
+                rejection_reason TEXT NULL,
+                created_by INT NULL,
+                validated_by INT NULL,
+                validated_at DATETIME NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                CONSTRAINT fk_points_caisse FOREIGN KEY (caisse_id) REFERENCES lbp_caisses(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
     }
 }

@@ -25,6 +25,7 @@ $st = $statusLabels[$colis['status']] ?? ['label' => $colis['status'], 'tone' =>
         <?= Ui::pageHeader('Colisage — Fiche Colis', $colis['tracking_number'], [
             'actions' => '<div style="display:flex; gap:.5rem; align-items:center;">'
                 . ($colis['status'] === 'ARRIVE' ? Ui::button('Procéder au retrait', 'colisage/colis/' . $colis['id'] . '/retrait', ['variant' => 'primary']) : '')
+                . ($invoiceId ? Ui::button('Imprimer la Facture', ['href' => 'finance/factures/' . $invoiceId . '/imprimer', 'variant' => 'primary', 'target' => '_blank']) : '')
                 . Ui::button('Liste', 'colisage/colis', ['variant' => 'ghost'])
                 . '</div>'
         ]) ?>

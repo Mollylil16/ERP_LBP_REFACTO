@@ -29,6 +29,7 @@ ob_start();
 
     <div class="auth-card">
         <div class="auth-header">
+            <img src="<?= View::asset('images/site/logo.jpeg') ?>" alt="Logo LBP-CI" style="height: 65px; margin-bottom: 20px; object-fit: contain; display: block;">
             <span class="auth-kicker">Connexion</span>
             <h2>Bienvenue sur votre espace ERP</h2>
             <p>Connectez-vous pour accéder au tableau de bord et gérer vos opérations.</p>

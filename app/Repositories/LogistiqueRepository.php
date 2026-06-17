@@ -310,57 +310,6 @@ final class LogistiqueRepository
     }
 
     // ─────────────────────────────────────────────
-    //  CRÉDITS INTER-AGENCES
-    // ─────────────────────────────────────────────
-
-    public function getAllCredits(array $filters = []): array
-    {
-        $where = ['1=1'];
-        $params = [];
-        if (isset($filters['status']) && $filters['status'] !== '') {
-            $where[] = 'c.status = :status';
-            $params['status'] = $filters['status'];
-        }
-
-        $stmt = $this->pdo->prepare("
-            SELECT c.*,
-                   fa.name AS from_agency_name,
-                   ta.name AS to_agency_name
-            FROM lbp_credits_inter_agences c
-            LEFT JOIN company_sites fa ON fa.id = c.from_agency_id
-            LEFT JOIN company_sites ta ON ta.id = c.to_agency_id
-            WHERE " . implode(' AND ', $where) . "
-            ORDER BY c.created_at DESC
-        ");
-        $stmt->execute($params);
-        return $stmt->fetchAll() ?: [];
-    }
-
-    public function createCredit(array $data): int
-    {
-        $stmt = $this->pdo->prepare("
-            INSERT INTO lbp_credits_inter_agences (from_agency_id, to_agency_id, amount, currency, reason, reference_colis, status)
-            VALUES (:from_agency_id, :to_agency_id, :amount, :currency, :reason, :reference_colis, 'EN_ATTENTE')
-        ");
-        $stmt->execute([
-            'from_agency_id' => $data['from_agency_id'],
-            'to_agency_id' => $data['to_agency_id'],
-            'amount' => $data['amount'],
-            'currency' => $data['currency'] ?? 'XOF',
-            'reason' => $data['reason'] ?? null,
-            'reference_colis' => $data['reference_colis'] ?? null,
-        ]);
-        return (int) $this->pdo->lastInsertId();
-    }
-
-    public function apurerCredit(int $id): void
-    {
-        $this->pdo->prepare("
-            UPDATE lbp_credits_inter_agences SET status = 'VALIDE', settled_at = NOW(), updated_at = NOW() WHERE id = :id
-        ")->execute(['id' => $id]);
-    }
-
-    // ─────────────────────────────────────────────
     //  KPIs Dashboard
     // ─────────────────────────────────────────────
 
@@ -379,15 +328,10 @@ final class LogistiqueRepository
             SELECT COUNT(*) FROM lbp_demandes_fournitures WHERE status = 'EN_ATTENTE'
         ")->fetchColumn();
 
-        $creditsEnAttente = $this->pdo->query("
-            SELECT COALESCE(SUM(amount), 0) FROM lbp_credits_inter_agences WHERE status = 'EN_ATTENTE'
-        ")->fetchColumn();
-
         return [
             'encours_fournisseurs' => (float) $encours,
             'retraits_en_attente' => (int) $retraitsEnAttente,
             'fournitures_en_attente' => (int) $fournituresEnAttente,
-            'credits_inter_agences' => (float) $creditsEnAttente,
         ];
     }
     // ─────────────────────────────────────────────

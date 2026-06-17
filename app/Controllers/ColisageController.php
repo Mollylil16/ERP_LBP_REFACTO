@@ -96,10 +96,16 @@ final class ColisageController extends BaseController
         $marchandises = $this->repo->getMarchandises($id);
         $tracking     = $this->repo->getTrackingHistory($id);
 
+        $db = \App\Models\Database::getConnection();
+        $stmtInv = $db->prepare("SELECT id FROM invoices WHERE reference = :ref");
+        $stmtInv->execute(['ref' => $colis['tracking_number']]);
+        $invoiceId = $stmtInv->fetchColumn() ?: null;
+
         $this->view('colisage/colis/show', $this->viewData('Colis ' . $colis['tracking_number'], 'colis', [
             'colis'       => $colis,
             'marchandises'=> $marchandises,
             'tracking'    => $tracking,
+            'invoiceId'   => $invoiceId,
         ]));
     }
 
