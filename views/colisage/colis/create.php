@@ -3,129 +3,93 @@
 /** @var array $agencies */
 use App\Helpers\Csrf;
 use App\Helpers\View;
+use App\View\Components\Ui;
+use App\View\Components\Form;
 
 ob_start();
 require __DIR__ . '/../_navigation.php';
+
+// Préparation des options pour les selects
+$clientOptions = array_map(fn($c) => [
+    'value' => $c['id'],
+    'label' => $c['name'] . ($c['phone'] ? ' — ' . $c['phone'] : '')
+], $clients);
+
+$agencyOptions = array_map(fn($a) => [
+    'value' => $a['id'],
+    'label' => $a['name'] . ($a['country'] ? ' (' . $a['country'] . ')' : '')
+], $agencies);
+
+$currencyOptions = [
+    ['value' => 'XOF', 'label' => 'FCFA (XOF)'],
+    ['value' => 'EUR', 'label' => 'Euros (EUR)']
+];
 ?>
 
-<div class="page-header">
-    <div>
-        <p class="eyebrow">Colisage</p>
-        <h1>Nouveau Colis</h1>
-        <p class="subtitle">Enregistrement d'une nouvelle réception de marchandise.</p>
-    </div>
-    <div class="header-actions">
-        <a href="<?= View::url('colisage/colis') ?>" class="btn btn-ghost">
-            <span class="material-icons">arrow_back</span> Retour à la liste
-        </a>
-    </div>
-</div>
+<?= Ui::pageHeader('Colisage', 'Nouveau Colis', [
+    'actions' => Ui::button('Retour à la liste', 'colisage/colis', [
+        'variant' => 'ghost',
+        'class' => 'btn-sm',
+        'html' => true,
+    ])
+]) ?>
 
 <form action="<?= View::url('colisage/colis') ?>" method="POST" id="form-colis">
     <?= Csrf::input() ?>
 
     <!-- Section : Clients -->
-    <section class="card" style="margin-bottom:1.5rem;">
-        <h2 class="card-title">
-            <span class="material-icons">people</span> Expéditeur & Destinataire
-        </h2>
-        <div class="form-grid-2">
-            <div class="form-group">
-                <label for="sender_id">Expéditeur *</label>
-                <select name="sender_id" id="sender_id" class="form-select" required>
-                    <option value="">— Sélectionner un expéditeur —</option>
-                    <?php foreach ($clients as $c): ?>
-                    <option value="<?= $c['id'] ?>"><?= View::e($c['name']) ?><?= $c['phone'] ? ' — ' . $c['phone'] : '' ?></option>
-                    <?php endforeach; ?>
-                </select>
-                <small class="form-hint">
-                    Client inexistant ? <a href="<?= View::url('crm/clients/nouveau') ?>" target="_blank">Créer un client</a>
-                </small>
-            </div>
-            <div class="form-group">
-                <label for="receiver_id">Destinataire *</label>
-                <select name="receiver_id" id="receiver_id" class="form-select" required>
-                    <option value="">— Sélectionner un destinataire —</option>
-                    <?php foreach ($clients as $c): ?>
-                    <option value="<?= $c['id'] ?>"><?= View::e($c['name']) ?><?= $c['phone'] ? ' — ' . $c['phone'] : '' ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
+    <div class="finea-section-card" style="margin-bottom:1.5rem;">
+        <div class="finea-section-heading">
+            <h2 class="finea-section-title">Expéditeur & Destinataire</h2>
         </div>
-    </section>
+        <div class="form-grid-2">
+            <?= Form::selectSearch('sender_id', 'Expéditeur *', $clientOptions, '', [
+                'required' => true,
+                'hint' => 'Client inexistant ? Vous pouvez le créer dans le CRM.'
+            ]) ?>
+            <?= Form::selectSearch('receiver_id', 'Destinataire *', $clientOptions, '', ['required' => true]) ?>
+        </div>
+    </div>
 
     <!-- Section : Trajet -->
-    <section class="card" style="margin-bottom:1.5rem;">
-        <h2 class="card-title">
-            <span class="material-icons">swap_horiz</span> Trajet
-        </h2>
-        <div class="form-grid-2">
-            <div class="form-group">
-                <label for="departure_agency_id">Agence de départ *</label>
-                <select name="departure_agency_id" id="departure_agency_id" class="form-select" required>
-                    <option value="">— Sélectionner —</option>
-                    <?php foreach ($agencies as $a): ?>
-                    <option value="<?= $a['id'] ?>"><?= View::e($a['name']) ?> (<?= View::e($a['country'] ?? '') ?>)</option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-            <div class="form-group">
-                <label for="arrival_agency_id">Agence d'arrivée *</label>
-                <select name="arrival_agency_id" id="arrival_agency_id" class="form-select" required>
-                    <option value="">— Sélectionner —</option>
-                    <?php foreach ($agencies as $a): ?>
-                    <option value="<?= $a['id'] ?>"><?= View::e($a['name']) ?> (<?= View::e($a['country'] ?? '') ?>)</option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
+    <div class="finea-section-card" style="margin-bottom:1.5rem;">
+        <div class="finea-section-heading">
+            <h2 class="finea-section-title">Trajet</h2>
         </div>
-    </section>
+        <div class="form-grid-2">
+            <?= Form::select('departure_agency_id', 'Agence de départ *', $agencyOptions, '', ['required' => true]) ?>
+            <?= Form::select('arrival_agency_id', 'Agence d\'arrivée *', $agencyOptions, '', ['required' => true]) ?>
+        </div>
+    </div>
 
     <!-- Section : Informations colis -->
-    <section class="card" style="margin-bottom:1.5rem;">
-        <h2 class="card-title">
-            <span class="material-icons">inventory_2</span> Informations colis
-        </h2>
+    <div class="finea-section-card" style="margin-bottom:1.5rem;">
+        <div class="finea-section-heading">
+            <h2 class="finea-section-title">Informations colis</h2>
+        </div>
         <div class="form-grid-3">
-            <div class="form-group">
-                <label for="total_weight">Poids total (kg)</label>
-                <input type="number" step="0.01" min="0" name="total_weight" id="total_weight" class="form-input" value="0.00">
-            </div>
-            <div class="form-group">
-                <label for="declared_value">Valeur déclarée (douane)</label>
-                <input type="number" step="0.01" min="0" name="declared_value" id="declared_value" class="form-input" value="0.00">
-            </div>
-            <div class="form-group">
-                <label for="total_price">Prix facturé</label>
-                <input type="number" step="0.01" min="0" name="total_price" id="total_price" class="form-input" value="0.00">
-            </div>
-            <div class="form-group">
-                <label for="currency">Devise</label>
-                <select name="currency" id="currency" class="form-select">
-                    <option value="XOF">FCFA (XOF)</option>
-                    <option value="EUR">Euros (EUR)</option>
-                </select>
-            </div>
-            <div class="form-group" style="grid-column: span 2;">
-                <label for="description">Description courte du colis</label>
-                <input type="text" name="description" id="description" class="form-input" placeholder="Ex: Vêtements, électronique, alimentaire...">
+            <?= Form::input('total_weight', 'Poids total (kg)', '0.00', ['type' => 'number', 'step' => '0.01', 'min' => '0']) ?>
+            <?= Form::input('declared_value', 'Valeur déclarée (douane)', '0.00', ['type' => 'number', 'step' => '0.01', 'min' => '0']) ?>
+            <?= Form::input('total_price', 'Prix facturé', '0.00', ['type' => 'number', 'step' => '0.01', 'min' => '0']) ?>
+            <?= Form::select('currency', 'Devise', $currencyOptions, 'XOF') ?>
+            <div style="grid-column: span 2;">
+                <?= Form::input('description', 'Description courte du colis', '', ['placeholder' => 'Ex: Vêtements, électronique, alimentaire...']) ?>
             </div>
         </div>
-        <div class="form-group">
-            <label for="notes">Notes internes</label>
-            <textarea name="notes" id="notes" class="form-textarea" rows="2" placeholder="Remarques, instructions particulières..."></textarea>
+        <div style="margin-top: 1rem;">
+            <?= Form::textarea('notes', 'Notes internes', '', ['rows' => 2, 'placeholder' => 'Remarques, instructions particulières...']) ?>
         </div>
-    </section>
+    </div>
 
     <!-- Section : Marchandises -->
-    <section class="card" style="margin-bottom:1.5rem;">
+    <div class="finea-section-card" style="margin-bottom:1.5rem;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-            <h2 class="card-title" style="margin:0;">
-                <span class="material-icons">list_alt</span> Détail des marchandises
-            </h2>
-            <button type="button" class="btn btn-outline btn-sm" id="btn-add-ligne">
-                <span class="material-icons">add</span> Ajouter une ligne
-            </button>
+            <h2 class="finea-section-title" style="margin:0;">Détail des marchandises</h2>
+            <?= Ui::button('Ajouter une ligne', null, [
+                'variant' => 'outline',
+                'class' => 'btn-sm',
+                'id' => 'btn-add-ligne'
+            ]) ?>
         </div>
         <table class="data-table" id="table-marchandises">
             <thead>
@@ -138,20 +102,29 @@ require __DIR__ . '/../_navigation.php';
             </thead>
             <tbody id="tbody-marchandises">
                 <tr class="ligne-marchandise">
-                    <td><input type="text" name="marchandise_description[]" class="form-input" placeholder="Ex: Chaussures de sport..." required></td>
-                    <td><input type="number" name="marchandise_quantity[]" class="form-input" value="1" min="1"></td>
-                    <td><input type="number" name="marchandise_weight[]" class="form-input" value="0" step="0.01" min="0"></td>
-                    <td><button type="button" class="btn btn-sm btn-ghost btn-delete-ligne" title="Supprimer"><span class="material-icons">delete_outline</span></button></td>
+                    <td><input type="text" name="marchandise_description[]" class="finea-input" placeholder="Ex: Chaussures de sport..." required></td>
+                    <td><input type="number" name="marchandise_quantity[]" class="finea-input" value="1" min="1"></td>
+                    <td><input type="number" name="marchandise_weight[]" class="finea-input" value="0" step="0.01" min="0"></td>
+                    <td>
+                        <button type="button" class="finea-action-btn finea-action-btn--ghost btn-delete-ligne" title="Supprimer" style="padding: 4px 8px;">
+                            <span class="material-icons" style="font-size: 1.2rem;">delete_outline</span>
+                        </button>
+                    </td>
                 </tr>
             </tbody>
         </table>
-    </section>
+    </div>
 
-    <div class="form-actions">
-        <button type="submit" class="btn btn-primary btn-lg">
-            <span class="material-icons">save</span> Créer le colis & générer le tracking
-        </button>
-        <a href="<?= View::url('colisage/colis') ?>" class="btn btn-ghost btn-lg">Annuler</a>
+    <div class="form-actions" style="margin-top: 2rem; display: flex; gap: 1rem;">
+        <?= Ui::button('Créer le colis & générer le tracking', null, [
+            'type' => 'submit',
+            'variant' => 'primary',
+            'class' => 'btn-lg'
+        ]) ?>
+        <?= Ui::button('Annuler', 'colisage/colis', [
+            'variant' => 'ghost',
+            'class' => 'btn-lg'
+        ]) ?>
     </div>
 </form>
 

@@ -3,65 +3,59 @@
 /** @var array $agencies */
 /** @var array $filters */
 use App\Helpers\View;
+use App\View\Components\Ui;
+use App\View\Components\Form;
 
 ob_start();
 require __DIR__ . '/../_navigation.php';
 
 $statusLabels = [
-    'RECEPTIONNE'    => ['label' => 'Réceptionné',     'class' => 'badge-warning'],
-    'EN_PREPARATION' => ['label' => 'En préparation',  'class' => 'badge-info'],
-    'EN_TRANSIT'     => ['label' => 'En transit',      'class' => 'badge-purple'],
-    'ARRIVE'         => ['label' => 'Arrivé',          'class' => 'badge-success'],
-    'RETIRE'         => ['label' => 'Retiré',          'class' => 'badge-default'],
+    'RECEPTIONNE'    => ['label' => 'Réceptionné',     'tone' => 'warning'],
+    'EN_PREPARATION' => ['label' => 'En préparation',  'tone' => 'info'],
+    'EN_TRANSIT'     => ['label' => 'En transit',      'tone' => 'purple'],
+    'ARRIVE'         => ['label' => 'Arrivé',          'tone' => 'success'],
+    'RETIRE'         => ['label' => 'Retiré',          'tone' => 'neutral'],
 ];
+
+$statusOptions = [['value' => '', 'label' => 'Tous les statuts']];
+foreach ($statusLabels as $val => $info) {
+    $statusOptions[] = ['value' => $val, 'label' => $info['label']];
+}
+
+$agencyOptions = [['value' => '', 'label' => 'Toutes les agences']];
+foreach ($agencies as $a) {
+    $agencyOptions[] = ['value' => $a['id'], 'label' => $a['name']];
+}
 ?>
 
-<div class="page-header">
-    <div>
-        <p class="eyebrow">Colisage</p>
-        <h1>Gestion des Colis</h1>
-    </div>
-    <div class="header-actions">
-        <a href="<?= View::url('colisage/colis/nouveau') ?>" class="btn btn-primary">
-            <span class="material-icons">add_box</span> Nouveau Colis
-        </a>
-    </div>
-</div>
+<?= Ui::pageHeader('Colisage', 'Gestion des Colis', [
+    'actions' => Ui::button('Nouveau Colis', 'colisage/colis/nouveau', [
+        'variant' => 'primary',
+        'html' => true,
+    ])
+]) ?>
 
 <!-- Filtres -->
-<form method="GET" action="<?= View::url('colisage/colis') ?>" class="filter-bar card" style="padding:1rem; margin-bottom:1.5rem;">
+<form method="GET" action="<?= View::url('colisage/colis') ?>" class="finea-section-card" style="padding:1rem; margin-bottom:1.5rem;">
     <div style="display:flex; gap:1rem; flex-wrap:wrap; align-items:flex-end;">
-        <div class="form-group" style="margin:0; flex:1; min-width:200px;">
-            <label>Recherche (tracking, client)</label>
-            <input type="text" name="search" value="<?= View::e($filters['search'] ?? '') ?>" class="form-input" placeholder="N° tracking ou nom client...">
+        <div style="flex:1; min-width:200px;">
+            <?= Form::input('search', 'Recherche (tracking, client)', $filters['search'] ?? '', ['placeholder' => 'N° tracking ou nom client...', 'fieldClass' => 'margin-0']) ?>
         </div>
-        <div class="form-group" style="margin:0; min-width:160px;">
-            <label>Statut</label>
-            <select name="status" class="form-select">
-                <option value="">Tous les statuts</option>
-                <?php foreach ($statusLabels as $val => $info): ?>
-                <option value="<?= $val ?>" <?= ($filters['status'] ?? '') === $val ? 'selected' : '' ?>><?= $info['label'] ?></option>
-                <?php endforeach; ?>
-            </select>
+        <div style="min-width:160px;">
+            <?= Form::select('status', 'Statut', $statusOptions, $filters['status'] ?? '', ['fieldClass' => 'margin-0']) ?>
         </div>
-        <div class="form-group" style="margin:0; min-width:160px;">
-            <label>Agence</label>
-            <select name="agency_id" class="form-select">
-                <option value="">Toutes les agences</option>
-                <?php foreach ($agencies as $a): ?>
-                <option value="<?= $a['id'] ?>" <?= ($filters['agency_id'] ?? '') == $a['id'] ? 'selected' : '' ?>><?= View::e($a['name']) ?></option>
-                <?php endforeach; ?>
-            </select>
+        <div style="min-width:160px;">
+            <?= Form::select('agency_id', 'Agence', $agencyOptions, $filters['agency_id'] ?? '', ['fieldClass' => 'margin-0']) ?>
         </div>
-        <button type="submit" class="btn btn-outline">
-            <span class="material-icons">search</span> Filtrer
-        </button>
-        <a href="<?= View::url('colisage/colis') ?>" class="btn btn-ghost">Réinitialiser</a>
+        <div style="display: flex; gap: 0.5rem;">
+            <?= Ui::button('Filtrer', null, ['type' => 'submit', 'variant' => 'outline']) ?>
+            <?= Ui::button('Réinitialiser', 'colisage/colis', ['variant' => 'ghost']) ?>
+        </div>
     </div>
 </form>
 
 <!-- Table colis -->
-<div class="card">
+<div class="finea-section-card">
     <table class="data-table">
         <thead>
             <tr>
@@ -79,16 +73,15 @@ $statusLabels = [
         <tbody>
             <?php if (empty($colisList)): ?>
             <tr>
-                <td colspan="9" class="empty-row">
-                    <span class="material-icons">inbox</span>
-                    Aucun colis trouvé.
+                <td colspan="9" class="empty-row" style="text-align: center; padding: 2rem;">
+                    <?= Ui::emptyState('Aucun colis trouvé', 'Essayez d\'ajuster vos filtres ou créez un nouveau colis.', 'inbox') ?>
                 </td>
             </tr>
             <?php else: foreach ($colisList as $c): ?>
             <tr>
                 <td>
-                    <a href="<?= View::url('colisage/colis/' . $c['id']) ?>" class="link-tracking">
-                        <strong><?= View::e($c['tracking_number']) ?></strong>
+                    <a href="<?= View::url('colisage/colis/' . $c['id']) ?>" class="link-tracking" style="color: var(--color-accent); font-weight: 600; text-decoration: none;">
+                        <?= View::e($c['tracking_number']) ?>
                     </a>
                 </td>
                 <td><?= View::e($c['sender_name'] ?? '—') ?></td>
@@ -100,19 +93,21 @@ $statusLabels = [
                 <td><?= number_format((float)$c['total_weight'], 2) ?> kg</td>
                 <td><?= number_format((float)$c['total_price'], 0, ',', ' ') ?> <?= View::e($c['currency']) ?></td>
                 <td>
-                    <?php $st = $statusLabels[$c['status']] ?? ['label' => $c['status'], 'class' => 'badge-default']; ?>
-                    <span class="badge <?= $st['class'] ?>"><?= $st['label'] ?></span>
+                    <?php $st = $statusLabels[$c['status']] ?? ['label' => $c['status'], 'tone' => 'neutral']; ?>
+                    <?= Ui::badge($st['label'], $st['tone']) ?>
                 </td>
                 <td><?= date('d/m/Y', strtotime($c['created_at'])) ?></td>
                 <td>
-                    <a href="<?= View::url('colisage/colis/' . $c['id']) ?>" class="btn btn-sm btn-ghost" title="Voir le détail">
-                        <span class="material-icons">visibility</span>
-                    </a>
-                    <?php if ($c['status'] === 'ARRIVE'): ?>
-                    <a href="<?= View::url('colisage/colis/' . $c['id'] . '/retrait') ?>" class="btn btn-sm btn-success" title="Remettre au destinataire">
-                        <span class="material-icons">how_to_reg</span>
-                    </a>
-                    <?php endif; ?>
+                    <div style="display: flex; gap: 0.25rem;">
+                        <a href="<?= View::url('colisage/colis/' . $c['id']) ?>" class="finea-action-btn finea-action-btn--ghost" title="Voir le détail" style="padding: 4px 8px;">
+                            <span class="material-icons" style="font-size: 1.2rem;">visibility</span>
+                        </a>
+                        <?php if ($c['status'] === 'ARRIVE'): ?>
+                        <a href="<?= View::url('colisage/colis/' . $c['id'] . '/retrait') ?>" class="finea-action-btn finea-action-btn--success" title="Remettre au destinataire" style="padding: 4px 8px;">
+                            <span class="material-icons" style="font-size: 1.2rem;">how_to_reg</span>
+                        </a>
+                        <?php endif; ?>
+                    </div>
                 </td>
             </tr>
             <?php endforeach; endif; ?>

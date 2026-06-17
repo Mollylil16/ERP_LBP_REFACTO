@@ -1,26 +1,18 @@
 <?php
 /** @var array $counts */
 use App\Helpers\View;
+use App\View\Components\Ui;
 
 ob_start();
 require __DIR__ . '/_navigation.php';
 ?>
 
-<div class="page-header">
-    <div>
-        <p class="eyebrow">Module Colisage & Fret</p>
-        <h1>Tableau de bord</h1>
-        <p class="subtitle">Suivi en temps réel de l'activité colis et expéditions.</p>
-    </div>
-    <div class="header-actions">
-        <a href="<?= View::url('colisage/colis/nouveau') ?>" class="btn btn-primary">
-            <span class="material-icons">add_box</span> Nouveau Colis
-        </a>
-        <a href="<?= View::url('colisage/expeditions/nouveau') ?>" class="btn btn-outline">
-            <span class="material-icons">local_shipping</span> Nouvelle Expédition
-        </a>
-    </div>
-</div>
+<?= Ui::pageHeader('Module Colisage & Fret', 'Tableau de bord', [
+    'actions' => '<div style="display:flex; gap:.5rem;">'
+        . Ui::button('Nouveau Colis', 'colisage/colis/nouveau', ['variant' => 'primary'])
+        . Ui::button('Nouvelle Expédition', 'colisage/expeditions/nouveau', ['variant' => 'outline'])
+        . '</div>'
+]) ?>
 
 <!-- KPIs -->
 <div class="kpi-grid" style="grid-template-columns: repeat(5, 1fr); gap: 1rem; margin-bottom: 2rem;">
@@ -49,8 +41,10 @@ require __DIR__ . '/_navigation.php';
 
 <!-- Accès rapides -->
 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1.5rem;">
-    <section class="card">
-        <h2 class="card-title">Actions rapides</h2>
+    <section class="finea-section-card">
+        <div class="finea-section-heading">
+            <h2 class="finea-section-title">Actions rapides</h2>
+        </div>
         <div class="action-list">
             <a href="<?= View::url('colisage/colis/nouveau') ?>" class="action-item">
                 <span class="material-icons action-icon">add_box</span>
@@ -83,8 +77,10 @@ require __DIR__ . '/_navigation.php';
         </div>
     </section>
 
-    <section class="card">
-        <h2 class="card-title">Cycle de vie d'un colis</h2>
+    <section class="finea-section-card">
+        <div class="finea-section-heading">
+            <h2 class="finea-section-title">Cycle de vie d'un colis</h2>
+        </div>
         <div style="padding: .5rem 0;">
             <?php $steps = [
                 ['RÉCEPTIONNÉ', '#f59e0b', 'Colis reçu en agence départ'],

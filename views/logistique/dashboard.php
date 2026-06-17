@@ -1,26 +1,18 @@
 <?php
 /** @var array $kpis */
 use App\Helpers\View;
+use App\View\Components\Ui;
 
 ob_start();
 require __DIR__ . '/_navigation.php';
 ?>
 
-<div class="page-header">
-    <div>
-        <p class="eyebrow">Module Logistique Interne</p>
-        <h1>Tableau de bord</h1>
-        <p class="subtitle">Suivi des prestataires, factures, fournitures et crédits inter-agences.</p>
-    </div>
-    <div class="header-actions">
-        <a href="<?= View::url('logistique/prestataires/nouveau') ?>" class="btn btn-outline">
-            <span class="material-icons">business</span> Nouveau prestataire
-        </a>
-        <a href="<?= View::url('logistique/factures/nouvelle') ?>" class="btn btn-primary">
-            <span class="material-icons">receipt</span> Nouvelle facture
-        </a>
-    </div>
-</div>
+<?= Ui::pageHeader('Module Logistique Interne', 'Tableau de bord', [
+    'actions' => '<div style="display:flex; gap:.5rem;">'
+        . Ui::button('Nouveau prestataire', 'logistique/prestataires/nouveau', ['variant' => 'outline'])
+        . Ui::button('Nouvelle facture', 'logistique/factures/nouvelle', ['variant' => 'primary'])
+        . '</div>'
+]) ?>
 
 <!-- KPIs -->
 <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:1rem; margin-bottom:2rem;">
@@ -48,8 +40,10 @@ require __DIR__ . '/_navigation.php';
 
 <!-- Actions rapides -->
 <div style="display:grid; grid-template-columns:1fr 1fr; gap:1.5rem;">
-    <section class="card">
-        <h2 class="card-title">Actions rapides</h2>
+    <section class="finea-section-card">
+        <div class="finea-section-heading">
+            <h2 class="finea-section-title">Actions rapides</h2>
+        </div>
         <div class="action-list">
             <a href="<?= View::url('logistique/prestataires') ?>" class="action-item">
                 <span class="material-icons action-icon">business</span>
@@ -74,8 +68,10 @@ require __DIR__ . '/_navigation.php';
         </div>
     </section>
 
-    <section class="card">
-        <h2 class="card-title">Workflows clés</h2>
+    <section class="finea-section-card">
+        <div class="finea-section-heading">
+            <h2 class="finea-section-title">Workflows clés</h2>
+        </div>
         <div style="padding:.5rem 0;">
             <?php $flows = [
                 ['Prestataire → Facture', '#7c3aed', 'Enregistrer la facture reçue'],
