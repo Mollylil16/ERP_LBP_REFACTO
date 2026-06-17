@@ -2,77 +2,77 @@
 /** @var array $colis */
 use App\Helpers\Csrf;
 use App\Helpers\View;
+use App\View\Components\Ui;
+use App\View\Components\Form;
 
 ob_start();
 require __DIR__ . '/../_navigation.php';
 ?>
 
-<div class="page-header">
-    <div>
-        <p class="eyebrow">Colisage — Remise au destinataire</p>
-        <h1>Colis <?= View::e($colis['tracking_number']) ?></h1>
-        <p class="subtitle">Enregistrement obligatoire des informations du récupérateur avant remise.</p>
+<div class="finea-shell">
+    <div class="finea-container">
+        <?= Ui::pageHeader('Colisage — Remise au destinataire', 'Colis ' . $colis['tracking_number'], [
+            'actions' => Ui::button('Retour', 'colisage/colis/' . $colis['id'], ['variant' => 'ghost'])
+        ]) ?>
+
+        <!-- Récapitulatif colis & Alerte -->
+        <div class="finea-grid" style="grid-template-columns: 1fr 1fr; gap:1.5rem; margin-top: 1.5rem; margin-bottom:1.5rem;">
+            <section class="finea-section-card">
+                <div class="finea-section-heading">
+                    <h2 class="finea-section-title">Colis à remettre</h2>
+                </div>
+                <div class="rh-detail-grid" style="grid-template-columns: 1fr;">
+                    <div>
+                        <small>Tracking</small>
+                        <strong><?= View::e($colis['tracking_number']) ?></strong>
+                    </div>
+                    <div>
+                        <small>Destinataire officiel</small>
+                        <strong><?= View::e($colis['receiver_name'] ?? '—') ?></strong>
+                        <span style="font-size: 0.8rem; color: var(--finea-muted);"><?= View::e($colis['receiver_phone'] ?? '') ?></span>
+                    </div>
+                    <div>
+                        <small>Agence d'arrivée</small>
+                        <strong><?= View::e($colis['arrival_agency'] ?? '—') ?></strong>
+                    </div>
+                </div>
+            </section>
+
+            <section class="finea-section-card" style="border-left: 4px solid var(--finea-gold); background: #fffdf5;">
+                <div class="finea-section-heading">
+                    <h2 class="finea-section-title" style="color:#92400e;">Vérification d'identité obligatoire</h2>
+                </div>
+                <p style="font-size:.9rem; color:#78350f; line-height: 1.6; margin: 0;">
+                    Avant toute remise, vérifiez <strong>physiquement</strong> la pièce d'identité du récupérateur (CNI, Passeport).
+                    Ces informations sont enregistrées et engagent la responsabilité de l'opérateur de saisie.
+                </p>
+            </section>
+        </div>
+
+        <!-- Formulaire retrait -->
+        <section class="finea-section-card">
+            <div class="finea-section-heading">
+                <h2 class="finea-section-title">Informations du récupérateur</h2>
+            </div>
+            <form method="POST" action="<?= View::url('colisage/colis/' . $colis['id'] . '/retrait') ?>" id="form-retrait">
+                <?= Csrf::input() ?>
+                <div class="rh-form-grid">
+                    <?= Form::input('retrieval_name', 'Nom complet du récupérateur *', '', ['placeholder' => 'Prénom Nom', 'required' => true, 'autofocus' => true]) ?>
+                    <?= Form::input('retrieval_cni', 'N° de pièce d\'identité (CNI) *', '', ['placeholder' => 'CI-XXXX-XXXXXX', 'required' => true]) ?>
+                    <?= Form::input('retrieval_phone', 'Téléphone du récupérateur', '', ['type' => 'tel', 'placeholder' => '+225 00 00 00 00']) ?>
+                </div>
+                <div class="rh-form-actions" style="margin-top: 1.5rem;">
+                    <?= Ui::button('Annuler', 'colisage/colis/' . $colis['id'], ['variant' => 'ghost']) ?>
+                    <?= Ui::button('Confirmer la remise & marquer RETIRÉ', null, [
+                        'type' => 'submit',
+                        'variant' => 'primary',
+                        'onclick' => 'return confirm("Confirmer la remise du colis ? Cette action est irréversible.")'
+                    ]) ?>
+                </div>
+            </form>
+        </section>
     </div>
-    <a href="<?= View::url('colisage/colis/' . $colis['id']) ?>" class="btn btn-ghost">
-        <span class="material-icons">arrow_back</span> Retour
-    </a>
 </div>
-
-<!-- Récapitulatif colis -->
-<div style="display:grid; grid-template-columns:1fr 1fr; gap:1.5rem; margin-bottom:1.5rem;">
-    <section class="card">
-        <h2 class="card-title"><span class="material-icons">inventory_2</span> Colis à remettre</h2>
-        <dl class="detail-list">
-            <dt>Tracking</dt>
-            <dd><strong><?= View::e($colis['tracking_number']) ?></strong></dd>
-            <dt>Destinataire officiel</dt>
-            <dd><strong><?= View::e($colis['receiver_name'] ?? '—') ?></strong><?= $colis['receiver_phone'] ? ' — ' . $colis['receiver_phone'] : '' ?></dd>
-            <dt>Statut actuel</dt>
-            <dd><span class="badge badge-success">Arrivé — Disponible au retrait</span></dd>
-            <dt>Agence d'arrivée</dt>
-            <dd><?= View::e($colis['arrival_agency'] ?? '—') ?></dd>
-        </dl>
-    </section>
-
-    <section class="card" style="border: 2px solid #f59e0b;">
-        <h2 class="card-title" style="color:#92400e;">
-            <span class="material-icons" style="color:#f59e0b;">warning</span>
-            Important — Vérification CNI
-        </h2>
-        <p style="font-size:.9rem; color:#78350f;">
-            Avant toute remise, vérifiez <strong>physiquement</strong> la pièce d'identité du récupérateur.
-            Ces informations sont enregistrées et engagent la responsabilité de l'opérateur.
-        </p>
-    </section>
-</div>
-
-<!-- Formulaire retrait -->
-<section class="card">
-    <h2 class="card-title"><span class="material-icons">how_to_reg</span> Informations du récupérateur</h2>
-    <form method="POST" action="<?= View::url('colisage/colis/' . $colis['id'] . '/retrait') ?>" id="form-retrait">
-        <?= Csrf::input() ?>
-        <div class="form-grid-3">
-            <div class="form-group">
-                <label for="retrieval_name">Nom complet du récupérateur *</label>
-                <input type="text" name="retrieval_name" id="retrieval_name" class="form-input" placeholder="Prénom Nom" required autofocus>
-            </div>
-            <div class="form-group">
-                <label for="retrieval_cni">N° de pièce d'identité (CNI) *</label>
-                <input type="text" name="retrieval_cni" id="retrieval_cni" class="form-input" placeholder="CI-XXXX-XXXXXX" required>
-            </div>
-            <div class="form-group">
-                <label for="retrieval_phone">Téléphone du récupérateur</label>
-                <input type="tel" name="retrieval_phone" id="retrieval_phone" class="form-input" placeholder="+225 00 00 00 00">
-            </div>
-        </div>
-        <div class="form-actions" style="margin-top:1.5rem;">
-            <button type="submit" class="btn btn-primary btn-lg" onclick="return confirm('Confirmer la remise du colis ? Cette action est irréversible.')">
-                <span class="material-icons">how_to_reg</span> Confirmer la remise & marquer RETIRÉ
-            </button>
-            <a href="<?= View::url('colisage/colis/' . $colis['id']) ?>" class="btn btn-ghost btn-lg">Annuler</a>
-        </div>
-    </form>
-</section>
 
 <?php
 $content = ob_get_clean();
