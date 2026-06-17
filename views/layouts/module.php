@@ -63,7 +63,7 @@ $moduleIconKey = $moduleTheme['iconKey'] ?? strtolower((string) ($moduleCode ?? 
                         href="<?= $isAvailable ? View::url($item['url']) : '#' ?>"
                         <?= !$isAvailable ? 'aria-disabled="true" data-coming-soon' : '' ?>
                     >
-                        <span class="module-nav-icon"><?= View::e($item['icon'] ?? '') ?></span>
+                        <span class="module-nav-icon <?= strlen($item['icon'] ?? '') > 2 ? 'finea-icon' : '' ?>"><?= View::e($item['icon'] ?? '') ?></span>
                         <span><?= View::e($item['label'] ?? '') ?></span>
                         <?php if (!$isAvailable): ?><small>Bientot</small><?php endif; ?>
                     </a>

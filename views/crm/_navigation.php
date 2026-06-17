@@ -3,8 +3,8 @@
 use App\Helpers\View;
 
 $moduleNavigation = [
-    ['key' => 'dashboard', 'label' => 'Tableau de bord', 'icon' => 'DB', 'url' => 'crm',          'available' => true],
-    ['key' => 'clients',   'label' => 'Clients',         'icon' => 'CL', 'url' => 'crm/clients',  'available' => true],
+    ['key' => 'dashboard', 'label' => 'Tableau de bord', 'icon' => 'dashboard', 'url' => 'crm',          'available' => true],
+    ['key' => 'clients',   'label' => 'Clients',         'icon' => 'people',    'url' => 'crm/clients',  'available' => true],
 ];
 
 $moduleTheme = [

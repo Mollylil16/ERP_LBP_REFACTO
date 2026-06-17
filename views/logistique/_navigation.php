@@ -3,12 +3,12 @@
 use App\Helpers\View;
 
 $moduleNavigation = [
-    ['key' => 'dashboard',    'label' => 'Tableau de bord',     'icon' => 'DB', 'url' => 'logistique',                      'available' => true],
-    ['key' => 'prestataires', 'label' => 'Prestataires',         'icon' => 'PS', 'url' => 'logistique/prestataires',         'available' => true],
-    ['key' => 'factures',     'label' => 'Factures',             'icon' => 'FA', 'url' => 'logistique/factures',             'available' => true],
-    ['key' => 'retraits',     'label' => 'Retraits Hub',         'icon' => 'RH', 'url' => 'logistique/retraits',             'available' => true],
-    ['key' => 'fournitures',  'label' => 'Fournitures Agences',  'icon' => 'FN', 'url' => 'logistique/fournitures',          'available' => true],
-    ['key' => 'credits',      'label' => 'Crédits Inter-Agences','icon' => 'CR', 'url' => 'logistique/credits',              'available' => true],
+    ['key' => 'dashboard',    'label' => 'Tableau de bord',     'icon' => 'dashboard',       'url' => 'logistique',                      'available' => true],
+    ['key' => 'prestataires', 'label' => 'Prestataires',         'icon' => 'business',        'url' => 'logistique/prestataires',         'available' => true],
+    ['key' => 'factures',     'label' => 'Factures',             'icon' => 'receipt_long',    'url' => 'logistique/factures',             'available' => true],
+    ['key' => 'retraits',     'label' => 'Retraits Hub',         'icon' => 'account_balance', 'url' => 'logistique/retraits',             'available' => true],
+    ['key' => 'fournitures',  'label' => 'Fournitures Agences',  'icon' => 'shopping_cart',   'url' => 'logistique/fournitures',          'available' => true],
+    ['key' => 'credits',      'label' => 'Crédits Inter-Agences','icon' => 'swap_horiz',      'url' => 'logistique/credits',              'available' => true],
 ];
 
 $moduleTheme = [
