@@ -1,21 +1,35 @@
 <?php
 
-use App\Helpers\Csrf;
+declare(strict_types=1);
+
 use App\Helpers\View;
 use App\View\Components\Dashboard;
-use App\View\Components\Ui;
 use App\View\Components\EmployeeRequestList;
-use App\View\Components\Form;
-use App\View\Components\Modal;
+use App\View\Components\Ui;
 
-$date = static fn(?string $value): string => $value ? date('d/m/Y', strtotime($value)) : '—';
+/** @var array<string,mixed> $employee */
+/** @var array<string,int|float|string> $stats */
+/** @var array<int,array<string,mixed>> $attendance */
+/** @var array<int,array<string,mixed>> $requests */
+/** @var array<int,array<string,mixed>> $explanations */
+/** @var array<int,array<string,mixed>> $documents */
+$employee = array_replace(['full_name' => 'Collaborateur', 'function_name' => '', 'service_name' => ''], is_array($employee ?? null) ? $employee : []);
+$stats = array_replace(['openRequests' => 0, 'leaveRemaining' => 0, 'presenceRate' => 0, 'pendingExplanations' => 0], is_array($stats ?? null) ? $stats : []);
+$attendance = is_array($attendance ?? null) ? $attendance : [];
+$requests = is_array($requests ?? null) ? $requests : [];
+$explanations = is_array($explanations ?? null) ? $explanations : [];
+$documents = is_array($documents ?? null) ? $documents : [];
+
+$date = static fn(?string $value): string => $value ? date('d/m/Y', strtotime($value) ?: time()) : '—';
+$firstName = trim((string) $employee['full_name']) !== '' ? explode(' ', trim((string) $employee['full_name']))[0] : 'Collaborateur';
+
 ob_start();
 ?>
 <div class="finea-shell employee-shell">
     <div class="finea-container">
         <?= Ui::pageHeader('Mon espace personnel',
-            ($employee['function_name'] ?: 'Fonction non renseignée') . ' · ' . ($employee['service_name'] ?: 'Service non renseigné'),
-            ['eyebrow' => 'Bonjour ' . explode(' ', $employee['full_name'])[0], 'actions' => Ui::button('Soumettre une demande', ['href' => 'espace-employe/demandes/nouvelle', 'variant' => 'accent']), 'class' => 'employee-hero']
+            (($employee['function_name'] ?: 'Fonction non renseignée') . ' · ' . ($employee['service_name'] ?: 'Service non renseigné')),
+            ['eyebrow' => 'Bonjour ' . $firstName, 'actions' => Ui::button('Soumettre une demande', ['href' => 'espace-employe/demandes/nouvelle', 'variant' => 'accent']), 'class' => 'employee-hero']
         ) ?>
 
         <?= Dashboard::kpis([
@@ -25,47 +39,37 @@ ob_start();
             ['label' => 'Explications attendues', 'value' => $stats['pendingExplanations'], 'meta' => 'Réponses à transmettre', 'href' => 'espace-employe#explications'],
         ]) ?>
 
-        <section class="finea-section-card" id="demandes">
-            <div class="employee-heading"><div><p class="employee-eyebrow">Self-service RH</p><h2 class="finea-section-title">Mes demandes</h2></div><a href="<?= View::url('espace-employe/demandes/nouvelle') ?>">Nouvelle demande</a></div>
-            <?= EmployeeRequestList::render($requests) ?>
-        </section>
+        <?= Ui::section(
+            'Mes demandes',
+            '<div class="employee-heading"><div><p class="employee-eyebrow">Self-service RH</p></div>' . Ui::button('Nouvelle demande', ['href' => 'espace-employe/demandes/nouvelle', 'variant' => 'secondary']) . '</div>' . EmployeeRequestList::render($requests),
+            '',
+            ['id' => 'demandes']
+        ) ?>
 
         <div class="employee-two-columns">
-            <section class="finea-section-card" id="pointage">
-                <div class="employee-heading"><div><p class="employee-eyebrow">Temps de travail</p><h2 class="finea-section-title">Mon pointage du mois</h2></div></div>
-                <div class="employee-attendance-list">
-                    <?php foreach ($attendance as $row): ?><article><time><?= $date($row['attendance_date']) ?></time><strong><?= View::e($row['attendance_status']) ?></strong><span><?= View::e(substr((string)$row['check_in_time'], 0, 5) ?: '—') ?> → <?= View::e(substr((string)$row['check_out_time'], 0, 5) ?: '—') ?></span><small><?= number_format((float)$row['worked_hours'], 1, ',', ' ') ?> h</small></article><?php endforeach; ?>
-                    <?php if ($attendance === []): ?><div class="finea-empty-state">Aucun pointage disponible pour ce mois.</div><?php endif; ?>
-                </div>
-                <a class="employee-inline-action" href="<?= View::url('espace-employe/demandes/nouvelle?type=attendance_correction') ?>">Signaler une anomalie</a>
-            </section>
+            <?= Ui::section(
+                'Mon pointage du mois',
+                '<div class="employee-heading"><div><p class="employee-eyebrow">Temps de travail</p></div></div>'
+                    . Dashboard::attendanceList($attendance, $date)
+                    . '<a class="employee-inline-action" href="' . View::url('espace-employe/demandes/nouvelle?type=attendance_correction') . '">Signaler une anomalie</a>',
+                '',
+                ['id' => 'pointage']
+            ) ?>
 
-            <section class="finea-section-card" id="explications">
-                <div class="employee-heading"><div><p class="employee-eyebrow">Échanges RH</p><h2 class="finea-section-title">Demandes d’explications</h2></div></div>
-                <div class="employee-explanation-list">
-                <?php foreach ($explanations as $row): ?><article>
-                    <header><strong><?= View::e($row['subject']) ?></strong><span class="employee-status status-<?= View::e($row['status']) ?>"><?= View::e($row['status']) ?></span></header>
-                    <p><?= View::e($row['facts']) ?></p><small>Réponse attendue avant le <?= $date($row['response_due_date']) ?></small>
-                    <?php if (in_array($row['status'], ['pending_response', 'complement_requested'], true)): ?>
-                        <?php ob_start(); ?>
-                        <form method="post" action="<?= View::url('espace-employe/explications/' . (int)$row['id'] . '/repondre') ?>">
-                            <?= Form::hidden('_csrf_token', Csrf::token()) ?>
-                            <?= Form::textarea('response', 'Votre réponse circonstanciée', '', ['rows' => 7, 'minlength' => 20, 'required' => true]) ?>
-                            <?= Ui::button('Transmettre ma réponse', ['variant' => 'accent', 'type' => 'submit']) ?>
-                        </form>
-                        <?php $responseForm = (string) ob_get_clean(); ?>
-                        <?= Modal::render('explanation-' . (int)$row['id'], 'Répondre à la demande d’explication', $responseForm, 'Répondre', ['eyebrow' => 'Droit de réponse']) ?>
-                    <?php elseif ($row['employee_response']): ?><blockquote><?= View::e($row['employee_response']) ?></blockquote><?php endif; ?>
-                </article><?php endforeach; ?>
-                <?php if ($explanations === []): ?><div class="finea-empty-state">Aucune demande d’explication.</div><?php endif; ?>
-                </div>
-            </section>
+            <?= Ui::section(
+                'Demandes d’explications',
+                '<div class="employee-heading"><div><p class="employee-eyebrow">Échanges RH</p></div></div>' . Dashboard::explanationList($explanations, $date),
+                '',
+                ['id' => 'explications']
+            ) ?>
         </div>
 
-        <section class="finea-section-card" id="documents">
-            <div class="employee-heading"><div><p class="employee-eyebrow">Dossier personnel</p><h2 class="finea-section-title">Mes documents</h2></div></div>
-            <div class="employee-document-grid"><?php foreach ($documents as $document): ?><a href="<?= View::url('public/' . ltrim($document['stored_path'], '/')) ?>" target="_blank" rel="noopener"><strong><?= View::e($document['original_name']) ?></strong><small><?= View::e($document['document_type']) ?></small></a><?php endforeach; ?><?php if ($documents === []): ?><div class="finea-empty-state">Aucun document disponible.</div><?php endif; ?></div>
-        </section>
+        <?= Ui::section(
+            'Mes documents',
+            '<div class="employee-heading"><div><p class="employee-eyebrow">Dossier personnel</p></div></div>' . Dashboard::documentGrid($documents),
+            '',
+            ['id' => 'documents']
+        ) ?>
     </div>
 </div>
 <?php $content = ob_get_clean(); require BASE_PATH . '/views/layouts/module.php'; ?>

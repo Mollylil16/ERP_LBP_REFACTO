@@ -1,8 +1,16 @@
 <?php
 
-use App\Helpers\View;
+declare(strict_types=1);
+
 use App\View\Components\Dashboard;
 use App\View\Components\Ui;
+
+/** @var array{total?:int,active?:int,restricted?:int,administrators?:int} $statistics */
+/** @var int $grantedPermissions */
+/** @var array<int,object|array<string,mixed>> $entities */
+$statistics = array_replace(['total' => 0, 'active' => 0, 'restricted' => 0, 'administrators' => 0], is_array($statistics ?? null) ? $statistics : []);
+$grantedPermissions = (int) ($grantedPermissions ?? 0);
+$entities = is_array($entities ?? null) ? $entities : [];
 
 require BASE_PATH . '/views/admin/_navigation.php';
 ob_start();
@@ -28,24 +36,17 @@ ob_start();
         ]) ?>
 
         <div class="admin-dashboard-grid">
-            <?php ob_start(); ?>
-            <div class="admin-entity-list">
-                <?php foreach ($entities as $entity): ?>
-                    <div>
-                        <span class="admin-module-chip"><?= View::e($entity->module) ?></span>
-                        <span><strong><?= View::e($entity->name) ?></strong><small><?= View::e($entity->description) ?></small></span>
-                    </div>
-                <?php endforeach; ?>
-            </div>
-            <?= Ui::section('Entités sécurisées', (string) ob_get_clean(), '', ['class' => 'admin-entities-section']) ?>
-
-            <aside class="admin-security-card">
-                <p class="admin-eyebrow">Bonnes pratiques</p>
-                <h2>Contrôle d’accès explicite</h2>
-                <p>Les administrateurs possèdent tous les droits. Les autres comptes reçoivent uniquement les permissions enregistrées dans leur profil.</p>
-                <a href="<?= View::url('admin/users') ?>">Gérer les utilisateurs</a>
-                <a href="<?= View::url('admin/permissions') ?>">Auditer la matrice</a>
-            </aside>
+            <?= Ui::section('Entités sécurisées', Dashboard::entityList($entities), '', ['class' => 'admin-entities-section']) ?>
+            <?= Dashboard::infoCard(
+                'Bonnes pratiques',
+                'Contrôle d’accès explicite',
+                'Les administrateurs possèdent tous les droits. Les autres comptes reçoivent uniquement les permissions enregistrées dans leur profil.',
+                [
+                    ['label' => 'Gérer les utilisateurs', 'href' => 'admin/users'],
+                    ['label' => 'Auditer la matrice', 'href' => 'admin/permissions'],
+                ],
+                ['class' => 'admin-security-card']
+            ) ?>
         </div>
     </div>
 </div>

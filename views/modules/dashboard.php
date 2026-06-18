@@ -5,7 +5,19 @@ use App\Helpers\ModuleIcon;
 use App\View\Components\Dashboard;
 
 /** @var array<string, mixed> $dashboardModule */
-$module = $dashboardModule;
+$module = array_replace([
+    'slug' => 'module',
+    'gradient' => 'linear-gradient(135deg, #0f172a, #1d4ed8)',
+    'iconKey' => 'default',
+    'code' => 'MOD',
+    'label' => 'Module',
+    'description' => 'Dashboard du module.',
+    'accent' => '#1d4ed8',
+    'accent2' => '#0f172a',
+    'kpis' => [],
+    'actions' => [],
+    'workflow' => [],
+], is_array($dashboardModule ?? null) ? $dashboardModule : []);
 $module['kpis'] = array_map(
     static fn(array $kpi): array => $kpi + ['href' => '/' . $module['slug'] . '/dashboard#operations'],
     $module['kpis']
@@ -63,14 +75,7 @@ ob_start();
                     <h2 class="finea-section-title">Structure prévue pour l’évolution métier</h2>
                 </div>
             </div>
-            <div class="module-workflow-grid">
-                <?php foreach ($module['workflow'] as $step): ?>
-                    <article>
-                        <strong><?= View::e((string) $step['title']) ?></strong>
-                        <p><?= View::e((string) $step['text']) ?></p>
-                    </article>
-                <?php endforeach; ?>
-            </div>
+            <?= Dashboard::workflow($module['workflow']) ?>
         </section>
     </div>
 </div>
