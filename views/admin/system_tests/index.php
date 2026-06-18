@@ -2,6 +2,7 @@
 
 use App\Helpers\View;
 
+/** @var \App\Support\ViewBag $viewData */ $viewData ??= \App\Support\ViewBag::from(get_defined_vars());
 /** @var array $summary */
 /** @var array<int, array<string, mixed>> $modules */
 /** @var array<int, array<string, mixed>> $latestRuns */

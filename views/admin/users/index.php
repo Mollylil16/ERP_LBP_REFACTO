@@ -4,6 +4,7 @@ use App\Helpers\View;
 use App\View\Components\Form;
 use App\View\Components\Ui;
 
+/** @var \App\Support\ViewBag $viewData */ $viewData ??= \App\Support\ViewBag::from(get_defined_vars());
 require BASE_PATH . '/views/admin/_navigation.php';
 $items = $pagination['items'] ?? [];
 $queryForPage = static fn(int $page): string => http_build_query(array_filter(

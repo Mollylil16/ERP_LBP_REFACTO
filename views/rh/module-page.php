@@ -1,5 +1,6 @@
 <?php
 use App\Helpers\View;
+/** @var \App\Support\ViewBag $viewData */ $viewData ??= \App\Support\ViewBag::from(get_defined_vars());
 ob_start();
 ?>
 <div class="finea-shell">

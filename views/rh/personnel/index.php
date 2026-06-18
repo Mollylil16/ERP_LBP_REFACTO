@@ -1,4 +1,5 @@
 <?php
+/** @var \App\Support\ViewBag $viewData */ $viewData ??= \App\Support\ViewBag::from(get_defined_vars());
 /** @var \App\Support\ViewBag $viewData */
 
 use App\Helpers\Auth;

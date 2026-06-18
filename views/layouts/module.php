@@ -7,6 +7,7 @@ use App\Helpers\ModuleIcon;
 use App\View\Components\Ui;
 use App\View\Components\Navigation;
 
+/** @var \App\Support\ViewBag $viewData */ $viewData ??= \App\Support\ViewBag::from(get_defined_vars());
 $appConfig = require BASE_PATH . '/config/app.php';
 $title = $pageTitle ?? $moduleName ?? 'Module';
 $currentUser = Auth::user();

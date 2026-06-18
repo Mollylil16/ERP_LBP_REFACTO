@@ -1,5 +1,6 @@
 <?php
 
+/** @var \App\Support\ViewBag $viewData */ $viewData ??= \App\Support\ViewBag::from(get_defined_vars());
 $moduleNavigation = [
     ['group' => 'Pilotage', 'key' => 'dashboard', 'label' => 'Tableau de bord', 'icon' => 'DB', 'url' => 'admin/dashboard', 'available' => true],
     ['group' => 'Accès & sécurité', 'key' => 'users', 'label' => 'Utilisateurs', 'icon' => 'UT', 'url' => 'admin/users', 'available' => true],

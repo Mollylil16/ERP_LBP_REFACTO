@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Repositories;
 
-use App\Repositories\UserRepository;
+use App\Repositories\Admin\UserRepository;
 use Tests\Support\DatabaseTestCase;
 
 final class UserRepositoryTest extends DatabaseTestCase

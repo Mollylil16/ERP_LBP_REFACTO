@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Services;
 
-use App\Services\EmployeeRequestCatalog;
+use App\Services\Employee\EmployeeRequestCatalog;
 use Tests\TestCase;
 
 final class EmployeeRequestCatalogTest extends TestCase

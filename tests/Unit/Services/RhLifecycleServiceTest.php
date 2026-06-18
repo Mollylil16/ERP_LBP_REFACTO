@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Services;
 
-use App\Repositories\RhLifecycleRepository;
-use App\Services\RhLifecycleService;
+use App\Repositories\Rh\RhLifecycleRepository;
+use App\Services\Rh\RhLifecycleService;
 use RuntimeException;
 use Tests\TestCase;
 

@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 use App\Models\Database;
 use App\Models\User;
-use App\Repositories\EmployeePortalRepository;
-use App\Repositories\RhLifecycleRepository;
-use App\Services\EmployeePortalService;
-use App\Services\RhLifecycleService;
+use App\Repositories\Employee\EmployeePortalRepository;
+use App\Repositories\Rh\RhLifecycleRepository;
+use App\Services\Employee\EmployeePortalService;
+use App\Services\Rh\RhLifecycleService;
 
 require dirname(__DIR__, 2) . '/bootstrap/app.php';
 

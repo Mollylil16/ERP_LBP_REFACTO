@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Repositories;
 
-use App\Repositories\PermissionRepository;
+use App\Repositories\Admin\PermissionRepository;
 use App\Security\PermissionAction;
 use Tests\Support\DatabaseTestCase;
 

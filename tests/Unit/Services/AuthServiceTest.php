@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Tests\Unit\Services;
 
 use App\Models\User;
-use App\Repositories\UserRepository;
-use App\Services\AuthService;
+use App\Repositories\Admin\UserRepository;
+use App\Services\Auth\AuthService;
 use Tests\TestCase;
 
 final class AuthServiceTest extends TestCase

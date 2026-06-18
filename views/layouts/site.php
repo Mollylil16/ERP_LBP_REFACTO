@@ -1,6 +1,7 @@
 <?php
 use App\Helpers\View;
 use App\View\Components\Ui;
+/** @var \App\Support\ViewBag $viewData */ $viewData ??= \App\Support\ViewBag::from(get_defined_vars());
 $appConfig = require BASE_PATH . '/config/app.php';
 ?>
 <!DOCTYPE html>

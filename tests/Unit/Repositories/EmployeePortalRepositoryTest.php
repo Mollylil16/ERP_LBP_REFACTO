@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Repositories;
 
-use App\Repositories\EmployeePortalRepository;
+use App\Repositories\Employee\EmployeePortalRepository;
 use Tests\Support\DatabaseTestCase;
 
 final class EmployeePortalRepositoryTest extends DatabaseTestCase

@@ -6,6 +6,7 @@ use App\View\Components\Ui;
 use App\View\Components\Dashboard;
 use App\View\Components\RecordList;
 
+/** @var \App\Support\ViewBag $viewData */ $viewData ??= \App\Support\ViewBag::from(get_defined_vars());
 /** @var RhDashboard $dashboard */
 /** @var string $mode */
 
@@ -30,23 +31,17 @@ ob_start();
 ?>
 <div class="finea-shell rh-dashboard">
     <div class="finea-container">
-        <?= Ui::pageHeader(
-            'Pilotage centralise du personnel',
-            'Effectifs, contrats, pointage, demandes et indicateurs RH dans un espace unique',
-            [
-                'eyebrow' => 'Ressources humaines',
-                'class' => 'rh-hero',
-                'badge' => '<span class="rh-pending-chip">'
-                    . (int) $dashboard->pendingTotal
-                    . ' action'
-                    . ($dashboard->pendingTotal > 1 ? 's' : '')
-                    . ' a verifier</span>',
-                'actions' => Ui::button('Nouveau collaborateur', [
-                    'href' => 'rh/personnel/nouveau',
-                    'variant' => 'accent',
-                ]),
-            ]
-        ) ?>
+        <section class="finea-page-header rh-hero">
+            <div>
+                <p class="rh-eyebrow">Ressources humaines</p>
+                <h1>Pilotage centralise du personnel</h1>
+                <p>Effectifs, contrats, pointage, demandes et indicateurs RH dans un espace unique.</p>
+            </div>
+            <div class="finea-header-actions">
+                <span class="rh-pending-chip"><?= $dashboard->pendingTotal ?> action<?= $dashboard->pendingTotal > 1 ? 's' : '' ?> a verifier</span>
+                <a href="<?= View::url('rh/personnel/nouveau') ?>" class="finea-action-btn finea-action-btn--accent">Nouveau collaborateur</a>
+            </div>
+        </section>
 
         <?php require BASE_PATH . '/views/rh/_restricted-data.php'; ?>
 

@@ -5,6 +5,7 @@ use App\Helpers\View;
 use App\View\Components\Form;
 use App\View\Components\Ui;
 
+/** @var \App\Support\ViewBag $viewData */ $viewData ??= \App\Support\ViewBag::from(get_defined_vars());
 ob_start();
 ?>
 

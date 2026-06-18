@@ -1,14 +1,13 @@
 <?php
 
-declare(strict_types=1);
-
 use App\View\Components\Dashboard;
 
-/** @var array<string,mixed> $dashboardModule */
-$dashboardModule = $dashboardModule ?? [];
+/** @var \App\Support\ViewBag $viewData */ $viewData ??= \App\Support\ViewBag::from(get_defined_vars());
+/** @var array<string, mixed> $dashboardModule */
+$module = $dashboardModule;
 
 ob_start();
-echo Dashboard::businessModuleDashboard($dashboardModule);
+echo Dashboard::businessModuleDashboard($module);
 $content = ob_get_clean();
 
 require BASE_PATH . '/views/layouts/module.php';

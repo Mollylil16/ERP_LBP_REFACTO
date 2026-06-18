@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Services;
 
-use App\Services\AssetIntegrityService;
+use App\Services\Support\AssetIntegrityService;
 use Tests\TestCase;
 
 final class AssetIntegrityServiceTest extends TestCase

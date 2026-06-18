@@ -4,10 +4,10 @@ namespace App\Helpers;
 
 use App\Models\Database;
 use App\Models\User;
-use App\Repositories\UserRepository;
-use App\Repositories\PermissionRepository;
+use App\Repositories\Admin\UserRepository;
+use App\Repositories\Admin\PermissionRepository;
 use App\Security\PermissionAction;
-use App\Services\AuthorizationService;
+use App\Services\Auth\AuthorizationService;
 
 /**
  * Fournit des méthodes simples pour accéder à l’utilisateur connecté.

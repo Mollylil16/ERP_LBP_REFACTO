@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Tests\Unit\View\Components;
 
 use App\View\Components\EmployeeRequestForms;
-use App\Services\FormIntegrityService;
+use App\Services\Support\FormIntegrityService;
 use Tests\TestCase;
 
 final class EmployeeRequestFormsTest extends TestCase

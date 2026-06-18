@@ -4,6 +4,7 @@ use App\Helpers\View;
 use App\View\Components\Dashboard;
 use App\View\Components\Ui;
 
+/** @var \App\Support\ViewBag $viewData */ $viewData ??= \App\Support\ViewBag::from(get_defined_vars());
 /** @var array $user */
 ob_start();
 ?>

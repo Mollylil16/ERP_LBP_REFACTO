@@ -4,6 +4,7 @@ use App\Helpers\Auth;
 use App\Helpers\Session;
 use App\Helpers\View;
 
+/** @var \App\Support\ViewBag $viewData */ $viewData ??= \App\Support\ViewBag::from(get_defined_vars());
 $appConfig = require BASE_PATH . '/config/app.php';
 $title = $pageTitle ?? 'Tableau de bord';
 

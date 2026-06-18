@@ -2,6 +2,7 @@
 
 use App\Helpers\View;
 
+/** @var \App\Support\ViewBag $viewData */ $viewData ??= \App\Support\ViewBag::from(get_defined_vars());
 require BASE_PATH . '/views/admin/_navigation.php';
 $rightLabel = static function (array $permission): string {
     $rights = [];
