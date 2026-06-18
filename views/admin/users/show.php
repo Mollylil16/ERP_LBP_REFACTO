@@ -5,6 +5,7 @@ use App\Helpers\Csrf;
 use App\Helpers\View;
 use App\View\Components\Ui;
 
+/** @var \App\Support\ViewBag $viewData */ $viewData ??= \App\Support\ViewBag::from(get_defined_vars());
 require BASE_PATH . '/views/admin/_navigation.php';
 $granted = array_filter($permissions, static fn(array $permission): bool =>
     (bool) $permission['can_view'] || (bool) $permission['can_create'] || (bool) $permission['can_update'] || (bool) $permission['can_delete']

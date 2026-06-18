@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\View\Components;
 
 use App\Helpers\View;
-use App\Helpers\Csrf;
+use App\Helpers\ModuleIcon;
 
 final class Dashboard
 {
@@ -59,137 +59,47 @@ final class Dashboard
         return $html . '</section>';
     }
 
-    /** @param array<int,object|array<string,mixed>> $entities */
-    public static function entityList(array $entities): string
+    /** @param array<string,mixed> $module */
+    public static function businessModuleDashboard(array $module): string
     {
-        if ($entities === []) return Ui::emptyState('Aucune entité sécurisée.');
-        $html = '<div class="admin-entity-list">';
-        foreach ($entities as $entity) {
-            $module = is_array($entity) ? ($entity['module'] ?? '') : ($entity->module ?? '');
-            $name = is_array($entity) ? ($entity['name'] ?? '') : ($entity->name ?? '');
-            $description = is_array($entity) ? ($entity['description'] ?? '') : ($entity->description ?? '');
-            $html .= '<div><span class="admin-module-chip">' . View::e((string) $module) . '</span><span><strong>'
-                . View::e((string) $name) . '</strong><small>' . View::e((string) $description) . '</small></span></div>';
+        $module['kpis'] = array_map(
+            static fn(array $kpi): array => $kpi + ['href' => '/' . (string) $module['slug'] . '/dashboard#operations'],
+            (array) ($module['kpis'] ?? [])
+        );
+
+        $workflowHtml = '';
+        foreach ((array) ($module['workflow'] ?? []) as $step) {
+            $workflowHtml .= '<article><strong>' . View::e((string) ($step['title'] ?? '')) . '</strong><p>'
+                . View::e((string) ($step['text'] ?? '')) . '</p></article>';
         }
-        return $html . '</div>';
-    }
 
-    /** @param array<int,array{label:string,href:string}> $links */
-    public static function infoCard(string $eyebrow, string $title, string $text, array $links = [], array $attrs = []): string
-    {
-        $class = Html::classes([(string) ($attrs['class'] ?? 'finea-section-card')]);
-        $html = '<aside class="' . View::e($class) . '"><p class="admin-eyebrow">' . View::e($eyebrow) . '</p><h2>' . View::e($title)
-            . '</h2><p>' . View::e($text) . '</p>';
-        foreach ($links as $link) $html .= '<a href="' . View::url(ltrim($link['href'], '/')) . '">' . View::e($link['label']) . '</a>';
-        return $html . '</aside>';
-    }
+        $style = '--module-hero-gradient: ' . (string) ($module['gradient'] ?? 'linear-gradient(135deg, #1d2b57, #2563eb)') . ';';
+        $icon = ModuleIcon::svg((string) ($module['iconKey'] ?? 'dashboard'));
 
-    /** @param array<int,array<string,mixed>> $rows */
-    public static function attendanceList(array $rows, callable $dateFormatter): string
-    {
-        if ($rows === []) return Ui::emptyState('Aucun pointage disponible pour ce mois.');
-        $html = '<div class="employee-attendance-list">';
-        foreach ($rows as $row) {
-            $html .= '<article><time>' . View::e((string) $dateFormatter((string) ($row['attendance_date'] ?? ''))) . '</time><strong>'
-                . View::e((string) ($row['attendance_status'] ?? '—')) . '</strong><span>'
-                . View::e(substr((string) ($row['check_in_time'] ?? ''), 0, 5) ?: '—') . ' → '
-                . View::e(substr((string) ($row['check_out_time'] ?? ''), 0, 5) ?: '—') . '</span><small>'
-                . View::e(number_format((float) ($row['worked_hours'] ?? 0), 1, ',', ' ')) . ' h</small></article>';
-        }
-        return $html . '</div>';
-    }
-
-    /** @param array<int,array<string,mixed>> $documents */
-    public static function documentGrid(array $documents): string
-    {
-        if ($documents === []) return '<div class="employee-document-grid">' . Ui::emptyState('Aucun document disponible.') . '</div>';
-        $html = '<div class="employee-document-grid">';
-        foreach ($documents as $document) {
-            $html .= '<a href="' . View::url('public/' . ltrim((string) ($document['stored_path'] ?? ''), '/')) . '" target="_blank" rel="noopener"><strong>'
-                . View::e((string) ($document['original_name'] ?? 'Document')) . '</strong><small>'
-                . View::e((string) ($document['document_type'] ?? '')) . '</small></a>';
-        }
-        return $html . '</div>';
-    }
-
-    /** @param array<int,array<string,mixed>> $steps */
-    public static function workflow(array $steps): string
-    {
-        if ($steps === []) return Ui::emptyState('Aucune étape configurée.');
-        $html = '<div class="module-workflow-grid">';
-        foreach ($steps as $step) $html .= '<article><strong>' . View::e((string) ($step['title'] ?? 'Étape')) . '</strong><p>' . View::e((string) ($step['text'] ?? '')) . '</p></article>';
-        return $html . '</div>';
-    }
-
-    /** @param array<int,array{label:string,total:int|float|string}> $rows */
-    public static function ranking(array $rows): string
-    {
-        if ($rows === []) return Ui::emptyState('Aucune donnée disponible.');
-        $html = '<div class="rh-ranking">';
-        foreach ($rows as $row) $html .= '<div><span>' . View::e((string) $row['label']) . '</span><strong>' . View::e((string) $row['total']) . '</strong></div>';
-        return $html . '</div>';
-    }
-
-    /** @param array<int,array{label:string,total:int|float|string}> $rows */
-    public static function bars(array $rows, int|float $total): string
-    {
-        if ($rows === []) return Ui::emptyState('Les répartitions apparaîtront après l’intégration du personnel.');
-        $html = '<div class="rh-bars">';
-        foreach ($rows as $row) {
-            $width = min(100, ((int) $row['total'] / max(1, (int) $total)) * 100);
-            $html .= '<div class="rh-bar-row"><div><span>' . View::e((string) $row['label']) . '</span><strong>' . View::e((string) $row['total'])
-                . '</strong></div><div class="rh-bar"><span style="width: ' . View::e((string) $width) . '%"></span></div></div>';
-        }
-        return $html . '</div>';
-    }
-
-
-    /** @param array<int,array<string,mixed>> $rows */
-    public static function explanationList(array $rows, callable $dateFormatter): string
-    {
-        if ($rows === []) return '<div class="employee-explanation-list">' . Ui::emptyState('Aucune demande d’explication.') . '</div>';
-        $html = '<div class="employee-explanation-list">';
-        foreach ($rows as $row) {
-            $id = (int) ($row['id'] ?? 0);
-            $status = (string) ($row['status'] ?? 'pending_response');
-            $html .= '<article><header><strong>' . View::e((string) ($row['subject'] ?? 'Demande d’explication')) . '</strong><span class="employee-status status-'
-                . View::e($status) . '">' . View::e($status) . '</span></header><p>' . View::e((string) ($row['facts'] ?? ''))
-                . '</p><small>Réponse attendue avant le ' . View::e((string) $dateFormatter((string) ($row['response_due_date'] ?? ''))) . '</small>';
-            if (in_array($status, ['pending_response', 'complement_requested'], true)) {
-                $form = '<form method="post" action="' . View::url('espace-employe/explications/' . $id . '/repondre') . '">'
-                    . Form::hidden('_csrf_token', Csrf::token())
-                    . Form::textarea('response', 'Votre réponse circonstanciée', '', ['rows' => 7, 'minlength' => 20, 'required' => true])
-                    . Ui::button('Transmettre ma réponse', ['variant' => 'accent', 'type' => 'submit']) . '</form>';
-                $html .= Modal::render('explanation-' . $id, 'Répondre à la demande d’explication', $form, 'Répondre', ['eyebrow' => 'Droit de réponse']);
-            } elseif (!empty($row['employee_response'])) {
-                $html .= '<blockquote>' . View::e((string) $row['employee_response']) . '</blockquote>';
-            }
-            $html .= '</article>';
-        }
-        return $html . '</div>';
-    }
-
-    /** @param array<int,array{label:string,value:mixed,meta:string}> $metrics */
-    public static function metricPanels(array $metrics): string
-    {
-        $html = '<section class="rh-analytics-grid">';
-        foreach ($metrics as $metric) {
-            $html .= '<article class="finea-section-card rh-metric-panel"><p class="rh-eyebrow">' . View::e($metric['label']) . '</p><strong>'
-                . View::e((string) $metric['value']) . '</strong><span>' . View::e($metric['meta']) . '</span></article>';
-        }
-        return $html . '</section>';
-    }
-
-    /** @param array<int,array{title:string,text:string,button?:string,href?:string}> $reports */
-    public static function reportCards(array $reports): string
-    {
-        $html = '<section class="rh-report-grid">';
-        foreach ($reports as $report) {
-            $html .= '<article class="finea-section-card"><h2 class="finea-section-title">' . View::e($report['title']) . '</h2><p>' . View::e($report['text']) . '</p>';
-            if (!empty($report['button'])) $html .= Ui::button($report['button'], ['href' => (string) ($report['href'] ?? ''), 'variant' => 'secondary', 'type' => 'button']);
-            $html .= '</article>';
-        }
-        return $html . '</section>';
+        return '<div class="finea-shell module-dashboard-shell"><div class="finea-container">'
+            . Ui::pageHeader(
+                (string) ($module['label'] ?? 'Module'),
+                (string) ($module['description'] ?? ''),
+                [
+                    'class' => 'module-dashboard-hero',
+                    'style' => $style,
+                    'eyebrow' => View::e((string) ($module['code'] ?? 'ERP')) . ' • Module métier',
+                    'icon' => '<span class="module-dashboard-icon">' . $icon . '</span>',
+                    'badge' => '<span class="module-dashboard-chip">Dashboard prêt</span>',
+                    'actions' => Ui::button('Changer de module', ['href' => 'selection_portail', 'variant' => 'accent']),
+                ]
+            )
+            . self::kpis((array) $module['kpis'], ['class' => 'module-dashboard-kpis'])
+            . '<div class="module-dashboard-grid" id="operations"><section class="finea-section-card">'
+            . '<div class="module-section-heading"><div><p class="finea-eyebrow">Accès rapides</p><h2 class="finea-section-title">Opérations du module</h2></div><span class="finea-status-badge finea-status-badge--info">Socle clean code</span></div>'
+            . self::actions((array) ($module['actions'] ?? []))
+            . '</section><aside class="finea-section-card module-identity-card"><span class="module-dashboard-icon large">' . $icon . '</span><h2>'
+            . View::e((string) ($module['label'] ?? 'Module'))
+            . '</h2><p>Les couleurs, l’icône et le code reprennent le point d’entrée du portail pour identifier immédiatement l’espace courant.</p>'
+            . '<div class="module-identity-swatches"><span style="background: ' . View::e((string) ($module['accent2'] ?? '#1d2b57')) . '"></span><span style="background: '
+            . View::e((string) ($module['accent'] ?? '#2563eb')) . '"></span><span style="background: var(--finea-gold)"></span></div></aside></div>'
+            . '<section class="finea-section-card"><div class="module-section-heading"><div><p class="finea-eyebrow">Backend</p><h2 class="finea-section-title">Structure prévue pour l’évolution métier</h2></div></div><div class="module-workflow-grid">'
+            . $workflowHtml . '</div></section></div></div>';
     }
 
 }

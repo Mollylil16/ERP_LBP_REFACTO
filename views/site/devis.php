@@ -2,6 +2,7 @@
 use App\View\Components\Form;
 use App\View\Components\Ui;
 
+/** @var \App\Support\ViewBag $viewData */ $viewData ??= \App\Support\ViewBag::from(get_defined_vars());
 ob_start();
 ?>
 <section class="site-page-hero site-page-hero--quote">

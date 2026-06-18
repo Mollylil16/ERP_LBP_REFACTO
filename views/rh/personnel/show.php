@@ -9,6 +9,7 @@ use App\Security\PermissionEntityRegistry;
 use App\View\Components\Form;
 use App\View\Components\Ui;
 
+/** @var \App\Support\ViewBag $viewData */ $viewData ??= \App\Support\ViewBag::from(get_defined_vars());
 require BASE_PATH . '/views/rh/_navigation.php';
 $date = static fn(?string $value): string => $value ? date('d/m/Y', strtotime($value)) : 'Non renseignee';
 $details = [

@@ -3,6 +3,7 @@
 use App\View\Components\EmployeeRequestForms;
 use App\View\Components\Ui;
 
+/** @var \App\Support\ViewBag $viewData */ $viewData ??= \App\Support\ViewBag::from(get_defined_vars());
 $selected = (string) ($_GET['type'] ?? '');
 ob_start();
 ?>

@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace Tests\Unit\Services;
 
 use App\Models\User;
-use App\Repositories\PermissionRepository;
-use App\Repositories\RhPersonnelRepository;
-use App\Repositories\UserRepository;
-use App\Services\AdminService;
+use App\Repositories\Admin\PermissionRepository;
+use App\Repositories\Rh\RhPersonnelRepository;
+use App\Repositories\Admin\UserRepository;
+use App\Services\Admin\AdminService;
 use PDO;
 use RuntimeException;
 use Tests\TestCase;

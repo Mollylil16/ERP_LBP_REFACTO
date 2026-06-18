@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 use App\Database\MigrationRunner;
 use App\Models\Database;
-use App\Repositories\UserRepository;
-use App\Services\AdminSeederService;
+use App\Repositories\Admin\UserRepository;
+use App\Services\Admin\AdminSeederService;
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();

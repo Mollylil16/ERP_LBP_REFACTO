@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Services;
 
-use App\Repositories\RhPersonnelRepository;
+use App\Repositories\Rh\RhPersonnelRepository;
 use App\Security\PermissionEntityRegistry;
-use App\Services\DataVisibilityService;
-use App\Services\RhPersonnelService;
+use App\Services\Support\DataVisibilityService;
+use App\Services\Rh\RhPersonnelService;
 use RuntimeException;
 use Tests\TestCase;
 

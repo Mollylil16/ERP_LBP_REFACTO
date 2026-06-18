@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\View\Components;
 
 use App\Helpers\View;
-use App\Services\EmployeeRequestCatalog;
+use App\Services\Employee\EmployeeRequestCatalog;
 
 final class EmployeeRequestForms
 {

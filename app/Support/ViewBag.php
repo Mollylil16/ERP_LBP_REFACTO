@@ -14,6 +14,38 @@ final class ViewBag implements ArrayAccess
     /** @param array<string,mixed> $data */
     public function __construct(private array $data = []) {}
 
+
+    /** @return array<string,mixed> */
+    public static function defaults(): array
+    {
+        return [
+            'pageTitle' => '',
+            'moduleName' => '',
+            'moduleCode' => '',
+            'activeModule' => '',
+            'additionalStyles' => [],
+            'additionalScripts' => [],
+            'content' => '',
+            'errors' => [],
+            'old' => [],
+            'flash' => [],
+            'stats' => [],
+            'statistics' => [],
+            'entities' => [],
+            'modules' => [],
+            'navigation' => [],
+            'documents' => [],
+            'requests' => [],
+            'attendance' => [],
+            'explanations' => [],
+            'employees' => [],
+            'filters' => [],
+            'records' => [],
+            'settings' => [],
+            'csrfToken' => '',
+        ];
+    }
+
     /** @param array<string,mixed> $data */
     public static function from(array $data): self
     {

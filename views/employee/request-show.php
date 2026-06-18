@@ -5,6 +5,7 @@ use App\View\Components\EmployeeRequestSummary;
 use App\View\Components\Form;
 use App\View\Components\Ui;
 
+/** @var \App\Support\ViewBag $viewData */ $viewData ??= \App\Support\ViewBag::from(get_defined_vars());
 $date = static fn(?string $value): string => $value ? date('d/m/Y H:i', strtotime($value)) : '—';
 ob_start();
 ?>

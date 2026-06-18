@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Services;
 
-use App\Services\EmployeeRequestUploadService;
+use App\Services\Employee\EmployeeRequestUploadService;
 use RuntimeException;
 use Tests\TestCase;
 

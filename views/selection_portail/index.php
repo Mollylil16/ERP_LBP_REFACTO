@@ -3,6 +3,7 @@
 use App\Helpers\View;
 use App\View\Components\Form;
 
+/** @var \App\Support\ViewBag $viewData */ $viewData ??= \App\Support\ViewBag::from(get_defined_vars());
 /** @var array $user */
 /** @var array<int, array<string, string>> $modules */
 

@@ -5,12 +5,12 @@ declare(strict_types=1);
 require dirname(__DIR__, 2) . '/bootstrap/app.php';
 
 use App\Models\Database;
-use App\Repositories\PermissionRepository;
-use App\Repositories\RhPersonnelRepository;
-use App\Repositories\UserRepository;
-use App\Services\AdminService;
-use App\Services\AuthService;
-use App\Services\RhPersonnelService;
+use App\Repositories\Admin\PermissionRepository;
+use App\Repositories\Rh\RhPersonnelRepository;
+use App\Repositories\Admin\UserRepository;
+use App\Services\Admin\AdminService;
+use App\Services\Auth\AuthService;
+use App\Services\Rh\RhPersonnelService;
 use App\Security\PermissionEntityRegistry;
 
 $pdo = Database::getConnection();

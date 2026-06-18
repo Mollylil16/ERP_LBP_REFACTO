@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace Tests\Unit\Services;
 
 use App\Models\User;
-use App\Repositories\EmployeePortalRepository;
-use App\Services\EmployeePortalService;
-use App\Services\EmployeeRequestUploadService;
+use App\Repositories\Employee\EmployeePortalRepository;
+use App\Services\Employee\EmployeePortalService;
+use App\Services\Employee\EmployeeRequestUploadService;
 use RuntimeException;
 use Tests\TestCase;
 

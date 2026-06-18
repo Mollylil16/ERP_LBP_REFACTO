@@ -2,6 +2,7 @@
 
 use App\Helpers\View;
 
+/** @var \App\Support\ViewBag $viewData */ $viewData ??= \App\Support\ViewBag::from(get_defined_vars());
 require BASE_PATH . '/views/rh/_navigation.php';
 $date = static fn(string $value): string => date('d/m/Y', strtotime($value));
 $labels = ['integration' => 'Entree', 'sortie' => 'Sortie', 'reintegration' => 'Reintegration'];
