@@ -30,6 +30,7 @@ class MigrationRunner
         $this->createAdminTables();
         $this->createRhTables();
         $this->createBusinessTables();
+        $this->createSystemTestTables();
         $this->linkUsersToRhEmployees();
     }
 
@@ -58,6 +59,29 @@ class MigrationRunner
         $this->addColumnIfMissing('users', 'updated_at', "DATETIME NULL");
 
         $this->addUniqueIndexIfMissing('users', 'uniq_users_email', 'email');
+    }
+
+
+
+    /**
+     * Crée la table d'historique du module Santé & Tests.
+     */
+    private function createSystemTestTables(): void
+    {
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS system_test_runs (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                scope VARCHAR(30) NOT NULL,
+                module VARCHAR(80) NOT NULL DEFAULT 'application',
+                status ENUM('passed','warning','failed') NOT NULL DEFAULT 'warning',
+                score TINYINT UNSIGNED NOT NULL DEFAULT 0,
+                payload JSON NULL,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                KEY idx_system_test_runs_scope_created (scope, created_at),
+                KEY idx_system_test_runs_module_created (module, created_at),
+                KEY idx_system_test_runs_status (status)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
     }
 
     private function linkUsersToRhEmployees(): void

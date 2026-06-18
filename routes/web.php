@@ -7,6 +7,7 @@ use App\Controllers\AuthController;
 use App\Controllers\AdminDashboardController;
 use App\Controllers\AdminPermissionController;
 use App\Controllers\AdminUserController;
+use App\Controllers\AdminSystemTestController;
 use App\Controllers\DashboardController;
 use App\Controllers\HomeController;
 use App\Controllers\RhDashboardController;
@@ -209,6 +210,11 @@ $router->group('/admin', function (Router $router): void {
     $router->get('/', [AdminDashboardController::class, 'index']);
     $router->get('/dashboard', [AdminDashboardController::class, 'index']);
     $router->get('/permissions', [AdminPermissionController::class, 'matrix']);
+
+    $router->get('/system-tests', [AdminSystemTestController::class, 'index']);
+    $router->get('/system-tests/latest', [AdminSystemTestController::class, 'latest']);
+    $router->post('/system-tests/run', [AdminSystemTestController::class, 'runAll']);
+    $router->post('/system-tests/run/{module}', [AdminSystemTestController::class, 'runModule']);
 
     $router->group('/users', function (Router $router): void {
         $router->get('/', [AdminUserController::class, 'index']);
