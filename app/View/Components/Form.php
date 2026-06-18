@@ -252,7 +252,9 @@ final class Form
         foreach (['hint', 'error', 'required', 'fieldClass'] as $key) {
             if (array_key_exists($key, $attrs)) {
                 $field[$key] = $attrs[$key];
-                unset($attrs[$key]);
+                if ($key !== 'required') {
+                    unset($attrs[$key]);
+                }
             }
         }
         return $field;

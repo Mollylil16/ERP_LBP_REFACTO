@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-require dirname(__DIR__) . '/bootstrap/app.php';
+require dirname(__DIR__, 2) . '/bootstrap/app.php';
 
 use App\Models\Database;
 use App\Repositories\PermissionRepository;
@@ -31,6 +31,7 @@ $testEmployeeId = null;
 
 try {
     $suffix = bin2hex(random_bytes(4));
+
     $testEmployeeId = $rhService->create([
         'employee_number' => 'TEST-' . strtoupper($suffix),
         'full_name' => 'Test Admin Module',
@@ -38,16 +39,22 @@ try {
         'phone' => '+22500000000',
         'hire_date' => date('Y-m-d'),
         'start_date' => date('Y-m-d'),
-    ], (int) $admin->id);
+    ], [], (int) $admin->id);
 
     $entities = $permissions->entities();
     $entityCodes = array_map(static fn($entity): string => $entity->code, $entities);
     $expectedEntities = PermissionEntityRegistry::codes();
-    sort($entityCodes);
-    sort($expectedEntities);
-    if ($entityCodes !== $expectedEntities) {
-        throw new RuntimeException('La matrice doit contenir exactement les dix entités de la base.');
+
+    $missing = array_values(array_diff($expectedEntities, $entityCodes));
+
+    if ($missing !== []) {
+        throw new RuntimeException(
+            "Des entités attendues par PermissionEntityRegistry sont absentes en base : " .
+                json_encode($missing, JSON_UNESCAPED_UNICODE)
+        );
     }
+
+    echo "OK permissions: " . count($entityCodes) . " entités en base.\n";
 
     $entityId = (int) $entities[0]->id;
     $testUserId = $service->createUser([

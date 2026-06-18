@@ -3,9 +3,12 @@
 use App\Helpers\View;
 use App\Models\RhDashboard;
 use App\View\Components\Ui;
+use App\View\Components\Dashboard;
+use App\View\Components\RecordList;
 
 /** @var RhDashboard $dashboard */
 /** @var string $mode */
+$mode = in_array((string) ($mode ?? 'classic'), ['classic', 'statistique', 'analytique'], true) ? (string) ($mode ?? 'classic') : 'classic';
 
 require BASE_PATH . '/views/rh/_navigation.php';
 
@@ -51,35 +54,16 @@ ob_start();
             <?php endforeach; ?>
         </nav>
 
-        <section class="finea-grid finea-kpi-grid">
-            <?php
-            $kpis = [
-                ['Effectif global', $dashboard->stats['total'], 'Collaborateurs recenses'],
-                ['En poste', $dashboard->stats['active'], 'Dossiers actifs'],
-                ['Sorties', $dashboard->stats['inactive'], 'Personnel archive'],
-                ['Recrutements ' . date('Y'), $dashboard->stats['currentYearHires'], 'Depuis janvier'],
-                ['Services couverts', $dashboard->stats['services'], 'Services actifs representes'],
-            ];
-            ?>
-            <?php foreach ($kpis as [$label, $value, $meta]): ?>
-                <article class="finea-kpi-card">
-                    <span class="finea-kpi-label"><?= View::e((string) $label) ?></span>
-                    <strong class="finea-kpi-value"><?= number_format((int) $value, 0, ',', ' ') ?></strong>
-                    <small class="finea-kpi-meta"><?= View::e((string) $meta) ?></small>
-                </article>
-            <?php endforeach; ?>
-        </section>
+        <?= Dashboard::kpis([
+            ['label' => 'Effectif global', 'value' => number_format($dashboard->stats['total'], 0, ',', ' '), 'meta' => 'Collaborateurs recensés', 'href' => 'rh/personnel?scope=all'],
+            ['label' => 'En poste', 'value' => number_format($dashboard->stats['active'], 0, ',', ' '), 'meta' => 'Dossiers actifs', 'href' => 'rh/personnel?scope=active'],
+            ['label' => 'Sorties', 'value' => number_format($dashboard->stats['inactive'], 0, ',', ' '), 'meta' => 'Personnel archivé', 'href' => 'rh/mouvements'],
+            ['label' => 'Recrutements ' . date('Y'), 'value' => number_format($dashboard->stats['currentYearHires'], 0, ',', ' '), 'meta' => 'Depuis janvier', 'href' => 'rh/cycle-vie?section=recruitment'],
+            ['label' => 'Services couverts', 'value' => number_format($dashboard->stats['services'], 0, ',', ' '), 'meta' => 'Services actifs représentés', 'href' => 'rh/parametrage?catalog=services'],
+        ]) ?>
 
         <?php if ($mode === 'classic'): ?>
-            <section class="rh-alert-grid">
-                <?php foreach ($dashboard->alerts as $alert): ?>
-                    <article class="rh-alert-card tone-<?= View::e($alert['tone']) ?>">
-                        <span><?= View::e($alert['label']) ?></span>
-                        <strong><?= (int) $alert['count'] ?></strong>
-                        <p><?= View::e($alert['description']) ?></p>
-                    </article>
-                <?php endforeach; ?>
-            </section>
+            <?= Dashboard::alerts($dashboard->alerts) ?>
 
             <div class="rh-content-grid">
                 <section class="finea-section-card">
@@ -90,19 +74,7 @@ ob_start();
                         </div>
                         <span><?= $dashboard->stats['total'] ?> collaborateurs</span>
                     </div>
-                    <?php if ($dashboard->services === []): ?>
-                        <div class="finea-empty-state">Les repartitions apparaitront apres l'integration du personnel.</div>
-                    <?php else: ?>
-                        <div class="rh-bars">
-                            <?php foreach ($dashboard->services as $service): ?>
-                                <?php $width = min(100, ((int) $service['total'] / max(1, $dashboard->stats['total'])) * 100); ?>
-                                <div class="rh-bar-row">
-                                    <div><span><?= View::e($service['label']) ?></span><strong><?= (int) $service['total'] ?></strong></div>
-                                    <div class="rh-bar"><span style="width: <?= $width ?>%"></span></div>
-                                </div>
-                            <?php endforeach; ?>
-                        </div>
-                    <?php endif; ?>
+                    <?= Dashboard::bars($dashboard->services, (int) $dashboard->stats['total']) ?>
                 </section>
 
                 <aside class="rh-quick-card">
@@ -127,48 +99,31 @@ ob_start();
                 <?php if ($dashboard->recentHires === []): ?>
                     <div class="finea-empty-state">Aucun collaborateur n'est encore enregistre dans le nouveau socle RH.</div>
                 <?php else: ?>
-                    <div class="finea-table-wrap">
-                        <table class="finea-table">
-                            <thead><tr><th>Matricule</th><th>Nom</th><th>Service</th><th>Fonction</th><th>Recrutement</th><th>Statut</th></tr></thead>
-                            <tbody>
-                            <?php foreach ($dashboard->recentHires as $employee): ?>
-                                <tr>
-                                    <td><?= View::e($employee['employee_number'] ?: 'Non renseigne') ?></td>
-                                    <td><strong><?= View::e($employee['full_name']) ?></strong></td>
-                                    <td><?= View::e($employee['service_name']) ?></td>
-                                    <td><?= View::e($employee['function_name']) ?></td>
-                                    <td><?= View::e($formatDate($employee['hire_date'])) ?></td>
-                                    <td><span class="finea-status-badge finea-status-badge--info"><?= View::e($employee['status_name']) ?></span></td>
-                                </tr>
-                            <?php endforeach; ?>
-                            </tbody>
-                        </table>
-                    </div>
+                    <?php
+                    $recentRows = array_map(static function (array $employee) use ($formatDate): array {
+                        $employee['employee_number'] = $employee['employee_number'] ?: 'Sans matricule';
+                        $employee['hire_date'] = $formatDate($employee['hire_date']);
+                        $employee['status'] = $employee['status_name'];
+                        return $employee;
+                    }, $dashboard->recentHires);
+                    ?>
+                    <?= RecordList::render($recentRows, [
+                        'full_name' => 'Collaborateur',
+                        'employee_number' => 'Matricule',
+                        'service_name' => 'Service',
+                        'function_name' => 'Fonction',
+                        'hire_date' => 'Recrutement',
+                        'status' => 'Statut',
+                    ], ['title_key' => 'full_name', 'subtitle_key' => 'employee_number', 'status_key' => 'status']) ?>
                 <?php endif; ?>
             </section>
         <?php elseif ($mode === 'statistique'): ?>
-            <section class="rh-analytics-grid">
-                <article class="finea-section-card rh-metric-panel">
-                    <p class="rh-eyebrow">Assiduite du mois</p>
-                    <strong><?= number_format($dashboard->analytics['presenceRate'], 1, ',', ' ') ?>%</strong>
-                    <span>Taux de presence sur <?= (int) $dashboard->analytics['attendanceRows'] ?> lignes de pointage</span>
-                </article>
-                <article class="finea-section-card rh-metric-panel">
-                    <p class="rh-eyebrow">Retards</p>
-                    <strong><?= (int) $dashboard->analytics['lateRows'] ?></strong>
-                    <span>Arrivees tardives detectees ce mois</span>
-                </article>
-                <article class="finea-section-card rh-metric-panel">
-                    <p class="rh-eyebrow">Heures supplementaires</p>
-                    <strong><?= number_format($dashboard->analytics['overtimeHours'], 1, ',', ' ') ?> h</strong>
-                    <span>Volume cumule sur la periode</span>
-                </article>
-                <article class="finea-section-card rh-metric-panel">
-                    <p class="rh-eyebrow">Demandes traitees</p>
-                    <strong><?= (int) $dashboard->analytics['requestsProcessed'] ?></strong>
-                    <span>Validations, refus et annulations du mois</span>
-                </article>
-            </section>
+            <?= Dashboard::metricPanels([
+                ['label' => 'Assiduite du mois', 'value' => number_format($dashboard->analytics['presenceRate'], 1, ',', ' ') . '%', 'meta' => 'Taux de presence sur ' . (int) $dashboard->analytics['attendanceRows'] . ' lignes de pointage'],
+                ['label' => 'Retards', 'value' => (int) $dashboard->analytics['lateRows'], 'meta' => 'Arrivees tardives detectees ce mois'],
+                ['label' => 'Heures supplementaires', 'value' => number_format($dashboard->analytics['overtimeHours'], 1, ',', ' ') . ' h', 'meta' => 'Volume cumule sur la periode'],
+                ['label' => 'Demandes traitees', 'value' => (int) $dashboard->analytics['requestsProcessed'], 'meta' => 'Validations, refus et annulations du mois'],
+            ]) ?>
             <div class="rh-three-columns">
                 <?php foreach ([['Services', $dashboard->services], ['Fonctions', $dashboard->functions], ['Statuts', $dashboard->statuses]] as [$title, $rows]): ?>
                     <section class="finea-section-card">
@@ -176,11 +131,7 @@ ob_start();
                         <?php if ($rows === []): ?>
                             <div class="finea-empty-state">Aucune donnee disponible.</div>
                         <?php else: ?>
-                            <div class="rh-ranking">
-                                <?php foreach ($rows as $row): ?>
-                                    <div><span><?= View::e($row['label']) ?></span><strong><?= (int) $row['total'] ?></strong></div>
-                                <?php endforeach; ?>
-                            </div>
+                            <?= Dashboard::ranking($rows) ?>
                         <?php endif; ?>
                     </section>
                 <?php endforeach; ?>
@@ -194,23 +145,11 @@ ob_start();
                 </div>
                 <span class="finea-status-badge finea-status-badge--ok">Architecture active</span>
             </section>
-            <section class="rh-report-grid">
-                <article class="finea-section-card">
-                    <h2 class="finea-section-title">Rapport effectifs</h2>
-                    <p>Effectif actif, sorties, recrutements et repartition organisationnelle.</p>
-                    <?= Ui::button('Export au prochain lot', ['variant' => 'secondary', 'type' => 'button', 'disabled' => true]) ?>
-                </article>
-                <article class="finea-section-card">
-                    <h2 class="finea-section-title">Rapport assiduite</h2>
-                    <p>Presences, absences, retards et heures supplementaires par periode.</p>
-                    <?= Ui::button('Export au prochain lot', ['variant' => 'secondary', 'type' => 'button', 'disabled' => true]) ?>
-                </article>
-                <article class="finea-section-card">
-                    <h2 class="finea-section-title">Rapport demandes</h2>
-                    <p>Demandes soumises, traitees, validees et refusees par categorie.</p>
-                    <?= Ui::button('Export au prochain lot', ['variant' => 'secondary', 'type' => 'button', 'disabled' => true]) ?>
-                </article>
-            </section>
+            <?= Dashboard::reportCards([
+                ['title' => 'Rapport effectifs', 'text' => 'Effectif actif, sorties, recrutements et repartition organisationnelle.', 'button' => 'Export au prochain lot'],
+                ['title' => 'Rapport assiduite', 'text' => 'Presences, absences, retards et heures supplementaires par periode.', 'button' => 'Export au prochain lot'],
+                ['title' => 'Rapport demandes', 'text' => 'Demandes soumises, traitees, validees et refusees par categorie.', 'button' => 'Export au prochain lot'],
+            ]) ?>
         <?php endif; ?>
     </div>
 </div>

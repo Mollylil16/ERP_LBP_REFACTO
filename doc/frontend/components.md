@@ -65,3 +65,20 @@ Le select-search affiche un seul champ. Le `<select>` natif est conservé mais m
 - Utiliser `ViewBag` au lieu de dépendre de variables extraites.
 - Pour les listes de choix, fournir des tableaux `[['value' => '1', 'label' => 'Libellé']]`.
 - Les assets globaux sont `public/assets/css/components.css` et `public/assets/js/components.js`.
+
+## Navigation des modules
+
+Toute navigation latérale passe par `Navigation::module()` dans le layout partagé.
+
+- Chaque entrée possède une `key` unique, un `label` et une `url` si elle est disponible.
+- Les entrées métier précisent un `group`.
+- Les anciens modules sont regroupés automatiquement par type de menu.
+- Seuls les groupes défilent ; « Retour au portail » reste toujours fixe.
+- Le lien actif utilise `aria-current="page"`.
+
+## Dashboards et pages
+
+Les KPI et actions rapides utilisent `Dashboard::kpis()` et `Dashboard::actions()`.
+Les en-têtes, sections, boutons, badges et états vides utilisent `Ui`.
+Tous les champs utilisent `Form`. Ces règles s’appliquent à toute nouvelle page
+et à toute page existante dès qu’elle est modifiée.
