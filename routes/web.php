@@ -16,9 +16,22 @@ use App\Controllers\RhModuleController;
 use App\Controllers\RhSettingsController;
 use App\Controllers\RhLifecycleController;
 use App\Controllers\SelectionPortailController;
-use App\Controllers\BusinessModuleController;
 use App\Controllers\WebsiteController;
 use App\Controllers\EmployeePortalController;
+use App\Controllers\FinanceDashboardController;
+use App\Controllers\ColisageDashboardController;
+use App\Controllers\LogistiqueDashboardController;
+use App\Controllers\CrmDashboardController;
+use App\Controllers\TicketsDashboardController;
+use App\Controllers\SiteAdminDashboardController;
+use App\Controllers\TransitDouaneDashboardController;
+use App\Controllers\TrackingColisDashboardController;
+use App\Controllers\FacturationDashboardController;
+use App\Controllers\EntrepotsDashboardController;
+use App\Controllers\FlotteTransportDashboardController;
+use App\Controllers\PortefeuilleClientsDashboardController;
+use App\Controllers\AgentsCorrespondantsDashboardController;
+use App\Controllers\PilotageDgDashboardController;
 
 /** @var Router $router */
 
@@ -90,18 +103,18 @@ $router->get('/dashboard', [DashboardController::class, 'index']);
  * Chaque module dispose au minimum de /nom-module et /nom-module/dashboard.
  */
 $router->group('/finance', function (Router $router): void {
-    $router->get('/', [BusinessModuleController::class, 'finance']);
-    $router->get('/dashboard', [BusinessModuleController::class, 'finance']);
+    $router->get('/', [FinanceDashboardController::class, 'index']);
+    $router->get('/dashboard', [FinanceDashboardController::class, 'index']);
 });
 
 $router->group('/colisage', function (Router $router): void {
-    $router->get('/', [BusinessModuleController::class, 'colisage']);
-    $router->get('/dashboard', [BusinessModuleController::class, 'colisage']);
+    $router->get('/', [ColisageDashboardController::class, 'index']);
+    $router->get('/dashboard', [ColisageDashboardController::class, 'index']);
 });
 
 $router->group('/logistique', function (Router $router): void {
-    $router->get('/', [BusinessModuleController::class, 'logistique']);
-    $router->get('/dashboard', [BusinessModuleController::class, 'logistique']);
+    $router->get('/', [LogistiqueDashboardController::class, 'index']);
+    $router->get('/dashboard', [LogistiqueDashboardController::class, 'index']);
 });
 
 $router->group('/espace-employe', function (Router $router): void {
@@ -115,58 +128,58 @@ $router->group('/espace-employe', function (Router $router): void {
 });
 
 $router->group('/crm', function (Router $router): void {
-    $router->get('/', [BusinessModuleController::class, 'crm']);
-    $router->get('/dashboard', [BusinessModuleController::class, 'crm']);
+    $router->get('/', [CrmDashboardController::class, 'index']);
+    $router->get('/dashboard', [CrmDashboardController::class, 'index']);
 });
 
 $router->group('/tickets', function (Router $router): void {
-    $router->get('/', [BusinessModuleController::class, 'tickets']);
-    $router->get('/dashboard', [BusinessModuleController::class, 'tickets']);
+    $router->get('/', [TicketsDashboardController::class, 'index']);
+    $router->get('/dashboard', [TicketsDashboardController::class, 'index']);
 });
 
 $router->group('/site-admin', function (Router $router): void {
-    $router->get('/', [BusinessModuleController::class, 'website']);
-    $router->get('/dashboard', [BusinessModuleController::class, 'website']);
+    $router->get('/', [SiteAdminDashboardController::class, 'index']);
+    $router->get('/dashboard', [SiteAdminDashboardController::class, 'index']);
 });
 
 $router->group('/transit-douane', function (Router $router): void {
-    $router->get('/', [BusinessModuleController::class, 'customs']);
-    $router->get('/dashboard', [BusinessModuleController::class, 'customs']);
+    $router->get('/', [TransitDouaneDashboardController::class, 'index']);
+    $router->get('/dashboard', [TransitDouaneDashboardController::class, 'index']);
 });
 
 $router->group('/tracking-colis', function (Router $router): void {
-    $router->get('/', [BusinessModuleController::class, 'tracking']);
-    $router->get('/dashboard', [BusinessModuleController::class, 'tracking']);
+    $router->get('/', [TrackingColisDashboardController::class, 'index']);
+    $router->get('/dashboard', [TrackingColisDashboardController::class, 'index']);
 });
 
 $router->group('/facturation', function (Router $router): void {
-    $router->get('/', [BusinessModuleController::class, 'billing']);
-    $router->get('/dashboard', [BusinessModuleController::class, 'billing']);
+    $router->get('/', [FacturationDashboardController::class, 'index']);
+    $router->get('/dashboard', [FacturationDashboardController::class, 'index']);
 });
 
 $router->group('/entrepots', function (Router $router): void {
-    $router->get('/', [BusinessModuleController::class, 'warehouses']);
-    $router->get('/dashboard', [BusinessModuleController::class, 'warehouses']);
+    $router->get('/', [EntrepotsDashboardController::class, 'index']);
+    $router->get('/dashboard', [EntrepotsDashboardController::class, 'index']);
 });
 
 $router->group('/flotte-transport', function (Router $router): void {
-    $router->get('/', [BusinessModuleController::class, 'fleet']);
-    $router->get('/dashboard', [BusinessModuleController::class, 'fleet']);
+    $router->get('/', [FlotteTransportDashboardController::class, 'index']);
+    $router->get('/dashboard', [FlotteTransportDashboardController::class, 'index']);
 });
 
 $router->group('/portefeuille-clients', function (Router $router): void {
-    $router->get('/', [BusinessModuleController::class, 'clientPortfolio']);
-    $router->get('/dashboard', [BusinessModuleController::class, 'clientPortfolio']);
+    $router->get('/', [PortefeuilleClientsDashboardController::class, 'index']);
+    $router->get('/dashboard', [PortefeuilleClientsDashboardController::class, 'index']);
 });
 
 $router->group('/agents-correspondants', function (Router $router): void {
-    $router->get('/', [BusinessModuleController::class, 'agents']);
-    $router->get('/dashboard', [BusinessModuleController::class, 'agents']);
+    $router->get('/', [AgentsCorrespondantsDashboardController::class, 'index']);
+    $router->get('/dashboard', [AgentsCorrespondantsDashboardController::class, 'index']);
 });
 
 $router->group('/pilotage-dg', function (Router $router): void {
-    $router->get('/', [BusinessModuleController::class, 'executiveCenter']);
-    $router->get('/dashboard', [BusinessModuleController::class, 'executiveCenter']);
+    $router->get('/', [PilotageDgDashboardController::class, 'index']);
+    $router->get('/dashboard', [PilotageDgDashboardController::class, 'index']);
 });
 
 /** Site public séparé du backoffice ERP. */

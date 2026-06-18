@@ -1,18 +1,13 @@
 <?php
 
-namespace App\Controllers;
+declare(strict_types=1);
 
-use App\Middleware\AuthMiddleware;
-use App\Models\Database;
-use App\Repositories\BusinessModuleRepository;
-use App\Services\BusinessModuleService;
+namespace App\Controllers;
 
 final class TicketController extends BaseController
 {
     public function dashboard(): void
     {
-        AuthMiddleware::check();
-        $module = (new BusinessModuleService(new BusinessModuleRepository(Database::getConnection())))->ticketDashboard();
-        $this->view('modules/dashboard', ['pageTitle'=>'Tableau de bord Tickets','moduleName'=>'Tickets','moduleCode'=>'TIC','moduleTheme'=>$module,'activeModule'=>'dashboard','moduleNavigation'=>$module['navigation'],'dashboardModule'=>$module,'additionalStyles'=>['css/finea-ui.css']]);
+        (new TicketsDashboardController())->index();
     }
 }

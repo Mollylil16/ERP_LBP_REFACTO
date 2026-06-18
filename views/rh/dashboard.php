@@ -8,7 +8,6 @@ use App\View\Components\RecordList;
 
 /** @var RhDashboard $dashboard */
 /** @var string $mode */
-$mode = in_array((string) ($mode ?? 'classic'), ['classic', 'statistique', 'analytique'], true) ? (string) ($mode ?? 'classic') : 'classic';
 
 require BASE_PATH . '/views/rh/_navigation.php';
 
@@ -31,17 +30,23 @@ ob_start();
 ?>
 <div class="finea-shell rh-dashboard">
     <div class="finea-container">
-        <section class="finea-page-header rh-hero">
-            <div>
-                <p class="rh-eyebrow">Ressources humaines</p>
-                <h1>Pilotage centralise du personnel</h1>
-                <p>Effectifs, contrats, pointage, demandes et indicateurs RH dans un espace unique.</p>
-            </div>
-            <div class="finea-header-actions">
-                <span class="rh-pending-chip"><?= $dashboard->pendingTotal ?> action<?= $dashboard->pendingTotal > 1 ? 's' : '' ?> a verifier</span>
-                <a href="<?= View::url('rh/personnel/nouveau') ?>" class="finea-action-btn finea-action-btn--accent">Nouveau collaborateur</a>
-            </div>
-        </section>
+        <?= Ui::pageHeader(
+            'Pilotage centralise du personnel',
+            'Effectifs, contrats, pointage, demandes et indicateurs RH dans un espace unique',
+            [
+                'eyebrow' => 'Ressources humaines',
+                'class' => 'rh-hero',
+                'badge' => '<span class="rh-pending-chip">'
+                    . (int) $dashboard->pendingTotal
+                    . ' action'
+                    . ($dashboard->pendingTotal > 1 ? 's' : '')
+                    . ' a verifier</span>',
+                'actions' => Ui::button('Nouveau collaborateur', [
+                    'href' => 'rh/personnel/nouveau',
+                    'variant' => 'accent',
+                ]),
+            ]
+        ) ?>
 
         <?php require BASE_PATH . '/views/rh/_restricted-data.php'; ?>
 
@@ -74,7 +79,19 @@ ob_start();
                         </div>
                         <span><?= $dashboard->stats['total'] ?> collaborateurs</span>
                     </div>
-                    <?= Dashboard::bars($dashboard->services, (int) $dashboard->stats['total']) ?>
+                    <?php if ($dashboard->services === []): ?>
+                        <div class="finea-empty-state">Les repartitions apparaitront apres l'integration du personnel.</div>
+                    <?php else: ?>
+                        <div class="rh-bars">
+                            <?php foreach ($dashboard->services as $service): ?>
+                                <?php $width = min(100, ((int) $service['total'] / max(1, $dashboard->stats['total'])) * 100); ?>
+                                <div class="rh-bar-row">
+                                    <div><span><?= View::e($service['label']) ?></span><strong><?= (int) $service['total'] ?></strong></div>
+                                    <div class="rh-bar"><span style="width: <?= $width ?>%"></span></div>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php endif; ?>
                 </section>
 
                 <aside class="rh-quick-card">
@@ -118,12 +135,28 @@ ob_start();
                 <?php endif; ?>
             </section>
         <?php elseif ($mode === 'statistique'): ?>
-            <?= Dashboard::metricPanels([
-                ['label' => 'Assiduite du mois', 'value' => number_format($dashboard->analytics['presenceRate'], 1, ',', ' ') . '%', 'meta' => 'Taux de presence sur ' . (int) $dashboard->analytics['attendanceRows'] . ' lignes de pointage'],
-                ['label' => 'Retards', 'value' => (int) $dashboard->analytics['lateRows'], 'meta' => 'Arrivees tardives detectees ce mois'],
-                ['label' => 'Heures supplementaires', 'value' => number_format($dashboard->analytics['overtimeHours'], 1, ',', ' ') . ' h', 'meta' => 'Volume cumule sur la periode'],
-                ['label' => 'Demandes traitees', 'value' => (int) $dashboard->analytics['requestsProcessed'], 'meta' => 'Validations, refus et annulations du mois'],
-            ]) ?>
+            <section class="rh-analytics-grid">
+                <article class="finea-section-card rh-metric-panel">
+                    <p class="rh-eyebrow">Assiduite du mois</p>
+                    <strong><?= number_format($dashboard->analytics['presenceRate'], 1, ',', ' ') ?>%</strong>
+                    <span>Taux de presence sur <?= (int) $dashboard->analytics['attendanceRows'] ?> lignes de pointage</span>
+                </article>
+                <article class="finea-section-card rh-metric-panel">
+                    <p class="rh-eyebrow">Retards</p>
+                    <strong><?= (int) $dashboard->analytics['lateRows'] ?></strong>
+                    <span>Arrivees tardives detectees ce mois</span>
+                </article>
+                <article class="finea-section-card rh-metric-panel">
+                    <p class="rh-eyebrow">Heures supplementaires</p>
+                    <strong><?= number_format($dashboard->analytics['overtimeHours'], 1, ',', ' ') ?> h</strong>
+                    <span>Volume cumule sur la periode</span>
+                </article>
+                <article class="finea-section-card rh-metric-panel">
+                    <p class="rh-eyebrow">Demandes traitees</p>
+                    <strong><?= (int) $dashboard->analytics['requestsProcessed'] ?></strong>
+                    <span>Validations, refus et annulations du mois</span>
+                </article>
+            </section>
             <div class="rh-three-columns">
                 <?php foreach ([['Services', $dashboard->services], ['Fonctions', $dashboard->functions], ['Statuts', $dashboard->statuses]] as [$title, $rows]): ?>
                     <section class="finea-section-card">
@@ -131,7 +164,11 @@ ob_start();
                         <?php if ($rows === []): ?>
                             <div class="finea-empty-state">Aucune donnee disponible.</div>
                         <?php else: ?>
-                            <?= Dashboard::ranking($rows) ?>
+                            <div class="rh-ranking">
+                                <?php foreach ($rows as $row): ?>
+                                    <div><span><?= View::e($row['label']) ?></span><strong><?= (int) $row['total'] ?></strong></div>
+                                <?php endforeach; ?>
+                            </div>
                         <?php endif; ?>
                     </section>
                 <?php endforeach; ?>
@@ -145,11 +182,23 @@ ob_start();
                 </div>
                 <span class="finea-status-badge finea-status-badge--ok">Architecture active</span>
             </section>
-            <?= Dashboard::reportCards([
-                ['title' => 'Rapport effectifs', 'text' => 'Effectif actif, sorties, recrutements et repartition organisationnelle.', 'button' => 'Export au prochain lot'],
-                ['title' => 'Rapport assiduite', 'text' => 'Presences, absences, retards et heures supplementaires par periode.', 'button' => 'Export au prochain lot'],
-                ['title' => 'Rapport demandes', 'text' => 'Demandes soumises, traitees, validees et refusees par categorie.', 'button' => 'Export au prochain lot'],
-            ]) ?>
+            <section class="rh-report-grid">
+                <article class="finea-section-card">
+                    <h2 class="finea-section-title">Rapport effectifs</h2>
+                    <p>Effectif actif, sorties, recrutements et repartition organisationnelle.</p>
+                    <?= Ui::button('Export au prochain lot', ['variant' => 'secondary', 'type' => 'button', 'disabled' => true]) ?>
+                </article>
+                <article class="finea-section-card">
+                    <h2 class="finea-section-title">Rapport assiduite</h2>
+                    <p>Presences, absences, retards et heures supplementaires par periode.</p>
+                    <?= Ui::button('Export au prochain lot', ['variant' => 'secondary', 'type' => 'button', 'disabled' => true]) ?>
+                </article>
+                <article class="finea-section-card">
+                    <h2 class="finea-section-title">Rapport demandes</h2>
+                    <p>Demandes soumises, traitees, validees et refusees par categorie.</p>
+                    <?= Ui::button('Export au prochain lot', ['variant' => 'secondary', 'type' => 'button', 'disabled' => true]) ?>
+                </article>
+            </section>
         <?php endif; ?>
     </div>
 </div>

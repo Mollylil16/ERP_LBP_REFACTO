@@ -17,14 +17,17 @@ final class Ui
      */
     public static function pageHeader(string $titleOrEyebrow, string $subtitleOrTitle = '', string|array $subtitleOrOptions = '', string $actions = '', array $attrs = []): string
     {
+        $badge = '';
+
         if (is_array($subtitleOrOptions)) {
             $options = $subtitleOrOptions;
             $title = $titleOrEyebrow;
             $subtitle = $subtitleOrTitle;
             $eyebrow = (string) ($options['eyebrow'] ?? '');
             $actions = (string) ($options['actions'] ?? '');
+            $badge = (string) ($options['badge'] ?? '');
             $attrs = $options;
-            unset($attrs['eyebrow'], $attrs['actions']);
+            unset($attrs['eyebrow'], $attrs['actions'], $attrs['badge']);
         } else {
             $eyebrow = $titleOrEyebrow;
             $title = $subtitleOrTitle;
@@ -32,11 +35,19 @@ final class Ui
         }
 
         $class = Html::classes(['finea-page-header', (string) ($attrs['class'] ?? '')]);
-        $eyebrowHtml = $eyebrow !== '' ? '<p class="rh-eyebrow">' . View::e($eyebrow) . '</p>' : '';
+        $style = isset($attrs['style']) && $attrs['style'] !== '' ? ' style="' . View::e((string) $attrs['style']) . '"' : '';
+        $eyebrowClass = Html::classes([(string) ($attrs['eyebrow_class'] ?? 'rh-eyebrow')]);
+        $icon = (string) ($attrs['icon'] ?? '');
+        $eyebrowHtml = $eyebrow !== '' ? '<p class="' . View::e($eyebrowClass) . '">' . View::e($eyebrow) . '</p>' : '';
+        $headerActions = ($badge !== '' || $actions !== '')
+            ? '<div class="finea-header-actions">' . $badge . $actions . '</div>'
+            : '';
 
-        return '<section class="' . View::e($class) . '"><div>' . $eyebrowHtml . '<h1>' . View::e($title) . '</h1>'
+        return '<section class="' . View::e($class) . '"' . $style . '>'
+            . ($icon !== '' ? '<span class="finea-page-header-icon" aria-hidden="true">' . $icon . '</span>' : '')
+            . '<div>' . $eyebrowHtml . '<h1>' . View::e($title) . '</h1>'
             . ($subtitle !== '' ? '<p>' . View::e($subtitle) . '</p>' : '')
-            . '</div>' . $actions . '</section>';
+            . '</div>' . $headerActions . '</section>';
     }
 
     /** @param array<string,mixed> $attrs */

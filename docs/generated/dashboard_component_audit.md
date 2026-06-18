@@ -18,7 +18,7 @@ Date : 2026-06-18
   - Demandes d'explications via `Dashboard::explanationList()`.
   - Documents via `Dashboard::documentGrid()`.
 
-- `views/modules/dashboard.php`
+- `views/*/dashboard.php` dédiées par module métier
   - Données module normalisées avec valeurs par défaut.
   - Workflow via `Dashboard::workflow()`.
 

@@ -739,7 +739,7 @@ final class SystemTestService
     private function modules(): array
     {
         return [
-            'finance' => ['slug' => 'finance', 'label' => 'Finance', 'code' => 'FIN', 'accent' => '#2563eb', 'tables' => ['permission_entities', 'user_permissions'], 'routes' => ['/finance'], 'pages' => ['/finance'], 'views' => ['modules/dashboard']],
+            'finance' => ['slug' => 'finance', 'label' => 'Finance', 'code' => 'FIN', 'accent' => '#2563eb', 'tables' => ['permission_entities', 'user_permissions'], 'routes' => ['/finance'], 'pages' => ['/finance'], 'views' => ['finance/dashboard']],
             'rh' => [
                 'slug' => 'rh', 'label' => 'RH', 'code' => 'RH', 'accent' => '#0ea5e9',
                 'tables' => ['rh_employees', 'rh_services', 'rh_functions', 'rh_statuses', 'rh_contracts', 'rh_assignments', 'rh_evaluations', 'rh_training_sessions', 'rh_workflow_requests'],
@@ -754,19 +754,19 @@ final class SystemTestService
                 'pages' => ['/espace-employe', '/espace-employe/dashboard', '/espace-employe/demandes/nouvelle'],
                 'views' => ['employee/dashboard', 'employee/request-form', 'employee/request-show'],
             ],
-            'colisage' => ['slug' => 'colisage', 'label' => 'Colisage', 'code' => 'COL', 'accent' => '#f97316', 'tables' => ['permission_entities'], 'routes' => ['/colisage'], 'pages' => ['/colisage'], 'views' => ['modules/dashboard']],
-            'logistique' => ['slug' => 'logistique', 'label' => 'Logistique', 'code' => 'LOG', 'accent' => '#22c55e', 'tables' => ['permission_entities'], 'routes' => ['/logistique'], 'pages' => ['/logistique'], 'views' => ['modules/dashboard']],
-            'crm' => ['slug' => 'crm', 'label' => 'CRM', 'code' => 'CRM', 'accent' => '#ec4899', 'tables' => ['permission_entities'], 'routes' => ['/crm'], 'pages' => ['/crm'], 'views' => ['modules/dashboard']],
-            'tickets' => ['slug' => 'tickets', 'label' => 'Tickets', 'code' => 'TIC', 'accent' => '#ef4444', 'tables' => ['permission_entities'], 'routes' => ['/tickets'], 'pages' => ['/tickets'], 'views' => ['modules/dashboard']],
-            'site-admin' => ['slug' => 'site-admin', 'label' => 'Site internet', 'code' => 'WEB', 'accent' => '#14b8a6', 'tables' => ['permission_entities'], 'routes' => ['/site-admin', '/site'], 'pages' => ['/site-admin', '/site'], 'views' => ['modules/dashboard', 'site/index']],
-            'transit-douane' => ['slug' => 'transit-douane', 'label' => 'Transit Douane', 'code' => 'TDO', 'accent' => '#7c3aed', 'tables' => ['permission_entities'], 'routes' => ['/transit-douane'], 'pages' => ['/transit-douane'], 'views' => ['modules/dashboard']],
-            'tracking-colis' => ['slug' => 'tracking-colis', 'label' => 'Tracking Colis', 'code' => 'TRK', 'accent' => '#06b6d4', 'tables' => ['permission_entities'], 'routes' => ['/tracking-colis'], 'pages' => ['/tracking-colis'], 'views' => ['modules/dashboard']],
-            'facturation' => ['slug' => 'facturation', 'label' => 'Facturation', 'code' => 'FAC', 'accent' => '#16a34a', 'tables' => ['permission_entities'], 'routes' => ['/facturation'], 'pages' => ['/facturation'], 'views' => ['modules/dashboard']],
-            'entrepots' => ['slug' => 'entrepots', 'label' => 'Entrepôts', 'code' => 'ENT', 'accent' => '#a16207', 'tables' => ['permission_entities'], 'routes' => ['/entrepots'], 'pages' => ['/entrepots'], 'views' => ['modules/dashboard']],
-            'flotte-transport' => ['slug' => 'flotte-transport', 'label' => 'Flotte / Transport', 'code' => 'FLT', 'accent' => '#ea580c', 'tables' => ['permission_entities'], 'routes' => ['/flotte-transport'], 'pages' => ['/flotte-transport'], 'views' => ['modules/dashboard']],
-            'portefeuille-clients' => ['slug' => 'portefeuille-clients', 'label' => 'Portefeuille Clients', 'code' => 'PCL', 'accent' => '#84cc16', 'tables' => ['permission_entities'], 'routes' => ['/portefeuille-clients'], 'pages' => ['/portefeuille-clients'], 'views' => ['modules/dashboard']],
-            'agents-correspondants' => ['slug' => 'agents-correspondants', 'label' => 'Agents & Correspondants', 'code' => 'AGT', 'accent' => '#6366f1', 'tables' => ['permission_entities'], 'routes' => ['/agents-correspondants'], 'pages' => ['/agents-correspondants'], 'views' => ['modules/dashboard']],
-            'pilotage-dg' => ['slug' => 'pilotage-dg', 'label' => 'Pilotage DG', 'code' => 'DG', 'accent' => '#0f172a', 'tables' => ['permission_entities'], 'routes' => ['/pilotage-dg'], 'pages' => ['/pilotage-dg'], 'views' => ['modules/dashboard']],
+            'colisage' => ['slug' => 'colisage', 'label' => 'Colisage', 'code' => 'COL', 'accent' => '#f97316', 'tables' => ['permission_entities'], 'routes' => ['/colisage'], 'pages' => ['/colisage'], 'views' => ['colisage/dashboard']],
+            'logistique' => ['slug' => 'logistique', 'label' => 'Logistique', 'code' => 'LOG', 'accent' => '#22c55e', 'tables' => ['permission_entities'], 'routes' => ['/logistique'], 'pages' => ['/logistique'], 'views' => ['logistique/dashboard']],
+            'crm' => ['slug' => 'crm', 'label' => 'CRM', 'code' => 'CRM', 'accent' => '#ec4899', 'tables' => ['permission_entities'], 'routes' => ['/crm'], 'pages' => ['/crm'], 'views' => ['crm/dashboard']],
+            'tickets' => ['slug' => 'tickets', 'label' => 'Tickets', 'code' => 'TIC', 'accent' => '#ef4444', 'tables' => ['permission_entities'], 'routes' => ['/tickets'], 'pages' => ['/tickets'], 'views' => ['tickets/dashboard']],
+            'site-admin' => ['slug' => 'site-admin', 'label' => 'Site internet', 'code' => 'WEB', 'accent' => '#14b8a6', 'tables' => ['permission_entities'], 'routes' => ['/site-admin', '/site'], 'pages' => ['/site-admin', '/site'], 'views' => ['site_admin/dashboard', 'site/index']],
+            'transit-douane' => ['slug' => 'transit-douane', 'label' => 'Transit Douane', 'code' => 'TDO', 'accent' => '#7c3aed', 'tables' => ['permission_entities'], 'routes' => ['/transit-douane'], 'pages' => ['/transit-douane'], 'views' => ['transit_douane/dashboard']],
+            'tracking-colis' => ['slug' => 'tracking-colis', 'label' => 'Tracking Colis', 'code' => 'TRK', 'accent' => '#06b6d4', 'tables' => ['permission_entities'], 'routes' => ['/tracking-colis'], 'pages' => ['/tracking-colis'], 'views' => ['tracking_colis/dashboard']],
+            'facturation' => ['slug' => 'facturation', 'label' => 'Facturation', 'code' => 'FAC', 'accent' => '#16a34a', 'tables' => ['permission_entities'], 'routes' => ['/facturation'], 'pages' => ['/facturation'], 'views' => ['facturation/dashboard']],
+            'entrepots' => ['slug' => 'entrepots', 'label' => 'Entrepôts', 'code' => 'ENT', 'accent' => '#a16207', 'tables' => ['permission_entities'], 'routes' => ['/entrepots'], 'pages' => ['/entrepots'], 'views' => ['entrepots/dashboard']],
+            'flotte-transport' => ['slug' => 'flotte-transport', 'label' => 'Flotte / Transport', 'code' => 'FLT', 'accent' => '#ea580c', 'tables' => ['permission_entities'], 'routes' => ['/flotte-transport'], 'pages' => ['/flotte-transport'], 'views' => ['flotte_transport/dashboard']],
+            'portefeuille-clients' => ['slug' => 'portefeuille-clients', 'label' => 'Portefeuille Clients', 'code' => 'PCL', 'accent' => '#84cc16', 'tables' => ['permission_entities'], 'routes' => ['/portefeuille-clients'], 'pages' => ['/portefeuille-clients'], 'views' => ['portefeuille_clients/dashboard']],
+            'agents-correspondants' => ['slug' => 'agents-correspondants', 'label' => 'Agents & Correspondants', 'code' => 'AGT', 'accent' => '#6366f1', 'tables' => ['permission_entities'], 'routes' => ['/agents-correspondants'], 'pages' => ['/agents-correspondants'], 'views' => ['agents_correspondants/dashboard']],
+            'pilotage-dg' => ['slug' => 'pilotage-dg', 'label' => 'Pilotage DG', 'code' => 'DG', 'accent' => '#0f172a', 'tables' => ['permission_entities'], 'routes' => ['/pilotage-dg'], 'pages' => ['/pilotage-dg'], 'views' => ['pilotage_dg/dashboard']],
             'admin' => ['slug' => 'admin', 'label' => 'Administration', 'code' => 'ADM', 'accent' => '#111827', 'tables' => ['users', 'permission_entities', 'user_permissions', 'system_test_runs'], 'routes' => ['/admin'], 'pages' => ['/admin'], 'views' => ['admin/dashboard', 'admin/system_tests/index']],
         ];
     }

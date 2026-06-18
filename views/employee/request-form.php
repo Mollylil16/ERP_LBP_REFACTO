@@ -4,6 +4,9 @@ use App\View\Components\EmployeeRequestForms;
 use App\View\Components\Ui;
 
 $selected = (string) ($_GET['type'] ?? '');
+
+/** @var string $csrfToken */
+
 ob_start();
 ?>
 <div class="finea-shell employee-shell">

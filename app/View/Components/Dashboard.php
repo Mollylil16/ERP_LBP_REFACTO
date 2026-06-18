@@ -45,6 +45,46 @@ final class Dashboard
         }
         return $html . '</div>';
     }
+    /** @param array<string,mixed> $module */
+    public static function moduleIdentity(array $module): string
+    {
+        $iconKey = (string) ($module['iconKey'] ?? '');
+        $label = (string) ($module['label'] ?? 'Module');
+        $accent2 = (string) ($module['accent2'] ?? 'var(--finea-gold)');
+        $accent = (string) ($module['accent'] ?? 'var(--finea-primary)');
+
+        return '<aside class="finea-section-card module-identity-card">'
+            . '<span class="module-dashboard-icon large">' . \App\Helpers\ModuleIcon::svg($iconKey) . '</span>'
+            . '<h2>' . View::e($label) . '</h2>'
+            . '<p>Les couleurs, l’icône et le code reprennent le point d’entrée du portail pour identifier immédiatement l’espace courant.</p>'
+            . '<div class="module-identity-swatches">'
+            . '<span style="background: ' . View::e($accent2) . '"></span>'
+            . '<span style="background: ' . View::e($accent) . '"></span>'
+            . '<span style="background: var(--finea-gold)"></span>'
+            . '</div></aside>';
+    }
+
+    /** @param array<int,array{title:string,text:string}> $steps */
+    public static function moduleWorkflowSection(array $steps): string
+    {
+        return Ui::section(
+            'Structure prévue pour l’évolution métier',
+            self::workflow($steps),
+            'Backend',
+            ['class' => 'finea-section-card']
+        );
+    }
+
+    /** @param array<int,array{label:string,hint:string,url:string}> $actions */
+    public static function moduleOperations(array $actions): string
+    {
+        $heading = '<div class="module-section-heading"><div><p class="finea-eyebrow">Accès rapides</p>'
+            . '<h2 class="finea-section-title">Opérations du module</h2></div>'
+            . '<span class="finea-status-badge finea-status-badge--info">Socle clean code</span></div>';
+
+        return '<section class="finea-section-card">' . $heading . self::actions($actions) . '</section>';
+    }
+
 
     /** @param array<int,array{label:string,count:mixed,description:string,tone?:string,href:string}> $items */
     public static function alerts(array $items): string
@@ -191,5 +231,40 @@ final class Dashboard
         }
         return $html . '</section>';
     }
+
+    /** @param array<string,mixed> $module */
+    public static function businessModuleDashboard(array $module): string
+    {
+        $moduleKpis = array_map(
+            static fn(array $kpi): array => $kpi + ['href' => '/' . (string) $module['slug'] . '/dashboard#operations'],
+            (array) ($module['kpis'] ?? [])
+        );
+
+        return '<div class="finea-shell module-dashboard-shell"><div class="finea-container">'
+            . Ui::pageHeader(
+                (string) ($module['label'] ?? 'Module'),
+                (string) ($module['description'] ?? ''),
+                [
+                    'eyebrow' => (string) ($module['code'] ?? '') . ' • Module métier',
+                    'eyebrow_class' => 'finea-eyebrow',
+                    'class' => 'module-dashboard-hero',
+                    'style' => '--module-hero-gradient: ' . (string) ($module['gradient'] ?? 'linear-gradient(135deg, #1d2b57, #2563eb)') . ';',
+                    'icon' => \App\Helpers\ModuleIcon::svg((string) ($module['iconKey'] ?? 'modules')),
+                    'badge' => '<span class="module-dashboard-chip">Dashboard MVC dédié</span>',
+                    'actions' => Ui::button('Changer de module', [
+                        'href' => 'selection_portail',
+                        'variant' => 'accent',
+                    ]),
+                ]
+            )
+            . self::kpis($moduleKpis, ['class' => 'module-dashboard-kpis'])
+            . '<div class="module-dashboard-grid" id="operations">'
+            . self::moduleOperations((array) ($module['actions'] ?? []))
+            . self::moduleIdentity($module)
+            . '</div>'
+            . self::moduleWorkflowSection((array) ($module['workflow'] ?? []))
+            . '</div></div>';
+    }
+
 
 }
