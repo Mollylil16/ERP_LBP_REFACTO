@@ -44,7 +44,9 @@ final class Ui
     {
         $class = Html::classes(['finea-section-card', (string) ($attrs['class'] ?? '')]);
 
-        return '<section class="' . View::e($class) . '"><div class="finea-section-heading"><h2 class="finea-section-title">' . View::e($title) . '</h2>'
+        $id = isset($attrs['id']) && $attrs['id'] !== '' ? ' id="' . View::e((string) $attrs['id']) . '"' : '';
+
+        return '<section class="' . View::e($class) . '"' . $id . '><div class="finea-section-heading"><h2 class="finea-section-title">' . View::e($title) . '</h2>'
             . ($subtitle !== '' ? '<span>' . View::e($subtitle) . '</span>' : '')
             . '</div>' . $content . '</section>';
     }

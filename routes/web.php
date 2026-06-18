@@ -7,15 +7,18 @@ use App\Controllers\AuthController;
 use App\Controllers\AdminDashboardController;
 use App\Controllers\AdminPermissionController;
 use App\Controllers\AdminUserController;
+use App\Controllers\AdminSystemTestController;
 use App\Controllers\DashboardController;
 use App\Controllers\HomeController;
 use App\Controllers\RhDashboardController;
 use App\Controllers\RhPersonnelController;
 use App\Controllers\RhModuleController;
 use App\Controllers\RhSettingsController;
+use App\Controllers\RhLifecycleController;
 use App\Controllers\SelectionPortailController;
 use App\Controllers\BusinessModuleController;
 use App\Controllers\WebsiteController;
+use App\Controllers\EmployeePortalController;
 
 /** @var Router $router */
 
@@ -102,8 +105,13 @@ $router->group('/logistique', function (Router $router): void {
 });
 
 $router->group('/espace-employe', function (Router $router): void {
-    $router->get('/', [BusinessModuleController::class, 'employee']);
-    $router->get('/dashboard', [BusinessModuleController::class, 'employee']);
+    $router->get('/', [EmployeePortalController::class, 'index']);
+    $router->get('/dashboard', [EmployeePortalController::class, 'index']);
+    $router->get('/demandes/nouvelle', [EmployeePortalController::class, 'createRequest']);
+    $router->post('/demandes', [EmployeePortalController::class, 'storeRequest']);
+    $router->get('/demandes/{id}', [EmployeePortalController::class, 'showRequest']);
+    $router->post('/demandes/{id}/annuler', [EmployeePortalController::class, 'cancelRequest']);
+    $router->post('/explications/{id}/repondre', [EmployeePortalController::class, 'respondExplanation']);
 });
 
 $router->group('/crm', function (Router $router): void {
@@ -177,7 +185,15 @@ $router->group('/rh', function (Router $router): void {
     $router->get('/mutations', [RhPersonnelController::class, 'mutationsIndex']);
     $router->get('/mouvements', [RhPersonnelController::class, 'movementsIndex']);
     $router->get('/pointage', [RhModuleController::class, 'attendance']);
-    $router->get('/contrats', [RhModuleController::class, 'contracts']);
+    $router->get('/contrats', [RhLifecycleController::class, 'index']);
+    $router->get('/cycle-vie', [RhLifecycleController::class, 'index']);
+    $router->post('/cycle-vie/contrats', [RhLifecycleController::class, 'storeContract']);
+    $router->post('/cycle-vie/missions', [RhLifecycleController::class, 'storeAssignment']);
+    $router->post('/cycle-vie/evaluations', [RhLifecycleController::class, 'storeEvaluation']);
+    $router->post('/cycle-vie/formations', [RhLifecycleController::class, 'storeTraining']);
+    $router->post('/cycle-vie/discipline', [RhLifecycleController::class, 'storeDiscipline']);
+    $router->post('/cycle-vie/workflows/{id}', [RhLifecycleController::class, 'decideWorkflow']);
+    $router->post('/cycle-vie/demandes-employes/{id}', [RhLifecycleController::class, 'decideEmployeeRequest']);
     $router->get('/paie', [RhModuleController::class, 'payroll']);
     $router->get('/parametrage', [RhSettingsController::class, 'index']);
     $router->post('/parametrage', [RhSettingsController::class, 'store']);
@@ -209,6 +225,11 @@ $router->group('/admin', function (Router $router): void {
     $router->get('/', [AdminDashboardController::class, 'index']);
     $router->get('/dashboard', [AdminDashboardController::class, 'index']);
     $router->get('/permissions', [AdminPermissionController::class, 'matrix']);
+
+    $router->get('/system-tests', [AdminSystemTestController::class, 'index']);
+    $router->get('/system-tests/latest', [AdminSystemTestController::class, 'latest']);
+    $router->post('/system-tests/run', [AdminSystemTestController::class, 'runAll']);
+    $router->post('/system-tests/run/{module}', [AdminSystemTestController::class, 'runModule']);
 
     $router->group('/users', function (Router $router): void {
         $router->get('/', [AdminUserController::class, 'index']);

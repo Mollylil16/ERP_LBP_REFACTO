@@ -154,6 +154,29 @@
   const init = () => {
     document.querySelectorAll("select[data-finea-select-search], select[data-select-search]").forEach(initSelectSearch);
     document.querySelectorAll("[data-finea-dropzone], [data-dropzone]").forEach(initDropzone);
+    document.querySelectorAll("[data-nav-group-toggle]").forEach((button) => {
+      if (button.dataset.navigationEnhanced === "1") return;
+      button.dataset.navigationEnhanced = "1";
+      button.addEventListener("click", () => {
+        const group = button.closest("[data-nav-group]");
+        const collapsed = group?.classList.toggle("is-collapsed") ?? false;
+        button.setAttribute("aria-expanded", collapsed ? "false" : "true");
+      });
+    });
+    document.querySelector(".module-nav-link.is-active")?.scrollIntoView({ block: "nearest" });
+    document.querySelectorAll("[data-modal-open]").forEach((button) => {
+      if (button.dataset.modalEnhanced === "1") return;
+      button.dataset.modalEnhanced = "1";
+      button.addEventListener("click", () => document.getElementById(button.dataset.modalOpen)?.showModal());
+    });
+    document.querySelectorAll("[data-modal]").forEach((modal) => {
+      if (modal.dataset.modalEnhanced === "1") return;
+      modal.dataset.modalEnhanced = "1";
+      modal.querySelectorAll("[data-modal-close]").forEach((button) => button.addEventListener("click", () => modal.close()));
+      modal.addEventListener("click", (event) => {
+        if (event.target === modal) modal.close();
+      });
+    });
   };
 
   document.addEventListener("DOMContentLoaded", init);

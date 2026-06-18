@@ -35,6 +35,9 @@ body.module-body {
 	background: #172448;
 	color: #fff;
 	z-index: 20;
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
 }
 
 .module-brand {
@@ -66,10 +69,68 @@ body.module-body {
 	color: #aebbd8;
 }
 
+.module-navigation-scroll {
+	flex: 1 1 auto;
+	min-height: 0;
+	margin: 20px -5px 12px 0;
+	padding-right: 5px;
+	overflow-y: auto;
+	overscroll-behavior: contain;
+	scrollbar-width: thin;
+	scrollbar-color: rgba(255,255,255,.25) transparent;
+}
+
 .module-navigation {
 	display: grid;
-	gap: 5px;
-	margin-top: 28px;
+	gap: 12px;
+}
+
+.module-nav-group {
+	display: grid;
+	gap: 4px;
+}
+
+.module-nav-group-title {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	width: 100%;
+	padding: 7px 9px;
+	border: 0;
+	border-radius: 7px;
+	color: #93a4c8;
+	background: transparent;
+	font: inherit;
+	font-size: .68rem;
+	font-weight: 850;
+	letter-spacing: .12em;
+	text-align: left;
+	text-transform: uppercase;
+	cursor: pointer;
+}
+
+.module-nav-group-title:hover,
+.module-nav-group.has-active .module-nav-group-title {
+	color: #f5d85e;
+	background: rgba(255,255,255,.04);
+}
+
+.module-nav-group-title span:last-child {
+	font-size: 1rem;
+	transition: transform .18s ease;
+}
+
+.module-nav-group.is-collapsed .module-nav-group-title span:last-child {
+	transform: rotate(-90deg);
+}
+
+.module-nav-group.is-collapsed .module-nav-group-items {
+	display: none;
+}
+
+.module-nav-group-items {
+	display: grid;
+	gap: 4px;
 }
 
 .module-nav-link {
@@ -77,7 +138,7 @@ body.module-body {
 	grid-template-columns: 34px 1fr auto;
 	align-items: center;
 	gap: 9px;
-	min-height: 46px;
+	min-height: 42px;
 	padding: 7px 10px;
 	border-radius: 9px;
 	color: #dce4f5;
@@ -112,9 +173,11 @@ body.module-body {
 }
 
 .module-back-link {
-	position: absolute;
-	left: 24px;
-	bottom: 24px;
+	position: static;
+	flex: 0 0 auto;
+	margin: 0 8px;
+	padding: 13px 8px 2px;
+	border-top: 1px solid rgba(255,255,255,.12);
 	color: var(--finea-gold);
 	font-weight: 750;
 }
@@ -829,4 +892,149 @@ textarea.finea-input {
 
 .module-pilotage-dg .finea-module-glow {
 	color: #eab308
+}
+
+.finea-kpi-card.is-clickable {
+	position: relative;
+	color: inherit;
+	transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+}
+
+.finea-kpi-card.is-clickable:hover,
+.finea-kpi-card.is-clickable:focus-visible {
+	transform: translateY(-3px);
+	border-color: var(--module-accent);
+	box-shadow: 0 15px 35px rgba(29,43,87,.13);
+	outline: 0;
+}
+
+.finea-kpi-arrow {
+	position: absolute;
+	top: 14px;
+	right: 15px;
+	color: var(--module-accent);
+	font-size: 1.1rem;
+}
+
+.finea-modal {
+	width: min(920px, calc(100vw - 30px));
+	max-height: calc(100vh - 34px);
+	padding: 0;
+	border: 0;
+	border-radius: 18px;
+	background: transparent;
+	box-shadow: 0 28px 80px rgba(15,23,42,.3);
+}
+
+.finea-modal::backdrop {
+	background: rgba(15,23,42,.64);
+	backdrop-filter: blur(3px);
+}
+
+.finea-modal-dialog {
+	overflow: hidden;
+	border-radius: inherit;
+	background: #fff;
+}
+
+.finea-modal-dialog>header {
+	display: flex;
+	justify-content: space-between;
+	gap: 16px;
+	padding: 20px 22px;
+	color: #fff;
+	background: linear-gradient(135deg, var(--finea-navy), var(--module-accent));
+}
+
+.finea-modal-dialog>header p,
+.finea-modal-dialog>header h2 {
+	margin: 0;
+}
+
+.finea-modal-dialog>header p {
+	margin-bottom: 4px;
+	color: #fde68a;
+	font-size: .7rem;
+	font-weight: 800;
+	text-transform: uppercase;
+}
+
+.finea-modal-close {
+	width: 38px;
+	height: 38px;
+	border: 0;
+	border-radius: 10px;
+	color: #fff;
+	background: rgba(255,255,255,.12);
+	font-size: 1.4rem;
+	cursor: pointer;
+}
+
+.finea-modal-body {
+	max-height: calc(100vh - 145px);
+	overflow-y: auto;
+	padding: 22px;
+}
+
+.finea-modal-body .finea-section-card {
+	padding: 0;
+	border: 0;
+	box-shadow: none;
+}
+
+.finea-record-list {
+	display: grid;
+	gap: 10px;
+}
+
+.finea-record-item {
+	display: grid;
+	grid-template-columns: minmax(180px,.65fr) minmax(0,1.35fr);
+	gap: 15px;
+	align-items: center;
+	padding: 14px;
+	border: 1px solid var(--finea-border);
+	border-radius: 12px;
+	background: #fff;
+}
+
+.finea-record-main,
+.finea-record-badges {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	align-items: center;
+}
+
+.finea-record-main {
+	display: grid;
+	gap: 3px;
+}
+
+.finea-record-main small {
+	color: var(--finea-muted);
+}
+
+.finea-data-badge {
+	display: grid;
+	gap: 2px;
+	padding: 7px 10px;
+	border-radius: 9px;
+	background: #f1f5f9;
+}
+
+.finea-data-badge small {
+	color: #64748b;
+	font-size: .62rem;
+	text-transform: uppercase;
+}
+
+.finea-data-badge strong {
+	font-size: .78rem;
+}
+
+@media (max-width: 700px) {
+	.finea-record-item {
+		grid-template-columns: 1fr;
+	}
 }
