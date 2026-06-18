@@ -1,53 +1,43 @@
 <?php
 
 use App\Helpers\View;
+use App\View\Components\Dashboard;
+use App\View\Components\Ui;
 
 require BASE_PATH . '/views/admin/_navigation.php';
 ob_start();
 ?>
 <div class="finea-shell">
     <div class="finea-container">
-        <section class="finea-page-header admin-hero">
-            <div>
-                <p class="admin-eyebrow">Administration et sécurité</p>
-                <h1>Piloter les comptes et les habilitations</h1>
-                <p>Un espace central pour maîtriser les utilisateurs, leurs accès et les droits CRUD.</p>
-            </div>
-            <div class="finea-header-actions">
-                <a class="finea-action-btn finea-action-btn--secondary" href="<?= View::url('admin/permissions') ?>">Voir la matrice</a>
-                <a class="finea-action-btn finea-action-btn--accent" href="<?= View::url('admin/users/nouveau') ?>">Nouvel utilisateur</a>
-            </div>
-        </section>
+        <?= Ui::pageHeader('Piloter les comptes et les habilitations',
+            'Un espace central pour maîtriser les utilisateurs, leurs accès et les droits CRUD.',
+            [
+                'eyebrow' => 'Administration et sécurité',
+                'class' => 'admin-hero',
+                'actions' => Ui::button('Voir la matrice', ['href' => 'admin/permissions', 'variant' => 'secondary'])
+                    . Ui::button('Nouvel utilisateur', ['href' => 'admin/users/nouveau', 'variant' => 'accent']),
+            ]
+        ) ?>
 
-        <section class="finea-grid finea-kpi-grid">
-            <?php foreach ([
-                ['Utilisateurs', $statistics['total'], 'Comptes enregistrés'],
-                ['Comptes actifs', $statistics['active'], 'Accès à la plateforme'],
-                ['Accès restreints', $statistics['restricted'], 'Inactifs ou bloqués'],
-                ['Administrateurs', $statistics['administrators'], 'Accès complets'],
-                ['Droits attribués', $grantedPermissions, 'Couples utilisateur / entité'],
-            ] as [$label, $value, $meta]): ?>
-                <article class="finea-kpi-card">
-                    <span class="finea-kpi-label"><?= View::e($label) ?></span>
-                    <strong class="finea-kpi-value"><?= (int) $value ?></strong>
-                    <small class="finea-kpi-meta"><?= View::e($meta) ?></small>
-                </article>
-            <?php endforeach; ?>
-        </section>
+        <?= Dashboard::kpis([
+            ['label' => 'Utilisateurs', 'value' => $statistics['total'], 'meta' => 'Comptes enregistrés', 'href' => 'admin/users'],
+            ['label' => 'Comptes actifs', 'value' => $statistics['active'], 'meta' => 'Accès à la plateforme', 'href' => 'admin/users?status=active'],
+            ['label' => 'Accès restreints', 'value' => $statistics['restricted'], 'meta' => 'Inactifs ou bloqués', 'href' => 'admin/users?status=inactive'],
+            ['label' => 'Administrateurs', 'value' => $statistics['administrators'], 'meta' => 'Accès complets', 'href' => 'admin/users?profile=admin'],
+            ['label' => 'Droits attribués', 'value' => $grantedPermissions, 'meta' => 'Couples utilisateur / entité', 'href' => 'admin/permissions'],
+        ]) ?>
 
         <div class="admin-dashboard-grid">
-            <section class="finea-section-card">
-                <p class="admin-eyebrow">Référentiel</p>
-                <h2 class="finea-section-title">Entités sécurisées</h2>
-                <div class="admin-entity-list">
-                    <?php foreach ($entities as $entity): ?>
-                        <div>
-                            <span class="admin-module-chip"><?= View::e($entity->module) ?></span>
-                            <span><strong><?= View::e($entity->name) ?></strong><small><?= View::e($entity->description) ?></small></span>
-                        </div>
-                    <?php endforeach; ?>
-                </div>
-            </section>
+            <?php ob_start(); ?>
+            <div class="admin-entity-list">
+                <?php foreach ($entities as $entity): ?>
+                    <div>
+                        <span class="admin-module-chip"><?= View::e($entity->module) ?></span>
+                        <span><strong><?= View::e($entity->name) ?></strong><small><?= View::e($entity->description) ?></small></span>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+            <?= Ui::section('Entités sécurisées', (string) ob_get_clean(), '', ['class' => 'admin-entities-section']) ?>
 
             <aside class="admin-security-card">
                 <p class="admin-eyebrow">Bonnes pratiques</p>

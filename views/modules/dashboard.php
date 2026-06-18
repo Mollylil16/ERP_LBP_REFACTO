@@ -2,9 +2,14 @@
 
 use App\Helpers\View;
 use App\Helpers\ModuleIcon;
+use App\View\Components\Dashboard;
 
 /** @var array<string, mixed> $dashboardModule */
 $module = $dashboardModule;
+$module['kpis'] = array_map(
+    static fn(array $kpi): array => $kpi + ['href' => '/' . $module['slug'] . '/dashboard#operations'],
+    $module['kpis']
+);
 
 ob_start();
 ?>
@@ -25,17 +30,9 @@ ob_start();
             </div>
         </section>
 
-        <section class="finea-grid finea-kpi-grid">
-            <?php foreach ($module['kpis'] as $kpi): ?>
-                <article class="finea-kpi-card module-accent-card">
-                    <span class="finea-kpi-label"><?= View::e((string) $kpi['label']) ?></span>
-                    <strong class="finea-kpi-value"><?= View::e((string) $kpi['value']) ?></strong>
-                    <small class="finea-kpi-meta"><?= View::e((string) $kpi['meta']) ?></small>
-                </article>
-            <?php endforeach; ?>
-        </section>
+        <?= Dashboard::kpis($module['kpis'], ['class' => 'module-dashboard-kpis']) ?>
 
-        <div class="module-dashboard-grid">
+        <div class="module-dashboard-grid" id="operations">
             <section class="finea-section-card">
                 <div class="module-section-heading">
                     <div>
@@ -44,15 +41,7 @@ ob_start();
                     </div>
                     <span class="finea-status-badge finea-status-badge--info">Socle clean code</span>
                 </div>
-                <div class="module-action-list">
-                    <?php foreach ($module['actions'] as $action): ?>
-                        <a href="<?= View::url((string) $action['url']) ?>">
-                            <strong><?= View::e((string) $action['label']) ?></strong>
-                            <span><?= View::e((string) $action['hint']) ?></span>
-                            <small>Ouvrir</small>
-                        </a>
-                    <?php endforeach; ?>
-                </div>
+                <?= Dashboard::actions($module['actions']) ?>
             </section>
 
             <aside class="finea-section-card module-identity-card">

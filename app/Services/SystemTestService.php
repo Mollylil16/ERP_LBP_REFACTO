@@ -52,11 +52,15 @@ final class SystemTestService
         $checks[] = $this->runCommandCheck('PHPUnit', $this->phpunitCommand());
         $checks[] = $this->runCommandCheck('Smoke Admin', $this->phpCommand('tests/Smoke/smoke_admin.php'));
         $checks[] = $this->runCommandCheck('Smoke Visibility', $this->phpCommand('tests/Smoke/smoke_visibility.php'));
+        $checks[] = $this->runCommandCheck('Smoke Espace employé', $this->phpCommand('tests/Smoke/smoke_employee_portal.php'));
 
         foreach ($this->modules() as $module) {
             $checks[] = $this->runModuleProbe($module, false);
             $checks[] = $this->checkModuleViews($module);
             $checks[] = $this->checkModuleIncludes($module);
+            $checks[] = $this->checkModuleAssets($module);
+            $checks[] = $this->checkModuleForms($module);
+            $checks[] = $this->checkComponentArchitecture($module);
             $checks[] = $this->checkModulePages($module);
         }
 
@@ -84,6 +88,9 @@ final class SystemTestService
             $this->checkModuleRoutes($module),
             $this->checkModuleViews($module),
             $this->checkModuleIncludes($module),
+            $this->checkModuleAssets($module),
+            $this->checkModuleForms($module),
+            $this->checkComponentArchitecture($module),
             $this->checkModulePages($module),
         ];
 
@@ -203,6 +210,84 @@ final class SystemTestService
                 'includes_checked' => $checkedIncludes,
                 'broken' => $broken,
             ],
+        ];
+    }
+
+    /** @param array<string, mixed> $module */
+    private function checkModuleAssets(array $module): array
+    {
+        $result = (new AssetIntegrityService())->inspect($this->modulePhpFiles($module));
+        $status = $result['broken'] === [] ? self::STATUS_PASSED : self::STATUS_FAILED;
+        return [
+            'name' => 'Assets CSS / JS / images • ' . $module['label'],
+            'module' => $module['slug'],
+            'status' => $status,
+            'message' => $status === self::STATUS_PASSED
+                ? 'Toutes les références locales détectées pointent vers un fichier existant.'
+                : 'Une ou plusieurs références CSS, JavaScript ou image sont cassées.',
+            'details' => [
+                'references_checked' => $result['checked'],
+                'broken' => array_map(fn(array $item): array => [
+                    'file' => $this->relativePath($item['file']),
+                    'asset' => $item['asset'],
+                    'resolved' => $this->relativePath($item['resolved']),
+                ], $result['broken']),
+            ],
+        ];
+    }
+
+    /** @param array<string, mixed> $module */
+    private function checkModuleForms(array $module): array
+    {
+        $service = new FormIntegrityService();
+        $broken = [];
+        $count = 0;
+        foreach ($this->modulePhpFiles($module) as $file) {
+            $result = $service->inspectTemplate((string) file_get_contents($file));
+            $count += $result['forms'];
+            foreach ($result['broken'] as $issue) {
+                $broken[] = ['file' => $this->relativePath($file)] + $issue;
+            }
+        }
+        return [
+            'name' => 'Formulaires & CSRF • ' . $module['label'],
+            'module' => $module['slug'],
+            'status' => $broken === [] ? self::STATUS_PASSED : self::STATUS_FAILED,
+            'message' => $broken === [] ? 'Actions, méthodes et jetons CSRF sont cohérents.' : 'Formulaire incomplet ou non sécurisé détecté.',
+            'details' => ['forms_checked' => $count, 'broken' => $broken],
+        ];
+    }
+
+    /** @param array<string, mixed> $module */
+    private function checkComponentArchitecture(array $module): array
+    {
+        $broken = [];
+        $layout = (string) @file_get_contents(BASE_PATH . '/views/layouts/module.php');
+        if (!str_contains($layout, 'Navigation::module')) {
+            $broken[] = 'Le layout module n’utilise pas Navigation::module().';
+        }
+        foreach ($module['views'] ?? [] as $view) {
+            if (!str_ends_with((string) $view, 'dashboard')) continue;
+            $source = (string) @file_get_contents(BASE_PATH . '/views/' . $view . '.php');
+            if ($source !== '' && !str_contains($source, 'Dashboard::')) {
+                $broken[] = $view . ' n’utilise pas le composant Dashboard.';
+            }
+            if ($source !== '' && !str_contains($source, "'href'")) {
+                $broken[] = $view . ' ne définit pas de destinations cliquables pour ses KPI.';
+            }
+        }
+        if (($module['slug'] ?? '') === 'rh') {
+            $lifecycle = (string) @file_get_contents(BASE_PATH . '/views/rh/lifecycle/index.php');
+            if (!str_contains($lifecycle, 'Modal::render') || !str_contains($lifecycle, 'RecordList::render')) {
+                $broken[] = 'Le cycle de vie RH doit utiliser Modal et RecordList.';
+            }
+        }
+        return [
+            'name' => 'Architecture composants • ' . $module['label'],
+            'module' => $module['slug'],
+            'status' => $broken === [] ? self::STATUS_PASSED : self::STATUS_FAILED,
+            'message' => $broken === [] ? 'Navigation et dashboards utilisent les composants partagés.' : 'Une page structurante contourne les composants partagés.',
+            'details' => ['broken' => $broken],
         ];
     }
 
@@ -340,9 +425,10 @@ final class SystemTestService
             }
         }
 
+        $forms = (new FormIntegrityService())->inspectHtml($bodyText);
         $status = self::STATUS_PASSED;
         $message = 'Page accessible.';
-        if ($body === false || $httpCode >= 500 || $matches !== []) {
+        if ($body === false || $httpCode >= 500 || $matches !== [] || $forms['broken'] !== []) {
             $status = self::STATUS_FAILED;
             $message = 'Erreur détectée sur la page.';
         } elseif ($httpCode >= 400) {
@@ -358,6 +444,7 @@ final class SystemTestService
             'message' => $message,
             'duration_ms' => (int) round((microtime(true) - $startedAt) * 1000),
             'matched_patterns' => $matches,
+            'forms' => $forms,
             'excerpt' => $this->errorExcerpt($bodyText, $matches),
         ];
     }
@@ -550,7 +637,18 @@ final class SystemTestService
             return false;
         }
         $content = file_get_contents($web) ?: '';
-        return str_contains($content, "'{$route}'") || str_contains($content, '"' . $route . '"') || str_contains($content, "group('{$route}'") || str_contains($content, 'group("' . $route . '"');
+        if (str_contains($content, "'{$route}'") || str_contains($content, '"' . $route . '"')) {
+            return true;
+        }
+        $segments = array_values(array_filter(explode('/', trim($route, '/'))));
+        for ($split = 1; $split < count($segments); $split++) {
+            $prefix = '/' . implode('/', array_slice($segments, 0, $split));
+            $suffix = '/' . implode('/', array_slice($segments, $split));
+            $hasPrefix = str_contains($content, "'{$prefix}'") || str_contains($content, '"' . $prefix . '"');
+            $hasSuffix = str_contains($content, "'{$suffix}'") || str_contains($content, '"' . $suffix . '"');
+            if ($hasPrefix && $hasSuffix) return true;
+        }
+        return false;
     }
 
     private function relativePath(string $path): string
@@ -577,6 +675,12 @@ final class SystemTestService
 
         if ($slug === 'rh') {
             $candidateDirectories[] = BASE_PATH . '/views/rh';
+            foreach (glob(BASE_PATH . '/app/Controllers/Rh*Controller.php') ?: [] as $controller) {
+                $files[] = $controller;
+            }
+        }
+        if ($slug === 'espace-employe') {
+            $files[] = BASE_PATH . '/app/Controllers/EmployeePortalController.php';
         }
         if ($slug === 'admin') {
             $candidateDirectories[] = BASE_PATH . '/views/admin';
@@ -636,7 +740,20 @@ final class SystemTestService
     {
         return [
             'finance' => ['slug' => 'finance', 'label' => 'Finance', 'code' => 'FIN', 'accent' => '#2563eb', 'tables' => ['permission_entities', 'user_permissions'], 'routes' => ['/finance'], 'pages' => ['/finance'], 'views' => ['modules/dashboard']],
-            'rh' => ['slug' => 'rh', 'label' => 'RH', 'code' => 'RH', 'accent' => '#0ea5e9', 'tables' => ['rh_employees', 'rh_services', 'rh_functions', 'rh_statuses'], 'routes' => ['/rh'], 'pages' => ['/rh'], 'views' => ['rh/dashboard', 'rh/personnel/index']],
+            'rh' => [
+                'slug' => 'rh', 'label' => 'RH', 'code' => 'RH', 'accent' => '#0ea5e9',
+                'tables' => ['rh_employees', 'rh_services', 'rh_functions', 'rh_statuses', 'rh_contracts', 'rh_assignments', 'rh_evaluations', 'rh_training_sessions', 'rh_workflow_requests'],
+                'routes' => ['/rh', '/rh/dashboard', '/rh/personnel', '/rh/mutations', '/rh/mouvements', '/rh/pointage', '/rh/contrats', '/rh/paie', '/rh/parametrage', '/rh/cycle-vie'],
+                'pages' => ['/rh', '/rh/dashboard', '/rh/personnel', '/rh/mutations', '/rh/mouvements', '/rh/pointage', '/rh/contrats', '/rh/paie', '/rh/parametrage', '/rh/cycle-vie'],
+                'views' => ['rh/dashboard', 'rh/personnel/index', 'rh/personnel/mutations-index', 'rh/personnel/movements-index', 'rh/settings/index', 'rh/lifecycle/index'],
+            ],
+            'espace-employe' => [
+                'slug' => 'espace-employe', 'label' => 'Espace employé', 'code' => 'EMP', 'accent' => '#0ea5e9',
+                'tables' => ['users', 'rh_employees', 'employee_legal_requests', 'employee_request_events', 'rh_explanation_requests', 'rh_attendance_daily', 'rh_leave_opening_balance'],
+                'routes' => ['/espace-employe', '/espace-employe/dashboard', '/espace-employe/demandes/nouvelle'],
+                'pages' => ['/espace-employe', '/espace-employe/dashboard', '/espace-employe/demandes/nouvelle'],
+                'views' => ['employee/dashboard', 'employee/request-form', 'employee/request-show'],
+            ],
             'colisage' => ['slug' => 'colisage', 'label' => 'Colisage', 'code' => 'COL', 'accent' => '#f97316', 'tables' => ['permission_entities'], 'routes' => ['/colisage'], 'pages' => ['/colisage'], 'views' => ['modules/dashboard']],
             'logistique' => ['slug' => 'logistique', 'label' => 'Logistique', 'code' => 'LOG', 'accent' => '#22c55e', 'tables' => ['permission_entities'], 'routes' => ['/logistique'], 'pages' => ['/logistique'], 'views' => ['modules/dashboard']],
             'crm' => ['slug' => 'crm', 'label' => 'CRM', 'code' => 'CRM', 'accent' => '#ec4899', 'tables' => ['permission_entities'], 'routes' => ['/crm'], 'pages' => ['/crm'], 'views' => ['modules/dashboard']],

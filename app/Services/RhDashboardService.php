@@ -24,24 +24,28 @@ class RhDashboardService
                 'description' => 'Conges, absences, avances et regularisations a traiter.',
                 'count' => $counts['legalRequests'],
                 'tone' => 'success',
+                'href' => 'rh/cycle-vie?section=workflows',
             ],
             [
                 'label' => 'Contrats a parametrer',
                 'description' => 'Collaborateurs actifs sans contrat exploitable.',
                 'count' => $counts['contractsMissing'],
                 'tone' => 'warning',
+                'href' => 'rh/cycle-vie?section=contracts',
             ],
             [
                 'label' => 'Explications a suivre',
                 'description' => 'Demandes ouvertes en attente de reponse.',
                 'count' => $counts['explanations'],
                 'tone' => 'danger',
+                'href' => 'rh/cycle-vie?section=discipline',
             ],
             [
                 'label' => 'Soldes conges a initialiser',
                 'description' => 'Soldes de depart restant a renseigner.',
                 'count' => $counts['leaveOpeningMissing'],
                 'tone' => 'info',
+                'href' => 'rh/parametrage',
             ],
         ];
 

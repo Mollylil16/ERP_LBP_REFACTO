@@ -5,6 +5,7 @@ use App\Helpers\Session;
 use App\Helpers\View;
 use App\Helpers\ModuleIcon;
 use App\View\Components\Ui;
+use App\View\Components\Navigation;
 
 $appConfig = require BASE_PATH . '/config/app.php';
 $title = $pageTitle ?? $moduleName ?? 'Module';
@@ -54,20 +55,7 @@ $moduleIconKey = $moduleTheme['iconKey'] ?? strtolower((string) ($moduleCode ?? 
                 </span>
             </a>
 
-            <nav class="module-navigation" aria-label="Navigation du module">
-                <?php foreach ($moduleNavigation as $item): ?>
-                    <?php $isAvailable = (bool) ($item['available'] ?? false); ?>
-                    <a
-                        class="module-nav-link <?= ($activeModule ?? '') === ($item['key'] ?? '') ? 'is-active' : '' ?> <?= !$isAvailable ? 'is-disabled' : '' ?>"
-                        href="<?= $isAvailable ? View::url($item['url']) : '#' ?>"
-                        <?= !$isAvailable ? 'aria-disabled="true" data-coming-soon' : '' ?>
-                    >
-                        <span class="module-nav-icon"><?= View::e($item['icon'] ?? '') ?></span>
-                        <span><?= View::e($item['label'] ?? '') ?></span>
-                        <?php if (!$isAvailable): ?><small>Bientot</small><?php endif; ?>
-                    </a>
-                <?php endforeach; ?>
-            </nav>
+            <?= Navigation::module($moduleNavigation, (string) ($activeModule ?? '')) ?>
 
             <a class="module-back-link" href="<?= View::url('selection_portail') ?>">Retour au portail</a>
         </aside>
