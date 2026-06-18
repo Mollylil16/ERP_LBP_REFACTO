@@ -1,49 +1,263 @@
-.finea-field { display: grid; gap: 8px; }
-.finea-field label { font-weight: 800; color: #1f2a44; font-size: .9rem; }
-.finea-required { color: #dc2626; }
-.finea-field-hint { color: #64748b; line-height: 1.45; }
-.finea-field-error { color: #dc2626; font-weight: 700; }
-.finea-input, .finea-select, .finea-textarea {
-    width: 100%; border: 1px solid rgba(148,163,184,.38); border-radius: 16px; padding: 12px 14px;
-    background: #fff; color: #0f172a; outline: none; font: inherit; transition: border-color .2s ease, box-shadow .2s ease, transform .2s ease;
+.finea-field {
+	display: grid;
+	gap: 8px;
 }
-.finea-input:focus, .finea-select:focus, .finea-textarea:focus { border-color: #1d2b57; box-shadow: 0 0 0 4px rgba(29,43,87,.12); }
-.finea-textarea { resize: vertical; min-height: 110px; }
-.finea-check-field { align-content: end; }
-.finea-checkbox { display: inline-flex; align-items: center; gap: 10px; padding: 12px 14px; border: 1px solid rgba(148,163,184,.35); border-radius: 16px; background: #fff; }
-.finea-native-select { position: absolute !important; width: 1px !important; height: 1px !important; opacity: 0 !important; pointer-events: none !important; left: -9999px !important; }
-.finea-select-search { position: relative; display: grid; gap: 8px; }
-.finea-select-control { min-height: 48px; border: 1px solid rgba(148,163,184,.38); border-radius: 16px; background: #fff; display: flex; align-items: center; flex-wrap: wrap; gap: 7px; padding: 7px 12px; cursor: text; }
-.finea-select-control:focus-within { border-color: #1d2b57; box-shadow: 0 0 0 4px rgba(29,43,87,.12); }
-.finea-select-input { border: 0; outline: 0; min-width: 170px; flex: 1; padding: 6px 0; font: inherit; background: transparent; color: #0f172a; }
-.finea-select-badge { display: inline-flex; align-items: center; gap: 8px; border: 1px solid rgba(29,43,87,.18); background: #eff6ff; color: #1d2b57; border-radius: 999px; padding: 6px 10px; font-weight: 800; font-size: .82rem; }
-.finea-select-badge button { border: 0; background: transparent; color: inherit; cursor: pointer; font-weight: 900; padding: 0; }
-.finea-select-menu { position: absolute; z-index: 60; top: calc(100% + 8px); left: 0; right: 0; max-height: 260px; overflow: auto; background: #fff; border: 1px solid rgba(148,163,184,.35); border-radius: 18px; box-shadow: 0 24px 60px rgba(15,23,42,.18); padding: 6px; display: none; }
-.finea-select-search.is-open .finea-select-menu { display: block; }
-.finea-select-option { width: 100%; border: 0; background: transparent; text-align: left; padding: 11px 12px; border-radius: 13px; cursor: pointer; font: inherit; color: #0f172a; }
-.finea-select-option:hover, .finea-select-option.is-active { background: #eff6ff; color: #1d2b57; }
-.finea-select-empty { padding: 12px; color: #64748b; }
-.finea-dropzone { min-height: 160px; border: 1.5px dashed rgba(29,43,87,.35); border-radius: 22px; background: linear-gradient(180deg,#fff,#f8fafc); display: grid; place-items: center; text-align: center; gap: 8px; padding: 22px; cursor: pointer; transition: border-color .2s ease, transform .2s ease, box-shadow .2s ease; }
-.finea-dropzone:hover, .finea-dropzone.is-dragging { border-color: #fabd02; box-shadow: 0 18px 42px rgba(15,23,42,.12); transform: translateY(-1px); }
-.finea-dropzone input[type=file] { display: none; }
-.finea-dropzone-icon { width: 44px; height: 44px; border-radius: 16px; display: grid; place-items: center; background: #1d2b57; color: #fff; font-size: 1.4rem; }
-.finea-file-preview { color: #1d2b57; font-weight: 800; }
-.finea-file-preview img { max-height: 72px; border-radius: 14px; display: block; margin: 0 auto 6px; }
-.finea-section-heading { display: flex; align-items: start; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
-.finea-badge { display: inline-flex; padding: 6px 10px; border-radius: 999px; font-weight: 800; font-size: .78rem; background: #f1f5f9; color: #334155; }
-.finea-badge--success { background: #dcfce7; color: #166534; }
-.finea-badge--warning { background: #fef3c7; color: #92400e; }
-.finea-badge--danger { background: #fee2e2; color: #991b1b; }
-.finea-empty-state { border: 1px dashed rgba(148,163,184,.55); border-radius: 20px; padding: 22px; text-align: center; color: #64748b; background: #f8fafc; }
 
-/* --- Tabs Component --- */
-.finea-tabs { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 24px; }
-.finea-tab { flex: 1 1 auto; min-width: 160px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 18px; background: #fff; border: 1px solid var(--finea-border, #dfe6f1); border-radius: var(--finea-radius, 12px); color: var(--finea-text, #172033); text-decoration: none; transition: all 0.2s ease; box-shadow: 0 4px 12px rgba(29, 43, 87, 0.02); }
-.finea-tab:hover { border-color: #cbd5e1; transform: translateY(-2px); box-shadow: 0 8px 24px rgba(29, 43, 87, 0.06); }
-.finea-tab.is-active { border-color: var(--module-accent, #7c3aed); background: linear-gradient(135deg, #fff, #f8fafc); box-shadow: 0 0 0 1px var(--module-accent, #7c3aed), 0 8px 24px rgba(29, 43, 87, 0.06); }
-.finea-tab > span { display: flex; flex-direction: column; gap: 4px; }
-.finea-tab strong { font-size: 0.95rem; font-weight: 800; color: var(--finea-navy, #1d2b57); }
-.finea-tab.is-active strong { color: var(--module-accent, #7c3aed); }
-.finea-tab small { font-size: 0.75rem; color: var(--finea-muted, #64748b); }
-.finea-tab-count { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px; padding: 0 8px; border-radius: 999px; background: #f1f5f9; color: var(--finea-muted, #64748b); font-size: 0.75rem; font-weight: 800; }
-.finea-tab.is-active .finea-tab-count { background: var(--module-accent, #7c3aed); color: #fff; }
+.finea-field label {
+	font-weight: 800;
+	color: #1f2a44;
+	font-size: .9rem;
+}
+
+.finea-required {
+	color: #dc2626;
+}
+
+.finea-field-hint {
+	color: #64748b;
+	line-height: 1.45;
+}
+
+.finea-field-error {
+	color: #dc2626;
+	font-weight: 700;
+}
+
+.finea-input,
+.finea-select,
+.finea-textarea {
+	width: 100%;
+	border: 1px solid rgba(148, 163, 184, .38);
+	border-radius: 16px;
+	padding: 12px 14px;
+	background: #fff;
+	color: #0f172a;
+	outline: none;
+	font: inherit;
+	transition: border-color .2s ease, box-shadow .2s ease, transform .2s ease;
+}
+
+.finea-input:focus,
+.finea-select:focus,
+.finea-textarea:focus {
+	border-color: #1d2b57;
+	box-shadow: 0 0 0 4px rgba(29, 43, 87, .12);
+}
+
+.finea-textarea {
+	resize: vertical;
+	min-height: 110px;
+}
+
+.finea-check-field {
+	align-content: end;
+}
+
+.finea-checkbox {
+	display: inline-flex;
+	align-items: center;
+	gap: 10px;
+	padding: 12px 14px;
+	border: 1px solid rgba(148, 163, 184, .35);
+	border-radius: 16px;
+	background: #fff;
+}
+
+.finea-native-select {
+	position: absolute !important;
+	width: 1px !important;
+	height: 1px !important;
+	opacity: 0 !important;
+	pointer-events: none !important;
+	left: -9999px !important;
+}
+
+.finea-select-search {
+	position: relative;
+	display: grid;
+	gap: 8px;
+}
+
+.finea-select-control {
+	min-height: 48px;
+	border: 1px solid rgba(148, 163, 184, .38);
+	border-radius: 16px;
+	background: #fff;
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 7px;
+	padding: 7px 12px;
+	cursor: text;
+}
+
+.finea-select-control:focus-within {
+	border-color: #1d2b57;
+	box-shadow: 0 0 0 4px rgba(29, 43, 87, .12);
+}
+
+.finea-select-input {
+	border: 0;
+	outline: 0;
+	min-width: 170px;
+	flex: 1;
+	padding: 6px 0;
+	font: inherit;
+	background: transparent;
+	color: #0f172a;
+}
+
+.finea-select-badge {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	border: 1px solid rgba(29, 43, 87, .18);
+	background: #eff6ff;
+	color: #1d2b57;
+	border-radius: 999px;
+	padding: 6px 10px;
+	font-weight: 800;
+	font-size: .82rem;
+}
+
+.finea-select-badge button {
+	border: 0;
+	background: transparent;
+	color: inherit;
+	cursor: pointer;
+	font-weight: 900;
+	padding: 0;
+}
+
+.finea-select-menu {
+	position: absolute;
+	z-index: 60;
+	top: calc(100% + 8px);
+	left: 0;
+	right: 0;
+	max-height: 260px;
+	overflow: auto;
+	background: #fff;
+	border: 1px solid rgba(148, 163, 184, .35);
+	border-radius: 18px;
+	box-shadow: 0 24px 60px rgba(15, 23, 42, .18);
+	padding: 6px;
+	display: none;
+}
+
+.finea-select-search.is-open .finea-select-menu {
+	display: block;
+}
+
+.finea-select-option {
+	width: 100%;
+	border: 0;
+	background: transparent;
+	text-align: left;
+	padding: 11px 12px;
+	border-radius: 13px;
+	cursor: pointer;
+	font: inherit;
+	color: #0f172a;
+}
+
+.finea-select-option:hover,
+.finea-select-option.is-active {
+	background: #eff6ff;
+	color: #1d2b57;
+}
+
+.finea-select-empty {
+	padding: 12px;
+	color: #64748b;
+}
+
+.finea-dropzone {
+	min-height: 160px;
+	border: 1.5px dashed rgba(29, 43, 87, .35);
+	border-radius: 22px;
+	background: linear-gradient(180deg, #fff, #f8fafc);
+	display: grid;
+	place-items: center;
+	text-align: center;
+	gap: 8px;
+	padding: 22px;
+	cursor: pointer;
+	transition: border-color .2s ease, transform .2s ease, box-shadow .2s ease;
+}
+
+.finea-dropzone:hover,
+.finea-dropzone.is-dragging {
+	border-color: #fabd02;
+	box-shadow: 0 18px 42px rgba(15, 23, 42, .12);
+	transform: translateY(-1px);
+}
+
+.finea-dropzone input[type=file] {
+	display: none;
+}
+
+.finea-dropzone-icon {
+	width: 44px;
+	height: 44px;
+	border-radius: 16px;
+	display: grid;
+	place-items: center;
+	background: #1d2b57;
+	color: #fff;
+	font-size: 1.4rem;
+}
+
+.finea-file-preview {
+	color: #1d2b57;
+	font-weight: 800;
+}
+
+.finea-file-preview img {
+	max-height: 72px;
+	border-radius: 14px;
+	display: block;
+	margin: 0 auto 6px;
+}
+
+.finea-section-heading {
+	display: flex;
+	align-items: start;
+	justify-content: space-between;
+	gap: 16px;
+	margin-bottom: 16px;
+}
+
+.finea-badge {
+	display: inline-flex;
+	padding: 6px 10px;
+	border-radius: 999px;
+	font-weight: 800;
+	font-size: .78rem;
+	background: #f1f5f9;
+	color: #334155;
+}
+
+.finea-badge--success {
+	background: #dcfce7;
+	color: #166534;
+}
+
+.finea-badge--warning {
+	background: #fef3c7;
+	color: #92400e;
+}
+
+.finea-badge--danger {
+	background: #fee2e2;
+	color: #991b1b;
+}
+
+.finea-empty-state {
+	border: 1px dashed rgba(148, 163, 184, .55);
+	border-radius: 20px;
+	padding: 22px;
+	text-align: center;
+	color: #64748b;
+	background: #f8fafc;
+}
