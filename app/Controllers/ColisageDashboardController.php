@@ -5,22 +5,24 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Middleware\AuthMiddleware;
-use App\Services\ModuleDashboardService;
+use App\Models\Database;
+use App\Repositories\ColisageDashboardRepository;
+use App\Services\ColisageDashboardService;
 
 final class ColisageDashboardController extends BaseController
 {
-    private ModuleDashboardService $service;
+    private ColisageDashboardService $service;
 
     public function __construct()
     {
-        $this->service = new ModuleDashboardService();
+        $this->service = new ColisageDashboardService(new ColisageDashboardRepository(Database::getConnection()));
     }
 
     public function index(): void
     {
         AuthMiddleware::check();
 
-        $module = $this->service->dashboard('colisage');
+        $module = $this->service->dashboard();
 
         $this->view('colisage/dashboard', $this->viewData($module) + [
             'dashboardModule' => $module,

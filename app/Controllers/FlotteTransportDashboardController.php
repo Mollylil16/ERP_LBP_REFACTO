@@ -5,22 +5,24 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Middleware\AuthMiddleware;
-use App\Services\ModuleDashboardService;
+use App\Models\Database;
+use App\Repositories\FlotteTransportDashboardRepository;
+use App\Services\FlotteTransportDashboardService;
 
 final class FlotteTransportDashboardController extends BaseController
 {
-    private ModuleDashboardService $service;
+    private FlotteTransportDashboardService $service;
 
     public function __construct()
     {
-        $this->service = new ModuleDashboardService();
+        $this->service = new FlotteTransportDashboardService(new FlotteTransportDashboardRepository(Database::getConnection()));
     }
 
     public function index(): void
     {
         AuthMiddleware::check();
 
-        $module = $this->service->dashboard('flotte-transport');
+        $module = $this->service->dashboard();
 
         $this->view('flotte_transport/dashboard', $this->viewData($module) + [
             'dashboardModule' => $module,

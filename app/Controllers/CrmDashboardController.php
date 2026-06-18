@@ -5,22 +5,24 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Middleware\AuthMiddleware;
-use App\Services\ModuleDashboardService;
+use App\Models\Database;
+use App\Repositories\CrmDashboardRepository;
+use App\Services\CrmDashboardService;
 
 final class CrmDashboardController extends BaseController
 {
-    private ModuleDashboardService $service;
+    private CrmDashboardService $service;
 
     public function __construct()
     {
-        $this->service = new ModuleDashboardService();
+        $this->service = new CrmDashboardService(new CrmDashboardRepository(Database::getConnection()));
     }
 
     public function index(): void
     {
         AuthMiddleware::check();
 
-        $module = $this->service->dashboard('crm');
+        $module = $this->service->dashboard();
 
         $this->view('crm/dashboard', $this->viewData($module) + [
             'dashboardModule' => $module,

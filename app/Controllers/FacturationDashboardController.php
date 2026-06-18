@@ -5,22 +5,24 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Middleware\AuthMiddleware;
-use App\Services\ModuleDashboardService;
+use App\Models\Database;
+use App\Repositories\FacturationDashboardRepository;
+use App\Services\FacturationDashboardService;
 
 final class FacturationDashboardController extends BaseController
 {
-    private ModuleDashboardService $service;
+    private FacturationDashboardService $service;
 
     public function __construct()
     {
-        $this->service = new ModuleDashboardService();
+        $this->service = new FacturationDashboardService(new FacturationDashboardRepository(Database::getConnection()));
     }
 
     public function index(): void
     {
         AuthMiddleware::check();
 
-        $module = $this->service->dashboard('facturation');
+        $module = $this->service->dashboard();
 
         $this->view('facturation/dashboard', $this->viewData($module) + [
             'dashboardModule' => $module,

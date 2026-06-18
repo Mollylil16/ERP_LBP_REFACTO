@@ -5,22 +5,24 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Middleware\AuthMiddleware;
-use App\Services\ModuleDashboardService;
+use App\Models\Database;
+use App\Repositories\PilotageDgDashboardRepository;
+use App\Services\PilotageDgDashboardService;
 
 final class PilotageDgDashboardController extends BaseController
 {
-    private ModuleDashboardService $service;
+    private PilotageDgDashboardService $service;
 
     public function __construct()
     {
-        $this->service = new ModuleDashboardService();
+        $this->service = new PilotageDgDashboardService(new PilotageDgDashboardRepository(Database::getConnection()));
     }
 
     public function index(): void
     {
         AuthMiddleware::check();
 
-        $module = $this->service->dashboard('pilotage-dg');
+        $module = $this->service->dashboard();
 
         $this->view('pilotage_dg/dashboard', $this->viewData($module) + [
             'dashboardModule' => $module,

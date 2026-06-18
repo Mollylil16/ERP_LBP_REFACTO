@@ -5,22 +5,24 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Middleware\AuthMiddleware;
-use App\Services\ModuleDashboardService;
+use App\Models\Database;
+use App\Repositories\TrackingColisDashboardRepository;
+use App\Services\TrackingColisDashboardService;
 
 final class TrackingColisDashboardController extends BaseController
 {
-    private ModuleDashboardService $service;
+    private TrackingColisDashboardService $service;
 
     public function __construct()
     {
-        $this->service = new ModuleDashboardService();
+        $this->service = new TrackingColisDashboardService(new TrackingColisDashboardRepository(Database::getConnection()));
     }
 
     public function index(): void
     {
         AuthMiddleware::check();
 
-        $module = $this->service->dashboard('tracking-colis');
+        $module = $this->service->dashboard();
 
         $this->view('tracking_colis/dashboard', $this->viewData($module) + [
             'dashboardModule' => $module,

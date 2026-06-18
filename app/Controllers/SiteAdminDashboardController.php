@@ -5,22 +5,24 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Middleware\AuthMiddleware;
-use App\Services\ModuleDashboardService;
+use App\Models\Database;
+use App\Repositories\SiteAdminDashboardRepository;
+use App\Services\SiteAdminDashboardService;
 
 final class SiteAdminDashboardController extends BaseController
 {
-    private ModuleDashboardService $service;
+    private SiteAdminDashboardService $service;
 
     public function __construct()
     {
-        $this->service = new ModuleDashboardService();
+        $this->service = new SiteAdminDashboardService(new SiteAdminDashboardRepository(Database::getConnection()));
     }
 
     public function index(): void
     {
         AuthMiddleware::check();
 
-        $module = $this->service->dashboard('site-admin');
+        $module = $this->service->dashboard();
 
         $this->view('site_admin/dashboard', $this->viewData($module) + [
             'dashboardModule' => $module,

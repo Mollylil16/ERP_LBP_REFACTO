@@ -5,22 +5,24 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Middleware\AuthMiddleware;
-use App\Services\ModuleDashboardService;
+use App\Models\Database;
+use App\Repositories\FinanceDashboardRepository;
+use App\Services\FinanceDashboardService;
 
 final class FinanceDashboardController extends BaseController
 {
-    private ModuleDashboardService $service;
+    private FinanceDashboardService $service;
 
     public function __construct()
     {
-        $this->service = new ModuleDashboardService();
+        $this->service = new FinanceDashboardService(new FinanceDashboardRepository(Database::getConnection()));
     }
 
     public function index(): void
     {
         AuthMiddleware::check();
 
-        $module = $this->service->dashboard('finance');
+        $module = $this->service->dashboard();
 
         $this->view('finance/dashboard', $this->viewData($module) + [
             'dashboardModule' => $module,

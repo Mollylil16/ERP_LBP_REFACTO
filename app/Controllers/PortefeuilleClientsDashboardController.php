@@ -5,22 +5,24 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Middleware\AuthMiddleware;
-use App\Services\ModuleDashboardService;
+use App\Models\Database;
+use App\Repositories\PortefeuilleClientsDashboardRepository;
+use App\Services\PortefeuilleClientsDashboardService;
 
 final class PortefeuilleClientsDashboardController extends BaseController
 {
-    private ModuleDashboardService $service;
+    private PortefeuilleClientsDashboardService $service;
 
     public function __construct()
     {
-        $this->service = new ModuleDashboardService();
+        $this->service = new PortefeuilleClientsDashboardService(new PortefeuilleClientsDashboardRepository(Database::getConnection()));
     }
 
     public function index(): void
     {
         AuthMiddleware::check();
 
-        $module = $this->service->dashboard('portefeuille-clients');
+        $module = $this->service->dashboard();
 
         $this->view('portefeuille_clients/dashboard', $this->viewData($module) + [
             'dashboardModule' => $module,

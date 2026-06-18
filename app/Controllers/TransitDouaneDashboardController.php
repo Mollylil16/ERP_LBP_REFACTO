@@ -5,22 +5,24 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Middleware\AuthMiddleware;
-use App\Services\ModuleDashboardService;
+use App\Models\Database;
+use App\Repositories\TransitDouaneDashboardRepository;
+use App\Services\TransitDouaneDashboardService;
 
 final class TransitDouaneDashboardController extends BaseController
 {
-    private ModuleDashboardService $service;
+    private TransitDouaneDashboardService $service;
 
     public function __construct()
     {
-        $this->service = new ModuleDashboardService();
+        $this->service = new TransitDouaneDashboardService(new TransitDouaneDashboardRepository(Database::getConnection()));
     }
 
     public function index(): void
     {
         AuthMiddleware::check();
 
-        $module = $this->service->dashboard('transit-douane');
+        $module = $this->service->dashboard();
 
         $this->view('transit_douane/dashboard', $this->viewData($module) + [
             'dashboardModule' => $module,
