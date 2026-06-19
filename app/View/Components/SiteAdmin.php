@@ -56,7 +56,15 @@ final class SiteAdmin
         foreach ($page->products as $product) {
             $html .= self::productForm($product, $page->csrfToken);
         }
-        return $html . self::productForm([], $page->csrfToken) . '</div></section>';
+        $html .= self::productForm([], $page->csrfToken) . '</div></section>'
+            . '<section id="announcements" class="finea-section-card site-admin-carousel"><div class="finea-section-heading"><h2 class="finea-section-title">Annonces du bandeau</h2><span>'
+            . count($page->announcements) . ' annonce(s)</span></div><div class="site-admin-slide-list">';
+        foreach ($page->announcements as $announcement) $html .= self::announcementForm($announcement, $page->csrfToken);
+        $html .= self::announcementForm([], $page->csrfToken) . '</div></section>'
+            . '<section id="articles" class="finea-section-card site-admin-carousel"><div class="finea-section-heading"><h2 class="finea-section-title">Articles du blog</h2><span>'
+            . count($page->articles) . ' article(s)</span></div><div class="site-admin-slide-list">';
+        foreach ($page->articles as $article) $html .= self::articleForm($article, $page->csrfToken);
+        return $html . self::articleForm([], $page->csrfToken) . '</div></section>';
     }
 
     /** @param array<string,mixed> $brand */
@@ -75,7 +83,7 @@ final class SiteAdmin
     private static function slideForm(array $slide, string $csrfToken): string
     {
         $isNew = empty($slide['id']);
-        return '<form class="site-admin-slide" method="post" action="' . View::url('site-admin/configuration/slides') . '">'
+        return '<form class="site-admin-slide" method="post" enctype="multipart/form-data" action="' . View::url('site-admin/configuration/slides') . '">'
             . Form::hidden('_csrf_token', $csrfToken)
             . Form::hidden('id', $slide['id'] ?? 0)
             . '<header><strong>' . ($isNew ? 'Ajouter un slide' : 'Slide #' . (int) $slide['id'])
@@ -84,7 +92,13 @@ final class SiteAdmin
             . Form::input('eyebrow', ['label' => 'Sur-titre', 'value' => $slide['eyebrow'] ?? ''])
             . Form::input('title', ['label' => 'Titre', 'value' => $slide['title'] ?? '', 'required' => true])
             . Form::textarea('description', ['label' => 'Description', 'value' => $slide['description'] ?? '', 'rows' => 3])
-            . Form::input('image_url', ['label' => 'Image', 'value' => $slide['image_url'] ?? '', 'placeholder' => 'images/site/hero-logistics.svg'])
+            . Form::input('image_url', ['label' => 'Image actuelle / URL', 'value' => $slide['image_url'] ?? '', 'placeholder' => 'images/site/hero-logistics.svg'])
+            . Form::dropzone('slide_image', 'Téléverser une nouvelle image', [
+                'accept' => 'image/jpeg,image/png,image/webp',
+                'hint' => 'JPG, PNG ou WEBP · minimum 1600 × 600 px · recommandé 1920 × 760 px · 8 Mo maximum.',
+                'preview' => (string) ($slide['image_url'] ?? ''),
+                'class' => 'site-admin-slide-upload',
+            ])
             . Form::input('primary_label', ['label' => 'Bouton principal', 'value' => $slide['primary_label'] ?? ''])
             . Form::input('primary_url', ['label' => 'Lien principal', 'value' => $slide['primary_url'] ?? ''])
             . Form::input('secondary_label', ['label' => 'Bouton secondaire', 'value' => $slide['secondary_label'] ?? ''])
@@ -117,5 +131,39 @@ final class SiteAdmin
             . Form::checkbox('is_featured', ['label' => 'Mettre en avant', 'checked' => !empty($product['is_featured'])])
             . Form::checkbox('is_active', ['label' => 'Publier cette offre', 'checked' => !isset($product['is_active']) || !empty($product['is_active'])])
             . '</div><footer>' . Ui::button($isNew ? 'Ajouter à la marketplace' : 'Enregistrer l’offre', ['variant' => 'primary', 'type' => 'submit']) . '</footer></form>';
+    }
+
+    private static function announcementForm(array $item, string $csrfToken): string
+    {
+        return '<form class="site-admin-slide" method="post" action="' . View::url('site-admin/configuration/announcements') . '">'
+            . Form::hidden('_csrf_token', $csrfToken) . Form::hidden('id', $item['id'] ?? 0)
+            . '<header><strong>' . (empty($item['id']) ? 'Ajouter une annonce' : View::e((string) $item['title'])) . '</strong></header>'
+            . '<div class="site-admin-fields">'
+            . Form::input('badge', ['label' => 'Badge', 'value' => $item['badge'] ?? 'Nouveau'])
+            . Form::input('title', ['label' => 'Texte', 'value' => $item['title'] ?? '', 'required' => true])
+            . Form::input('link_label', ['label' => 'Libellé du lien', 'value' => $item['link_label'] ?? 'En savoir plus'])
+            . Form::input('link_url', ['label' => 'Lien', 'value' => $item['link_url'] ?? 'site/devis'])
+            . Form::input('starts_at', ['label' => 'Début', 'type' => 'datetime-local', 'value' => isset($item['starts_at']) ? str_replace(' ', 'T', (string) $item['starts_at']) : ''])
+            . Form::input('ends_at', ['label' => 'Fin', 'type' => 'datetime-local', 'value' => isset($item['ends_at']) ? str_replace(' ', 'T', (string) $item['ends_at']) : ''])
+            . Form::input('sort_order', ['label' => 'Ordre', 'type' => 'number', 'value' => $item['sort_order'] ?? 0])
+            . Form::checkbox('is_active', ['label' => 'Annonce active', 'checked' => !isset($item['is_active']) || !empty($item['is_active'])])
+            . '</div><footer>' . Ui::button('Enregistrer l’annonce', ['variant' => 'primary', 'type' => 'submit']) . '</footer></form>';
+    }
+
+    private static function articleForm(array $item, string $csrfToken): string
+    {
+        return '<form class="site-admin-slide" method="post" action="' . View::url('site-admin/configuration/articles') . '">'
+            . Form::hidden('_csrf_token', $csrfToken) . Form::hidden('id', $item['id'] ?? 0)
+            . '<header><strong>' . (empty($item['id']) ? 'Créer un article' : View::e((string) $item['title'])) . '</strong></header>'
+            . '<div class="site-admin-fields">'
+            . Form::input('title', ['label' => 'Titre', 'value' => $item['title'] ?? '', 'required' => true])
+            . Form::input('slug', ['label' => 'Slug', 'value' => $item['slug'] ?? ''])
+            . Form::input('author_name', ['label' => 'Auteur', 'value' => $item['author_name'] ?? 'Équipe LBP'])
+            . Form::input('image_url', ['label' => 'Image', 'value' => $item['image_url'] ?? ''])
+            . Form::textarea('excerpt', ['label' => 'Résumé', 'value' => $item['excerpt'] ?? '', 'rows' => 3])
+            . Form::textarea('content', ['label' => 'Contenu', 'value' => $item['content'] ?? '', 'rows' => 8])
+            . Form::input('published_at', ['label' => 'Publication', 'type' => 'datetime-local', 'value' => isset($item['published_at']) ? str_replace(' ', 'T', (string) $item['published_at']) : ''])
+            . Form::checkbox('is_published', ['label' => 'Publier cet article', 'checked' => !empty($item['is_published'])])
+            . '</div><footer>' . Ui::button('Enregistrer l’article', ['variant' => 'primary', 'type' => 'submit']) . '</footer></form>';
     }
 }

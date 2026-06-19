@@ -16,6 +16,8 @@ final class ConfigurationPage
         public readonly array $branding,
         public readonly array $slides,
         public readonly array $products,
+        public readonly array $announcements,
+        public readonly array $articles,
     ) {
     }
 }

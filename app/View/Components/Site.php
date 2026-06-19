@@ -9,6 +9,13 @@ use App\View\Components\Form;
 
 final class Site
 {
+    public static function button(string $label, array $options = []): string
+    {
+        $variant = (string) ($options['variant'] ?? 'primary');
+        $options['class'] = Html::classes(['site-button', 'site-button--' . $variant, (string) ($options['class'] ?? '')]);
+        $options['variant'] = $variant;
+        return Ui::button($label, $options);
+    }
     public static function icon(string $name): string
     {
         $icons = [

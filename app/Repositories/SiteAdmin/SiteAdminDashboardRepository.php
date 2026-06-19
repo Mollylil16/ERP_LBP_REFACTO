@@ -19,13 +19,15 @@ final class SiteAdminDashboardRepository extends \App\Repositories\Shared\Module
             ['label' => 'Slides actifs', 'value' => $count('website_slides', 'is_active = 1'), 'meta' => 'Carrousel de la page d’accueil', 'href' => '/site-admin/configuration#carousel'],
             ['label' => 'Offres publiées', 'value' => $count('website_products', 'is_active = 1'), 'meta' => 'Marketplace publique', 'href' => '/site-admin/configuration#marketplace'],
             ['label' => 'Discussions', 'value' => $count('website_forum_topics', 'is_published = 1'), 'meta' => 'Communauté import-export', 'href' => '/site/forum'],
-            ['label' => 'Leads reçus', 'value' => $count('website_leads'), 'meta' => 'Contacts et demandes de devis', 'href' => '/site-admin/dashboard'],
+            ['label' => 'Conversations', 'value' => $count('website_conversations'), 'meta' => 'Échanges avec les clients connectés', 'href' => '/site-admin/messages'],
         ];
         $module['actions'] = [
             ['label' => 'Design & contenus', 'hint' => 'Branding, couleurs, carrousel et boutique', 'url' => '/site-admin/configuration'],
             ['label' => 'Prévisualiser le site', 'hint' => 'Contrôler immédiatement le rendu public', 'url' => '/site'],
             ['label' => 'Voir la marketplace', 'hint' => 'Tester le catalogue et le panier', 'url' => '/site/shop'],
+            ['label' => 'Répondre aux clients', 'hint' => 'Messages, images, vidéos et notes vocales', 'url' => '/site-admin/messages'],
         ];
+        $module['showWorkflow'] = false;
         return $module;
     }
 }

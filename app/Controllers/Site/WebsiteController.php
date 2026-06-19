@@ -74,6 +74,23 @@ final class WebsiteController extends BaseController
         $this->siteView('site/forum', 'Communauté', 'forum');
     }
 
+    public function blog(): void
+    {
+        $this->siteView('site/blog', 'Actualités', 'blog');
+    }
+
+    public function article(string $slug): void
+    {
+        $article = $this->website->article($slug);
+        if ($article === null) {
+            (new \App\Controllers\Error\ErrorController())->notFound('/site/blog/' . $slug);
+            return;
+        }
+        $content = $this->website->content();
+        $page = new SitePage('Article', 'blog', $this->demoShipments(), $this->demoAgencies(), $content['services'], $this->demoNews(), [], $content['branding'], $content['slides'], $content['products'], $content['topics'], $content['announcements'], $content['articles']);
+        $this->view('site/article', ['pageTitle' => (string) $article['title'], 'page' => $page, 'article' => $article]);
+    }
+
     private function siteView(string $view, string $title, string $activePage, string $reference = ''): void
     {
         $content = $this->website->content();
@@ -96,6 +113,8 @@ final class WebsiteController extends BaseController
                 $content['slides'],
                 $content['products'],
                 $content['topics'],
+                $content['announcements'],
+                $content['articles'],
                 $reference,
             ),
         ]);

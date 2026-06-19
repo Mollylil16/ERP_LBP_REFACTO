@@ -53,6 +53,30 @@ final class WebsiteRepository
         )->fetchAll() ?: [];
     }
 
+    /** @return array<int,array<string,mixed>> */
+    public function announcements(bool $activeOnly = true): array
+    {
+        $where = $activeOnly
+            ? "WHERE is_active = 1 AND (starts_at IS NULL OR starts_at <= NOW()) AND (ends_at IS NULL OR ends_at >= NOW())"
+            : '';
+        return $this->pdo->query("SELECT * FROM website_announcements {$where} ORDER BY sort_order, id DESC")->fetchAll() ?: [];
+    }
+
+    /** @return array<int,array<string,mixed>> */
+    public function articles(bool $publishedOnly = true): array
+    {
+        $where = $publishedOnly ? 'WHERE is_published = 1' : '';
+        return $this->pdo->query("SELECT * FROM website_articles {$where} ORDER BY COALESCE(published_at, created_at) DESC, id DESC")->fetchAll() ?: [];
+    }
+
+    /** @return array<string,mixed>|null */
+    public function article(string $slug): ?array
+    {
+        $stmt = $this->pdo->prepare('SELECT * FROM website_articles WHERE slug = :slug AND is_published = 1 LIMIT 1');
+        $stmt->execute(['slug' => $slug]);
+        return $stmt->fetch() ?: null;
+    }
+
     /** @param array<string,string> $branding */
     public function updateBranding(array $branding): void
     {
@@ -131,5 +155,33 @@ final class WebsiteRepository
                  :stock_status, :is_featured, :is_active, :sort_order)
         ");
         $stmt->execute($product);
+    }
+
+    /** @param array<string,mixed> $announcement */
+    public function saveAnnouncement(array $announcement): void
+    {
+        $id = (int) ($announcement['id'] ?? 0);
+        if ($id > 0) {
+            $stmt = $this->pdo->prepare("UPDATE website_announcements SET badge=:badge,title=:title,link_label=:link_label,link_url=:link_url,starts_at=:starts_at,ends_at=:ends_at,is_active=:is_active,sort_order=:sort_order,updated_at=NOW() WHERE id=:id");
+            $stmt->execute($announcement);
+            return;
+        }
+        unset($announcement['id']);
+        $stmt = $this->pdo->prepare("INSERT INTO website_announcements (badge,title,link_label,link_url,starts_at,ends_at,is_active,sort_order) VALUES (:badge,:title,:link_label,:link_url,:starts_at,:ends_at,:is_active,:sort_order)");
+        $stmt->execute($announcement);
+    }
+
+    /** @param array<string,mixed> $article */
+    public function saveArticle(array $article): void
+    {
+        $id = (int) ($article['id'] ?? 0);
+        if ($id > 0) {
+            $stmt = $this->pdo->prepare("UPDATE website_articles SET slug=:slug,title=:title,excerpt=:excerpt,content=:content,image_url=:image_url,author_name=:author_name,is_published=:is_published,published_at=:published_at,updated_at=NOW() WHERE id=:id");
+            $stmt->execute($article);
+            return;
+        }
+        unset($article['id']);
+        $stmt = $this->pdo->prepare("INSERT INTO website_articles (slug,title,excerpt,content,image_url,author_name,is_published,published_at) VALUES (:slug,:title,:excerpt,:content,:image_url,:author_name,:is_published,:published_at)");
+        $stmt->execute($article);
     }
 }

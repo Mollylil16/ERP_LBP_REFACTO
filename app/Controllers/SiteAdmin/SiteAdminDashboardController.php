@@ -13,6 +13,8 @@ use App\Repositories\SiteAdmin\SiteAdminDashboardRepository;
 use App\Services\Site\WebsiteService;
 use App\Services\SiteAdmin\SiteAdminDashboardService;
 use App\View\Pages\SiteAdmin\ConfigurationPage;
+use App\View\Pages\SiteAdmin\AnalyticsPage;
+use App\Repositories\Site\WebsiteAnalyticsRepository;
 use App\View\Pages\SiteAdmin\DashboardPage;
 use RuntimeException;
 
@@ -54,6 +56,8 @@ final class SiteAdminDashboardController extends SiteAdminBaseController
                 $data['branding'],
                 $data['slides'],
                 $data['products'],
+                $data['announcements'],
+                $data['articles'],
             ),
         ], [
             'accent' => '#14b8a6',
@@ -84,7 +88,7 @@ final class SiteAdminDashboardController extends SiteAdminBaseController
         AuthMiddleware::check();
         $this->verifyCsrf();
         try {
-            $this->website->saveSlide($_POST);
+            $this->website->saveSlide($_POST, $_FILES['slide_image'] ?? null);
             Session::flash('success', 'Le carrousel public a été mis à jour.');
         } catch (RuntimeException $exception) {
             Session::flash('error', $exception->getMessage());
@@ -103,6 +107,44 @@ final class SiteAdminDashboardController extends SiteAdminBaseController
             Session::flash('error', $exception->getMessage());
         }
         $this->redirect('/site-admin/configuration#marketplace');
+    }
+
+    public function saveAnnouncement(): void
+    {
+        AuthMiddleware::check();
+        $this->verifyCsrf();
+        try {
+            $this->website->saveAnnouncement($_POST);
+            Session::flash('success', 'L’annonce a été enregistrée.');
+        } catch (RuntimeException $exception) {
+            Session::flash('error', $exception->getMessage());
+        }
+        $this->redirect('/site-admin/configuration#announcements');
+    }
+
+    public function saveArticle(): void
+    {
+        AuthMiddleware::check();
+        $this->verifyCsrf();
+        try {
+            $this->website->saveArticle($_POST);
+            Session::flash('success', 'L’article a été enregistré.');
+        } catch (RuntimeException $exception) {
+            Session::flash('error', $exception->getMessage());
+        }
+        $this->redirect('/site-admin/configuration#articles');
+    }
+
+    public function analytics(): void
+    {
+        AuthMiddleware::check();
+        $data = (new WebsiteAnalyticsRepository(Database::getConnection()))->dashboard();
+        $this->siteAdminView('site_admin/analytics', 'Statistiques du site', 'analytics', [
+            'page' => new AnalyticsPage($data),
+        ], [
+            'accent' => '#14b8a6', 'accent2' => '#0f766e',
+            'gradient' => 'linear-gradient(135deg,#0f766e,#14b8a6)', 'iconKey' => 'website',
+        ], ['additionalStyles' => ['css/finea-ui.css', 'css/site-admin.css']]);
     }
 
     private function verifyCsrf(): void

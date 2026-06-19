@@ -990,6 +990,104 @@ class MigrationRunner
                 created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         ");
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS website_announcements (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                badge VARCHAR(50) NULL,
+                title VARCHAR(255) NOT NULL,
+                link_label VARCHAR(100) NULL,
+                link_url VARCHAR(180) NULL,
+                starts_at DATETIME NULL,
+                ends_at DATETIME NULL,
+                is_active TINYINT(1) NOT NULL DEFAULT 1,
+                sort_order INT NOT NULL DEFAULT 0,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME NULL
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS website_articles (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                slug VARCHAR(160) NOT NULL,
+                title VARCHAR(220) NOT NULL,
+                excerpt VARCHAR(500) NULL,
+                content LONGTEXT NULL,
+                image_url VARCHAR(255) NULL,
+                author_name VARCHAR(140) NOT NULL DEFAULT 'Équipe LBP',
+                is_published TINYINT(1) NOT NULL DEFAULT 0,
+                published_at DATETIME NULL,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME NULL,
+                UNIQUE KEY uniq_website_articles_slug (slug)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS website_analytics_events (
+                id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                visitor_id VARCHAR(80) NOT NULL,
+                customer_id INT UNSIGNED NULL,
+                event_type ENUM('page_view','click') NOT NULL,
+                page_path VARCHAR(255) NOT NULL,
+                target_key VARCHAR(180) NULL,
+                target_label VARCHAR(255) NULL,
+                referrer VARCHAR(500) NULL,
+                ip_address VARCHAR(80) NULL,
+                user_agent VARCHAR(500) NULL,
+                language VARCHAR(50) NULL,
+                timezone VARCHAR(100) NULL,
+                screen_size VARCHAR(40) NULL,
+                latitude DECIMAL(10,7) NULL,
+                longitude DECIMAL(10,7) NULL,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                KEY idx_website_analytics_date (created_at),
+                KEY idx_website_analytics_page (page_path, event_type),
+                KEY idx_website_analytics_visitor (visitor_id, created_at)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS website_customer_accounts (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                full_name VARCHAR(180) NOT NULL,
+                email VARCHAR(160) NOT NULL,
+                phone VARCHAR(60) NULL,
+                password_hash VARCHAR(255) NOT NULL,
+                status ENUM('active','suspended') NOT NULL DEFAULT 'active',
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME NULL,
+                UNIQUE KEY uniq_website_customer_email (email)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS website_conversations (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                customer_id INT UNSIGNED NOT NULL,
+                subject VARCHAR(180) NOT NULL DEFAULT 'Assistance client',
+                status ENUM('open','pending','closed') NOT NULL DEFAULT 'open',
+                assigned_user_id INT NULL,
+                last_message_at DATETIME NULL,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME NULL,
+                KEY idx_website_conversations_customer (customer_id, status),
+                KEY idx_website_conversations_activity (last_message_at),
+                CONSTRAINT fk_website_conversations_customer FOREIGN KEY (customer_id) REFERENCES website_customer_accounts(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS website_conversation_messages (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                conversation_id INT UNSIGNED NOT NULL,
+                sender_type ENUM('customer','manager') NOT NULL,
+                sender_id INT UNSIGNED NOT NULL,
+                message TEXT NULL,
+                attachment_path VARCHAR(255) NULL,
+                attachment_name VARCHAR(255) NULL,
+                attachment_mime VARCHAR(120) NULL,
+                attachment_size INT UNSIGNED NULL,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                KEY idx_website_messages_conversation (conversation_id, id),
+                CONSTRAINT fk_website_messages_conversation FOREIGN KEY (conversation_id) REFERENCES website_conversations(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
 
         $this->createTransitExtensionTables();
 
@@ -1189,6 +1287,21 @@ class MigrationRunner
                 (1, 'Import Chine', 'Quels documents demander à son fournisseur avant le départ ?', 'Checklist facture, packing list, certificat d’origine et contrôle qualité.', 'Awa K.', 18, 426, 1, NOW()),
                 (2, 'Douane', 'Comprendre la valeur en douane sans jargon', 'Échange pratique autour du fret, de l’assurance et de la valeur transactionnelle.', 'Conseiller LBP', 12, 318, 1, NOW()),
                 (3, 'Transport', 'Maritime ou aérien pour un premier envoi ?', 'Retours d’expérience selon le volume, l’urgence et le budget.', 'Moussa T.', 27, 591, 0, NOW())
+        ");
+        $this->pdo->exec("
+            INSERT IGNORE INTO website_announcements
+                (id, badge, title, link_label, link_url, is_active, sort_order)
+            VALUES
+                (1, 'Nouveau', 'Expéditions Chine → Afrique : départs groupés chaque semaine', 'En savoir plus', 'site/devis', 1, 10)
+        ");
+        $this->pdo->exec("
+            INSERT IGNORE INTO website_articles
+                (id, slug, title, excerpt, content, author_name, is_published, published_at)
+            VALUES
+                (1, 'preparer-import-chine-afrique', 'Préparer son premier import Chine → Afrique',
+                 'Les étapes essentielles avant de payer un fournisseur et réserver le transport.',
+                 'Vérifiez le fournisseur, définissez clairement les incoterms, contrôlez les documents commerciaux et anticipez les formalités douanières avant l’embarquement.',
+                 'Équipe LBP', 1, NOW())
         ");
     }
 

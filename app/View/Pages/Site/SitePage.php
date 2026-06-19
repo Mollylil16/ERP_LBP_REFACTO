@@ -37,6 +37,8 @@ final class SitePage
         public readonly array $slides,
         public readonly array $products,
         public readonly array $topics,
+        public readonly array $announcements = [],
+        public readonly array $articles = [],
         string $reference = '',
     ) {
         $this->defaultShipment = (string) (array_key_first($shipments) ?? '');

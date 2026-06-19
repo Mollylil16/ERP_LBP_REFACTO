@@ -1,6 +1,7 @@
 <?php
 use App\View\Components\Form;
 use App\View\Components\Ui;
+use App\View\Components\Site;
 use App\View\Pages\Site\SitePage;
 
 /** @var SitePage $page */
@@ -38,7 +39,7 @@ ob_start();
             'rows' => 5,
             'placeholder' => 'Décrivez la marchandise, volume, urgence, documents disponibles...',
         ]) ?>
-        <?= Ui::button('Envoyer la demande test', ['variant' => 'accent', 'type' => 'button']) ?>
+        <?= Site::button('Envoyer la demande test', ['variant' => 'accent', 'type' => 'button']) ?>
     </form>
 
     <aside class="site-card site-card--light">

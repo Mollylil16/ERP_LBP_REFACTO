@@ -2,6 +2,7 @@
 use App\Helpers\View;
 use App\View\Components\Form;
 use App\View\Components\Ui;
+use App\View\Components\Site;
 use App\View\Pages\Site\SitePage;
 
 /** @var SitePage $page */
@@ -30,7 +31,7 @@ ob_start();
             ], '', ['label' => 'Motif']) ?>
         </div>
         <?= Form::textarea('message', ['label' => 'Message', 'rows' => 5, 'placeholder' => 'Votre message...']) ?>
-        <?= Ui::button('Envoyer le message test', ['variant' => 'primary', 'type' => 'button']) ?>
+        <?= Site::button('Envoyer le message test', ['variant' => 'primary', 'type' => 'button']) ?>
     </form>
 
     <aside class="site-contact-panel">

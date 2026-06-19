@@ -9,8 +9,11 @@ use RuntimeException;
 
 final class WebsiteService
 {
-    public function __construct(private WebsiteRepository $repository)
-    {
+    public function __construct(
+        private WebsiteRepository $repository,
+        private ?SiteMediaUploadService $uploads = null,
+    ) {
+        $this->uploads ??= new SiteMediaUploadService();
     }
 
     /** @return array<string,mixed> */
@@ -22,6 +25,8 @@ final class WebsiteService
             'services' => $this->repository->services(),
             'products' => $this->repository->products(),
             'topics' => $this->repository->topics(),
+            'announcements' => $this->repository->announcements(),
+            'articles' => $this->repository->articles(),
         ];
     }
 
@@ -32,7 +37,15 @@ final class WebsiteService
             'branding' => $this->repository->branding(),
             'slides' => $this->repository->slides(false),
             'products' => $this->repository->products(false),
+            'announcements' => $this->repository->announcements(false),
+            'articles' => $this->repository->articles(false),
         ];
+    }
+
+    /** @return array<string,mixed>|null */
+    public function article(string $slug): ?array
+    {
+        return $this->repository->article($slug);
     }
 
     /** @param array<string,mixed> $input */
@@ -58,19 +71,20 @@ final class WebsiteService
     }
 
     /** @param array<string,mixed> $input */
-    public function saveSlide(array $input): void
+    public function saveSlide(array $input, ?array $image = null): void
     {
         $title = trim((string) ($input['title'] ?? ''));
         if ($title === '') {
             throw new RuntimeException('Le titre du slide est obligatoire.');
         }
 
+        $uploadedImage = $this->uploads->storeSlide($image);
         $this->repository->saveSlide([
             'id' => (int) ($input['id'] ?? 0),
             'eyebrow' => $this->text($input['eyebrow'] ?? null),
             'title' => $title,
             'description' => $this->text($input['description'] ?? null),
-            'image_url' => $this->text($input['image_url'] ?? null),
+            'image_url' => $uploadedImage ?? $this->text($input['image_url'] ?? null),
             'primary_label' => $this->text($input['primary_label'] ?? null),
             'primary_url' => $this->text($input['primary_url'] ?? null),
             'secondary_label' => $this->text($input['secondary_label'] ?? null),
@@ -105,6 +119,45 @@ final class WebsiteService
             'is_featured' => !empty($input['is_featured']) ? 1 : 0,
             'is_active' => !empty($input['is_active']) ? 1 : 0,
             'sort_order' => (int) ($input['sort_order'] ?? 0),
+        ]);
+    }
+
+    /** @param array<string,mixed> $input */
+    public function saveAnnouncement(array $input): void
+    {
+        $title = trim((string) ($input['title'] ?? ''));
+        if ($title === '') throw new RuntimeException('Le texte de l’annonce est obligatoire.');
+        $this->repository->saveAnnouncement([
+            'id' => (int) ($input['id'] ?? 0),
+            'badge' => $this->text($input['badge'] ?? null),
+            'title' => $title,
+            'link_label' => $this->text($input['link_label'] ?? null),
+            'link_url' => $this->text($input['link_url'] ?? null),
+            'starts_at' => $this->text($input['starts_at'] ?? null),
+            'ends_at' => $this->text($input['ends_at'] ?? null),
+            'is_active' => !empty($input['is_active']) ? 1 : 0,
+            'sort_order' => (int) ($input['sort_order'] ?? 0),
+        ]);
+    }
+
+    /** @param array<string,mixed> $input */
+    public function saveArticle(array $input): void
+    {
+        $title = trim((string) ($input['title'] ?? ''));
+        if ($title === '') throw new RuntimeException('Le titre de l’article est obligatoire.');
+        $slug = trim((string) ($input['slug'] ?? ''));
+        $slug = trim(strtolower((string) preg_replace('/[^a-z0-9]+/i', '-', $slug !== '' ? $slug : $title)), '-');
+        $published = !empty($input['is_published']);
+        $this->repository->saveArticle([
+            'id' => (int) ($input['id'] ?? 0),
+            'slug' => $slug,
+            'title' => $title,
+            'excerpt' => $this->text($input['excerpt'] ?? null),
+            'content' => $this->text($input['content'] ?? null),
+            'image_url' => $this->text($input['image_url'] ?? null),
+            'author_name' => $this->text($input['author_name'] ?? null) ?? 'Équipe LBP',
+            'is_published' => $published ? 1 : 0,
+            'published_at' => $published ? (($input['published_at'] ?? '') ?: date('Y-m-d H:i:s')) : null,
         ]);
     }
 

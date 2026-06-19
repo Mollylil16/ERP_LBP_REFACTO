@@ -2,6 +2,7 @@
 use App\Helpers\View;
 use App\View\Components\Form;
 use App\View\Components\Ui;
+use App\View\Components\Site;
 use App\View\Pages\Site\SitePage;
 
 /** @var SitePage $page */
@@ -14,7 +15,7 @@ $current = $page->currentShipment;
     <h1>Consultez l’état d’un colis, BL ou dossier transit.</h1>
     <form class="site-searchbar" method="get" action="<?= View::url('site/tracking') ?>">
         <?= Form::input('ref', ['label' => 'Référence', 'value' => $current['reference'] ?? '', 'placeholder' => 'Référence colis / BL / dossier']) ?>
-        <?= Ui::button('Suivre', ['variant' => 'accent', 'type' => 'submit']) ?>
+        <?= Site::button('Suivre', ['variant' => 'accent', 'type' => 'submit']) ?>
     </form>
 </section>
 <section class="site-tracking-result">
