@@ -1,20 +1,22 @@
 <?php
 
-namespace App\Controllers\Admin;
+declare(strict_types=1);
 
-use App\Controllers\BaseController;
+namespace App\Controllers\Admin;
 
 use App\Helpers\Csrf;
 use App\Helpers\Session;
 use App\Middleware\AdminMiddleware;
 use App\Models\Database;
 use App\Repositories\Admin\PermissionRepository;
-use App\Repositories\Rh\RhPersonnelRepository;
 use App\Repositories\Admin\UserRepository;
+use App\Repositories\Rh\RhPersonnelRepository;
 use App\Services\Admin\AdminService;
+use App\View\Pages\Admin\PermissionEditPage;
+use App\View\Pages\Admin\PermissionMatrixPage;
 use RuntimeException;
 
-class AdminPermissionController extends BaseController
+final class AdminPermissionController extends AdminBaseController
 {
     private AdminService $service;
 
@@ -32,14 +34,20 @@ class AdminPermissionController extends BaseController
     public function matrix(): void
     {
         AdminMiddleware::check();
-        $this->view('admin/permissions/matrix', $this->viewData('Matrice des permissions', 'permissions') + $this->service->matrix());
+        $data = $this->service->matrix();
+        $this->adminView('admin/permissions/matrix', 'Matrice des permissions', 'permissions', [
+            'page' => new PermissionMatrixPage($data['entities'], $data['users']),
+        ]);
     }
 
     public function edit(string $id): void
     {
         AdminMiddleware::check();
         try {
-            $this->view('admin/permissions/edit', $this->viewData('Droits utilisateur', 'permissions') + $this->service->user((int) $id));
+            $data = $this->service->user((int) $id);
+            $this->adminView('admin/permissions/edit', 'Droits utilisateur', 'permissions', [
+                'page' => new PermissionEditPage($data['user'], $data['permissions']),
+            ]);
         } catch (RuntimeException $e) {
             Session::flash('error', $e->getMessage());
             $this->redirect('/admin/permissions');
@@ -62,17 +70,5 @@ class AdminPermissionController extends BaseController
             Session::flash('error', $e->getMessage());
             $this->back();
         }
-    }
-
-    private function viewData(string $pageTitle, string $activeModule): array
-    {
-        return [
-            'pageTitle' => $pageTitle,
-            'moduleName' => 'Administration',
-            'moduleCode' => 'ADM',
-            'activeModule' => $activeModule,
-            'additionalStyles' => ['css/finea-ui.css', 'css/admin.css'],
-            'additionalScripts' => ['js/admin.js'],
-        ];
     }
 }

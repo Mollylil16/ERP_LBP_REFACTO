@@ -2,13 +2,10 @@
 
 namespace App\Controllers\Rh;
 
-use App\Controllers\BaseController;
-
 use App\Middleware\AuthMiddleware;
-use App\View\Navigation\RhNavigation;
 use App\View\Pages\Rh\ModulePage;
 
-class RhModuleController extends BaseController
+class RhModuleController extends RhBaseController
 {
     public function attendance(): void
     {
@@ -42,14 +39,7 @@ class RhModuleController extends BaseController
 
     private function renderModule(string $title, string $active, string $code, array $cards): void
     {
-        $this->view('rh/module-page', [
-            'pageTitle' => $title,
-            'moduleName' => 'Ressources Humaines',
-            'moduleCode' => 'RH',
-            'activeModule' => $active,
-            'additionalStyles' => ['css/finea-ui.css', 'css/rh.css'],
-            'additionalScripts' => ['js/rh.js'],
-            'moduleNavigation' => RhNavigation::items(),
+        $this->rhView('rh/module-page', $title, $active, [
             'page' => new ModulePage($title, $code, $cards),
         ]);
     }

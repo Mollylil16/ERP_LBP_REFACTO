@@ -10,11 +10,12 @@ ob_start();
 ?>
 <div class="finea-shell">
     <div class="finea-container">
-        <?= Rh::pageHeader(
+        <?= Ui::pageHeader(
             $page->title,
             'Le lien est maintenant branché. Cette page sert de socle propre pour connecter les écrans métiers définitifs sans SQL dans les vues.',
             [
                 'eyebrow' => 'Module RH',
+                'class' => 'rh-hero',
                 'actions' => [Ui::badge(
                     $page->code,
                     'neutral',

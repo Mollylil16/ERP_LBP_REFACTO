@@ -19,6 +19,10 @@ Models :
 Views :
 - Affichage uniquement
 
+Le guide détaillé, avec le trajet complet d'une requête et la création d'un
+module étape par étape, se trouve dans
+[`doc/architecture/creer-un-module.md`](../architecture/creer-un-module.md).
+
 ## Design System
 
 Tous les nouveaux modules doivent utiliser :

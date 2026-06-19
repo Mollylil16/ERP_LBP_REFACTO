@@ -1,78 +1,51 @@
 <?php
 
-/** @var \App\Support\ViewBag $viewData */ $viewData ??= \App\Support\ViewBag::from(get_defined_vars());
-/** @var \App\Models\User $user */
-
 use App\Helpers\Csrf;
 use App\Helpers\View;
-use App\View\Components\Form;
+use App\View\Components\Admin;
 use App\View\Components\Ui;
+use App\View\Pages\Admin\PermissionEditPage;
 
-require BASE_PATH . '/views/admin/_navigation.php';
-$currentModule = null;
+/** @var PermissionEditPage $page */
 
 ob_start();
 ?>
 <div class="finea-shell">
     <div class="finea-container">
-        <section class="finea-page-header admin-hero">
-            <div>
-                <p class="admin-eyebrow">Habilitations individuelles</p>
-                <h1>Droits de <?= View::e($user->fullName) ?></h1>
-                <p>Attribuer les opérations autorisées, entité par entité.</p>
-            </div>
-            <a class="finea-action-btn finea-action-btn--secondary" href="<?= View::url('admin/users/' . (int) $user->id) ?>">Retour au profil</a>
-        </section>
+        <?= Ui::pageHeader(
+            'Droits de ' . $page->user->fullName,
+            'Attribuer les opérations autorisées, entité par entité.',
+            [
+                'eyebrow' => 'Habilitations individuelles',
+                'class' => 'admin-hero',
+                'actions' => [Ui::button('Retour au profil', [
+                    'href' => 'admin/users/' . (int) $page->user->id,
+                    'variant' => 'secondary',
+                ])],
+            ]
+        ) ?>
 
-        <?php if ($user->isAdmin): ?>
-            <section class="finea-section-card admin-full-access">Ce compte est administrateur et possède automatiquement tous les droits.</section>
+        <?php if ($page->user->isAdmin): ?>
+            <?= Ui::section(
+                'Accès administrateur',
+                '<div class="admin-full-access">Ce compte possède automatiquement tous les droits.</div>'
+            ) ?>
         <?php else: ?>
-            <form method="post" action="<?= View::url('admin/users/' . (int) $user->id . '/permissions') ?>" class="admin-permissions-form">
+            <form method="post" action="<?= View::url('admin/users/' . (int) $page->user->id . '/permissions') ?>" class="admin-permissions-form">
                 <?= Csrf::input() ?>
-                <section class="finea-section-card">
-                    <div class="admin-permission-toolbar">
-                        <div>
-                            <h2 class="finea-section-title">Permissions CRUD</h2>
-                            <p>La lecture peut être cochée automatiquement lorsqu’une action d’écriture est accordée.</p>
-                        </div>
-                        <div class="finea-actions">
-                            <?= Ui::button('Tout retirer', ['variant' => 'secondary', 'type' => 'button', 'data-permissions-clear' => true]) ?>
-                            <?= Ui::button('Lecture seule', ['variant' => 'secondary', 'type' => 'button', 'data-permissions-read' => true]) ?>
-                            <?= Ui::button('Tout autoriser', ['variant' => 'secondary', 'type' => 'button', 'data-permissions-all' => true]) ?>
-                        </div>
-                    </div>
-                    <div class="finea-table-wrap">
-                        <table class="finea-table admin-permission-table">
-                            <thead>
-                                <tr>
-                                    <th>Module / entité</th>
-                                    <th>Lire</th>
-                                    <th>Créer</th>
-                                    <th>Modifier</th>
-                                    <th>Supprimer</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php foreach ($permissions as $permission): ?>
-                                    <?php if ($currentModule !== $permission['module']): $currentModule = $permission['module']; ?>
-                                        <tr class="admin-module-row">
-                                            <td colspan="5"><?= View::e($currentModule) ?></td>
-                                        </tr>
-                                    <?php endif; ?>
-                                    <tr data-permission-row>
-                                        <td><strong><?= View::e($permission['name']) ?></strong><small><?= View::e($permission['description']) ?></small></td>
-                                        <?php foreach (['view', 'create', 'update', 'delete'] as $action): ?>
-                                            <td><?= Form::checkbox("permissions[" . (int) $permission['entity_id'] . "][" . $action . "]", ["label" => "", "value" => "1", "checked" => (bool) $permission['can_' . $action], "data-action" => $action, "fieldClass" => "admin-checkbox-field"]) ?></td>
-                                        <?php endforeach; ?>
-                                    </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
-                    </div>
-                </section>
+                <?= Ui::section(
+                    'Permissions CRUD',
+                    Admin::permissionToolbar(true) . Admin::permissionTable($page->permissions, true)
+                ) ?>
                 <div class="admin-form-actions">
-                    <a class="finea-action-btn finea-action-btn--secondary" href="<?= View::url('admin/users/' . (int) $user->id) ?>">Annuler</a>
-                    <?= Ui::button('Enregistrer les permissions', ['variant' => 'primary', 'type' => 'submit']) ?>
+                    <?= Ui::button('Annuler', [
+                        'href' => 'admin/users/' . (int) $page->user->id,
+                        'variant' => 'secondary',
+                    ]) ?>
+                    <?= Ui::button('Enregistrer les permissions', [
+                        'variant' => 'primary',
+                        'type' => 'submit',
+                    ]) ?>
                 </div>
             </form>
         <?php endif; ?>

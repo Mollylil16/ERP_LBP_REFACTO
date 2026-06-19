@@ -14,11 +14,12 @@ ob_start();
 ?>
 <div class="finea-shell">
     <div class="finea-container">
-        <?= Rh::pageHeader(
+        <?= Ui::pageHeader(
             'Parametrage RH',
             'Services, fonctions, statuts, sites/points de vente, motifs de sortie et types de documents utilises par les formulaires RH.',
             [
                 'eyebrow' => 'Referentiels',
+                'class' => 'rh-hero',
                 'actions' => [Ui::button('Integrer un collaborateur', [
                     'href' => 'rh/personnel/nouveau',
                     'variant' => 'secondary',

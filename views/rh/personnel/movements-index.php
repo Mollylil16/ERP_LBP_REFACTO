@@ -8,11 +8,12 @@ use App\View\Pages\Rh\PersonnelRegisterPage;
 ob_start();
 ?>
 <div class="finea-shell"><div class="finea-container">
-    <?= Rh::pageHeader(
+    <?= Ui::pageHeader(
         'Entrees et sorties',
         'Journal consolide des integrations, sorties et reintegrations.',
         [
             'eyebrow' => 'Mouvements RH',
+            'class' => 'rh-hero',
             'actions' => [Ui::button('Nouvelle entree', [
                 'href' => 'rh/personnel/nouveau',
                 'variant' => 'accent',

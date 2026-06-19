@@ -2,18 +2,15 @@
 
 namespace App\Controllers\Rh;
 
-use App\Controllers\BaseController;
-
 use App\Helpers\Csrf;
 use App\Helpers\Session;
 use App\Middleware\AuthMiddleware;
 use App\Models\Database;
 use App\Repositories\Rh\RhSettingsRepository;
-use App\View\Navigation\RhNavigation;
 use App\View\Pages\Rh\SettingsPage;
 use RuntimeException;
 
-class RhSettingsController extends BaseController
+class RhSettingsController extends RhBaseController
 {
     private RhSettingsRepository $repository;
 
@@ -31,11 +28,9 @@ class RhSettingsController extends BaseController
             ? $requestedCatalog
             : (string) array_key_first($catalogs);
 
-        $this->view('rh/settings/index', [
-            'pageTitle' => 'Parametrage RH',
-            'moduleName' => 'Ressources Humaines',
-            'moduleCode' => 'RH',
-            'activeModule' => 'settings',
+        $this->rhView('rh/settings/index', 'Parametrage RH', 'settings', [
+            'page' => new SettingsPage($catalogs, $activeCatalog),
+        ], [
             'additionalStyles' => [
                 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
                 'css/finea-ui.css',
@@ -45,8 +40,6 @@ class RhSettingsController extends BaseController
                 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
                 'js/rh.js',
             ],
-            'moduleNavigation' => RhNavigation::items(),
-            'page' => new SettingsPage($catalogs, $activeCatalog),
         ]);
     }
 

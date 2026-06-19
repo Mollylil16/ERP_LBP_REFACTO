@@ -738,6 +738,27 @@ a { text-decoration: none; }
     min-height: 245px;
 }
 
+.finea-module-card.is-maintenance {
+    filter: grayscale(1);
+    opacity: .62;
+    cursor: not-allowed;
+}
+
+.finea-module-card.is-maintenance .finea-module-link {
+    cursor: not-allowed;
+}
+
+.finea-module-maintenance-reason {
+    display: block;
+    margin-top: 10px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    color: #9a3412;
+    background: #ffedd5;
+    font-size: .78rem;
+    font-weight: 700;
+}
+
 .finea-module-link {
     position: relative;
     overflow: hidden;

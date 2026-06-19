@@ -13,11 +13,12 @@ ob_start();
 ?>
 <div class="finea-shell">
     <div class="finea-container">
-        <?= Rh::pageHeader(
+        <?= Ui::pageHeader(
             'Liste du personnel',
             'Rechercher, filtrer et ouvrir les dossiers individuels des collaborateurs.',
             [
                 'eyebrow' => 'Annuaire RH',
+                'class' => 'rh-hero',
                 'actions' => [
                     Ui::badge(
                         $page->total . ' résultat' . ($page->total > 1 ? 's' : ''),

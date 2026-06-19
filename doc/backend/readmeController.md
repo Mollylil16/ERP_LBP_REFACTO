@@ -21,6 +21,13 @@ Les contrôleurs reçoivent les requêtes web et orchestrent les actions de l’
 3. appeler la vue dans views/
 4. tester dans le navigateur
 
+Pour un module complet, ne pas recopier dans chaque contrôleur le nom du
+module, ses assets et sa navigation. Créer un contrôleur de base propre au
+module, sur le modèle de `RhBaseController`.
+
+Guide complet :
+[`doc/architecture/creer-un-module.md`](../architecture/creer-un-module.md).
+
 ## Bonnes pratiques
 
 - ne pas écrire de requêtes SQL directement dans le contrôleur

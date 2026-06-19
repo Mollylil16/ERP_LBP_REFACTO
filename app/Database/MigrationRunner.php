@@ -31,6 +31,7 @@ class MigrationRunner
         $this->createRhTables();
         $this->createBusinessTables();
         $this->createSystemTestTables();
+        $this->createModuleMaintenanceTable();
         $this->linkUsersToRhEmployees();
     }
 
@@ -80,6 +81,22 @@ class MigrationRunner
                 KEY idx_system_test_runs_scope_created (scope, created_at),
                 KEY idx_system_test_runs_module_created (module, created_at),
                 KEY idx_system_test_runs_status (status)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+    }
+
+    private function createModuleMaintenanceTable(): void
+    {
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS module_maintenance (
+                module_slug VARCHAR(80) PRIMARY KEY,
+                is_maintenance TINYINT(1) NOT NULL DEFAULT 0,
+                reason VARCHAR(500) NULL,
+                updated_by INT NULL,
+                updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                KEY idx_module_maintenance_status (is_maintenance),
+                CONSTRAINT fk_module_maintenance_user
+                    FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         ");
     }

@@ -14,7 +14,7 @@ ob_start();
 
 <div class="finea-shell">
     <div class="finea-container">
-        <?= Rh::pageHeader(
+        <?= Ui::pageHeader(
             'Mutation de ' . (string) ($page->employee['full_name'] ?? ''),
             "Changer l'affectation tout en conservant une trace complète.",
             [

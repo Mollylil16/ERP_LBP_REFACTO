@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace App\Controllers\SiteAdmin;
 
-use App\Controllers\BaseController;
 use App\Middleware\AuthMiddleware;
 use App\Models\Database;
 use App\Repositories\SiteAdmin\SiteAdminDashboardRepository;
 use App\Services\SiteAdmin\SiteAdminDashboardService;
+use App\View\Pages\SiteAdmin\DashboardPage;
 
-final class SiteAdminDashboardController extends BaseController
+final class SiteAdminDashboardController extends SiteAdminBaseController
 {
     private SiteAdminDashboardService $service;
 
@@ -25,25 +25,12 @@ final class SiteAdminDashboardController extends BaseController
 
         $module = $this->service->dashboard();
 
-        $this->view('site_admin/dashboard', $this->viewData($module) + [
-            'dashboardModule' => $module,
-        ]);
-    }
-
-    /**
-     * @param array<string,mixed> $module
-     * @return array<string,mixed>
-     */
-    private function viewData(array $module): array
-    {
-        return [
-            'pageTitle' => 'Tableau de bord ' . (string) $module['label'],
-            'moduleName' => (string) $module['label'],
-            'moduleCode' => (string) $module['code'],
-            'moduleTheme' => $module,
-            'activeModule' => 'dashboard',
-            'moduleNavigation' => (array) $module['navigation'],
-            'additionalStyles' => ['css/finea-ui.css'],
-        ];
+        $this->siteAdminView(
+            'site_admin/dashboard',
+            'Tableau de bord ' . (string) $module['label'],
+            'dashboard',
+            ['page' => new DashboardPage($module)],
+            $module,
+        );
     }
 }

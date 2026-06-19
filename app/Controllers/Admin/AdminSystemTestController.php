@@ -4,35 +4,51 @@ declare(strict_types=1);
 
 namespace App\Controllers\Admin;
 
-use App\Controllers\BaseController;
-
 use App\Helpers\Csrf;
 use App\Middleware\AdminMiddleware;
 use App\Models\Database;
 use App\Repositories\Admin\SystemTestRepository;
+use App\Repositories\Admin\ModuleMaintenanceRepository;
+use App\Services\Admin\ModuleMaintenanceService;
 use App\Services\Admin\SystemTestService;
+use App\View\Pages\Admin\SystemTestsPage;
 use Throwable;
 
-final class AdminSystemTestController extends BaseController
+final class AdminSystemTestController extends AdminBaseController
 {
     private SystemTestService $service;
+    private ModuleMaintenanceService $maintenance;
 
     public function __construct()
     {
         $pdo = Database::getConnection();
         $this->service = new SystemTestService(new SystemTestRepository($pdo));
+        $this->maintenance = new ModuleMaintenanceService(new ModuleMaintenanceRepository($pdo));
     }
 
     public function index(): void
     {
         AdminMiddleware::check();
 
-        $this->view('admin/system_tests/index', [
-            'pageTitle' => 'Santé & Tests ERP',
-            'csrfToken' => Csrf::token(),
-            'summary' => $this->service->dashboardSummary(),
-            'modules' => $this->service->moduleCards(),
-            'latestRuns' => $this->service->latestRuns(8),
+        $states = $this->maintenance->states();
+        $modules = array_map(static function (array $module) use ($states): array {
+            $state = $states[(string) $module['slug']] ?? [];
+            return $module + [
+                'is_maintenance' => (bool) ($state['is_maintenance'] ?? false),
+                'maintenance_reason' => (string) ($state['reason'] ?? ''),
+            ];
+        }, $this->service->moduleCards());
+
+        $this->adminView('admin/system_tests/index', 'Santé & Tests ERP', 'tests', [
+            'page' => new SystemTestsPage(
+                Csrf::token(),
+                $this->service->dashboardSummary(),
+                $modules,
+                $this->service->latestRuns(8),
+            ),
+        ], [
+            'additionalStyles' => ['css/finea-ui.css', 'css/admin.css', 'css/system-tests.css'],
+            'additionalScripts' => ['js/admin.js', 'js/system-tests.js'],
         ]);
     }
 
@@ -59,7 +75,24 @@ final class AdminSystemTestController extends BaseController
         ]);
     }
 
-    /** @param callable(): array<string, mixed> $callback */
+    public function maintenance(string $module): void
+    {
+        AdminMiddleware::check();
+        $this->guardAjaxPost();
+        try {
+            $state = $this->maintenance->update(
+                $module,
+                (string) ($_POST['maintenance'] ?? '') === '1',
+                (string) ($_POST['reason'] ?? ''),
+                (int) \App\Helpers\Auth::id(),
+            );
+            $this->json(['ok' => true, 'module' => $module, 'state' => $state]);
+        } catch (\RuntimeException $exception) {
+            $this->json(['ok' => false, 'message' => $exception->getMessage()], 422);
+        }
+    }
+
+    /** @param callable(): array<string,mixed> $callback */
     private function jsonSafe(callable $callback): never
     {
         ob_start();
@@ -77,7 +110,7 @@ final class AdminSystemTestController extends BaseController
                 'ok' => false,
                 'status' => 'failed',
                 'score' => 0,
-                "message" => "Erreur serveur pendant l'exécution des tests : " . $exception->getMessage(),
+                'message' => "Erreur serveur pendant l'exécution des tests : " . $exception->getMessage(),
                 'checks' => [[
                     'name' => 'Erreur serveur',
                     'status' => 'failed',
@@ -103,7 +136,7 @@ final class AdminSystemTestController extends BaseController
         }
     }
 
-    /** @param array<string, mixed> $payload */
+    /** @param array<string,mixed> $payload */
     private function json(array $payload, int $status = 200): never
     {
         http_response_code($status);

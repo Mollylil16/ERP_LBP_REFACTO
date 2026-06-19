@@ -8,6 +8,9 @@ use App\Middleware\AuthMiddleware;
 use App\Models\Database;
 use App\Repositories\Shared\BusinessModuleRepository;
 use App\Services\Shared\BusinessModuleService;
+use App\View\Pages\Site\SitePage;
+use App\View\Pages\SiteAdmin\DashboardPage;
+use App\View\Navigation\SiteAdminNavigation;
 
 final class WebsiteController extends BaseController
 {
@@ -21,52 +24,56 @@ final class WebsiteController extends BaseController
             'moduleCode' => 'WEB',
             'moduleTheme' => $module,
             'activeModule' => 'dashboard',
-            'moduleNavigation' => $module['navigation'],
-            'dashboardModule' => $module,
+            'moduleNavigation' => SiteAdminNavigation::items(),
+            'page' => new DashboardPage($module),
             'additionalStyles' => ['css/finea-ui.css'],
         ]);
     }
 
     public function publicSite(): void
     {
-        $this->view('site/index', $this->sitePayload('Accueil'));
+        $this->siteView('site/index', 'Accueil');
     }
 
     public function tracking(): void
     {
-        $this->view('site/tracking', $this->sitePayload('Suivi colis'));
+        $this->siteView('site/tracking', 'Suivi colis', (string) ($_GET['ref'] ?? ''));
     }
 
     public function quote(): void
     {
-        $this->view('site/devis', $this->sitePayload('Demande de devis'));
+        $this->siteView('site/devis', 'Demande de devis');
     }
 
     public function contact(): void
     {
-        $this->view('site/contact', $this->sitePayload('Contact'));
+        $this->siteView('site/contact', 'Contact');
     }
 
     public function agencies(): void
     {
-        $this->view('site/agences', $this->sitePayload('Nos agences'));
+        $this->siteView('site/agences', 'Nos agences');
     }
 
-    private function sitePayload(string $page): array
+    private function siteView(string $view, string $title, string $reference = ''): void
     {
-        return [
-            'pageTitle' => $page . ' - LBP Transit',
-            'shipments' => $this->demoShipments(),
-            'agencies' => $this->demoAgencies(),
-            'services' => $this->demoServices(),
-            'news' => $this->demoNews(),
-            'stats' => [
+        $this->view($view, [
+            'pageTitle' => $title . ' - LBP Transit',
+            'page' => new SitePage(
+                $title,
+                $this->demoShipments(),
+                $this->demoAgencies(),
+                $this->demoServices(),
+                $this->demoNews(),
+                [
                 ['label' => 'Pays couverts', 'value' => '14+'],
                 ['label' => 'Dossiers suivis', 'value' => '2 480'],
                 ['label' => 'Agences & points relais', 'value' => '9'],
                 ['label' => 'SLA suivi client', 'value' => '24/7'],
-            ],
-        ];
+                ],
+                $reference,
+            ),
+        ]);
     }
 
     private function demoShipments(): array

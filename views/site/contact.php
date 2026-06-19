@@ -2,9 +2,9 @@
 use App\Helpers\View;
 use App\View\Components\Form;
 use App\View\Components\Ui;
+use App\View\Pages\Site\SitePage;
 
-/** @var \App\Support\ViewBag $viewData */ $viewData ??= \App\Support\ViewBag::from(get_defined_vars());
-$agencies = $agencies ?? [];
+/** @var SitePage $page */
 
 ob_start();
 ?>
@@ -15,7 +15,7 @@ ob_start();
 </section>
 
 <section class="site-form-layout">
-    <form class="site-form-card" method="post" action="#">
+    <form class="site-form-card" method="get" action="<?= \App\Helpers\View::url('site/contact') ?>">
         <div class="site-form-grid">
             <?= Form::input('full_name', ['label' => 'Nom complet', 'placeholder' => 'Nom complet']) ?>
             <?= Form::input('email', ['label' => 'Email', 'type' => 'email', 'placeholder' => 'Email']) ?>
@@ -33,7 +33,7 @@ ob_start();
     </form>
 
     <aside class="site-contact-panel">
-        <?php foreach (array_slice($agencies, 0, 3) as $agency): ?>
+        <?php foreach (array_slice($page->agencies, 0, 3) as $agency): ?>
             <article>
                 <strong><?= View::e($agency['name'] ?? '') ?></strong>
                 <span><?= View::e($agency['phone'] ?? '') ?></span>
