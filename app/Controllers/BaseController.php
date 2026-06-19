@@ -15,7 +15,7 @@ class BaseController
      */
     protected function view(string $view, array $data = []): void
     {
-        $data = ViewBag::defaults() + $data;
+        $data = array_replace(ViewBag::defaults(), $data);
         $viewData = ViewBag::from($data);
         extract($data, EXTR_SKIP); // Compatibilite temporaire avec les anciennes vues non converties.
 

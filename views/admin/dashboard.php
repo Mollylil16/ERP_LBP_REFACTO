@@ -6,11 +6,17 @@ use App\View\Components\Ui;
 
 /** @var \App\Support\ViewBag $viewData */ $viewData ??= \App\Support\ViewBag::from(get_defined_vars());
 require BASE_PATH . '/views/admin/_navigation.php';
+
+/** @var array<string, int> $statistics */
+/** @var int $grantedPermissions */
+/** @var array<int, mixed> $entities */
+
 ob_start();
 ?>
 <div class="finea-shell">
     <div class="finea-container">
-        <?= Ui::pageHeader('Piloter les comptes et les habilitations',
+        <?= Ui::pageHeader(
+            'Piloter les comptes et les habilitations',
             'Un espace central pour maîtriser les utilisateurs, leurs accès et les droits CRUD.',
             [
                 'eyebrow' => 'Administration et sécurité',

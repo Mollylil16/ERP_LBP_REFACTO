@@ -9,4 +9,5 @@ use App\Controllers\Portal\SelectionPortailController;
 /** @var Router $router */
 
 $router->get('/selection_portail', [SelectionPortailController::class, 'index']);
+$router->get('/portail', [SelectionPortailController::class, 'index']);
 $router->get('/dashboard', [DashboardController::class, 'index']);

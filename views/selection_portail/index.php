@@ -5,7 +5,8 @@ use App\View\Components\Form;
 
 /** @var \App\Support\ViewBag $viewData */ $viewData ??= \App\Support\ViewBag::from(get_defined_vars());
 /** @var array $user */
-/** @var array<int, array<string, string>> $modules */
+/** @var array<int, array<string, mixed>> $modules */
+/** @var array<int, array<string, mixed>> $content */
 
 $moduleIcon = static function (string $name): string {
     $icons = [
@@ -30,7 +31,6 @@ $moduleIcon = static function (string $name): string {
 
     return $icons[$name] ?? $icons['admin'];
 };
-
 ob_start();
 ?>
 
@@ -50,7 +50,10 @@ ob_start();
 
 <section class="finea-module-toolbar" aria-label="Recherche de modules">
     <div class="finea-search-box">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21 21-4.2-4.2"/><circle cx="11" cy="11" r="7"/></svg>
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="m21 21-4.2-4.2" />
+            <circle cx="11" cy="11" r="7" />
+        </svg>
         <?= Form::input('module_search', [
             'label' => 'Recherche de module',
             'id' => 'moduleSearchInput',
@@ -70,8 +73,7 @@ ob_start();
         <article
             class="finea-module-card <?= View::e($module['class']); ?>"
             data-module-card
-            data-search="<?= View::e(strtolower($module['label'] . ' ' . $module['code'] . ' ' . $module['description'] . ' ' . $module['keywords'])); ?>"
-        >
+            data-search="<?= View::e(strtolower($module['label'] . ' ' . $module['code'] . ' ' . $module['description'] . ' ' . $module['keywords'])); ?>">
             <a href="<?= View::url($module['url']); ?>" class="finea-module-link" aria-label="Ouvrir le module <?= View::e($module['label']); ?>">
                 <span class="finea-module-glow" aria-hidden="true"></span>
                 <span class="finea-module-topline">
