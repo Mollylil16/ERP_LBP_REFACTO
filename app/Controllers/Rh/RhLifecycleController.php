@@ -13,6 +13,8 @@ use App\Middleware\AuthMiddleware;
 use App\Models\Database;
 use App\Repositories\Rh\RhLifecycleRepository;
 use App\Services\Rh\RhLifecycleService;
+use App\View\Navigation\RhNavigation;
+use App\View\Pages\Rh\LifecyclePage;
 use RuntimeException;
 
 class RhLifecycleController extends BaseController
@@ -31,16 +33,17 @@ class RhLifecycleController extends BaseController
         if (!in_array($section, ['contracts', 'assignments', 'evaluations', 'trainings', 'workflows', 'organization', 'recruitment', 'discipline'], true)) {
             $section = 'contracts';
         }
+        $dashboard = $this->service->dashboard();
         $this->view('rh/lifecycle/index', [
             'pageTitle' => 'Cycle de vie RH',
             'moduleName' => 'Ressources humaines',
             'moduleCode' => 'RH',
             'activeModule' => $section,
-            'section' => $section,
-            'csrfToken' => Csrf::token(),
+            'page' => new LifecyclePage($section, Csrf::token(), $dashboard),
             'additionalStyles' => ['css/finea-ui.css', 'css/rh.css'],
             'additionalScripts' => ['js/rh.js'],
-        ] + $this->service->dashboard());
+            'moduleNavigation' => RhNavigation::items(),
+        ]);
     }
 
     public function storeContract(): void { $this->execute(fn() => $this->service->createContract($_POST, (int) Auth::id()), 'Contrat créé et transmis au workflow.', 'contracts'); }

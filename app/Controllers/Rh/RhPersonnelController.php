@@ -3,16 +3,24 @@
 namespace App\Controllers\Rh;
 
 use App\Controllers\BaseController;
-
 use App\Helpers\Auth;
 use App\Helpers\Csrf;
 use App\Helpers\Session;
-use App\Middleware\PermissionMiddleware;
 use App\Middleware\AuthMiddleware;
+use App\Middleware\PermissionMiddleware;
 use App\Models\Database;
 use App\Repositories\Rh\RhPersonnelRepository;
-use App\Services\Rh\RhPersonnelService;
 use App\Security\OperationPolicy;
+use App\Security\PermissionAction;
+use App\Security\PermissionEntityRegistry;
+use App\Services\Rh\RhPersonnelService;
+use App\View\Navigation\RhNavigation;
+use App\View\Pages\Rh\PersonnelExitPage;
+use App\View\Pages\Rh\PersonnelFormPage;
+use App\View\Pages\Rh\PersonnelIndexPage;
+use App\View\Pages\Rh\PersonnelMutationPage;
+use App\View\Pages\Rh\PersonnelRegisterPage;
+use App\View\Pages\Rh\PersonnelShowPage;
 use RuntimeException;
 
 class RhPersonnelController extends BaseController
@@ -29,18 +37,29 @@ class RhPersonnelController extends BaseController
     public function index(): void
     {
         AuthMiddleware::check();
-        $this->view('rh/personnel/index', $this->viewData('Liste du personnel', 'personnel') + $this->service->list($_GET));
+        $data = $this->service->list($_GET);
+        $this->view('rh/personnel/index', $this->viewData('Liste du personnel', 'personnel') + [
+            'page' => new PersonnelIndexPage($data, [
+                'view' => Auth::canOperation(OperationPolicy::RH_EMPLOYEE_VIEW),
+                'create' => Auth::canOperation(OperationPolicy::RH_EMPLOYEE_CREATE),
+                'update' => Auth::canOperation(OperationPolicy::RH_EMPLOYEE_UPDATE),
+                'mutate' => Auth::canOperation(OperationPolicy::RH_MUTATION_CREATE),
+            ]),
+        ]);
     }
 
     public function create(): void
     {
         PermissionMiddleware::checkOperation(OperationPolicy::RH_EMPLOYEE_CREATE);
         $this->view('rh/personnel/form', $this->viewData('Integrer un collaborateur', 'personnel') + [
-            'employee' => [],
-            'options' => $this->service->options(),
-            'restrictedTables' => $this->service->restrictedTables(),
-            'formAction' => '/rh/personnel',
-            'submitLabel' => 'Creer le dossier',
+            'page' => new PersonnelFormPage(
+                [],
+                $this->service->options(),
+                $this->service->restrictedTables(),
+                'Integrer un collaborateur',
+                '/rh/personnel',
+                'Creer le dossier',
+            ),
         ]);
     }
 
@@ -49,7 +68,9 @@ class RhPersonnelController extends BaseController
         AuthMiddleware::check();
         $this->view(
             'rh/personnel/mutations-index',
-            $this->viewData('Registre des mutations', 'mutations') + $this->service->mutationRegister()
+            $this->viewData('Registre des mutations', 'mutations') + [
+                'page' => new PersonnelRegisterPage($this->service->mutationRegister(), 'mutations'),
+            ]
         );
     }
 
@@ -58,7 +79,9 @@ class RhPersonnelController extends BaseController
         AuthMiddleware::check();
         $this->view(
             'rh/personnel/movements-index',
-            $this->viewData('Entrees et sorties', 'sorties') + $this->service->movementRegister()
+            $this->viewData('Entrees et sorties', 'sorties') + [
+                'page' => new PersonnelRegisterPage($this->service->movementRegister(), 'movements'),
+            ]
         );
     }
 
@@ -79,7 +102,18 @@ class RhPersonnelController extends BaseController
     {
         PermissionMiddleware::checkOperation(OperationPolicy::RH_EMPLOYEE_VIEW);
         try {
-            $this->view('rh/personnel/show', $this->viewData('Dossier personnel', 'personnel') + $this->service->dossier((int) $id));
+            $this->view('rh/personnel/show', $this->viewData('Dossier personnel', 'personnel') + [
+                'page' => new PersonnelShowPage($this->service->dossier((int) $id), [
+                    'update' => Auth::canOperation(OperationPolicy::RH_EMPLOYEE_UPDATE),
+                    'mutate' => Auth::canOperation(OperationPolicy::RH_MUTATION_CREATE),
+                    'exit' => Auth::canOperation(OperationPolicy::RH_EXIT_MANAGE),
+                    'viewHistory' => Auth::can(
+                        PermissionEntityRegistry::RH_EMPLOYEE_HISTORY,
+                        PermissionAction::VIEW
+                    ),
+                    'addHistory' => Auth::canOperation(OperationPolicy::RH_HISTORY_CREATE),
+                ]),
+            ]);
         } catch (RuntimeException $e) {
             Session::flash('error', $e->getMessage());
             $this->redirect('/rh/personnel');
@@ -92,11 +126,14 @@ class RhPersonnelController extends BaseController
         try {
             $dossier = $this->service->dossier((int) $id);
             $this->view('rh/personnel/form', $this->viewData('Modifier le dossier', 'personnel') + [
-                'employee' => $dossier['employee'],
-                'options' => $dossier['options'],
-                'restrictedTables' => $dossier['restrictedTables'],
-                'formAction' => '/rh/personnel/' . (int) $id . '/modifier',
-                'submitLabel' => 'Enregistrer les modifications',
+                'page' => new PersonnelFormPage(
+                    $dossier['employee'],
+                    $dossier['options'],
+                    $dossier['restrictedTables'],
+                    'Modifier le dossier',
+                    '/rh/personnel/' . (int) $id . '/modifier',
+                    'Enregistrer les modifications',
+                ),
             ]);
         } catch (RuntimeException $e) {
             Session::flash('error', $e->getMessage());
@@ -121,7 +158,9 @@ class RhPersonnelController extends BaseController
     {
         PermissionMiddleware::checkOperation(OperationPolicy::RH_MUTATION_CREATE);
         try {
-            $this->view('rh/personnel/mutation', $this->viewData('Mutation du personnel', 'mutations') + $this->service->dossier((int) $id));
+            $this->view('rh/personnel/mutation', $this->viewData('Mutation du personnel', 'mutations') + [
+                'page' => new PersonnelMutationPage($this->service->dossier((int) $id)),
+            ]);
         } catch (RuntimeException $e) {
             Session::flash('error', $e->getMessage());
             $this->redirect('/rh/personnel');
@@ -145,7 +184,9 @@ class RhPersonnelController extends BaseController
     {
         PermissionMiddleware::checkOperation(OperationPolicy::RH_EXIT_MANAGE);
         try {
-            $this->view('rh/personnel/exit', $this->viewData('Sortie du personnel', 'sorties') + $this->service->dossier((int) $id));
+            $this->view('rh/personnel/exit', $this->viewData('Sortie du personnel', 'sorties') + [
+                'page' => new PersonnelExitPage($this->service->dossier((int) $id)),
+            ]);
         } catch (RuntimeException $e) {
             Session::flash('error', $e->getMessage());
             $this->redirect('/rh/personnel');
@@ -207,6 +248,7 @@ class RhPersonnelController extends BaseController
             'activeModule' => $activeModule,
             'additionalStyles' => ['css/finea-ui.css', 'css/rh.css'],
             'additionalScripts' => ['js/rh.js'],
+            'moduleNavigation' => RhNavigation::items(),
         ];
     }
 }

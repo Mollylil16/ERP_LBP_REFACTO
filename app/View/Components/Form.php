@@ -172,6 +172,18 @@ final class Form
     }
 
     /** @param array<string,mixed> $attrs */
+    public static function inputControl(string $name, array $attrs = []): string
+    {
+        $attrs = array_merge([
+            'class' => Html::classes(['finea-input', (string) ($attrs['class'] ?? '')]),
+            'type' => (string) ($attrs['type'] ?? 'text'),
+            'name' => $name,
+        ], $attrs);
+
+        return '<input' . Html::attrs($attrs) . '>';
+    }
+
+    /** @param array<string,mixed> $attrs */
     public static function dropzone(string $name, string $label, array $attrs = []): string
     {
         $accept = $attrs['accept'] ?? null;

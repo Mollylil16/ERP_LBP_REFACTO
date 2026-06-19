@@ -9,6 +9,8 @@ use App\Helpers\Session;
 use App\Middleware\AuthMiddleware;
 use App\Models\Database;
 use App\Repositories\Rh\RhSettingsRepository;
+use App\View\Navigation\RhNavigation;
+use App\View\Pages\Rh\SettingsPage;
 use RuntimeException;
 
 class RhSettingsController extends BaseController
@@ -23,7 +25,6 @@ class RhSettingsController extends BaseController
     public function index(): void
     {
         AuthMiddleware::check();
-        require BASE_PATH . '/views/rh/_navigation.php';
         $catalogs = $this->repository->catalogs();
         $requestedCatalog = (string) ($_GET['catalog'] ?? '');
         $activeCatalog = isset($catalogs[$requestedCatalog])
@@ -44,9 +45,8 @@ class RhSettingsController extends BaseController
                 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
                 'js/rh.js',
             ],
-            'moduleNavigation' => $moduleNavigation,
-            'catalogs' => $catalogs,
-            'activeCatalog' => $activeCatalog,
+            'moduleNavigation' => RhNavigation::items(),
+            'page' => new SettingsPage($catalogs, $activeCatalog),
         ]);
     }
 

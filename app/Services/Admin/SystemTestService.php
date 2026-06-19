@@ -917,7 +917,7 @@ final class SystemTestService
                 'tables' => ['rh_employees', 'rh_services', 'rh_functions', 'rh_statuses', 'rh_contracts', 'rh_assignments', 'rh_evaluations', 'rh_training_sessions', 'rh_workflow_requests'],
                 'routes' => ['/rh', '/rh/dashboard', '/rh/personnel', '/rh/mutations', '/rh/mouvements', '/rh/pointage', '/rh/contrats', '/rh/paie', '/rh/parametrage', '/rh/cycle-vie'],
                 'pages' => ['/rh', '/rh/dashboard', '/rh/personnel', '/rh/mutations', '/rh/mouvements', '/rh/pointage', '/rh/contrats', '/rh/paie', '/rh/parametrage', '/rh/cycle-vie'],
-                'views' => ['rh/dashboard', 'rh/_navigation', 'rh/personnel/index', 'rh/personnel/mutations-index', 'rh/personnel/movements-index', 'rh/settings/index', 'rh/lifecycle/index'],
+                'views' => ['rh/dashboard', 'rh/personnel/index', 'rh/personnel/mutations-index', 'rh/personnel/movements-index', 'rh/settings/index', 'rh/lifecycle/index'],
             ],
             'espace-employe' => [
                 'slug' => 'espace-employe', 'label' => 'Espace employé', 'code' => 'EMP', 'accent' => '#0ea5e9',

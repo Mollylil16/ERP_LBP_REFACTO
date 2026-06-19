@@ -59,6 +59,144 @@ final class Dashboard
         return $html . '</section>';
     }
 
+    /**
+     * @param array<int,array{key:string,label:string,href:string,description?:string,count?:int}> $items
+     */
+    public static function tabs(array $items, string $activeKey): string
+    {
+        return Tabs::render($items, $activeKey, [
+            'class' => 'rh-dashboard-tabs',
+            'item_class' => 'rh-dashboard-tab',
+            'base_item_class' => false,
+            'wrap_label' => false,
+            'aria-label' => 'Vues du tableau de bord',
+        ]);
+    }
+
+    /**
+     * @param array<int,array{label:mixed,total:mixed}> $rows
+     * @param array<int,array{label:string,href:string,hint?:string}> $actions
+     */
+    public static function distributionWithActions(array $rows, int $total, array $actions): string
+    {
+        $distribution = '<section class="finea-section-card"><div class="rh-section-heading"><div>'
+            . '<p class="rh-eyebrow">Repartition</p>'
+            . '<h2 class="finea-section-title">Services les plus representes</h2>'
+            . '</div><span>' . $total . ' collaborateurs</span></div>';
+
+        if ($rows === []) {
+            $distribution .= '<div class="finea-empty-state">Les repartitions apparaitront apres l\'integration du personnel.</div>';
+        } else {
+            $distribution .= '<div class="rh-bars">';
+            foreach ($rows as $row) {
+                $count = (int) ($row['total'] ?? 0);
+                $width = min(100, ($count / max(1, $total)) * 100);
+                $distribution .= '<div class="rh-bar-row"><div><span>'
+                    . View::e((string) ($row['label'] ?? ''))
+                    . '</span><strong>' . $count . '</strong></div>'
+                    . '<div class="rh-bar"><span style="width: ' . View::e((string) $width) . '%"></span></div></div>';
+            }
+            $distribution .= '</div>';
+        }
+
+        $quickLinks = '<aside class="rh-quick-card"><p class="rh-eyebrow">Acces rapides</p>'
+            . '<h2>Operations RH</h2><div class="rh-quick-list">';
+        foreach ($actions as $action) {
+            $quickLinks .= '<a href="' . View::url(ltrim($action['href'], '/')) . '">'
+                . View::e($action['label']) . '<small>'
+                . View::e((string) ($action['hint'] ?? 'Ouvrir')) . '</small></a>';
+        }
+
+        return '<div class="rh-content-grid">' . $distribution . '</section>'
+            . $quickLinks . '</div></aside></div>';
+    }
+
+    /**
+     * @param array<int,array<string,mixed>> $rows
+     * @param array<string,string> $fields
+     * @param array<string,mixed> $options
+     */
+    public static function recentRecords(array $rows, array $fields, array $options = []): string
+    {
+        $content = $rows === []
+            ? '<div class="finea-empty-state">'
+                . View::e((string) ($options['empty'] ?? 'Aucune donnee disponible.')) . '</div>'
+            : RecordList::render($rows, $fields, $options);
+
+        return '<section class="finea-section-card rh-recent-section">'
+            . '<div class="rh-section-heading"><div><p class="rh-eyebrow">'
+            . View::e((string) ($options['eyebrow'] ?? 'Elements recents'))
+            . '</p><h2 class="finea-section-title">'
+            . View::e((string) ($options['title'] ?? 'Derniers elements'))
+            . '</h2></div></div>' . $content . '</section>';
+    }
+
+    /** @param array<int,array{eyebrow:string,value:mixed,description:string}> $items */
+    public static function metrics(array $items): string
+    {
+        $html = '<section class="rh-analytics-grid">';
+        foreach ($items as $item) {
+            $html .= '<article class="finea-section-card rh-metric-panel"><p class="rh-eyebrow">'
+                . View::e($item['eyebrow']) . '</p><strong>'
+                . View::e((string) $item['value']) . '</strong><span>'
+                . View::e($item['description']) . '</span></article>';
+        }
+
+        return $html . '</section>';
+    }
+
+    /** @param array<int,array{title:string,rows:array<int,array{label:mixed,total:mixed}>}> $groups */
+    public static function rankings(array $groups, string $empty = 'Aucune donnee disponible.'): string
+    {
+        $html = '<div class="rh-three-columns">';
+        foreach ($groups as $group) {
+            $html .= '<section class="finea-section-card"><h2 class="finea-section-title">'
+                . View::e($group['title']) . '</h2>';
+            if ($group['rows'] === []) {
+                $html .= '<div class="finea-empty-state">' . View::e($empty) . '</div>';
+            } else {
+                $html .= '<div class="rh-ranking">';
+                foreach ($group['rows'] as $row) {
+                    $html .= '<div><span>' . View::e((string) ($row['label'] ?? ''))
+                        . '</span><strong>' . (int) ($row['total'] ?? 0) . '</strong></div>';
+                }
+                $html .= '</div>';
+            }
+            $html .= '</section>';
+        }
+
+        return $html . '</div>';
+    }
+
+    public static function analyticIntro(
+        string $eyebrow,
+        string $title,
+        string $description,
+        string $status,
+        string $tone = 'ok'
+    ): string {
+        return '<section class="rh-analytic-hero finea-section-card"><div><p class="rh-eyebrow">'
+            . View::e($eyebrow) . '</p><h2>' . View::e($title) . '</h2><p>'
+            . View::e($description) . '</p></div><span class="finea-status-badge finea-status-badge--'
+            . View::e($tone) . '">' . View::e($status) . '</span></section>';
+    }
+
+    /**
+     * @param array<int,array{title:string,description:string,action:string,button?:array<string,mixed>}> $reports
+     */
+    public static function reports(array $reports): string
+    {
+        $html = '<section class="rh-report-grid">';
+        foreach ($reports as $report) {
+            $html .= '<article class="finea-section-card"><h2 class="finea-section-title">'
+                . View::e($report['title']) . '</h2><p>'
+                . View::e($report['description']) . '</p>'
+                . Ui::button($report['action'], (array) ($report['button'] ?? [])) . '</article>';
+        }
+
+        return $html . '</section>';
+    }
+
     /** @param array<string,mixed> $module */
     public static function businessModuleDashboard(array $module): string
     {
