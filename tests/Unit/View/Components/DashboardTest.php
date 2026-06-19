@@ -42,4 +42,46 @@ final class DashboardTest extends TestCase
         self::assertStringContainsString('<a class="rh-alert-card', $html);
         self::assertStringContainsString('section=workflows', $html);
     }
+
+    public function test_renders_rh_dashboard_tabs_with_expected_classes(): void
+    {
+        $html = Dashboard::tabs([
+            [
+                'key' => 'classic',
+                'label' => 'Classique',
+                'description' => 'Vue principale',
+                'href' => 'rh/dashboard',
+            ],
+        ], 'classic');
+
+        self::assertStringContainsString('rh-dashboard-tabs', $html);
+        self::assertStringContainsString('class="rh-dashboard-tab is-active"', $html);
+        self::assertStringNotContainsString('<span><strong>Classique', $html);
+    }
+
+    public function test_renders_distribution_and_quick_actions(): void
+    {
+        $html = Dashboard::distributionWithActions(
+            [['label' => 'Informatique', 'total' => 2]],
+            4,
+            [['label' => 'Voir le personnel', 'href' => 'rh/personnel']]
+        );
+
+        self::assertStringContainsString('width: 50%', $html);
+        self::assertStringContainsString('rh-quick-card', $html);
+        self::assertStringContainsString('Voir le personnel', $html);
+    }
+
+    public function test_renders_disabled_report_action(): void
+    {
+        $html = Dashboard::reports([[
+            'title' => 'Rapport effectifs',
+            'description' => 'Description',
+            'action' => 'Exporter',
+            'button' => ['variant' => 'secondary', 'disabled' => true],
+        ]]);
+
+        self::assertStringContainsString('rh-report-grid', $html);
+        self::assertStringContainsString(' disabled>', $html);
+    }
 }
