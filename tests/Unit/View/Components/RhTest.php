@@ -100,4 +100,27 @@ final class RhTest extends TestCase
         self::assertFileDoesNotExist(BASE_PATH . '/views/rh/' . '_navigation.php');
         self::assertFileDoesNotExist(BASE_PATH . '/views/rh/' . '_restricted-data.php');
     }
+
+    public function test_rh_controllers_share_one_module_layout_context(): void
+    {
+        $baseController = (string) file_get_contents(
+            BASE_PATH . '/app/Controllers/Rh/RhBaseController.php'
+        );
+
+        foreach ([
+            'RhDashboardController.php',
+            'RhLifecycleController.php',
+            'RhModuleController.php',
+            'RhPersonnelController.php',
+            'RhSettingsController.php',
+        ] as $file) {
+            $source = (string) file_get_contents(BASE_PATH . '/app/Controllers/Rh/' . $file);
+            self::assertStringContainsString('extends RhBaseController', $source, $file);
+            self::assertStringNotContainsString('RhNavigation::items()', $source, $file);
+        }
+
+        self::assertStringContainsString('RhNavigation::items()', $baseController);
+        self::assertStringContainsString("'moduleNavigation'", $baseController);
+        self::assertStringContainsString('protected function rhView(', $baseController);
+    }
 }

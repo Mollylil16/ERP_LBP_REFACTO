@@ -11,8 +11,13 @@ Chaque écran est une vue PHP dédiée dans `views/admin` :
 - `permissions/edit.php` : édition CRUD par utilisateur ;
 - `permissions/matrix.php` : comparaison globale.
 
-La navigation est isolée dans `views/admin/_navigation.php`. Le rendu commun
-utilise `views/layouts/module.php`.
+L’administration utilise encore `views/admin/_navigation.php` comme catalogue
+historique de liens. Le rendu HTML n’y est toutefois pas construit : il est
+centralisé dans `Navigation::module()` via `views/layouts/module.php`.
+
+Pour un nouveau module, suivre la convention moderne documentée dans
+`doc/architecture/creer-un-module.md` : classe de navigation dédiée,
+contrôleur de base du module et aucun fragment `_navigation.php` supplémentaire.
 
 ## Design
 

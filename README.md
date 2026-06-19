@@ -44,6 +44,8 @@ Ce projet est une application PHP MVC légère avec authentification, vues perso
 
 La documentation de référence est disponible dans les dossiers suivants :
 
+- [Créer un module MVC de A à Z](doc/architecture/creer-un-module.md)
+- [Architecture et navigation du module RH](doc/modules/rh.md)
 - [doc/backend/readmeGeneral.md](doc/backend/readmeGeneral.md)
 - [doc/backend/readmeAuthProcess.md](doc/backend/readmeAuthProcess.md)
 - [doc/backend/readmeModel.md](doc/backend/readmeModel.md)

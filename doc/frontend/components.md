@@ -75,6 +75,14 @@ Toute navigation latérale passe par `Navigation::module()` dans le layout parta
 - Les anciens modules sont regroupés automatiquement par type de menu.
 - Seuls les groupes défilent ; « Retour au portail » reste toujours fixe.
 - Le lien actif utilise `aria-current="page"`.
+- Une classe comme `RhNavigation` décrit les liens ; elle ne produit pas de HTML.
+- Le contrôleur transmet la clé active et le layout appelle le composant.
+- Ne pas dupliquer le menu dans une vue `_navigation.php` pour un nouveau module.
+
+Voir aussi :
+
+- [Architecture du module RH](../modules/rh.md)
+- [Créer un module MVC de A à Z](../architecture/creer-un-module.md)
 
 ## Dashboards et pages
 
