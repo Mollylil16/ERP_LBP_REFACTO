@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace App\Controllers\Employee;
 
-use App\Controllers\BaseController;
-
 use App\Helpers\Auth;
 use App\Helpers\Csrf;
 use App\Helpers\Session;
@@ -15,9 +13,12 @@ use App\Repositories\Employee\EmployeeDashboardRepository;
 use App\Repositories\Employee\EmployeePortalRepository;
 use App\Services\Employee\EmployeeDashboardService;
 use App\Services\Employee\EmployeePortalService;
+use App\View\Pages\Employee\DashboardPage;
+use App\View\Pages\Employee\RequestFormPage;
+use App\View\Pages\Employee\RequestShowPage;
 use RuntimeException;
 
-class EmployeePortalController extends BaseController
+final class EmployeePortalController extends EmployeeBaseController
 {
     private EmployeePortalService $service;
     private EmployeeDashboardService $dashboardService;
@@ -26,14 +27,21 @@ class EmployeePortalController extends BaseController
     {
         $portalRepository = new EmployeePortalRepository(Database::getConnection());
         $this->service = new EmployeePortalService($portalRepository);
-        $this->dashboardService = new EmployeeDashboardService(new EmployeeDashboardRepository($portalRepository));
+        $this->dashboardService = new EmployeeDashboardService(
+            new EmployeeDashboardRepository($portalRepository)
+        );
     }
 
     public function index(): void
     {
         AuthMiddleware::check();
         try {
-            $this->view('employee/dashboard', $this->viewData('Mon espace employé', 'dashboard') + $this->dashboardService->dashboard(Auth::user()));
+            $this->employeeView('employee/dashboard', 'Mon espace employé', 'dashboard', [
+                'page' => DashboardPage::fromArray(
+                    $this->dashboardService->dashboard(Auth::user()),
+                    Csrf::token()
+                ),
+            ]);
         } catch (RuntimeException $e) {
             Session::flash('error', $e->getMessage());
             $this->redirect('/selection_portail');
@@ -43,7 +51,9 @@ class EmployeePortalController extends BaseController
     public function createRequest(): void
     {
         AuthMiddleware::check();
-        $this->view('employee/request-form', $this->viewData('Nouvelle demande RH', 'requests') + ['csrfToken' => Csrf::token()]);
+        $this->employeeView('employee/request-form', 'Nouvelle demande RH', 'requests', [
+            'page' => new RequestFormPage(Csrf::token(), (string) ($_GET['type'] ?? '')),
+        ]);
     }
 
     public function storeRequest(): void
@@ -63,9 +73,11 @@ class EmployeePortalController extends BaseController
     {
         AuthMiddleware::check();
         try {
-            $this->view('employee/request-show', $this->viewData('Suivi de ma demande', 'requests') + [
-                'request' => $this->service->request(Auth::user(), (int) $id),
-                'csrfToken' => Csrf::token(),
+            $this->employeeView('employee/request-show', 'Suivi de ma demande', 'requests', [
+                'page' => new RequestShowPage(
+                    $this->service->request(Auth::user(), (int) $id),
+                    Csrf::token(),
+                ),
             ]);
         } catch (RuntimeException $e) {
             Session::flash('error', $e->getMessage());
@@ -104,25 +116,5 @@ class EmployeePortalController extends BaseController
             Session::flash('error', 'Jeton CSRF invalide.');
             $this->back();
         }
-    }
-
-    private function viewData(string $title, string $active): array
-    {
-        return [
-            'pageTitle' => $title,
-            'moduleName' => 'Espace employé',
-            'moduleCode' => 'EMP',
-            'activeModule' => $active,
-            'moduleTheme' => ['accent' => '#0ea5e9', 'accent2' => '#0369a1', 'gradient' => 'linear-gradient(135deg,#0369a1,#0ea5e9)', 'iconKey' => 'employee'],
-            'moduleNavigation' => [
-                ['group' => 'Accueil', 'key' => 'dashboard', 'label' => 'Mon tableau de bord', 'icon' => 'DB', 'url' => 'espace-employe', 'available' => true],
-                ['group' => 'Mes démarches', 'key' => 'requests', 'label' => 'Mes demandes RH', 'icon' => 'DR', 'url' => 'espace-employe/demandes/nouvelle', 'available' => true],
-                ['group' => 'Temps & échanges', 'key' => 'attendance', 'label' => 'Mon pointage', 'icon' => 'PT', 'url' => 'espace-employe#pointage', 'available' => true],
-                ['group' => 'Temps & échanges', 'key' => 'explanations', 'label' => 'Mes explications', 'icon' => 'EX', 'url' => 'espace-employe#explications', 'available' => true],
-                ['group' => 'Mon dossier', 'key' => 'documents', 'label' => 'Mes documents', 'icon' => 'DO', 'url' => 'espace-employe#documents', 'available' => true],
-            ],
-            'additionalStyles' => ['css/finea-ui.css', 'css/employee.css'],
-            'additionalScripts' => ['js/employee.js'],
-        ];
     }
 }

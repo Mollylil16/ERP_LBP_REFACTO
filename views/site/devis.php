@@ -1,8 +1,9 @@
 <?php
 use App\View\Components\Form;
 use App\View\Components\Ui;
+use App\View\Pages\Site\SitePage;
 
-/** @var \App\Support\ViewBag $viewData */ $viewData ??= \App\Support\ViewBag::from(get_defined_vars());
+/** @var SitePage $page */
 ob_start();
 ?>
 <section class="site-page-hero site-page-hero--quote">
@@ -12,7 +13,7 @@ ob_start();
 </section>
 
 <section class="site-form-layout">
-    <form class="site-form-card" method="post" action="#">
+    <form class="site-form-card" method="get" action="<?= \App\Helpers\View::url('site/devis') ?>">
         <div class="site-form-grid">
             <?= Form::input('customer_name', ['label' => 'Nom complet / entreprise', 'placeholder' => 'Nom complet / entreprise']) ?>
             <?= Form::input('phone', ['label' => 'Téléphone / WhatsApp', 'placeholder' => 'Téléphone / WhatsApp']) ?>

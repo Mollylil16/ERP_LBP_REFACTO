@@ -294,19 +294,40 @@ final class Admin
         $html .= '<section class="health-module-grid" aria-label="Modules testables">';
         foreach ($page->modules as $module) {
             $slug = (string) ($module['slug'] ?? '');
-            $html .= '<article class="health-module-card" style="--accent: '
+            $maintenance = !empty($module['is_maintenance']);
+            $reason = (string) ($module['maintenance_reason'] ?? '');
+            $html .= '<article class="' . View::e(Html::classes([
+                'health-module-card',
+                'is-maintenance' => $maintenance,
+            ])) . '" style="--accent: '
                 . View::e((string) ($module['accent'] ?? '#2563eb')) . '" data-health-module-card="'
                 . View::e($slug) . '" data-health-module-label="'
-                . View::e((string) ($module['label'] ?? $slug)) . '"><header><span class="health-module-code">'
+                . View::e((string) ($module['label'] ?? $slug)) . '" data-maintenance="'
+                . ($maintenance ? '1' : '0') . '" data-maintenance-reason="'
+                . View::e($reason) . '"><header><span class="health-module-code">'
                 . View::e((string) ($module['code'] ?? '')) . '</span>'
-                . '<span class="health-pill health-pill-neutral" data-health-card-status>Non testé</span></header><h3>'
+                . '<span class="health-pill ' . ($maintenance ? 'health-pill-maintenance' : 'health-pill-neutral')
+                . '" data-health-card-status>' . ($maintenance ? 'Maintenance' : 'Non testé') . '</span></header><h3>'
                 . View::e((string) ($module['label'] ?? '')) . '</h3>'
                 . '<p>Contrôle routes, vues, tables, requêtes SQL et cohérence d’exécution du module.</p>'
+                . '<p class="health-maintenance-reason" data-maintenance-reason-display'
+                . ($maintenance ? '' : ' hidden') . '>' . View::e($reason) . '</p>'
                 . '<div class="health-mini-gauge" aria-label="Progression du test"><span data-health-card-bar style="width: 0%"></span></div>'
                 . '<small class="health-module-progress" data-health-card-progress>0%</small><footer>'
                 . Ui::button('Tester ce module', ['variant' => 'plain', 'type' => 'button', 'class' => 'health-link-btn', 'data-health-run-module' => $slug])
                 . Ui::button('Détails', ['variant' => 'plain', 'type' => 'button', 'class' => 'health-link-btn muted', 'data-health-open-details' => $slug])
-                . '</footer></article>';
+                . '</footer>'
+                . ($slug !== 'admin'
+                    ? '<div class="health-maintenance-controls">'
+                        . Ui::button($maintenance ? 'Remettre en service' : 'Mode maintenance', [
+                            'variant' => 'plain',
+                            'type' => 'button',
+                            'class' => 'health-maintenance-button',
+                            'data-maintenance-toggle' => $slug,
+                        ])
+                        . '</div>'
+                    : '')
+                . '</article>';
         }
         $html .= '</section>';
 
@@ -335,11 +356,32 @@ final class Admin
             . '<article class="health-modal__dialog" role="dialog" aria-modal="true" aria-label="Détails du test">'
             . '<header><h3 data-health-modal-title>Détails</h3><button type="button" data-health-close-modal>×</button></header>'
             . '<pre data-health-modal-body></pre></article></div>'
+            . '<div class="health-modal" data-maintenance-modal hidden>'
+            . '<div class="health-modal__overlay" data-maintenance-close></div>'
+            . '<article class="health-modal__dialog health-maintenance-dialog" role="dialog" aria-modal="true" aria-labelledby="health-maintenance-title">'
+            . '<header><div><p class="finea-eyebrow">Disponibilité du module</p>'
+            . '<h3 id="health-maintenance-title">Activer le mode maintenance</h3></div>'
+            . '<button type="button" data-maintenance-close aria-label="Fermer">×</button></header>'
+            . '<div class="health-maintenance-dialog__body"><p data-maintenance-modal-message></p>'
+            . Form::textarea('maintenance_reason', [
+                'label' => 'Motif de la maintenance',
+                'placeholder' => 'Ex. Mise à jour de la gestion du personnel',
+                'rows' => 4,
+                'required' => true,
+                'minlength' => 5,
+                'data-maintenance-reason-input' => true,
+            ])
+            . '<small>Ce message sera visible par les utilisateurs sur le portail.</small></div>'
+            . '<footer class="health-maintenance-dialog__actions">'
+            . Ui::button('Annuler', ['variant' => 'plain', 'type' => 'button', 'class' => 'health-link-btn muted', 'data-maintenance-close' => true])
+            . Ui::button('Confirmer la maintenance', ['variant' => 'plain', 'type' => 'button', 'class' => 'health-maintenance-confirm', 'data-maintenance-confirm' => true])
+            . '</footer></article></div>'
             . '<script>window.ERP_HEALTH_TESTS=' . json_encode([
                 'csrfToken' => $page->csrfToken,
                 'endpoints' => [
                     'runAll' => View::url('admin/system-tests/run'),
                     'runModule' => View::url('admin/system-tests/run/'),
+                    'maintenance' => View::url('admin/system-tests/maintenance/'),
                 ],
             ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . ';</script>';
     }

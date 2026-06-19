@@ -2,6 +2,8 @@
 
 namespace App;
 
+use App\Middleware\ModuleMaintenanceMiddleware;
+
 class Router
 {
     private array $routes = [];
@@ -43,6 +45,12 @@ class Router
     {
         $requestUri = $this->normalizeUri($requestUri);
         $this->redirectLegacyPhpUrl($requestUri);
+        $maintenance = ModuleMaintenanceMiddleware::stateForPath($requestUri);
+        if ($maintenance !== null) {
+            http_response_code(503);
+            require BASE_PATH . '/views/errors/maintenance.php';
+            return;
+        }
 
         foreach ($this->routes as $route) {
             if ($route['method'] !== strtoupper($requestMethod)) {

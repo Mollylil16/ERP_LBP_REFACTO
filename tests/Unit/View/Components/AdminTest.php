@@ -100,6 +100,10 @@ final class AdminTest extends TestCase
             'data-health-module-label',
             'data-health-card-progress',
             'data-health-gauge-caption',
+            'data-maintenance-toggle',
+            'data-maintenance-reason-input',
+            'data-maintenance-modal',
+            'data-maintenance-confirm',
         ] as $attribute) {
             self::assertStringContainsString($attribute, $component);
         }
@@ -107,6 +111,7 @@ final class AdminTest extends TestCase
         self::assertStringContainsString('async function runAllSequentially()', $javascript);
         self::assertStringContainsString('await runOne(', $javascript);
         self::assertStringContainsString('renderGlobalReport()', $javascript);
+        self::assertStringContainsString('async function toggleMaintenance(', $javascript);
         self::assertStringContainsString('.health-module-card.is-focus', $styles);
         self::assertStringContainsString('.health-module-card.is-muted', $styles);
     }

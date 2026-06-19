@@ -71,10 +71,14 @@ ob_start();
 <section class="finea-module-grid" id="moduleGrid" aria-label="Modules ERP disponibles">
     <?php foreach ($modules as $module): ?>
         <article
-            class="finea-module-card <?= View::e($module['class']); ?>"
+            class="finea-module-card <?= View::e($module['class']); ?><?= !empty($module['is_maintenance']) ? ' is-maintenance' : '' ?>"
             data-module-card
             data-search="<?= View::e(strtolower($module['label'] . ' ' . $module['code'] . ' ' . $module['description'] . ' ' . $module['keywords'])); ?>">
+            <?php if (!empty($module['is_maintenance'])): ?>
+            <div class="finea-module-link" aria-disabled="true">
+            <?php else: ?>
             <a href="<?= View::url($module['url']); ?>" class="finea-module-link" aria-label="Ouvrir le module <?= View::e($module['label']); ?>">
+            <?php endif; ?>
                 <span class="finea-module-glow" aria-hidden="true"></span>
                 <span class="finea-module-topline">
                     <span class="finea-module-icon"><?= $moduleIcon($module['icon']); ?></span>
@@ -82,11 +86,14 @@ ob_start();
                 </span>
                 <span class="finea-module-title"><?= View::e($module['label']); ?></span>
                 <span class="finea-module-description"><?= View::e($module['description']); ?></span>
+                <?php if (!empty($module['is_maintenance'])): ?>
+                    <span class="finea-module-maintenance-reason"><?= View::e($module['maintenance_reason']); ?></span>
+                <?php endif; ?>
                 <span class="finea-module-footer">
                     <span class="finea-module-status"><?= View::e($module['status']); ?></span>
-                    <span class="finea-module-open">Ouvrir</span>
+                    <span class="finea-module-open"><?= !empty($module['is_maintenance']) ? 'Indisponible' : 'Ouvrir' ?></span>
                 </span>
-            </a>
+            <?= !empty($module['is_maintenance']) ? '</div>' : '</a>' ?>
         </article>
     <?php endforeach; ?>
 </section>

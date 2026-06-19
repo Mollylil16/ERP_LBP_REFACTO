@@ -2,10 +2,11 @@
 use App\Helpers\View;
 use App\View\Components\Form;
 use App\View\Components\Ui;
-/** @var \App\Support\ViewBag $viewData */ $viewData ??= \App\Support\ViewBag::from(get_defined_vars());
+use App\View\Pages\Site\SitePage;
+
+/** @var SitePage $page */
 ob_start();
-$ref = strtoupper(trim((string)($_GET['ref'] ?? 'LBP-EXP-2026-00124')));
-$current = ($shipments[$ref] ?? null) ?: reset($shipments);
+$current = $page->currentShipment;
 ?>
 <section class="site-page-hero site-page-hero--tracking">
     <p class="finea-eyebrow">Suivi colis</p>
@@ -31,7 +32,7 @@ $current = ($shipments[$ref] ?? null) ?: reset($shipments);
 </section>
 <section class="site-section-head"><p class="finea-eyebrow">Données test</p><h2>Références disponibles pour tester le rendu.</h2></section>
 <div class="site-reference-list">
-    <?php foreach (($shipments ?? []) as $shipment): ?>
+    <?php foreach ($page->shipments as $shipment): ?>
         <a href="<?= View::url('site/tracking') ?>?ref=<?= urlencode($shipment['reference']) ?>"><?= View::e($shipment['reference']) ?><span><?= View::e($shipment['status']) ?></span></a>
     <?php endforeach; ?>
 </div>

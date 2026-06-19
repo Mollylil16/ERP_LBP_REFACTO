@@ -17,8 +17,13 @@
   const modal = document.querySelector('[data-health-modal]');
   const modalTitle = document.querySelector('[data-health-modal-title]');
   const modalBody = document.querySelector('[data-health-modal-body]');
+  const maintenanceModal = document.querySelector('[data-maintenance-modal]');
+  const maintenanceModalMessage = document.querySelector('[data-maintenance-modal-message]');
+  const maintenanceReasonInput = document.querySelector('[data-maintenance-reason-input]');
+  const maintenanceConfirmButton = document.querySelector('[data-maintenance-confirm]');
   const reports = new Map();
   let running = false;
+  let pendingMaintenanceInfo = null;
 
   const labels = {
     passed: 'OK',
@@ -50,6 +55,9 @@
       runAllButton.textContent = value ? 'Tests en cours…' : 'Lancer le test complet';
     }
     document.querySelectorAll('[data-health-run-module]').forEach(button => {
+      button.disabled = value;
+    });
+    document.querySelectorAll('[data-maintenance-toggle]').forEach(button => {
       button.disabled = value;
     });
   }
@@ -105,7 +113,7 @@
       const info = moduleInfo(card);
       card.classList.remove('is-focus', 'is-muted', 'is-testing', 'is-complete');
       setCardProgress(info, 0);
-      setCardStatus(info, 'pending');
+      setCardStatus(info, 'pending', card.dataset.maintenance === '1' ? 'Maintenance • attente' : 'En attente');
     });
   }
 
@@ -160,7 +168,7 @@
     setCardStatus(
       info,
       payload.status || 'failed',
-      `${labels[payload.status] || payload.status || 'Échec'} • ${Number(payload.score || 0)}%`
+      `${info.card.dataset.maintenance === '1' ? 'Maintenance • ' : ''}${labels[payload.status] || payload.status || 'Échec'} • ${Number(payload.score || 0)}%`
     );
   }
 
@@ -216,7 +224,7 @@
       item.innerHTML = `
         <div class="health-module-report__identity">
           <span class="${statusClass(payload.status)}">${escapeHtml(labels[payload.status] || payload.status)}</span>
-          <div><strong>${escapeHtml(info.label)}</strong><small>${(payload.checks || []).length} contrôle(s) • ${failed} échec(s) • ${warning} alerte(s)</small></div>
+          <div><strong>${escapeHtml(info.label)}${info.card.dataset.maintenance === '1' ? ' • Maintenance' : ''}</strong><small>${(payload.checks || []).length} contrôle(s) • ${failed} échec(s) • ${warning} alerte(s)</small></div>
         </div>
         <strong class="health-module-report__score">${Number(payload.score || 0)}%</strong>
         <button type="button" data-health-report-module="${escapeHtml(info.slug)}">Rapport détaillé</button>
@@ -305,6 +313,72 @@
     setBusy(false);
   }
 
+  function closeMaintenanceModal() {
+    if (maintenanceModal) maintenanceModal.hidden = true;
+    pendingMaintenanceInfo = null;
+  }
+
+  function openMaintenanceModal(info) {
+    pendingMaintenanceInfo = info;
+    if (maintenanceModalMessage) {
+      maintenanceModalMessage.textContent = `Le module ${info.label} deviendra temporairement inaccessible. Indiquez la raison affichée aux utilisateurs.`;
+    }
+    if (maintenanceReasonInput) {
+      maintenanceReasonInput.value = info.card.dataset.maintenanceReason || '';
+      maintenanceReasonInput.setCustomValidity('');
+    }
+    if (maintenanceModal) maintenanceModal.hidden = false;
+    window.setTimeout(() => maintenanceReasonInput?.focus(), 0);
+  }
+
+  async function toggleMaintenance(info, reason = '') {
+    if (running) return;
+    const currentlyMaintained = info.card.dataset.maintenance === '1';
+    if (!currentlyMaintained && reason.length < 5) {
+      maintenanceReasonInput?.focus();
+      showConsole('Motif requis', 'Indiquez la raison de la maintenance avant de désactiver le module.');
+      return;
+    }
+
+    const button = info.card.querySelector('[data-maintenance-toggle]');
+    button.disabled = true;
+    const body = new URLSearchParams();
+    body.set('_csrf_token', config.csrfToken || '');
+    body.set('maintenance', currentlyMaintained ? '0' : '1');
+    body.set('reason', reason);
+
+    try {
+      const response = await fetch(
+        `${config.endpoints.maintenance}${encodeURIComponent(info.slug)}`,
+        { method: 'POST', headers: { 'X-CSRF-TOKEN': config.csrfToken || '' }, body }
+      );
+      const payload = await response.json();
+      if (!response.ok || !payload.ok) {
+        throw new Error(payload.message || 'Impossible de modifier le mode maintenance.');
+      }
+      const maintenance = Boolean(payload.state?.is_maintenance);
+      const savedReason = payload.state?.reason || '';
+      info.card.dataset.maintenance = maintenance ? '1' : '0';
+      info.card.dataset.maintenanceReason = savedReason;
+      info.card.classList.toggle('is-maintenance', maintenance);
+      const display = info.card.querySelector('[data-maintenance-reason-display]');
+      if (display) {
+        display.textContent = savedReason;
+        display.hidden = !maintenance;
+      }
+      button.textContent = maintenance ? 'Remettre en service' : 'Mode maintenance';
+      setCardStatus(info, maintenance ? 'maintenance' : 'pending', maintenance ? 'Maintenance' : 'En attente');
+      showConsole(
+        maintenance ? `${info.label} est en maintenance` : `${info.label} est de nouveau disponible`,
+        maintenance ? savedReason : 'Le module est accessible depuis le portail.'
+      );
+    } catch (error) {
+      showConsole('Modification impossible', error.message);
+    } finally {
+      button.disabled = false;
+    }
+  }
+
   function openDetails(title, payload) {
     modalTitle.textContent = title || 'Détails';
     modalBody.textContent = JSON.stringify(payload || {}, null, 2);
@@ -333,6 +407,13 @@
         report?.payload || { message: 'Lancez le test de ce module pour afficher son rapport.' }
       );
     });
+    card.querySelector('[data-maintenance-toggle]')?.addEventListener('click', () => {
+      if (info.card.dataset.maintenance === '1') {
+        toggleMaintenance(info);
+        return;
+      }
+      openMaintenanceModal(info);
+    });
   });
 
   resultList?.addEventListener('click', event => {
@@ -356,5 +437,27 @@
     button.addEventListener('click', () => {
       modal.hidden = true;
     });
+  });
+
+  document.querySelectorAll('[data-maintenance-close]').forEach(button => {
+    button.addEventListener('click', closeMaintenanceModal);
+  });
+
+  maintenanceConfirmButton?.addEventListener('click', async () => {
+    if (!pendingMaintenanceInfo) return;
+    const reason = maintenanceReasonInput?.value?.trim() || '';
+    if (reason.length < 5) {
+      maintenanceReasonInput?.focus();
+      maintenanceReasonInput?.setCustomValidity('Le motif doit contenir au moins 5 caractères.');
+      maintenanceReasonInput?.reportValidity();
+      return;
+    }
+
+    maintenanceReasonInput?.setCustomValidity('');
+    maintenanceConfirmButton.disabled = true;
+    const info = pendingMaintenanceInfo;
+    await toggleMaintenance(info, reason);
+    maintenanceConfirmButton.disabled = false;
+    if (info.card.dataset.maintenance === '1') closeMaintenanceModal();
   });
 })();
