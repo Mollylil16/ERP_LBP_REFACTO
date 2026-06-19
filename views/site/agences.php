@@ -8,6 +8,7 @@ use App\View\Pages\Site\SitePage;
 ob_start();
 $agenciesJson = json_encode($page->agencies, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 ?>
+<div class="site-content">
 <section class="site-page-hero site-page-hero--locator">
     <p class="finea-eyebrow">Localisateur LBP</p>
     <h1>Trouvez une agence ou un point relais LBP.</h1>
@@ -39,4 +40,5 @@ $agenciesJson = json_encode($page->agencies, JSON_UNESCAPED_UNICODE | JSON_UNESC
         <p class="site-map-note">Carte de démonstration sans dépendance externe. Les coordonnées sont prêtes pour un branchement Leaflet/OpenStreetMap ensuite.</p>
     </div>
 </section>
+</div>
 <?php $content = ob_get_clean(); require BASE_PATH . '/views/layouts/site.php';

@@ -15,3 +15,5 @@ $router->get('/site/tracking', [WebsiteController::class, 'tracking']);
 $router->get('/site/agences', [WebsiteController::class, 'agencies']);
 $router->get('/site/devis', [WebsiteController::class, 'quote']);
 $router->get('/site/contact', [WebsiteController::class, 'contact']);
+$router->get('/site/shop', [WebsiteController::class, 'shop']);
+$router->get('/site/forum', [WebsiteController::class, 'forum']);

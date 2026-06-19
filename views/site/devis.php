@@ -6,6 +6,7 @@ use App\View\Pages\Site\SitePage;
 /** @var SitePage $page */
 ob_start();
 ?>
+<div class="site-content">
 <section class="site-page-hero site-page-hero--quote">
     <p class="finea-eyebrow">Demande de devis</p>
     <h1>Recevez une estimation pour votre opération import-export.</h1>
@@ -50,4 +51,5 @@ ob_start();
         </ul>
     </aside>
 </section>
+</div>
 <?php $content = ob_get_clean(); require BASE_PATH . '/views/layouts/site.php';

@@ -16,6 +16,7 @@ abstract class SiteAdminBaseController extends BaseController
         string $active,
         array $data = [],
         array $theme = [],
+        array $assets = [],
     ): void {
         $this->view($view, array_replace([
             'pageTitle' => $title,
@@ -24,7 +25,8 @@ abstract class SiteAdminBaseController extends BaseController
             'moduleTheme' => $theme,
             'activeModule' => $active,
             'moduleNavigation' => SiteAdminNavigation::items(),
-            'additionalStyles' => ['css/finea-ui.css'],
+            'additionalStyles' => $assets['additionalStyles'] ?? ['css/finea-ui.css'],
+            'additionalScripts' => $assets['additionalScripts'] ?? [],
         ], $data));
     }
 }

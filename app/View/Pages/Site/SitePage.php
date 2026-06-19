@@ -20,14 +20,23 @@ final class SitePage
      * @param array<int,array<string,mixed>> $services
      * @param array<int,array<string,mixed>> $news
      * @param array<int,array<string,string>> $stats
+     * @param array<string,mixed> $branding
+     * @param array<int,array<string,mixed>> $slides
+     * @param array<int,array<string,mixed>> $products
+     * @param array<int,array<string,mixed>> $topics
      */
     public function __construct(
         public readonly string $title,
+        public readonly string $activePage,
         public readonly array $shipments,
         public readonly array $agencies,
         public readonly array $services,
         public readonly array $news,
         public readonly array $stats,
+        public readonly array $branding,
+        public readonly array $slides,
+        public readonly array $products,
+        public readonly array $topics,
         string $reference = '',
     ) {
         $this->defaultShipment = (string) (array_key_first($shipments) ?? '');
@@ -50,5 +59,11 @@ final class SitePage
             ]));
             return $agency;
         }, $agencies, array_keys($agencies));
+    }
+
+    public function brand(string $key, string $fallback = ''): string
+    {
+        $value = trim((string) ($this->branding[$key] ?? ''));
+        return $value !== '' ? $value : $fallback;
     }
 }

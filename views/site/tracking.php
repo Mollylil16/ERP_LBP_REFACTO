@@ -8,6 +8,7 @@ use App\View\Pages\Site\SitePage;
 ob_start();
 $current = $page->currentShipment;
 ?>
+<div class="site-content">
 <section class="site-page-hero site-page-hero--tracking">
     <p class="finea-eyebrow">Suivi colis</p>
     <h1>Consultez l’état d’un colis, BL ou dossier transit.</h1>
@@ -35,5 +36,6 @@ $current = $page->currentShipment;
     <?php foreach ($page->shipments as $shipment): ?>
         <a href="<?= View::url('site/tracking') ?>?ref=<?= urlencode($shipment['reference']) ?>"><?= View::e($shipment['reference']) ?><span><?= View::e($shipment['status']) ?></span></a>
     <?php endforeach; ?>
+</div>
 </div>
 <?php $content = ob_get_clean(); require BASE_PATH . '/views/layouts/site.php';

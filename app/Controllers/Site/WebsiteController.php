@@ -7,13 +7,22 @@ use App\Controllers\BaseController;
 use App\Middleware\AuthMiddleware;
 use App\Models\Database;
 use App\Repositories\Shared\BusinessModuleRepository;
+use App\Repositories\Site\WebsiteRepository;
 use App\Services\Shared\BusinessModuleService;
+use App\Services\Site\WebsiteService;
 use App\View\Pages\Site\SitePage;
 use App\View\Pages\SiteAdmin\DashboardPage;
 use App\View\Navigation\SiteAdminNavigation;
 
 final class WebsiteController extends BaseController
 {
+    private WebsiteService $website;
+
+    public function __construct()
+    {
+        $this->website = new WebsiteService(new WebsiteRepository(Database::getConnection()));
+    }
+
     public function dashboard(): void
     {
         AuthMiddleware::check();
@@ -32,38 +41,50 @@ final class WebsiteController extends BaseController
 
     public function publicSite(): void
     {
-        $this->siteView('site/index', 'Accueil');
+        $this->siteView('site/index', 'Accueil', 'home');
     }
 
     public function tracking(): void
     {
-        $this->siteView('site/tracking', 'Suivi colis', (string) ($_GET['ref'] ?? ''));
+        $this->siteView('site/tracking', 'Suivi colis', 'tracking', (string) ($_GET['ref'] ?? ''));
     }
 
     public function quote(): void
     {
-        $this->siteView('site/devis', 'Demande de devis');
+        $this->siteView('site/devis', 'Demande de devis', 'quote');
     }
 
     public function contact(): void
     {
-        $this->siteView('site/contact', 'Contact');
+        $this->siteView('site/contact', 'Contact', 'contact');
     }
 
     public function agencies(): void
     {
-        $this->siteView('site/agences', 'Nos agences');
+        $this->siteView('site/agences', 'Nos agences', 'agencies');
     }
 
-    private function siteView(string $view, string $title, string $reference = ''): void
+    public function shop(): void
     {
+        $this->siteView('site/shop', 'Marketplace', 'shop');
+    }
+
+    public function forum(): void
+    {
+        $this->siteView('site/forum', 'Communauté', 'forum');
+    }
+
+    private function siteView(string $view, string $title, string $activePage, string $reference = ''): void
+    {
+        $content = $this->website->content();
         $this->view($view, [
-            'pageTitle' => $title . ' - LBP Transit',
+            'pageTitle' => $title,
             'page' => new SitePage(
                 $title,
+                $activePage,
                 $this->demoShipments(),
                 $this->demoAgencies(),
-                $this->demoServices(),
+                $content['services'] !== [] ? $content['services'] : $this->demoServices(),
                 $this->demoNews(),
                 [
                 ['label' => 'Pays couverts', 'value' => '14+'],
@@ -71,6 +92,10 @@ final class WebsiteController extends BaseController
                 ['label' => 'Agences & points relais', 'value' => '9'],
                 ['label' => 'SLA suivi client', 'value' => '24/7'],
                 ],
+                $content['branding'],
+                $content['slides'],
+                $content['products'],
+                $content['topics'],
                 $reference,
             ),
         ]);

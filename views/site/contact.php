@@ -8,6 +8,7 @@ use App\View\Pages\Site\SitePage;
 
 ob_start();
 ?>
+<div class="site-content">
 <section class="site-page-hero site-page-hero--contact">
     <p class="finea-eyebrow">Contact</p>
     <h1>Parlez à un conseiller transit LBP.</h1>
@@ -42,4 +43,5 @@ ob_start();
         <?php endforeach; ?>
     </aside>
 </section>
+</div>
 <?php $content = ob_get_clean(); require BASE_PATH . '/views/layouts/site.php';

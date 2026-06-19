@@ -11,6 +11,7 @@ final class SiteAdminNavigation
     {
         return [
             ['group' => 'Pilotage', 'key' => 'dashboard', 'label' => 'Tableau de bord', 'icon' => 'DB', 'url' => 'site-admin/dashboard', 'available' => true],
+            ['group' => 'Pilotage', 'key' => 'configuration', 'label' => 'Design & contenus', 'icon' => 'UI', 'url' => 'site-admin/configuration', 'available' => true],
             ['group' => 'Site public', 'key' => 'website', 'label' => 'Voir le site', 'icon' => 'WEB', 'url' => 'site', 'available' => true],
         ];
     }
