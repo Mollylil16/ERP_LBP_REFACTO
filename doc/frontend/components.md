@@ -1,6 +1,7 @@
 # Composants frontend ERP LBP
 
-Les vues doivent recevoir `/** @var \App\Support\ViewBag $viewData */` puis lire les donnees avec `$viewData->string()`, `$viewData->array()`, `$viewData->int()`, `$viewData->bool()` ou `$viewData->get()`.
+Les vues modernisées reçoivent un objet typé `$page` construit par le contrôleur.
+`ViewBag` reste uniquement une compatibilité transitoire pour les anciennes vues.
 
 ## Formulaires
 
@@ -62,7 +63,7 @@ Le select-search affiche un seul champ. Le `<select>` natif est conservé mais m
 ## Règles projet
 
 - Ne pas écrire de `<input>`, `<select>` ou `<textarea>` directement dans une nouvelle vue.
-- Utiliser `ViewBag` au lieu de dépendre de variables extraites.
+- Utiliser un Page Object typé `$page` au lieu de dépendre de variables extraites.
 - Pour les listes de choix, fournir des tableaux `[['value' => '1', 'label' => 'Libellé']]`.
 - Les assets globaux sont `public/assets/css/components.css` et `public/assets/js/components.js`.
 
@@ -95,3 +96,19 @@ et à toute page existante dès qu’elle est modifiée.
 Ne pas créer d’alias comme `Admin::pageHeader()` ou `Rh::pageHeader()` lorsqu’un
 composant générique existe déjà. Les différences visuelles passent par les
 options (`class`, attributs) et les feuilles de style du module.
+
+## Pages d’erreur
+
+Les pages d’erreur suivent la même séparation MVC que les pages métier :
+
+1. `ErrorController` choisit le code HTTP et construit `ErrorPage`.
+2. `ErrorPage` contient tous les textes, actions et variantes visuelles.
+3. `ErrorState` produit le composant HTML partagé.
+4. `views/errors/*.php` assemble uniquement le composant et le layout `guest`.
+
+Le routeur ne doit jamais inclure directement une vue d’erreur. Il appelle le
+contrôleur, ce qui garantit que la logique HTTP reste hors des templates.
+
+`ErrorPage::forStatus()` fournit une explication française et des conseils pour
+les erreurs courantes : 400, 401, 403, 404, 408, 419, 422, 429, 500, 502, 503
+et 504. Les autres codes utilisent une présentation générique cohérente.
