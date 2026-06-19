@@ -88,4 +88,26 @@ final class AdminTest extends TestCase
         self::assertStringNotContainsString('function button(', $source);
         self::assertStringNotContainsString('function section(', $source);
     }
+
+    public function test_system_tests_ui_supports_sequential_module_execution(): void
+    {
+        $component = (string) file_get_contents(BASE_PATH . '/app/View/Components/Admin.php');
+        $javascript = (string) file_get_contents(BASE_PATH . '/public/assets/js/system-tests.js');
+        $styles = (string) file_get_contents(BASE_PATH . '/public/assets/css/system-tests.css');
+
+        foreach ([
+            'data-health-module-card',
+            'data-health-module-label',
+            'data-health-card-progress',
+            'data-health-gauge-caption',
+        ] as $attribute) {
+            self::assertStringContainsString($attribute, $component);
+        }
+
+        self::assertStringContainsString('async function runAllSequentially()', $javascript);
+        self::assertStringContainsString('await runOne(', $javascript);
+        self::assertStringContainsString('renderGlobalReport()', $javascript);
+        self::assertStringContainsString('.health-module-card.is-focus', $styles);
+        self::assertStringContainsString('.health-module-card.is-muted', $styles);
+    }
 }

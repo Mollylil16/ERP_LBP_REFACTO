@@ -106,6 +106,26 @@ Les composants génériques restent dans :
    dans le menu.
 7. Ajouter les tests du Page Object et du composant.
 
+## Santé & Tests
+
+Le bouton « Lancer le test complet » orchestre les tests côté navigateur :
+
+1. les modules sont placés en attente ;
+2. le premier module reçoit le focus ;
+3. son endpoint `/admin/system-tests/run/{module}` est appelé ;
+4. la jauge du module et la progression globale sont mises à jour ;
+5. le module suivant démarre seulement après la réponse du précédent ;
+6. un rapport global est construit avec le statut, le score et les contrôles de
+   chaque module.
+
+Pendant l’exécution, la carte active est mise en avant et les autres sont
+atténuées. Les boutons de lancement sont désactivés afin d’éviter deux suites
+concurrentes.
+
+Le JavaScript d’orchestration se trouve dans
+`public/assets/js/system-tests.js`. Chaque test reste réellement exécuté côté
+serveur par `SystemTestService::runModuleSuite()`.
+
 ## Règles
 
 - aucune vue Admin ne construit la navigation ;

@@ -274,10 +274,10 @@ final class Admin
             . '<div class="health-actions">'
             . Ui::button('Lancer le test complet', ['variant' => 'plain', 'type' => 'button', 'class' => 'health-btn health-btn-primary', 'data-health-run-all' => true])
             . Ui::button('Retour portail', ['href' => 'selection_portail', 'variant' => 'plain', 'class' => 'health-btn health-btn-secondary'])
-            . '</div></div><div class="health-gauge" aria-label="Score santé global"><div class="health-gauge__ring" style="--score: '
+            . '</div></div><div class="health-gauge" aria-label="Progression globale des tests"><div class="health-gauge__ring" style="--score: '
             . $page->score . '"><span data-health-score>' . $page->score . '%</span></div><strong data-health-global-label>'
             . View::e($page->score >= 90 ? 'Très stable' : ($page->score >= 60 ? 'À surveiller' : 'Critique'))
-            . '</strong><small>Dernier score enregistré</small></div></section>';
+            . '</strong><small data-health-gauge-caption>Dernier score enregistré</small></div></section>';
 
         $html .= '<section class="health-strip">'
             . self::healthStat('PHP', (string) ($summary['phpVersion'] ?? ''))
@@ -296,12 +296,14 @@ final class Admin
             $slug = (string) ($module['slug'] ?? '');
             $html .= '<article class="health-module-card" style="--accent: '
                 . View::e((string) ($module['accent'] ?? '#2563eb')) . '" data-health-module-card="'
-                . View::e($slug) . '"><header><span class="health-module-code">'
+                . View::e($slug) . '" data-health-module-label="'
+                . View::e((string) ($module['label'] ?? $slug)) . '"><header><span class="health-module-code">'
                 . View::e((string) ($module['code'] ?? '')) . '</span>'
                 . '<span class="health-pill health-pill-neutral" data-health-card-status>Non testé</span></header><h3>'
                 . View::e((string) ($module['label'] ?? '')) . '</h3>'
                 . '<p>Contrôle routes, vues, tables, requêtes SQL et cohérence d’exécution du module.</p>'
-                . '<div class="health-mini-gauge"><span data-health-card-bar style="width: 0%"></span></div><footer>'
+                . '<div class="health-mini-gauge" aria-label="Progression du test"><span data-health-card-bar style="width: 0%"></span></div>'
+                . '<small class="health-module-progress" data-health-card-progress>0%</small><footer>'
                 . Ui::button('Tester ce module', ['variant' => 'plain', 'type' => 'button', 'class' => 'health-link-btn', 'data-health-run-module' => $slug])
                 . Ui::button('Détails', ['variant' => 'plain', 'type' => 'button', 'class' => 'health-link-btn muted', 'data-health-open-details' => $slug])
                 . '</footer></article>';
@@ -309,7 +311,7 @@ final class Admin
         $html .= '</section>';
 
         $html .= '<section class="health-results" data-health-results hidden><div class="health-results__header"><div>'
-            . '<p class="finea-eyebrow">Rapport d’exécution</p><h3 data-health-results-title>Résultat</h3></div>'
+            . '<p class="finea-eyebrow">Rapport d’exécution</p><h3 data-health-results-title>Rapport global par module</h3></div>'
             . '<span class="health-pill" data-health-results-status>—</span></div>'
             . '<div class="health-check-list" data-health-check-list></div></section>';
 
