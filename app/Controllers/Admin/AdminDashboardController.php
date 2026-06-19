@@ -1,17 +1,18 @@
 <?php
 
-namespace App\Controllers\Admin;
+declare(strict_types=1);
 
-use App\Controllers\BaseController;
+namespace App\Controllers\Admin;
 
 use App\Middleware\AdminMiddleware;
 use App\Models\Database;
+use App\Repositories\Admin\AdminDashboardRepository;
 use App\Repositories\Admin\PermissionRepository;
 use App\Repositories\Admin\UserRepository;
-use App\Repositories\Admin\AdminDashboardRepository;
 use App\Services\Admin\AdminDashboardService;
+use App\View\Pages\Admin\DashboardPage;
 
-class AdminDashboardController extends BaseController
+final class AdminDashboardController extends AdminBaseController
 {
     private AdminDashboardService $service;
 
@@ -27,18 +28,8 @@ class AdminDashboardController extends BaseController
     public function index(): void
     {
         AdminMiddleware::check();
-        $this->view('admin/dashboard', $this->viewData('Tableau de bord', 'dashboard') + $this->service->dashboard());
-    }
-
-    private function viewData(string $pageTitle, string $activeModule): array
-    {
-        return [
-            'pageTitle' => $pageTitle,
-            'moduleName' => 'Administration',
-            'moduleCode' => 'ADM',
-            'activeModule' => $activeModule,
-            'additionalStyles' => ['css/finea-ui.css', 'css/admin.css'],
-            'additionalScripts' => ['js/admin.js'],
-        ];
+        $this->adminView('admin/dashboard', 'Tableau de bord', 'dashboard', [
+            'page' => new DashboardPage($this->service->dashboard()),
+        ]);
     }
 }

@@ -8,11 +8,12 @@ use App\View\Pages\Rh\PersonnelRegisterPage;
 ob_start();
 ?>
 <div class="finea-shell"><div class="finea-container">
-    <?= Rh::pageHeader(
+    <?= Ui::pageHeader(
         'Registre des mutations',
         'Toutes les affectations, changements de fonction, statut ou site.',
         [
             'eyebrow' => 'Mobilite interne',
+            'class' => 'rh-hero',
             'actions' => [Ui::button('Choisir un collaborateur', [
                 'href' => 'rh/personnel',
                 'variant' => 'secondary',

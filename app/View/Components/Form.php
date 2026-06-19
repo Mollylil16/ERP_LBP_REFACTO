@@ -210,7 +210,7 @@ final class Form
             . '</label>';
     }
 
-    /** @param array<int,array{value:mixed,label:mixed}> $options */
+    /** @param array<int,array{value:mixed,label:mixed,attrs?:array<string,mixed>}> $options */
     private static function options(array $options, mixed $selected): string
     {
         $selectedValues = is_array($selected) ? array_map('strval', $selected) : [(string) $selected];
@@ -219,7 +219,12 @@ final class Form
         foreach ($options as $option) {
             $value = (string) ($option['value'] ?? '');
             $label = (string) ($option['label'] ?? $value);
-            $html .= '<option value="' . View::e($value) . '"' . (in_array($value, $selectedValues, true) ? ' selected' : '') . '>' . View::e($label) . '</option>';
+            $attrs = is_array($option['attrs'] ?? null) ? $option['attrs'] : [];
+            $attrs = array_merge(['value' => $value], $attrs);
+            if (in_array($value, $selectedValues, true)) {
+                $attrs['selected'] = true;
+            }
+            $html .= '<option' . Html::attrs($attrs) . '>' . View::e($label) . '</option>';
         }
 
         return $html;

@@ -83,13 +83,6 @@ final class Rh
     }
 
     /** @param array<string,mixed> $options */
-    public static function pageHeader(string $title, string $subtitle = '', array $options = []): string
-    {
-        $options['class'] = Html::classes(['rh-hero', (string) ($options['class'] ?? '')]);
-        return Ui::pageHeader($title, $subtitle, $options);
-    }
-
-    /** @param array<string,mixed> $options */
     public static function card(string $content, array $options = []): string
     {
         $tag = preg_replace('/[^a-z]/i', '', (string) ($options['tag'] ?? 'section')) ?: 'section';

@@ -278,6 +278,17 @@ final class SystemTestService
                 $broken[] = 'Le cycle de vie RH doit utiliser Modal et RecordList.';
             }
         }
+        if (($module['slug'] ?? '') === 'admin') {
+            if (is_file(BASE_PATH . '/views/admin/_navigation.php')) {
+                $broken[] = 'La navigation Admin ne doit pas être reconstruite dans un partial de vue.';
+            }
+            foreach ($this->phpFiles([BASE_PATH . '/views/admin']) as $file) {
+                $source = (string) @file_get_contents($file);
+                if (!str_contains($source, 'Components\\Admin') || !str_contains($source, '$page')) {
+                    $broken[] = $this->relativePath($file) . ' doit utiliser le composant Admin et un Page Object.';
+                }
+            }
+        }
         return [
             'name' => 'Architecture composants • ' . $module['label'],
             'module' => $module['slug'],
@@ -939,7 +950,7 @@ final class SystemTestService
             'portefeuille-clients' => ['slug' => 'portefeuille-clients', 'label' => 'Portefeuille Clients', 'code' => 'PCL', 'accent' => '#84cc16', 'tables' => ['permission_entities'], 'routes' => ['/portefeuille-clients', '/portefeuille-clients/dashboard'], 'pages' => ['/portefeuille-clients', '/portefeuille-clients/dashboard'], 'views' => ['portefeuille_clients/dashboard', 'portefeuille_clients/_navigation']],
             'agents-correspondants' => ['slug' => 'agents-correspondants', 'label' => 'Agents & Correspondants', 'code' => 'AGT', 'accent' => '#6366f1', 'tables' => ['permission_entities'], 'routes' => ['/agents-correspondants', '/agents-correspondants/dashboard'], 'pages' => ['/agents-correspondants', '/agents-correspondants/dashboard'], 'views' => ['agents_correspondants/dashboard', 'agents_correspondants/_navigation']],
             'pilotage-dg' => ['slug' => 'pilotage-dg', 'label' => 'Pilotage DG', 'code' => 'DG', 'accent' => '#0f172a', 'tables' => ['permission_entities'], 'routes' => ['/pilotage-dg', '/pilotage-dg/dashboard'], 'pages' => ['/pilotage-dg', '/pilotage-dg/dashboard'], 'views' => ['pilotage_dg/dashboard', 'pilotage_dg/_navigation']],
-            'admin' => ['slug' => 'admin', 'label' => 'Administration', 'code' => 'ADM', 'accent' => '#111827', 'tables' => ['users', 'permission_entities', 'user_permissions', 'system_test_runs'], 'routes' => ['/admin', '/admin/dashboard'], 'pages' => ['/admin', '/admin/dashboard'], 'views' => ['admin/dashboard', 'admin/_navigation', 'admin/system_tests/index']],
+            'admin' => ['slug' => 'admin', 'label' => 'Administration', 'code' => 'ADM', 'accent' => '#111827', 'tables' => ['users', 'permission_entities', 'user_permissions', 'system_test_runs'], 'routes' => ['/admin', '/admin/dashboard'], 'pages' => ['/admin', '/admin/dashboard'], 'views' => ['admin/dashboard', 'admin/system_tests/index']],
         ];
     }
 

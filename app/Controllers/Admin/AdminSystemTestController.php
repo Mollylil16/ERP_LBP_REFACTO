@@ -4,16 +4,15 @@ declare(strict_types=1);
 
 namespace App\Controllers\Admin;
 
-use App\Controllers\BaseController;
-
 use App\Helpers\Csrf;
 use App\Middleware\AdminMiddleware;
 use App\Models\Database;
 use App\Repositories\Admin\SystemTestRepository;
 use App\Services\Admin\SystemTestService;
+use App\View\Pages\Admin\SystemTestsPage;
 use Throwable;
 
-final class AdminSystemTestController extends BaseController
+final class AdminSystemTestController extends AdminBaseController
 {
     private SystemTestService $service;
 
@@ -27,12 +26,16 @@ final class AdminSystemTestController extends BaseController
     {
         AdminMiddleware::check();
 
-        $this->view('admin/system_tests/index', [
-            'pageTitle' => 'Santé & Tests ERP',
-            'csrfToken' => Csrf::token(),
-            'summary' => $this->service->dashboardSummary(),
-            'modules' => $this->service->moduleCards(),
-            'latestRuns' => $this->service->latestRuns(8),
+        $this->adminView('admin/system_tests/index', 'Santé & Tests ERP', 'tests', [
+            'page' => new SystemTestsPage(
+                Csrf::token(),
+                $this->service->dashboardSummary(),
+                $this->service->moduleCards(),
+                $this->service->latestRuns(8),
+            ),
+        ], [
+            'additionalStyles' => ['css/finea-ui.css', 'css/admin.css', 'css/system-tests.css'],
+            'additionalScripts' => ['js/admin.js', 'js/system-tests.js'],
         ]);
     }
 
@@ -59,7 +62,7 @@ final class AdminSystemTestController extends BaseController
         ]);
     }
 
-    /** @param callable(): array<string, mixed> $callback */
+    /** @param callable(): array<string,mixed> $callback */
     private function jsonSafe(callable $callback): never
     {
         ob_start();
@@ -77,7 +80,7 @@ final class AdminSystemTestController extends BaseController
                 'ok' => false,
                 'status' => 'failed',
                 'score' => 0,
-                "message" => "Erreur serveur pendant l'exécution des tests : " . $exception->getMessage(),
+                'message' => "Erreur serveur pendant l'exécution des tests : " . $exception->getMessage(),
                 'checks' => [[
                     'name' => 'Erreur serveur',
                     'status' => 'failed',
@@ -103,7 +106,7 @@ final class AdminSystemTestController extends BaseController
         }
     }
 
-    /** @param array<string, mixed> $payload */
+    /** @param array<string,mixed> $payload */
     private function json(array $payload, int $status = 200): never
     {
         http_response_code($status);

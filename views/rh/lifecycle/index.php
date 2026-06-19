@@ -13,11 +13,12 @@ ob_start();
 ?>
 <div class="finea-shell">
     <div class="finea-container">
-        <?= Rh::pageHeader(
+        <?= Ui::pageHeader(
             'Processus RH, échéances et validations',
             'Contrats, périodes d’essai, missions, performances, formations et décisions hiérarchiques.',
             [
                 'eyebrow' => 'Cycle de vie collaborateur',
+                'class' => 'rh-hero',
                 'actions' => [Ui::badge(
                     $page->pendingWorkflows() . ' validation(s) en attente',
                     'neutral',

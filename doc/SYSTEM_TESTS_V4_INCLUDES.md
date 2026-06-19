@@ -5,14 +5,12 @@ Cette version ajoute un contrôle `Includes / partials` par module.
 Objectif : détecter les erreurs d'intégration non vues par un simple ping HTTP, par exemple :
 
 - la navigation RH est fournie par `App\View\Navigation\RhNavigation` ;
-- `views/admin/_navigation.php` manquant ;
+- un partial statique réellement requis mais manquant ;
 - partial requis par une vue mais absent du disque.
 
 Le contrôle scanne les vues du module et résout les includes statiques de type :
 
 ```php
-$moduleNavigation = \App\View\Navigation\RhNavigation::items();
-require_once BASE_PATH . '/views/admin/_navigation.php';
 include __DIR__ . '/partial.php';
 ```
 

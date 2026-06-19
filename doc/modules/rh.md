@@ -130,7 +130,6 @@ l’application.
 
 `App\View\Components\Rh` contient les fragments propres aux pages RH :
 
-- entête RH ;
 - avertissement de données restreintes ;
 - cartes ;
 - formulaires d’opération ;
@@ -142,6 +141,9 @@ l’application.
 Une fonctionnalité générique doit aller dans `Ui`, `Form`, `Dashboard`,
 `Navigation`, `Tabs` ou un autre composant partagé. Une fonctionnalité
 strictement RH peut aller dans `Rh`.
+
+Les en-têtes utilisent directement `Ui::pageHeader()` avec la classe
+`rh-hero`. Il n’existe pas de wrapper `Rh::pageHeader()`.
 
 ## Pourquoi ne pas tout transformer en composant
 

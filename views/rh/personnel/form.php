@@ -13,11 +13,12 @@ ob_start();
 ?>
 <div class="finea-shell">
     <div class="finea-container">
-        <?= Rh::pageHeader(
+        <?= Ui::pageHeader(
             $page->title,
             'Informations personnelles, administratives et organisationnelles.',
             [
                 'eyebrow' => 'Dossier RH',
+                'class' => 'rh-hero',
                 'actions' => [Ui::button('Retour a la liste', 'rh/personnel', 'secondary')],
             ]
         ) ?>

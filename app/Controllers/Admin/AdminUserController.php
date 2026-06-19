@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Controllers\Admin;
+declare(strict_types=1);
 
-use App\Controllers\BaseController;
+namespace App\Controllers\Admin;
 
 use App\Helpers\Auth;
 use App\Helpers\Csrf;
@@ -10,12 +10,15 @@ use App\Helpers\Session;
 use App\Middleware\AdminMiddleware;
 use App\Models\Database;
 use App\Repositories\Admin\PermissionRepository;
-use App\Repositories\Rh\RhPersonnelRepository;
 use App\Repositories\Admin\UserRepository;
+use App\Repositories\Rh\RhPersonnelRepository;
 use App\Services\Admin\AdminService;
+use App\View\Pages\Admin\UserFormPage;
+use App\View\Pages\Admin\UserIndexPage;
+use App\View\Pages\Admin\UserShowPage;
 use RuntimeException;
 
-class AdminUserController extends BaseController
+final class AdminUserController extends AdminBaseController
 {
     private AdminService $service;
 
@@ -33,17 +36,25 @@ class AdminUserController extends BaseController
     public function index(): void
     {
         AdminMiddleware::check();
-        $this->view('admin/users/index', $this->viewData('Utilisateurs', 'users') + $this->service->listUsers($_GET));
+        $this->adminView('admin/users/index', 'Utilisateurs', 'users', [
+            'page' => new UserIndexPage($this->service->listUsers($_GET)),
+        ]);
     }
 
     public function create(): void
     {
         AdminMiddleware::check();
-        $this->view('admin/users/form', $this->viewData('Nouvel utilisateur', 'users') + $this->service->userCreationData() + [
-            'user' => null,
-            'employee' => null,
-            'formAction' => '/admin/users',
-            'submitLabel' => 'Créer l’utilisateur',
+        $data = $this->service->userCreationData();
+        $this->adminView('admin/users/form', 'Nouvel utilisateur', 'users', [
+            'page' => new UserFormPage(
+                'Nouvel utilisateur',
+                null,
+                null,
+                $data['employees'],
+                $data['permissions'],
+                '/admin/users',
+                'Créer l’utilisateur',
+            ),
         ]);
     }
 
@@ -64,7 +75,15 @@ class AdminUserController extends BaseController
     {
         AdminMiddleware::check();
         try {
-            $this->view('admin/users/show', $this->viewData('Profil utilisateur', 'users') + $this->service->user((int) $id));
+            $data = $this->service->user((int) $id);
+            $this->adminView('admin/users/show', 'Profil utilisateur', 'users', [
+                'page' => new UserShowPage(
+                    $data['user'],
+                    $data['employee'],
+                    $data['permissions'],
+                    (int) Auth::id(),
+                ),
+            ]);
         } catch (RuntimeException $e) {
             Session::flash('error', $e->getMessage());
             $this->redirect('/admin/users');
@@ -76,13 +95,16 @@ class AdminUserController extends BaseController
         AdminMiddleware::check();
         try {
             $data = $this->service->user((int) $id);
-            $this->view('admin/users/form', $this->viewData('Modifier l’utilisateur', 'users') + [
-                'user' => $data['user'],
-                'employee' => $data['employee'],
-                'employees' => [],
-                'permissions' => $data['permissions'],
-                'formAction' => '/admin/users/' . (int) $id . '/modifier',
-                'submitLabel' => 'Enregistrer les modifications',
+            $this->adminView('admin/users/form', 'Modifier l’utilisateur', 'users', [
+                'page' => new UserFormPage(
+                    'Modifier l’utilisateur',
+                    $data['user'],
+                    $data['employee'],
+                    [],
+                    $data['permissions'],
+                    '/admin/users/' . (int) $id . '/modifier',
+                    'Enregistrer les modifications',
+                ),
             ]);
         } catch (RuntimeException $e) {
             Session::flash('error', $e->getMessage());
@@ -134,17 +156,5 @@ class AdminUserController extends BaseController
             Session::flash('error', 'Jeton CSRF invalide.');
             $this->back();
         }
-    }
-
-    private function viewData(string $pageTitle, string $activeModule): array
-    {
-        return [
-            'pageTitle' => $pageTitle,
-            'moduleName' => 'Administration',
-            'moduleCode' => 'ADM',
-            'activeModule' => $activeModule,
-            'additionalStyles' => ['css/finea-ui.css', 'css/admin.css'],
-            'additionalScripts' => ['js/admin.js'],
-        ];
     }
 }
