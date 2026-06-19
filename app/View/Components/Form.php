@@ -183,6 +183,42 @@ final class Form
         return '<input' . Html::attrs($attrs) . '>';
     }
 
+    /**
+     * @param array<int,string> $palette
+     * @param array<string,mixed> $attrs
+     */
+    public static function colorPalette(
+        string $name,
+        string $label,
+        string $value,
+        array $palette = [],
+        array $attrs = [],
+    ): string {
+        $palette = $palette !== [] ? $palette : [
+            '#111c44', '#1d2b57', '#2563eb', '#0891b2', '#0f766e',
+            '#16a34a', '#ca8a04', '#ffcc00', '#ea580c', '#d40511',
+            '#be123c', '#7c3aed', '#334155', '#64748b', '#f5f7fb',
+        ];
+        $id = (string) ($attrs['id'] ?? self::id($name));
+        $swatches = '';
+        foreach ($palette as $color) {
+            if (!preg_match('/^#[0-9a-fA-F]{6}$/', $color)) {
+                continue;
+            }
+            $swatches .= '<button type="button" class="finea-color-swatch'
+                . (strtolower($color) === strtolower($value) ? ' is-selected' : '')
+                . '" style="--swatch:' . View::e($color) . '" data-color-value="'
+                . View::e(strtolower($color)) . '" aria-label="Choisir ' . View::e($color) . '"></button>';
+        }
+
+        return '<div class="finea-field finea-color-field" data-color-picker>'
+            . '<label for="' . View::e($id) . '">' . View::e($label) . '</label>'
+            . '<div class="finea-color-control"><input type="color" id="' . View::e($id)
+            . '" name="' . View::e($name) . '" value="' . View::e($value)
+            . '" data-color-input><output data-color-output>' . View::e(strtoupper($value)) . '</output></div>'
+            . '<div class="finea-color-palette">' . $swatches . '</div></div>';
+    }
+
     /** @param array<string,mixed> $attrs */
     public static function dropzone(string $name, string $label, array $attrs = []): string
     {

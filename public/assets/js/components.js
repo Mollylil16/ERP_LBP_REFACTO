@@ -154,6 +154,22 @@
   const init = () => {
     document.querySelectorAll("select[data-finea-select-search], select[data-select-search]").forEach(initSelectSearch);
     document.querySelectorAll("[data-finea-dropzone], [data-dropzone]").forEach(initDropzone);
+    document.querySelectorAll("[data-color-picker]").forEach((picker) => {
+      const input = picker.querySelector("[data-color-input]");
+      const output = picker.querySelector("[data-color-output]");
+      const swatches = [...picker.querySelectorAll("[data-color-value]")];
+      if (!input || input.dataset.colorEnhanced === "1") return;
+      input.dataset.colorEnhanced = "1";
+      const sync = (value, notify = false) => {
+        input.value = value;
+        if (output) output.textContent = value.toUpperCase();
+        swatches.forEach((swatch) => swatch.classList.toggle("is-selected", swatch.dataset.colorValue === value.toLowerCase()));
+        if (notify) input.dispatchEvent(new Event("change", { bubbles: true }));
+      };
+      input.addEventListener("input", () => sync(input.value));
+      swatches.forEach((swatch) => swatch.addEventListener("click", () => sync(swatch.dataset.colorValue, true)));
+      sync(input.value);
+    });
     document.querySelectorAll("[data-nav-group-toggle]").forEach((button) => {
       if (button.dataset.navigationEnhanced === "1") return;
       button.dataset.navigationEnhanced = "1";

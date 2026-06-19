@@ -2,18 +2,20 @@
 use App\Helpers\View;
 use App\View\Components\Form;
 use App\View\Components\Ui;
+use App\View\Components\Site;
 use App\View\Pages\Site\SitePage;
 
 /** @var SitePage $page */
 ob_start();
 $current = $page->currentShipment;
 ?>
+<div class="site-content">
 <section class="site-page-hero site-page-hero--tracking">
     <p class="finea-eyebrow">Suivi colis</p>
     <h1>Consultez l’état d’un colis, BL ou dossier transit.</h1>
     <form class="site-searchbar" method="get" action="<?= View::url('site/tracking') ?>">
         <?= Form::input('ref', ['label' => 'Référence', 'value' => $current['reference'] ?? '', 'placeholder' => 'Référence colis / BL / dossier']) ?>
-        <?= Ui::button('Suivre', ['variant' => 'accent', 'type' => 'submit']) ?>
+        <?= Site::button('Suivre', ['variant' => 'accent', 'type' => 'submit']) ?>
     </form>
 </section>
 <section class="site-tracking-result">
@@ -35,5 +37,6 @@ $current = $page->currentShipment;
     <?php foreach ($page->shipments as $shipment): ?>
         <a href="<?= View::url('site/tracking') ?>?ref=<?= urlencode($shipment['reference']) ?>"><?= View::e($shipment['reference']) ?><span><?= View::e($shipment['status']) ?></span></a>
     <?php endforeach; ?>
+</div>
 </div>
 <?php $content = ob_get_clean(); require BASE_PATH . '/views/layouts/site.php';

@@ -2,12 +2,14 @@
 use App\Helpers\View;
 use App\View\Components\Form;
 use App\View\Components\Ui;
+use App\View\Components\Site;
 use App\View\Pages\Site\SitePage;
 
 /** @var SitePage $page */
 
 ob_start();
 ?>
+<div class="site-content">
 <section class="site-page-hero site-page-hero--contact">
     <p class="finea-eyebrow">Contact</p>
     <h1>Parlez à un conseiller transit LBP.</h1>
@@ -29,7 +31,7 @@ ob_start();
             ], '', ['label' => 'Motif']) ?>
         </div>
         <?= Form::textarea('message', ['label' => 'Message', 'rows' => 5, 'placeholder' => 'Votre message...']) ?>
-        <?= Ui::button('Envoyer le message test', ['variant' => 'primary', 'type' => 'button']) ?>
+        <?= Site::button('Envoyer le message test', ['variant' => 'primary', 'type' => 'button']) ?>
     </form>
 
     <aside class="site-contact-panel">
@@ -42,4 +44,5 @@ ob_start();
         <?php endforeach; ?>
     </aside>
 </section>
+</div>
 <?php $content = ob_get_clean(); require BASE_PATH . '/views/layouts/site.php';
