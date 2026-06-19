@@ -214,6 +214,11 @@ final class Dashboard
         $style = '--module-hero-gradient: ' . (string) ($module['gradient'] ?? 'linear-gradient(135deg, #1d2b57, #2563eb)') . ';';
         $icon = ModuleIcon::svg((string) ($module['iconKey'] ?? 'dashboard'));
 
+        $workflowSection = $workflowHtml !== '' && ($module['showWorkflow'] ?? true)
+            ? '<section class="finea-section-card"><div class="module-section-heading"><div><p class="finea-eyebrow">Backend</p><h2 class="finea-section-title">Structure prévue pour l’évolution métier</h2></div></div><div class="module-workflow-grid">'
+                . $workflowHtml . '</div></section>'
+            : '';
+
         return '<div class="finea-shell module-dashboard-shell"><div class="finea-container">'
             . Ui::pageHeader(
                 (string) ($module['label'] ?? 'Module'),
@@ -236,8 +241,7 @@ final class Dashboard
             . '</h2><p>Les couleurs, l’icône et le code reprennent le point d’entrée du portail pour identifier immédiatement l’espace courant.</p>'
             . '<div class="module-identity-swatches"><span style="background: ' . View::e((string) ($module['accent2'] ?? '#1d2b57')) . '"></span><span style="background: '
             . View::e((string) ($module['accent'] ?? '#2563eb')) . '"></span><span style="background: var(--finea-gold)"></span></div></aside></div>'
-            . '<section class="finea-section-card"><div class="module-section-heading"><div><p class="finea-eyebrow">Backend</p><h2 class="finea-section-title">Structure prévue pour l’évolution métier</h2></div></div><div class="module-workflow-grid">'
-            . $workflowHtml . '</div></section></div></div>';
+            . $workflowSection . '</div></div>';
     }
 
 }
