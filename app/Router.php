@@ -2,6 +2,7 @@
 
 namespace App;
 
+use App\Controllers\Error\ErrorController;
 use App\Middleware\ModuleMaintenanceMiddleware;
 
 class Router
@@ -47,8 +48,7 @@ class Router
         $this->redirectLegacyPhpUrl($requestUri);
         $maintenance = ModuleMaintenanceMiddleware::stateForPath($requestUri);
         if ($maintenance !== null) {
-            http_response_code(503);
-            require BASE_PATH . '/views/errors/maintenance.php';
+            (new ErrorController())->maintenance($maintenance);
             return;
         }
 
@@ -64,11 +64,7 @@ class Router
             }
         }
 
-        http_response_code(404);
-
-        $pageTitle = 'Page introuvable';
-
-        require BASE_PATH . '/views/errors/404.php';
+        (new ErrorController())->notFound($requestUri);
     }
 
     private function executeAction(callable|array $action, array $params = []): void
