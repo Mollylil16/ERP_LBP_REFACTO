@@ -1,48 +1,35 @@
 <?php
 
-/** @var \App\Support\ViewBag $viewData */ $viewData ??= \App\Support\ViewBag::from(get_defined_vars());
-/** @var \App\Support\ViewBag $viewData */
-
 use App\Helpers\Csrf;
-use App\Helpers\View;
 use App\Security\PermissionEntityRegistry;
 use App\View\Components\Form;
+use App\View\Components\Rh;
 use App\View\Components\Ui;
+use App\View\Pages\Rh\PersonnelMutationPage;
 
-require BASE_PATH . '/views/rh/_navigation.php';
-
-$employee = $viewData->array('employee');
-$options = $viewData->array('options');
-$restrictedTables = $viewData->array('restrictedTables');
-
-$employeeId = (int) ($employee['id'] ?? 0);
-
-$componentOptions = static fn(array $rows): array => array_map(static fn(array $row): array => [
-    'value' => (string) ($row['id'] ?? ''),
-    'label' => (string) ($row['name'] ?? ''),
-], $rows);
+/** @var PersonnelMutationPage $page */
 
 ob_start();
 ?>
 
 <div class="finea-shell">
     <div class="finea-container">
-        <?= Ui::pageHeader(
-            'Mutation de ' . (string) ($employee['full_name'] ?? ''),
+        <?= Rh::pageHeader(
+            'Mutation de ' . (string) ($page->employee['full_name'] ?? ''),
             "Changer l'affectation tout en conservant une trace complète.",
             [
                 'eyebrow' => 'Mobilité interne',
                 'class' => 'rh-hero',
                 'actions' => Ui::button('Retour au dossier', [
-                    'href' => 'rh/personnel/' . $employeeId,
+                    'href' => 'rh/personnel/' . $page->employeeId,
                     'variant' => 'secondary',
                 ]),
             ]
         ) ?>
 
-        <?php require BASE_PATH . '/views/rh/_restricted-data.php'; ?>
+        <?= Rh::restrictedData($page->restrictedTables) ?>
 
-        <form method="post" action="<?= View::url('rh/personnel/' . $employeeId . '/mutation') ?>" class="finea-section-card rh-operation-form">
+        <?php ob_start(); ?>
             <?= Csrf::input() ?>
 
             <div class="rh-form-grid">
@@ -58,59 +45,44 @@ ob_start();
                     'value' => 'Mutation / affectation RH',
                 ]) ?>
 
-                <?php if (!isset($restrictedTables[PermissionEntityRegistry::RH_SERVICES])): ?>
+                <?php if (!isset($page->restrictedTables[PermissionEntityRegistry::RH_SERVICES])): ?>
                     <?= Form::selectSearch(
                         'service_id',
-                        array_merge(
-                            [['value' => '', 'label' => 'Conserver']],
-                            $componentOptions($options['services'] ?? [])
-                        ),
-                        $employee['service_id'] ?? '',
+                        $page->services,
+                        $page->employee['service_id'] ?? '',
                         ['label' => 'Nouveau service']
                     ) ?>
                 <?php endif; ?>
 
-                <?php if (!isset($restrictedTables[PermissionEntityRegistry::RH_FUNCTIONS])): ?>
+                <?php if (!isset($page->restrictedTables[PermissionEntityRegistry::RH_FUNCTIONS])): ?>
                     <?= Form::selectSearch(
                         'function_id',
-                        array_merge(
-                            [['value' => '', 'label' => 'Conserver']],
-                            $componentOptions($options['functions'] ?? [])
-                        ),
-                        $employee['function_id'] ?? '',
+                        $page->functions,
+                        $page->employee['function_id'] ?? '',
                         ['label' => 'Nouvelle fonction']
                     ) ?>
                 <?php endif; ?>
 
-                <?php if (!isset($restrictedTables[PermissionEntityRegistry::RH_STATUSES])): ?>
+                <?php if (!isset($page->restrictedTables[PermissionEntityRegistry::RH_STATUSES])): ?>
                     <?= Form::selectSearch(
                         'status_id',
-                        array_merge(
-                            [['value' => '', 'label' => 'Conserver']],
-                            $componentOptions($options['statuses'] ?? [])
-                        ),
-                        $employee['status_id'] ?? '',
+                        $page->statuses,
+                        $page->employee['status_id'] ?? '',
                         ['label' => 'Nouveau statut']
                     ) ?>
                 <?php endif; ?>
 
-                <?php 
-                    $siteOptions = array_map(static fn($row) => ['value' => $row['name'], 'label' => $row['name']], $options['sites'] ?? []);
-                ?>
                 <?= Form::selectSearch(
                     'site',
-                    array_merge(
-                        [['value' => '', 'label' => 'Conserver']],
-                        $siteOptions
-                    ),
-                    $employee['site'] ?? '',
+                    $page->sites,
+                    $page->employee['site'] ?? '',
                     ['label' => 'Nouveau site']
                 ) ?>
 
                 <?= Form::input('start_date', [
                     'label' => 'Nouvelle prise de service',
                     'type' => 'date',
-                    'value' => (string) ($employee['start_date'] ?? ''),
+                    'value' => (string) ($page->employee['start_date'] ?? ''),
                 ]) ?>
 
                 <?= Form::textarea('reason', [
@@ -120,13 +92,17 @@ ob_start();
                 ]) ?>
             </div>
 
-            <div class="rh-form-actions">
-                <?= Ui::button('Enregistrer la mutation', [
+            <?= Rh::formActions([
+                Ui::button('Enregistrer la mutation', [
                     'variant' => 'primary',
                     'type' => 'submit',
-                ]) ?>
-            </div>
-        </form>
+                ]),
+            ]) ?>
+        <?= Rh::form(
+            'rh/personnel/' . $page->employeeId . '/mutation',
+            (string) ob_get_clean(),
+            ['class' => 'finea-section-card rh-operation-form']
+        ) ?>
     </div>
 </div>
 

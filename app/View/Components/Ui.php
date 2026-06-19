@@ -80,6 +80,7 @@ final class Ui
     {
         $disabled = false;
         $customClass = '';
+        $options = [];
 
         if (is_array($hrefOrOptions)) {
             $options = $hrefOrOptions;
@@ -110,8 +111,14 @@ final class Ui
             return '<a class="' . View::e($class) . '" href="' . View::url(ltrim($href, '/')) . '">' . View::e($label) . '</a>';
         }
 
-        return '<button class="' . View::e($class) . '" type="' . View::e($type) . '"'
-            . ($disabled ? ' disabled' : '') . '>' . View::e($label) . '</button>';
+        unset($options['href'], $options['variant'], $options['type'], $options['disabled'], $options['class']);
+        $buttonAttrs = array_merge([
+            'class' => $class,
+            'type' => $type,
+            'disabled' => $disabled,
+        ], $options);
+
+        return '<button' . Html::attrs($buttonAttrs) . '>' . View::e($label) . '</button>';
     }
 
     /** @param array<string,mixed> $options */

@@ -1,292 +1,299 @@
 <?php
 
-use App\Helpers\Csrf;
 use App\Helpers\View;
+use App\View\Components\Form;
 use App\View\Components\Modal;
-use App\View\Components\RecordList;
+use App\View\Components\Rh;
 use App\View\Components\Ui;
+use App\View\Pages\Rh\LifecyclePage;
 
-/** @var \App\Support\ViewBag $viewData */ $viewData ??= \App\Support\ViewBag::from(get_defined_vars());
-require BASE_PATH . '/views/rh/_navigation.php';
-$tabs = [
-    'contracts' => 'Contrats & essais',
-    'assignments' => 'Missions',
-    'evaluations' => 'Évaluations',
-    'trainings' => 'Formations',
-    'workflows' => 'Validations',
-    'organization' => 'Organigramme',
-    'recruitment' => 'Recrutement',
-    'discipline' => 'Discipline',
-];
-$date = static fn(?string $value): string => $value ? date('d/m/Y', strtotime($value)) : '—';
-
-/** @var array<string, mixed> $dashboardData */
-/** @var array<int, array<string, mixed>> $employees */
-/** @var array<int, array<string, mixed>> $contracts */
-/** @var array<int, array<string, mixed>> $assignments */
-/** @var array<int, array<string, mixed>> $evaluations */
-/** @var array<int, array<string, mixed>> $trainings */
-/** @var array<int, array<string, mixed>> $employeeRequests */
-/** @var array<int, array<string, mixed>> $workflows */
-/** @var array<int, array<string, mixed>> $disciplinaryActions */
-/** @var array<int, array<string, mixed>> $alerts  */
-/** @var array<int, array<string, mixed>> $organization */
-/** @var array<int, array<string, mixed>> $sites */
-/** @var string $section */
-/** @var string $csrfToken */
-/** */
+/** @var LifecyclePage $page */
 
 ob_start();
 ?>
 <div class="finea-shell">
     <div class="finea-container">
-        <section class="finea-page-header rh-hero">
-            <div>
-                <p class="rh-eyebrow">Cycle de vie collaborateur</p>
-                <h1>Processus RH, échéances et validations</h1>
-                <p>Contrats, périodes d’essai, missions, performances, formations et décisions hiérarchiques.</p>
-            </div>
-            <span class="rh-pending-chip"><?= count(array_filter($workflows, fn($w) => $w['status'] === 'pending')) ?> validation(s) en attente</span>
-        </section>
+        <?= Rh::pageHeader(
+            'Processus RH, échéances et validations',
+            'Contrats, périodes d’essai, missions, performances, formations et décisions hiérarchiques.',
+            [
+                'eyebrow' => 'Cycle de vie collaborateur',
+                'actions' => [Ui::badge(
+                    $page->pendingWorkflows() . ' validation(s) en attente',
+                    'neutral',
+                    ['class' => 'rh-pending-chip', 'unstyled' => true]
+                )],
+            ]
+        ) ?>
 
-        <?php if ($alerts !== []): ?>
-            <section class="rh-alert-grid">
-                <?php foreach (array_slice($alerts, 0, 4) as $alert): ?>
-                    <article class="rh-alert-card tone-warning">
-                        <span><?= View::e($alert['full_name']) ?></span>
-                        <strong>J-<?= max(0, (int) $alert['days_remaining']) ?></strong>
-                        <p><?= View::e($alert['contract_type']) ?> · échéance <?= View::e($date($alert['trial_end_date'] ?: $alert['end_date'])) ?></p>
-                    </article>
-                <?php endforeach; ?>
-            </section>
-        <?php endif; ?>
+        <?= Rh::alerts(
+            array_slice($page->alerts, 0, 4),
+            fn(array $alert): array => [
+                'label' => (string) $alert['full_name'],
+                'value' => 'J-' . max(0, (int) $alert['days_remaining']),
+                'description' => (string) $alert['contract_type'] . ' · échéance '
+                    . $page->date($alert['trial_end_date'] ?: $alert['end_date']),
+                'tone' => 'warning',
+            ]
+        ) ?>
 
-        <nav class="rh-dashboard-tabs rh-lifecycle-tabs" aria-label="Processus RH">
-            <?php foreach ($tabs as $key => $label): ?>
-                <a class="rh-dashboard-tab <?= $section === $key ? 'is-active' : '' ?>" href="<?= View::url('rh/cycle-vie?section=' . $key) ?>">
-                    <strong><?= View::e($label) ?></strong>
-                </a>
-            <?php endforeach; ?>
-        </nav>
+        <?= Rh::tabs($page->tabs, $page->section, [
+            'class' => 'rh-lifecycle-tabs',
+            'aria-label' => 'Processus RH',
+        ]) ?>
 
-        <?php if ($section === 'contracts'): ?>
+        <?php if ($page->section === 'contracts'): ?>
             <section class="rh-lifecycle-layout">
                 <?php ob_start(); ?>
                 <form method="post" action="<?= View::url('rh/cycle-vie/contrats') ?>" class="rh-form-grid">
-                    <input type="hidden" name="_csrf_token" value="<?= View::e($csrfToken) ?>">
-                    <label class="finea-field"><span>Collaborateur *</span><select class="finea-input" name="employee_id" required>
-                            <option value="">Sélectionner</option><?php foreach ($employees as $e): ?><option value="<?= (int)$e['id'] ?>"><?= View::e($e['full_name']) ?></option><?php endforeach; ?>
-                        </select></label>
-                    <label class="finea-field"><span>Type *</span><select class="finea-input" name="contract_type" required>
-                            <option>CDI</option>
-                            <option>CDD</option>
-                            <option>Stage</option>
-                            <option>Consultant</option>
-                        </select></label>
-                    <label class="finea-field"><span>Référence</span><input class="finea-input" name="reference"></label>
-                    <label class="finea-field"><span>Début *</span><input class="finea-input" type="date" name="start_date" required></label>
-                    <label class="finea-field"><span>Fin</span><input class="finea-input" type="date" name="end_date"></label>
-                    <label class="finea-field"><span>Début essai</span><input class="finea-input" type="date" name="trial_start_date"></label>
-                    <label class="finea-field"><span>Fin essai</span><input class="finea-input" type="date" name="trial_end_date"></label>
-                    <div class="rh-form-actions"><button class="finea-action-btn finea-action-btn--accent">Créer et soumettre</button></div>
+                    <?= Form::hidden('_csrf_token', $page->csrfToken) ?>
+                    <?= Form::selectSearch('employee_id', array_merge(
+                        [['value' => '', 'label' => 'Sélectionner']],
+                        $page->employeeOptions
+                    ), '', ['label' => 'Collaborateur', 'required' => true]) ?>
+                    <?= Form::select('contract_type', [
+                        ['value' => 'CDI', 'label' => 'CDI'],
+                        ['value' => 'CDD', 'label' => 'CDD'],
+                        ['value' => 'Stage', 'label' => 'Stage'],
+                        ['value' => 'Consultant', 'label' => 'Consultant'],
+                    ], 'CDI', ['label' => 'Type', 'required' => true]) ?>
+                    <?= Form::input('reference', ['label' => 'Référence']) ?>
+                    <?= Form::input('start_date', ['label' => 'Début', 'type' => 'date', 'required' => true]) ?>
+                    <?= Form::input('end_date', ['label' => 'Fin', 'type' => 'date']) ?>
+                    <?= Form::input('trial_start_date', ['label' => 'Début essai', 'type' => 'date']) ?>
+                    <?= Form::input('trial_end_date', ['label' => 'Fin essai', 'type' => 'date']) ?>
+                    <?= Rh::formActions([Ui::button('Créer et soumettre', [
+                        'variant' => 'accent',
+                        'type' => 'submit',
+                    ])]) ?>
                 </form>
                 <?php $contractForm = (string) ob_get_clean(); ?>
                 <?= Modal::render('rh-contract-form', 'Nouveau contrat', $contractForm, 'Créer un contrat', ['eyebrow' => 'Contrats & essais']) ?>
-                <article class="finea-section-card">
-                    <h2 class="finea-section-title">Registre des contrats</h2>
-                    <div class="finea-table-wrap">
-                        <table class="finea-table">
-                            <thead>
-                                <tr>
-                                    <th>Collaborateur</th>
-                                    <th>Type</th>
-                                    <th>Période</th>
-                                    <th>Essai</th>
-                                    <th>Statut</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php foreach ($contracts as $row): ?><tr>
-                                        <td><strong><?= View::e($row['full_name']) ?></strong><small class="rh-table-subtitle"><?= View::e($row['employee_number'] ?: 'Sans matricule') ?></small></td>
-                                        <td><?= View::e($row['contract_type']) ?></td>
-                                        <td><?= $date($row['start_date']) ?> → <?= $date($row['end_date']) ?></td>
-                                        <td><?= $date($row['trial_end_date']) ?></td>
-                                        <td><?= View::e($row['status']) ?></td>
-                                    </tr><?php endforeach; ?>
-                                <?php if ($contracts === []): ?><tr>
-                                        <td colspan="5">Aucun contrat enregistré.</td>
-                                    </tr><?php endif; ?>
-                            </tbody>
-                        </table>
-                    </div>
-                </article>
+                <?= Rh::card(
+                    Rh::table($page->contracts, [
+                        ['label' => 'Collaborateur', 'render' => static fn(array $row): string =>
+                            '<strong>' . View::e($row['full_name']) . '</strong>'
+                            . '<small class="rh-table-subtitle">'
+                            . View::e($row['employee_number'] ?: 'Sans matricule') . '</small>'],
+                        ['label' => 'Type', 'key' => 'contract_type'],
+                        ['label' => 'Période', 'render' => static fn(array $row): string =>
+                            View::e($page->date($row['start_date']) . ' → ' . $page->date($row['end_date']))],
+                        ['label' => 'Essai', 'render' => static fn(array $row): string =>
+                            View::e($page->date($row['trial_end_date']))],
+                        ['label' => 'Statut', 'key' => 'status'],
+                    ], ['empty' => 'Aucun contrat enregistré.']),
+                    ['tag' => 'article', 'title' => 'Registre des contrats']
+                ) ?>
             </section>
-        <?php elseif ($section === 'assignments'): ?>
+        <?php elseif ($page->section === 'assignments'): ?>
             <section class="rh-lifecycle-layout">
                 <?php ob_start(); ?>
                 <form method="post" action="<?= View::url('rh/cycle-vie/missions') ?>" class="rh-form-grid">
-                    <input type="hidden" name="_csrf_token" value="<?= View::e($csrfToken) ?>">
-                    <label class="finea-field"><span>Collaborateur *</span><select class="finea-input" name="employee_id" required><?php foreach ($employees as $e): ?><option value="<?= (int)$e['id'] ?>"><?= View::e($e['full_name']) ?></option><?php endforeach; ?></select></label>
-                    <label class="finea-field rh-field-wide"><span>Mission / projet *</span><input class="finea-input" name="title" required></label>
-                    <label class="finea-field"><span>Code projet</span><input class="finea-input" name="project_code"></label>
-                    <label class="finea-field"><span>Responsable</span><select class="finea-input" name="manager_employee_id">
-                            <option value="">À désigner</option><?php foreach ($employees as $e): ?><option value="<?= (int)$e['id'] ?>"><?= View::e($e['full_name']) ?></option><?php endforeach; ?>
-                        </select></label>
-                    <label class="finea-field"><span>Site</span><select class="finea-input" name="site_id">
-                            <option value="">Non défini</option><?php foreach ($sites as $site): ?><option value="<?= (int)$site['id'] ?>"><?= View::e($site['name']) ?></option><?php endforeach; ?>
-                        </select></label>
-                    <label class="finea-field"><span>Début *</span><input class="finea-input" type="date" name="start_date" required></label>
-                    <label class="finea-field"><span>Fin</span><input class="finea-input" type="date" name="end_date"></label>
-                    <label class="finea-field rh-field-wide"><span>Instructions</span><textarea class="finea-input" name="notes"></textarea></label>
-                    <div class="rh-form-actions"><button class="finea-action-btn finea-action-btn--accent">Soumettre l’affectation</button></div>
+                    <?= Form::hidden('_csrf_token', $page->csrfToken) ?>
+                    <?= Form::selectSearch('employee_id', $page->employeeOptions, '', [
+                        'label' => 'Collaborateur',
+                        'required' => true,
+                    ]) ?>
+                    <?= Form::input('title', [
+                        'label' => 'Mission / projet',
+                        'required' => true,
+                        'fieldClass' => 'rh-field-wide',
+                    ]) ?>
+                    <?= Form::input('project_code', ['label' => 'Code projet']) ?>
+                    <?= Form::selectSearch('manager_employee_id', array_merge(
+                        [['value' => '', 'label' => 'À désigner']],
+                        $page->employeeOptions
+                    ), '', ['label' => 'Responsable']) ?>
+                    <?= Form::selectSearch('site_id', array_merge(
+                        [['value' => '', 'label' => 'Non défini']],
+                        $page->siteOptions
+                    ), '', ['label' => 'Site']) ?>
+                    <?= Form::input('start_date', ['label' => 'Début', 'type' => 'date', 'required' => true]) ?>
+                    <?= Form::input('end_date', ['label' => 'Fin', 'type' => 'date']) ?>
+                    <?= Form::textarea('notes', [
+                        'label' => 'Instructions',
+                        'fieldClass' => 'rh-field-wide',
+                    ]) ?>
+                    <?= Rh::formActions([Ui::button('Soumettre l’affectation', [
+                        'variant' => 'accent',
+                        'type' => 'submit',
+                    ])]) ?>
                 </form>
                 <?php $assignmentForm = (string) ob_get_clean(); ?>
                 <?= Modal::render('rh-assignment-form', 'Nouvelle mission ou affectation', $assignmentForm, 'Nouvelle affectation', ['eyebrow' => 'Missions']) ?>
-                <?= renderRhLifecycleTable('Historique des missions et affectations', $assignments, ['full_name' => 'Collaborateur', 'title' => 'Mission', 'manager_name' => 'Responsable', 'site_name' => 'Site', 'status' => 'Statut'], $date) ?>
+                <?= Rh::lifecycleRecords('Historique des missions et affectations', $page->assignments, ['full_name' => 'Collaborateur', 'title' => 'Mission', 'manager_name' => 'Responsable', 'site_name' => 'Site', 'status' => 'Statut'], [$page, 'date']) ?>
             </section>
-        <?php elseif ($section === 'evaluations'): ?>
+        <?php elseif ($page->section === 'evaluations'): ?>
             <section class="rh-lifecycle-layout">
                 <?php ob_start(); ?>
                 <form method="post" action="<?= View::url('rh/cycle-vie/evaluations') ?>" class="rh-form-grid">
-                    <input type="hidden" name="_csrf_token" value="<?= View::e($csrfToken) ?>">
-                    <label class="finea-field"><span>Collaborateur *</span><select class="finea-input" name="employee_id" required><?php foreach ($employees as $e): ?><option value="<?= (int)$e['id'] ?>"><?= View::e($e['full_name']) ?></option><?php endforeach; ?></select></label>
-                    <label class="finea-field"><span>Évaluateur</span><select class="finea-input" name="evaluator_employee_id">
-                            <option value="">À désigner</option><?php foreach ($employees as $e): ?><option value="<?= (int)$e['id'] ?>"><?= View::e($e['full_name']) ?></option><?php endforeach; ?>
-                        </select></label>
-                    <label class="finea-field"><span>Type</span><select class="finea-input" name="evaluation_type">
-                            <option value="annual">Annuelle</option>
-                            <option value="semiannual">Semestrielle</option>
-                            <option value="trial_end">Fin d’essai</option>
-                            <option value="assignment_end">Fin de mission</option>
-                            <option value="professional">Entretien professionnel</option>
-                        </select></label>
-                    <label class="finea-field"><span>Période *</span><input class="finea-input" name="period_label" required placeholder="2026 / S1"></label>
-                    <label class="finea-field"><span>Échéance</span><input class="finea-input" type="date" name="due_date"></label>
-                    <div class="rh-form-actions"><button class="finea-action-btn finea-action-btn--accent">Planifier</button></div>
+                    <?= Form::hidden('_csrf_token', $page->csrfToken) ?>
+                    <?= Form::selectSearch('employee_id', $page->employeeOptions, '', [
+                        'label' => 'Collaborateur',
+                        'required' => true,
+                    ]) ?>
+                    <?= Form::selectSearch('evaluator_employee_id', array_merge(
+                        [['value' => '', 'label' => 'À désigner']],
+                        $page->employeeOptions
+                    ), '', ['label' => 'Évaluateur']) ?>
+                    <?= Form::select('evaluation_type', [
+                        ['value' => 'annual', 'label' => 'Annuelle'],
+                        ['value' => 'semiannual', 'label' => 'Semestrielle'],
+                        ['value' => 'trial_end', 'label' => 'Fin d’essai'],
+                        ['value' => 'assignment_end', 'label' => 'Fin de mission'],
+                        ['value' => 'professional', 'label' => 'Entretien professionnel'],
+                    ], 'annual', ['label' => 'Type']) ?>
+                    <?= Form::input('period_label', [
+                        'label' => 'Période',
+                        'required' => true,
+                        'placeholder' => '2026 / S1',
+                    ]) ?>
+                    <?= Form::input('due_date', ['label' => 'Échéance', 'type' => 'date']) ?>
+                    <?= Rh::formActions([Ui::button('Planifier', [
+                        'variant' => 'accent',
+                        'type' => 'submit',
+                    ])]) ?>
                 </form>
                 <?php $evaluationForm = (string) ob_get_clean(); ?>
                 <?= Modal::render('rh-evaluation-form', 'Planifier une évaluation', $evaluationForm, 'Planifier une évaluation', ['eyebrow' => 'Performances']) ?>
-                <?= renderRhLifecycleTable('Évaluations planifiées', $evaluations, ['full_name' => 'Collaborateur', 'period_label' => 'Période', 'evaluation_type' => 'Type', 'due_date' => 'Échéance', 'status' => 'Statut'], $date) ?>
+                <?= Rh::lifecycleRecords('Évaluations planifiées', $page->evaluations, ['full_name' => 'Collaborateur', 'period_label' => 'Période', 'evaluation_type' => 'Type', 'due_date' => 'Échéance', 'status' => 'Statut'], [$page, 'date']) ?>
             </section>
-        <?php elseif ($section === 'trainings'): ?>
+        <?php elseif ($page->section === 'trainings'): ?>
             <section class="rh-lifecycle-layout">
                 <?php ob_start(); ?>
                 <form method="post" action="<?= View::url('rh/cycle-vie/formations') ?>" class="rh-form-grid">
-                    <input type="hidden" name="_csrf_token" value="<?= View::e($csrfToken) ?>">
-                    <label class="finea-field rh-field-wide"><span>Formation *</span><input class="finea-input" name="title" required></label>
-                    <label class="finea-field"><span>Type</span><select class="finea-input" name="training_type">
-                            <option value="internal">Interne</option>
-                            <option value="external">Externe</option>
-                            <option value="mandatory">Obligatoire</option>
-                            <option value="job">Métier</option>
-                        </select></label>
-                    <label class="finea-field"><span>Organisme</span><input class="finea-input" name="provider"></label>
-                    <label class="finea-field"><span>Début *</span><input class="finea-input" type="date" name="start_date" required></label>
-                    <label class="finea-field"><span>Fin</span><input class="finea-input" type="date" name="end_date"></label>
-                    <label class="finea-field"><span>Budget</span><input class="finea-input" type="number" min="0" name="budget"></label>
-                    <label class="finea-field"><span>Capacité</span><input class="finea-input" type="number" min="1" name="capacity"></label>
-                    <div class="rh-form-actions"><button class="finea-action-btn finea-action-btn--accent">Créer la session</button></div>
+                    <?= Form::hidden('_csrf_token', $page->csrfToken) ?>
+                    <?= Form::input('title', [
+                        'label' => 'Formation',
+                        'required' => true,
+                        'fieldClass' => 'rh-field-wide',
+                    ]) ?>
+                    <?= Form::select('training_type', [
+                        ['value' => 'internal', 'label' => 'Interne'],
+                        ['value' => 'external', 'label' => 'Externe'],
+                        ['value' => 'mandatory', 'label' => 'Obligatoire'],
+                        ['value' => 'job', 'label' => 'Métier'],
+                    ], 'internal', ['label' => 'Type']) ?>
+                    <?= Form::input('provider', ['label' => 'Organisme']) ?>
+                    <?= Form::input('start_date', ['label' => 'Début', 'type' => 'date', 'required' => true]) ?>
+                    <?= Form::input('end_date', ['label' => 'Fin', 'type' => 'date']) ?>
+                    <?= Form::input('budget', ['label' => 'Budget', 'type' => 'number', 'min' => 0]) ?>
+                    <?= Form::input('capacity', ['label' => 'Capacité', 'type' => 'number', 'min' => 1]) ?>
+                    <?= Rh::formActions([Ui::button('Créer la session', [
+                        'variant' => 'accent',
+                        'type' => 'submit',
+                    ])]) ?>
                 </form>
                 <?php $trainingForm = (string) ob_get_clean(); ?>
                 <?= Modal::render('rh-training-form', 'Nouvelle session de formation', $trainingForm, 'Créer une session', ['eyebrow' => 'Formation']) ?>
-                <?= renderRhLifecycleTable('Catalogue et sessions', $trainings, ['title' => 'Formation', 'training_type' => 'Type', 'start_date' => 'Début', 'budget' => 'Budget', 'status' => 'Statut'], $date) ?>
+                <?= Rh::lifecycleRecords('Catalogue et sessions', $page->trainings, ['title' => 'Formation', 'training_type' => 'Type', 'start_date' => 'Début', 'budget' => 'Budget', 'status' => 'Statut'], [$page, 'date']) ?>
             </section>
-        <?php elseif ($section === 'workflows'): ?>
-            <section class="finea-section-card">
-                <h2 class="finea-section-title">Demandes des collaborateurs</h2>
-                <div class="finea-table-wrap">
-                    <table class="finea-table">
-                        <thead>
-                            <tr>
-                                <th>Collaborateur</th>
-                                <th>Demande</th>
-                                <th>Étape</th>
-                                <th>Motif</th>
-                                <th>Décision</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php foreach ($employeeRequests as $row): ?><tr>
-                                    <td><?= View::e($row['full_name']) ?></td>
-                                    <td><?= View::e($row['request_type']) ?><small class="rh-table-subtitle"><?= View::e($row['reference']) ?></small><?php if (!empty($row['attachment_path'])): ?><a class="rh-table-subtitle" href="<?= View::url('public/' . ltrim($row['attachment_path'], '/')) ?>" target="_blank" rel="noopener">Voir le justificatif</a><?php endif; ?></td>
-                                    <td><?= Ui::badge((string)$row['current_step'], 'info') ?></td>
-                                    <td><?= View::e($row['reason']) ?></td>
-                                    <td>
-                                        <form method="post" action="<?= View::url('rh/cycle-vie/demandes-employes/' . (int)$row['id']) ?>" class="rh-row-actions"><input type="hidden" name="_csrf_token" value="<?= View::e($csrfToken) ?>"><input class="finea-input" name="comment" placeholder="Commentaire"><button name="decision" value="approve">Valider</button><button name="decision" value="reject">Refuser</button></form>
-                                    </td>
-                                </tr><?php endforeach; ?>
-                            <?php if ($employeeRequests === []): ?><tr>
-                                    <td colspan="5">Aucune demande employé en attente.</td>
-                                </tr><?php endif; ?>
-                        </tbody>
-                    </table>
-                </div>
-            </section>
-            <section class="finea-section-card">
-                <h2 class="finea-section-title">Autres workflows Manager → RH → Direction</h2>
-                <div class="finea-table-wrap">
-                    <table class="finea-table">
-                        <thead>
-                            <tr>
-                                <th>Processus</th>
-                                <th>Collaborateur</th>
-                                <th>Étape</th>
-                                <th>Statut</th>
-                                <th>Décision</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php foreach ($workflows as $row): ?><tr>
-                                    <td><?= View::e($row['process_type']) ?></td>
-                                    <td><?= View::e($row['full_name'] ?: 'Collectif') ?></td>
-                                    <td><?= Ui::badge((string)$row['current_step'], 'info') ?></td>
-                                    <td><?= Ui::badge((string)$row['status'], $row['status'] === 'pending' ? 'warning' : 'success') ?></td>
-                                    <td><?php if ($row['status'] === 'pending'): ?><form method="post" action="<?= View::url('rh/cycle-vie/workflows/' . (int)$row['id']) ?>" class="rh-row-actions"><input type="hidden" name="_csrf_token" value="<?= View::e($csrfToken) ?>"><button name="decision" value="approve">Valider</button><button name="decision" value="reject">Refuser</button></form><?php else: ?>—<?php endif; ?></td>
-                                </tr><?php endforeach; ?>
-                        </tbody>
-                    </table>
-                </div>
-            </section>
-        <?php elseif ($section === 'organization'): ?>
-            <section class="finea-section-card">
-                <h2 class="finea-section-title">Organigramme interactif</h2>
-                <div class="rh-org-grid"><?php foreach ($employees as $employee): ?><article><strong><?= View::e($employee['full_name']) ?></strong><small><?= View::e($employee['employee_number'] ?: 'Collaborateur') ?></small></article><?php endforeach; ?></div>
-            </section>
-        <?php elseif ($section === 'recruitment'): ?>
+        <?php elseif ($page->section === 'workflows'): ?>
+            <?= Rh::card(
+                Rh::table($page->employeeRequests, [
+                    ['label' => 'Collaborateur', 'key' => 'full_name'],
+                    ['label' => 'Demande', 'render' => static function (array $row): string {
+                        $attachment = !empty($row['attachment_path'])
+                            ? '<a class="rh-table-subtitle" href="'
+                                . View::url('public/' . ltrim($row['attachment_path'], '/'))
+                                . '" target="_blank" rel="noopener">Voir le justificatif</a>'
+                            : '';
+                        return View::e($row['request_type'])
+                            . '<small class="rh-table-subtitle">' . View::e($row['reference']) . '</small>'
+                            . $attachment;
+                    }],
+                    ['label' => 'Étape', 'render' => static fn(array $row): string =>
+                        Ui::badge((string) $row['current_step'], 'info')],
+                    ['label' => 'Motif', 'key' => 'reason'],
+                    ['label' => 'Décision', 'render' => static fn(array $row): string =>
+                        Rh::decisionForm(
+                            'rh/cycle-vie/demandes-employes/' . (int) $row['id'],
+                            $page->csrfToken,
+                            true
+                        )],
+                ], ['empty' => 'Aucune demande employé en attente.']),
+                ['title' => 'Demandes des collaborateurs']
+            ) ?>
+            <?= Rh::card(
+                Rh::table($page->workflows, [
+                    ['label' => 'Processus', 'key' => 'process_type'],
+                    ['label' => 'Collaborateur', 'render' => static fn(array $row): string =>
+                        View::e($row['full_name'] ?: 'Collectif')],
+                    ['label' => 'Étape', 'render' => static fn(array $row): string =>
+                        Ui::badge((string) $row['current_step'], 'info')],
+                    ['label' => 'Statut', 'render' => static fn(array $row): string =>
+                        Ui::badge(
+                            (string) $row['status'],
+                            $row['status'] === 'pending' ? 'warning' : 'success'
+                        )],
+                    ['label' => 'Décision', 'render' => static fn(array $row): string =>
+                        $row['status'] === 'pending'
+                            ? Rh::decisionForm(
+                                'rh/cycle-vie/workflows/' . (int) $row['id'],
+                                $page->csrfToken
+                            )
+                            : '—'],
+                ]),
+                ['title' => 'Autres workflows Manager → RH → Direction']
+            ) ?>
+        <?php elseif ($page->section === 'organization'): ?>
+            <?php ob_start(); ?>
+            <div class="rh-org-grid"><?php foreach ($page->employees as $employee): ?><article><strong><?= View::e($employee['full_name']) ?></strong><small><?= View::e($employee['employee_number'] ?: 'Collaborateur') ?></small></article><?php endforeach; ?></div>
+            <?= Rh::card((string) ob_get_clean(), ['title' => 'Organigramme interactif']) ?>
+        <?php elseif ($page->section === 'recruitment'): ?>
             <section class="rh-feature-grid">
-                <article class="finea-section-card">
-                    <h2 class="finea-section-title">Demandes de recrutement</h2>
-                    <p>Initiation manager, validation RH et Direction, puis conversion en dossier collaborateur.</p><a class="finea-action-btn" href="<?= View::url('rh/personnel/nouveau') ?>">Créer un dossier d’onboarding</a>
-                </article>
-                <article class="finea-section-card">
-                    <h2 class="finea-section-title">Onboarding</h2>
-                    <p>Pièces obligatoires, contrat, affectation, compte utilisateur et parcours d’intégration.</p>
-                </article>
-                <article class="finea-section-card">
-                    <h2 class="finea-section-title">Offboarding</h2>
-                    <p>Restitution, solde, désactivation des accès, entretien de départ et archivage.</p><a class="finea-action-btn" href="<?= View::url('rh/mouvements') ?>">Voir les mouvements</a>
-                </article>
+                <?= Rh::card(
+                    '<p>Initiation manager, validation RH et Direction, puis conversion en dossier collaborateur.</p>'
+                        . Ui::button('Créer un dossier d’onboarding', ['href' => 'rh/personnel/nouveau']),
+                    ['tag' => 'article', 'title' => 'Demandes de recrutement']
+                ) ?>
+                <?= Rh::card(
+                    '<p>Pièces obligatoires, contrat, affectation, compte utilisateur et parcours d’intégration.</p>',
+                    ['tag' => 'article', 'title' => 'Onboarding']
+                ) ?>
+                <?= Rh::card(
+                    '<p>Restitution, solde, désactivation des accès, entretien de départ et archivage.</p>'
+                        . Ui::button('Voir les mouvements', ['href' => 'rh/mouvements']),
+                    ['tag' => 'article', 'title' => 'Offboarding']
+                ) ?>
             </section>
         <?php else: ?>
             <section class="rh-lifecycle-layout">
                 <?php ob_start(); ?>
                 <form method="post" action="<?= View::url('rh/cycle-vie/discipline') ?>" class="rh-form-grid">
-                    <input type="hidden" name="_csrf_token" value="<?= View::e($csrfToken) ?>">
-                    <label class="finea-field"><span>Collaborateur *</span><select class="finea-input" name="employee_id" required><?php foreach ($employees as $e): ?><option value="<?= (int)$e['id'] ?>"><?= View::e($e['full_name']) ?></option><?php endforeach; ?></select></label>
-                    <label class="finea-field"><span>Mesure *</span><select class="finea-input" name="action_type">
-                            <option value="warning">Avertissement</option>
-                            <option value="reprimand">Blâme</option>
-                            <option value="suspension">Mise à pied</option>
-                            <option value="other">Autre</option>
-                        </select></label>
-                    <label class="finea-field"><span>Date *</span><input class="finea-input" type="date" name="action_date" required></label>
-                    <label class="finea-field rh-field-wide"><span>Motif *</span><textarea class="finea-input" name="reason" required></textarea></label>
-                    <label class="finea-field rh-field-wide"><span>Décision / notification</span><textarea class="finea-input" name="decision"></textarea></label>
-                    <div class="rh-form-actions"><button class="finea-action-btn finea-action-btn--accent">Enregistrer</button></div>
+                    <?= Form::hidden('_csrf_token', $page->csrfToken) ?>
+                    <?= Form::selectSearch('employee_id', $page->employeeOptions, '', [
+                        'label' => 'Collaborateur',
+                        'required' => true,
+                    ]) ?>
+                    <?= Form::select('action_type', [
+                        ['value' => 'warning', 'label' => 'Avertissement'],
+                        ['value' => 'reprimand', 'label' => 'Blâme'],
+                        ['value' => 'suspension', 'label' => 'Mise à pied'],
+                        ['value' => 'other', 'label' => 'Autre'],
+                    ], 'warning', ['label' => 'Mesure', 'required' => true]) ?>
+                    <?= Form::input('action_date', [
+                        'label' => 'Date',
+                        'type' => 'date',
+                        'required' => true,
+                    ]) ?>
+                    <?= Form::textarea('reason', [
+                        'label' => 'Motif',
+                        'required' => true,
+                        'fieldClass' => 'rh-field-wide',
+                    ]) ?>
+                    <?= Form::textarea('decision', [
+                        'label' => 'Décision / notification',
+                        'fieldClass' => 'rh-field-wide',
+                    ]) ?>
+                    <?= Rh::formActions([Ui::button('Enregistrer', [
+                        'variant' => 'accent',
+                        'type' => 'submit',
+                    ])]) ?>
                 </form>
                 <?php $disciplineForm = (string) ob_get_clean(); ?>
                 <?= Modal::render('rh-discipline-form', 'Nouvelle mesure disciplinaire', $disciplineForm, 'Enregistrer une mesure', ['eyebrow' => 'Discipline']) ?>
-                <?= renderRhLifecycleTable('Registre disciplinaire sécurisé', $disciplinaryActions, ['full_name' => 'Collaborateur', 'action_type' => 'Mesure', 'action_date' => 'Date', 'status' => 'Statut'], $date) ?>
+                <?= Rh::lifecycleRecords('Registre disciplinaire sécurisé', $page->disciplinaryActions, ['full_name' => 'Collaborateur', 'action_type' => 'Mesure', 'action_date' => 'Date', 'status' => 'Statut'], [$page, 'date']) ?>
             </section>
         <?php endif; ?>
     </div>
@@ -294,20 +301,3 @@ ob_start();
 <?php
 $content = ob_get_clean();
 require BASE_PATH . '/views/layouts/module.php';
-
-function renderRhLifecycleTable(string $title, array $rows, array $columns, callable $date): string
-{
-    foreach ($rows as &$row) {
-        foreach ($columns as $key => $_) {
-            if (str_ends_with($key, '_date')) $row[$key] = $date($row[$key] ?? null);
-        }
-    }
-    unset($row);
-    $titleKey = (string) array_key_first($columns);
-    return '<article class="finea-section-card"><h2 class="finea-section-title">' . View::e($title) . '</h2>'
-        . RecordList::render($rows, $columns, [
-            'title_key' => $titleKey,
-            'status_key' => 'status',
-            'empty' => 'Aucune donnée enregistrée.',
-        ]) . '</article>';
-}

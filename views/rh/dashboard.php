@@ -1,51 +1,11 @@
 <?php
 
-use App\Models\RhDashboard;
 use App\View\Components\Ui;
 use App\View\Components\Dashboard;
+use App\View\Components\Rh;
+use App\View\Pages\Rh\DashboardPage;
 
-/** @var \App\Support\ViewBag $viewData */ $viewData ??= \App\Support\ViewBag::from(get_defined_vars());
-/** @var RhDashboard $dashboard */
-/** @var string $mode */
-
-require BASE_PATH . '/views/rh/_navigation.php';
-
-$formatDate = static function (?string $date): string {
-    if (!$date) {
-        return 'Non renseignee';
-    }
-
-    $timestamp = strtotime($date);
-    return $timestamp ? date('d/m/Y', $timestamp) : 'Non renseignee';
-};
-
-$tabs = [
-    [
-        'key' => 'classic',
-        'label' => 'Classique',
-        'description' => 'Effectifs, alertes et acces rapides',
-        'href' => 'rh/dashboard',
-    ],
-    [
-        'key' => 'statistique',
-        'label' => 'Statistique',
-        'description' => 'Indicateurs mensuels et repartitions',
-        'href' => 'rh/dashboard?view=statistique',
-    ],
-    [
-        'key' => 'analytique',
-        'label' => 'Analytique',
-        'description' => 'Lecture de pilotage et preparation des exports',
-        'href' => 'rh/dashboard?view=analytique',
-    ],
-];
-
-$recentRows = array_map(static function (array $employee) use ($formatDate): array {
-    $employee['employee_number'] = $employee['employee_number'] ?: 'Sans matricule';
-    $employee['hire_date'] = $formatDate($employee['hire_date']);
-    $employee['status'] = $employee['status_name'];
-    return $employee;
-}, $dashboard->recentHires);
+/** @var DashboardPage $page */
 
 ob_start();
 ?>
@@ -59,8 +19,8 @@ ob_start();
                 'class' => 'rh-hero',
                 'actions' => [
                     Ui::badge(
-                        $dashboard->pendingTotal . ' action'
-                            . ($dashboard->pendingTotal > 1 ? 's' : '') . ' a verifier',
+                        $page->dashboard->pendingTotal . ' action'
+                            . ($page->dashboard->pendingTotal > 1 ? 's' : '') . ' a verifier',
                         'neutral',
                         ['class' => 'rh-pending-chip', 'unstyled' => true]
                     ),
@@ -73,23 +33,23 @@ ob_start();
             ]
         ) ?>
 
-        <?php require BASE_PATH . '/views/rh/_restricted-data.php'; ?>
+        <?= Rh::restrictedData($page->restrictedTables) ?>
 
-        <?= Dashboard::tabs($tabs, $mode) ?>
+        <?= Dashboard::tabs($page->tabs, $page->mode) ?>
 
         <?= Dashboard::kpis([
-            ['label' => 'Effectif global', 'value' => number_format($dashboard->stats['total'], 0, ',', ' '), 'meta' => 'Collaborateurs recensés', 'href' => 'rh/personnel?scope=all'],
-            ['label' => 'En poste', 'value' => number_format($dashboard->stats['active'], 0, ',', ' '), 'meta' => 'Dossiers actifs', 'href' => 'rh/personnel?scope=active'],
-            ['label' => 'Sorties', 'value' => number_format($dashboard->stats['inactive'], 0, ',', ' '), 'meta' => 'Personnel archivé', 'href' => 'rh/mouvements'],
-            ['label' => 'Recrutements ' . date('Y'), 'value' => number_format($dashboard->stats['currentYearHires'], 0, ',', ' '), 'meta' => 'Depuis janvier', 'href' => 'rh/cycle-vie?section=recruitment'],
-            ['label' => 'Services couverts', 'value' => number_format($dashboard->stats['services'], 0, ',', ' '), 'meta' => 'Services actifs représentés', 'href' => 'rh/parametrage?catalog=services'],
+            ['label' => 'Effectif global', 'value' => number_format($page->dashboard->stats['total'], 0, ',', ' '), 'meta' => 'Collaborateurs recensés', 'href' => 'rh/personnel?scope=all'],
+            ['label' => 'En poste', 'value' => number_format($page->dashboard->stats['active'], 0, ',', ' '), 'meta' => 'Dossiers actifs', 'href' => 'rh/personnel?scope=active'],
+            ['label' => 'Sorties', 'value' => number_format($page->dashboard->stats['inactive'], 0, ',', ' '), 'meta' => 'Personnel archivé', 'href' => 'rh/mouvements'],
+            ['label' => 'Recrutements ' . date('Y'), 'value' => number_format($page->dashboard->stats['currentYearHires'], 0, ',', ' '), 'meta' => 'Depuis janvier', 'href' => 'rh/cycle-vie?section=recruitment'],
+            ['label' => 'Services couverts', 'value' => number_format($page->dashboard->stats['services'], 0, ',', ' '), 'meta' => 'Services actifs représentés', 'href' => 'rh/parametrage?catalog=services'],
         ]) ?>
 
-        <?php if ($mode === 'classic'): ?>
-            <?= Dashboard::alerts($dashboard->alerts) ?>
+        <?php if ($page->mode === 'classic'): ?>
+            <?= Dashboard::alerts($page->dashboard->alerts) ?>
             <?= Dashboard::distributionWithActions(
-                $dashboard->services,
-                (int) $dashboard->stats['total'],
+                $page->dashboard->services,
+                (int) $page->dashboard->stats['total'],
                 [
                     ['label' => 'Integrer un collaborateur', 'href' => 'rh/personnel/nouveau'],
                     ['label' => 'Consulter le personnel', 'href' => 'rh/personnel'],
@@ -98,7 +58,7 @@ ob_start();
                 ]
             ) ?>
             <?= Dashboard::recentRecords(
-                $recentRows,
+                $page->recentRows,
                 [
                     'full_name' => 'Collaborateur',
                     'employee_number' => 'Matricule',
@@ -116,34 +76,34 @@ ob_start();
                     'status_key' => 'status',
                 ]
             ) ?>
-        <?php elseif ($mode === 'statistique'): ?>
+        <?php elseif ($page->mode === 'statistique'): ?>
             <?= Dashboard::metrics([
                 [
                     'eyebrow' => 'Assiduite du mois',
-                    'value' => number_format($dashboard->analytics['presenceRate'], 1, ',', ' ') . '%',
+                    'value' => number_format($page->dashboard->analytics['presenceRate'], 1, ',', ' ') . '%',
                     'description' => 'Taux de presence sur '
-                        . (int) $dashboard->analytics['attendanceRows'] . ' lignes de pointage',
+                        . (int) $page->dashboard->analytics['attendanceRows'] . ' lignes de pointage',
                 ],
                 [
                     'eyebrow' => 'Retards',
-                    'value' => (int) $dashboard->analytics['lateRows'],
+                    'value' => (int) $page->dashboard->analytics['lateRows'],
                     'description' => 'Arrivees tardives detectees ce mois',
                 ],
                 [
                     'eyebrow' => 'Heures supplementaires',
-                    'value' => number_format($dashboard->analytics['overtimeHours'], 1, ',', ' ') . ' h',
+                    'value' => number_format($page->dashboard->analytics['overtimeHours'], 1, ',', ' ') . ' h',
                     'description' => 'Volume cumule sur la periode',
                 ],
                 [
                     'eyebrow' => 'Demandes traitees',
-                    'value' => (int) $dashboard->analytics['requestsProcessed'],
+                    'value' => (int) $page->dashboard->analytics['requestsProcessed'],
                     'description' => 'Validations, refus et annulations du mois',
                 ],
             ]) ?>
             <?= Dashboard::rankings([
-                ['title' => 'Services', 'rows' => $dashboard->services],
-                ['title' => 'Fonctions', 'rows' => $dashboard->functions],
-                ['title' => 'Statuts', 'rows' => $dashboard->statuses],
+                ['title' => 'Services', 'rows' => $page->dashboard->services],
+                ['title' => 'Fonctions', 'rows' => $page->dashboard->functions],
+                ['title' => 'Statuts', 'rows' => $page->dashboard->statuses],
             ]) ?>
         <?php else: ?>
             <?= Dashboard::analyticIntro(

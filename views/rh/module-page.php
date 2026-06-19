@@ -1,24 +1,33 @@
 <?php
 use App\Helpers\View;
-/** @var \App\Support\ViewBag $viewData */ $viewData ??= \App\Support\ViewBag::from(get_defined_vars());
+use App\View\Components\Rh;
+use App\View\Components\Ui;
+use App\View\Pages\Rh\ModulePage;
+
+/** @var ModulePage $page */
+
 ob_start();
 ?>
 <div class="finea-shell">
     <div class="finea-container">
-        <section class="finea-page-header rh-hero">
-            <div>
-                <p class="rh-eyebrow">Module RH</p>
-                <h1><?= View::e($pageTitle) ?></h1>
-                <p>Le lien est maintenant branché. Cette page sert de socle propre pour connecter les écrans métiers définitifs sans SQL dans les vues.</p>
-            </div>
-            <span class="rh-module-token"><?= View::e($code) ?></span>
-        </section>
+        <?= Rh::pageHeader(
+            $page->title,
+            'Le lien est maintenant branché. Cette page sert de socle propre pour connecter les écrans métiers définitifs sans SQL dans les vues.',
+            [
+                'eyebrow' => 'Module RH',
+                'actions' => [Ui::badge(
+                    $page->code,
+                    'neutral',
+                    ['class' => 'rh-module-token', 'unstyled' => true]
+                )],
+            ]
+        ) ?>
         <section class="rh-feature-grid">
-            <?php foreach ($cards as [$title, $description]): ?>
-                <article class="finea-section-card">
-                    <h2 class="finea-section-title"><?= View::e($title) ?></h2>
-                    <p><?= View::e($description) ?></p>
-                </article>
+            <?php foreach ($page->cards as [$title, $description]): ?>
+                <?= Rh::card(
+                    '<p>' . View::e($description) . '</p>',
+                    ['tag' => 'article', 'title' => $title]
+                ) ?>
             <?php endforeach; ?>
         </section>
     </div>

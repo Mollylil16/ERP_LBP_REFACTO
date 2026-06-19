@@ -5,6 +5,8 @@ namespace App\Controllers\Rh;
 use App\Controllers\BaseController;
 
 use App\Middleware\AuthMiddleware;
+use App\View\Navigation\RhNavigation;
+use App\View\Pages\Rh\ModulePage;
 
 class RhModuleController extends BaseController
 {
@@ -40,7 +42,6 @@ class RhModuleController extends BaseController
 
     private function renderModule(string $title, string $active, string $code, array $cards): void
     {
-        require BASE_PATH . '/views/rh/_navigation.php';
         $this->view('rh/module-page', [
             'pageTitle' => $title,
             'moduleName' => 'Ressources Humaines',
@@ -48,9 +49,8 @@ class RhModuleController extends BaseController
             'activeModule' => $active,
             'additionalStyles' => ['css/finea-ui.css', 'css/rh.css'],
             'additionalScripts' => ['js/rh.js'],
-            'moduleNavigation' => $moduleNavigation,
-            'code' => $code,
-            'cards' => $cards,
+            'moduleNavigation' => RhNavigation::items(),
+            'page' => new ModulePage($title, $code, $cards),
         ]);
     }
 }
