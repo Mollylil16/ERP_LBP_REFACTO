@@ -278,6 +278,39 @@ final class SystemTestService
                 $broken[] = 'Le cycle de vie RH doit utiliser Modal et RecordList.';
             }
         }
+        if (($module['slug'] ?? '') === 'admin') {
+            if (is_file(BASE_PATH . '/views/admin/_navigation.php')) {
+                $broken[] = 'La navigation Admin ne doit pas être reconstruite dans un partial de vue.';
+            }
+            foreach ($this->phpFiles([BASE_PATH . '/views/admin']) as $file) {
+                $source = (string) @file_get_contents($file);
+                if (!str_contains($source, 'Components\\Admin') || !str_contains($source, '$page')) {
+                    $broken[] = $this->relativePath($file) . ' doit utiliser le composant Admin et un Page Object.';
+                }
+            }
+        }
+        if (($module['slug'] ?? '') === 'espace-employe') {
+            if (is_file(BASE_PATH . '/views/employee/_navigation.php')) {
+                $broken[] = 'Espace employé ne doit pas reconstruire sa navigation dans une vue.';
+            }
+            foreach ($this->phpFiles([BASE_PATH . '/views/employee']) as $file) {
+                $source = (string) @file_get_contents($file);
+                if (!str_contains($source, '$page')) {
+                    $broken[] = $this->relativePath($file) . ' doit recevoir un Page Object.';
+                }
+            }
+        }
+        if (($module['slug'] ?? '') === 'site-admin') {
+            if (is_file(BASE_PATH . '/views/site_admin/_navigation.php')) {
+                $broken[] = 'Site Internet ne doit pas reconstruire sa navigation dans une vue.';
+            }
+            foreach ($this->phpFiles([BASE_PATH . '/views/site', BASE_PATH . '/views/site_admin']) as $file) {
+                $source = (string) @file_get_contents($file);
+                if (!str_contains($source, '$page')) {
+                    $broken[] = $this->relativePath($file) . ' doit recevoir un Page Object.';
+                }
+            }
+        }
         return [
             'name' => 'Architecture composants • ' . $module['label'],
             'module' => $module['slug'],
@@ -424,15 +457,21 @@ final class SystemTestService
         $redirectLocation = $this->redirectLocation($headers);
         $isExpectedProtectedRedirect = in_array($httpCode, [301, 302, 303, 307, 308], true)
             && $this->isLoginRedirect($redirectLocation, $bodyText);
+        $isExpectedMaintenance = $httpCode === 503
+            && stripos($bodyText, 'Maintenance temporaire') !== false;
 
-        $forms = $isExpectedProtectedRedirect ? ['forms' => 0, 'broken' => []] : $this->inspectHtmlForms($bodyText);
+        $forms = ($isExpectedProtectedRedirect || $isExpectedMaintenance)
+            ? ['forms' => 0, 'broken' => []]
+            : $this->inspectHtmlForms($bodyText);
         $status = self::STATUS_PASSED;
-        $message = $isExpectedProtectedRedirect ? 'Page protégée correctement par authentification.' : 'Page accessible.';
+        $message = $isExpectedProtectedRedirect
+            ? 'Page protégée correctement par authentification.'
+            : ($isExpectedMaintenance ? 'Page correctement protégée par le mode maintenance.' : 'Page accessible.');
 
         if (!$isExpectedProtectedRedirect && ($body === false || $httpCode >= 500 || $matches !== [] || $forms['broken'] !== [])) {
             $status = self::STATUS_FAILED;
             $message = 'Erreur détectée sur la page.';
-        } elseif (!$isExpectedProtectedRedirect && $httpCode >= 400) {
+        } elseif (!$isExpectedProtectedRedirect && !$isExpectedMaintenance && $httpCode >= 400) {
             $status = self::STATUS_WARNING;
             $message = 'La page répond avec un code HTTP non bloquant mais à vérifier.';
         }
@@ -624,6 +663,7 @@ final class SystemTestService
                 $hasCsrf = str_contains($form, 'csrf_field(')
                     || str_contains($form, 'Csrf::field(')
                     || str_contains($form, 'Csrf::input(')
+                    || preg_match('/Form::hidden\(\s*["\']_csrf_token["\']/i', $form) === 1
                     || preg_match('/name=["\']_csrf_token["\']/i', $form) === 1
                     || preg_match('/name=["\']csrf_token["\']/i', $form) === 1
                     || preg_match('/name=["\']_token["\']/i', $form) === 1;
@@ -924,13 +964,19 @@ final class SystemTestService
                 'tables' => ['users', 'rh_employees', 'employee_legal_requests', 'employee_request_events', 'rh_explanation_requests', 'rh_attendance_daily', 'rh_leave_opening_balance'],
                 'routes' => ['/espace-employe', '/espace-employe/dashboard', '/espace-employe/demandes/nouvelle'],
                 'pages' => ['/espace-employe', '/espace-employe/dashboard', '/espace-employe/demandes/nouvelle'],
-                'views' => ['employee/dashboard', 'employee/_navigation', 'employee/request-form', 'employee/request-show'],
+                'views' => ['employee/dashboard', 'employee/request-form', 'employee/request-show'],
             ],
             'colisage' => ['slug' => 'colisage', 'label' => 'Colisage', 'code' => 'COL', 'accent' => '#f97316', 'tables' => ['permission_entities'], 'routes' => ['/colisage', '/colisage/dashboard'], 'pages' => ['/colisage', '/colisage/dashboard'], 'views' => ['colisage/dashboard', 'colisage/_navigation']],
             'logistique' => ['slug' => 'logistique', 'label' => 'Logistique', 'code' => 'LOG', 'accent' => '#22c55e', 'tables' => ['permission_entities'], 'routes' => ['/logistique', '/logistique/dashboard'], 'pages' => ['/logistique', '/logistique/dashboard'], 'views' => ['logistique/dashboard', 'logistique/_navigation']],
             'crm' => ['slug' => 'crm', 'label' => 'CRM', 'code' => 'CRM', 'accent' => '#ec4899', 'tables' => ['permission_entities'], 'routes' => ['/crm', '/crm/dashboard'], 'pages' => ['/crm', '/crm/dashboard'], 'views' => ['crm/dashboard', 'crm/_navigation']],
             'tickets' => ['slug' => 'tickets', 'label' => 'Tickets', 'code' => 'TIC', 'accent' => '#ef4444', 'tables' => ['permission_entities'], 'routes' => ['/tickets', '/tickets/dashboard'], 'pages' => ['/tickets', '/tickets/dashboard'], 'views' => ['tickets/dashboard', 'tickets/_navigation']],
-            'site-admin' => ['slug' => 'site-admin', 'label' => 'Site internet', 'code' => 'WEB', 'accent' => '#14b8a6', 'tables' => ['permission_entities'], 'routes' => ['/site-admin', '/site-admin/dashboard', '/site'], 'pages' => ['/site-admin', '/site-admin/dashboard', '/site'], 'views' => ['site_admin/dashboard', 'site_admin/_navigation', 'site/index']],
+            'site-admin' => [
+                'slug' => 'site-admin', 'label' => 'Site internet', 'code' => 'WEB', 'accent' => '#14b8a6',
+                'tables' => ['website_pages', 'website_services', 'website_leads', 'website_branding', 'website_slides', 'website_products', 'website_forum_topics', 'website_announcements', 'website_articles', 'website_analytics_events', 'website_customer_accounts', 'website_conversations', 'website_conversation_messages'],
+                'routes' => ['/site-admin', '/site-admin/dashboard', '/site-admin/configuration', '/site-admin/messages', '/site-admin/analytics', '/site', '/site/tracking', '/site/shop', '/site/forum', '/site/blog', '/site/account'],
+                'pages' => ['/site-admin', '/site-admin/dashboard', '/site-admin/configuration', '/site-admin/messages', '/site-admin/analytics', '/site', '/site/tracking', '/site/shop', '/site/forum', '/site/blog', '/site/account'],
+                'views' => ['site_admin/dashboard', 'site_admin/configuration', 'site_admin/conversations', 'site_admin/analytics', 'site/index', 'site/tracking', 'site/shop', 'site/forum', 'site/blog', 'site/account'],
+            ],
             'transit-douane' => ['slug' => 'transit-douane', 'label' => 'Transit Douane', 'code' => 'TDO', 'accent' => '#7c3aed', 'tables' => ['permission_entities'], 'routes' => ['/transit-douane', '/transit-douane/dashboard'], 'pages' => ['/transit-douane', '/transit-douane/dashboard'], 'views' => ['transit_douane/dashboard', 'transit_douane/_navigation']],
             'tracking-colis' => ['slug' => 'tracking-colis', 'label' => 'Tracking Colis', 'code' => 'TRK', 'accent' => '#06b6d4', 'tables' => ['permission_entities'], 'routes' => ['/tracking-colis', '/tracking-colis/dashboard'], 'pages' => ['/tracking-colis', '/tracking-colis/dashboard'], 'views' => ['tracking_colis/dashboard', 'tracking_colis/_navigation']],
             'facturation' => ['slug' => 'facturation', 'label' => 'Facturation', 'code' => 'FAC', 'accent' => '#16a34a', 'tables' => ['permission_entities'], 'routes' => ['/facturation', '/facturation/dashboard'], 'pages' => ['/facturation', '/facturation/dashboard'], 'views' => ['facturation/dashboard', 'facturation/_navigation']],
@@ -939,7 +985,7 @@ final class SystemTestService
             'portefeuille-clients' => ['slug' => 'portefeuille-clients', 'label' => 'Portefeuille Clients', 'code' => 'PCL', 'accent' => '#84cc16', 'tables' => ['permission_entities'], 'routes' => ['/portefeuille-clients', '/portefeuille-clients/dashboard'], 'pages' => ['/portefeuille-clients', '/portefeuille-clients/dashboard'], 'views' => ['portefeuille_clients/dashboard', 'portefeuille_clients/_navigation']],
             'agents-correspondants' => ['slug' => 'agents-correspondants', 'label' => 'Agents & Correspondants', 'code' => 'AGT', 'accent' => '#6366f1', 'tables' => ['permission_entities'], 'routes' => ['/agents-correspondants', '/agents-correspondants/dashboard'], 'pages' => ['/agents-correspondants', '/agents-correspondants/dashboard'], 'views' => ['agents_correspondants/dashboard', 'agents_correspondants/_navigation']],
             'pilotage-dg' => ['slug' => 'pilotage-dg', 'label' => 'Pilotage DG', 'code' => 'DG', 'accent' => '#0f172a', 'tables' => ['permission_entities'], 'routes' => ['/pilotage-dg', '/pilotage-dg/dashboard'], 'pages' => ['/pilotage-dg', '/pilotage-dg/dashboard'], 'views' => ['pilotage_dg/dashboard', 'pilotage_dg/_navigation']],
-            'admin' => ['slug' => 'admin', 'label' => 'Administration', 'code' => 'ADM', 'accent' => '#111827', 'tables' => ['users', 'permission_entities', 'user_permissions', 'system_test_runs'], 'routes' => ['/admin', '/admin/dashboard'], 'pages' => ['/admin', '/admin/dashboard'], 'views' => ['admin/dashboard', 'admin/_navigation', 'admin/system_tests/index']],
+            'admin' => ['slug' => 'admin', 'label' => 'Administration', 'code' => 'ADM', 'accent' => '#111827', 'tables' => ['users', 'permission_entities', 'user_permissions', 'system_test_runs', 'module_maintenance'], 'routes' => ['/admin', '/admin/dashboard'], 'pages' => ['/admin', '/admin/dashboard'], 'views' => ['admin/dashboard', 'admin/system_tests/index']],
         ];
     }
 

@@ -261,3 +261,5 @@
 	color: #64748b;
 	background: #f8fafc;
 }
+
+.finea-color-field{align-content:start}.finea-color-control{display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid rgba(148,163,184,.38);border-radius:16px;background:#fff}.finea-color-control input[type=color]{width:48px;height:38px;padding:2px;border:0;border-radius:10px;background:transparent;cursor:pointer}.finea-color-control output{font-size:.82rem;font-weight:900;color:#334155;letter-spacing:.06em}.finea-color-palette{display:grid;grid-template-columns:repeat(8,30px);gap:7px}.finea-color-swatch{width:30px;height:30px;padding:0;border:3px solid #fff;border-radius:9px;background:var(--swatch);box-shadow:0 0 0 1px #cbd5e1;cursor:pointer;transition:.16s ease}.finea-color-swatch:hover{transform:translateY(-2px) scale(1.06)}.finea-color-swatch.is-selected{box-shadow:0 0 0 3px #0f172a;transform:scale(.9)}

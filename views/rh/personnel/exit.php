@@ -12,13 +12,14 @@ ob_start();
 ?>
 <div class="finea-shell">
     <div class="finea-container">
-        <?= Rh::pageHeader(
+        <?= Ui::pageHeader(
             ($page->exited ? 'Réintégrer ' : 'Sortie de ') . (string) ($page->employee['full_name'] ?? ''),
             $page->exited
                 ? 'Réactiver le collaborateur dans les effectifs.'
                 : 'Clôturer proprement le dossier RH du collaborateur.',
             [
                 'eyebrow' => $page->exited ? 'Réintégration RH' : 'Sortie RH',
+                'class' => 'rh-hero',
                 'actions' => [Ui::button('Retour au dossier', [
                     'href' => 'rh/personnel/' . $page->employeeId,
                     'variant' => 'secondary',

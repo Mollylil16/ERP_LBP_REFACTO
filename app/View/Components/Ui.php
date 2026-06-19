@@ -62,9 +62,9 @@ final class Ui
     /** @param array<string,mixed> $attrs */
     public static function section(string $title, string $content, string $subtitle = '', array $attrs = []): string
     {
-        $class = Html::classes(['finea-section-card', (string) ($attrs['class'] ?? '')]);
+        $attrs['class'] = Html::classes(['finea-section-card', (string) ($attrs['class'] ?? '')]);
 
-        return '<section class="' . View::e($class) . '"><div class="finea-section-heading"><h2 class="finea-section-title">' . View::e($title) . '</h2>'
+        return '<section' . Html::attrs($attrs) . '><div class="finea-section-heading"><h2 class="finea-section-title">' . View::e($title) . '</h2>'
             . ($subtitle !== '' ? '<span>' . View::e($subtitle) . '</span>' : '')
             . '</div>' . $content . '</section>';
     }

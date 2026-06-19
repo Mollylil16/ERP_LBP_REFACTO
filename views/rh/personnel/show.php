@@ -13,12 +13,13 @@ ob_start();
 ?>
 <div class="finea-shell">
     <div class="finea-container">
-        <?= Rh::pageHeader(
+        <?= Ui::pageHeader(
             (string) $page->employee['full_name'],
             (string) ($page->employee['employee_number'] ?: 'Sans matricule')
                 . ' - ' . $page->employee['service_name'],
             [
                 'eyebrow' => 'Dossier personnel',
+                'class' => 'rh-hero',
                 'actions' => Rh::actionButtons($page->headerActions),
             ]
         ) ?>

@@ -9,6 +9,9 @@ use App\Middleware\AuthMiddleware;
 use App\Security\PermissionAction;
 use App\Security\PermissionEntityRegistry;
 use App\Services\Shared\ModuleDashboardService;
+use App\Models\Database;
+use App\Repositories\Admin\ModuleMaintenanceRepository;
+use App\Services\Admin\ModuleMaintenanceService;
 
 /**
  * Portail central de sélection des modules ERP.
@@ -64,6 +67,24 @@ class SelectionPortailController extends BaseController
         foreach ($modules as &$module) {
             if ($module['key'] === 'rh' && !Auth::can(PermissionEntityRegistry::RH_EMPLOYEES)) {
                 $module['url'] = '/rh/personnel';
+            }
+        }
+        unset($module);
+
+        $maintenanceStates = (new ModuleMaintenanceService(
+            new ModuleMaintenanceRepository(Database::getConnection())
+        ))->states();
+        foreach ($modules as &$module) {
+            $slug = match ((string) $module['key']) {
+                'employee' => 'espace-employe',
+                default => (string) $module['key'],
+            };
+            $state = $maintenanceStates[$slug] ?? [];
+            $module['is_maintenance'] = (bool) ($state['is_maintenance'] ?? false);
+            $module['maintenance_reason'] = (string) ($state['reason'] ?? '');
+            if ($module['is_maintenance']) {
+                $module['status'] = 'En maintenance';
+                $module['url'] = '';
             }
         }
         unset($module);

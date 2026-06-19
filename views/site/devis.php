@@ -1,10 +1,13 @@
 <?php
 use App\View\Components\Form;
 use App\View\Components\Ui;
+use App\View\Components\Site;
+use App\View\Pages\Site\SitePage;
 
-/** @var \App\Support\ViewBag $viewData */ $viewData ??= \App\Support\ViewBag::from(get_defined_vars());
+/** @var SitePage $page */
 ob_start();
 ?>
+<div class="site-content">
 <section class="site-page-hero site-page-hero--quote">
     <p class="finea-eyebrow">Demande de devis</p>
     <h1>Recevez une estimation pour votre opération import-export.</h1>
@@ -12,7 +15,7 @@ ob_start();
 </section>
 
 <section class="site-form-layout">
-    <form class="site-form-card" method="post" action="#">
+    <form class="site-form-card" method="get" action="<?= \App\Helpers\View::url('site/devis') ?>">
         <div class="site-form-grid">
             <?= Form::input('customer_name', ['label' => 'Nom complet / entreprise', 'placeholder' => 'Nom complet / entreprise']) ?>
             <?= Form::input('phone', ['label' => 'Téléphone / WhatsApp', 'placeholder' => 'Téléphone / WhatsApp']) ?>
@@ -36,7 +39,7 @@ ob_start();
             'rows' => 5,
             'placeholder' => 'Décrivez la marchandise, volume, urgence, documents disponibles...',
         ]) ?>
-        <?= Ui::button('Envoyer la demande test', ['variant' => 'accent', 'type' => 'button']) ?>
+        <?= Site::button('Envoyer la demande test', ['variant' => 'accent', 'type' => 'button']) ?>
     </form>
 
     <aside class="site-card site-card--light">
@@ -49,4 +52,5 @@ ob_start();
         </ul>
     </aside>
 </section>
+</div>
 <?php $content = ob_get_clean(); require BASE_PATH . '/views/layouts/site.php';

@@ -5,22 +5,10 @@ declare(strict_types=1);
 namespace Tests\Unit\View\Components;
 
 use App\View\Components\Rh;
-use App\View\Components\Ui;
 use Tests\TestCase;
 
 final class RhTest extends TestCase
 {
-    public function test_page_header_wraps_actions_and_keeps_rh_class(): void
-    {
-        $html = Rh::pageHeader('Personnel', 'Description', [
-            'eyebrow' => 'RH',
-            'actions' => [Ui::button('Ajouter')],
-        ]);
-
-        self::assertStringContainsString('finea-page-header rh-hero', $html);
-        self::assertStringContainsString('finea-header-actions', $html);
-    }
-
     public function test_table_escapes_values_and_accepts_renderers(): void
     {
         $html = Rh::table(
@@ -99,5 +87,35 @@ final class RhTest extends TestCase
 
         self::assertFileDoesNotExist(BASE_PATH . '/views/rh/' . '_navigation.php');
         self::assertFileDoesNotExist(BASE_PATH . '/views/rh/' . '_restricted-data.php');
+    }
+
+    public function test_rh_controllers_share_one_module_layout_context(): void
+    {
+        $baseController = (string) file_get_contents(
+            BASE_PATH . '/app/Controllers/Rh/RhBaseController.php'
+        );
+
+        foreach ([
+            'RhDashboardController.php',
+            'RhLifecycleController.php',
+            'RhModuleController.php',
+            'RhPersonnelController.php',
+            'RhSettingsController.php',
+        ] as $file) {
+            $source = (string) file_get_contents(BASE_PATH . '/app/Controllers/Rh/' . $file);
+            self::assertStringContainsString('extends RhBaseController', $source, $file);
+            self::assertStringNotContainsString('RhNavigation::items()', $source, $file);
+        }
+
+        self::assertStringContainsString('RhNavigation::items()', $baseController);
+        self::assertStringContainsString("'moduleNavigation'", $baseController);
+        self::assertStringContainsString('protected function rhView(', $baseController);
+    }
+
+    public function test_rh_component_does_not_duplicate_page_header(): void
+    {
+        $source = (string) file_get_contents(BASE_PATH . '/app/View/Components/Rh.php');
+
+        self::assertStringNotContainsString('function pageHeader(', $source);
     }
 }

@@ -9,6 +9,18 @@ use Tests\TestCase;
 
 final class FormRequiredTest extends TestCase
 {
+    public function test_select_options_accept_data_attributes(): void
+    {
+        $html = Form::select('employee', [[
+            'value' => '4',
+            'label' => 'Alice',
+            'attrs' => ['data-email' => 'alice@example.test'],
+        ]], '4', ['label' => 'Personnel']);
+
+        self::assertStringContainsString('data-email="alice@example.test"', $html);
+        self::assertStringContainsString(' selected', $html);
+    }
+
     public function test_required_attribute_is_applied_to_input_and_label(): void
     {
         $html = Form::input('name', 'Nom', '', ['required' => true]);

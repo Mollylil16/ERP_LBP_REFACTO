@@ -19,6 +19,7 @@ $router->group('/admin', function (Router $router): void {
     $router->get('/system-tests/latest', [AdminSystemTestController::class, 'latest']);
     $router->post('/system-tests/run', [AdminSystemTestController::class, 'runAll']);
     $router->post('/system-tests/run/{module}', [AdminSystemTestController::class, 'runModule']);
+    $router->post('/system-tests/maintenance/{module}', [AdminSystemTestController::class, 'maintenance']);
 
     $router->group('/users', function (Router $router): void {
         $router->get('/', [AdminUserController::class, 'index']);

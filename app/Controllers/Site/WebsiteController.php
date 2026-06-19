@@ -7,10 +7,22 @@ use App\Controllers\BaseController;
 use App\Middleware\AuthMiddleware;
 use App\Models\Database;
 use App\Repositories\Shared\BusinessModuleRepository;
+use App\Repositories\Site\WebsiteRepository;
 use App\Services\Shared\BusinessModuleService;
+use App\Services\Site\WebsiteService;
+use App\View\Pages\Site\SitePage;
+use App\View\Pages\SiteAdmin\DashboardPage;
+use App\View\Navigation\SiteAdminNavigation;
 
 final class WebsiteController extends BaseController
 {
+    private WebsiteService $website;
+
+    public function __construct()
+    {
+        $this->website = new WebsiteService(new WebsiteRepository(Database::getConnection()));
+    }
+
     public function dashboard(): void
     {
         AuthMiddleware::check();
@@ -21,52 +33,91 @@ final class WebsiteController extends BaseController
             'moduleCode' => 'WEB',
             'moduleTheme' => $module,
             'activeModule' => 'dashboard',
-            'moduleNavigation' => $module['navigation'],
-            'dashboardModule' => $module,
+            'moduleNavigation' => SiteAdminNavigation::items(),
+            'page' => new DashboardPage($module),
             'additionalStyles' => ['css/finea-ui.css'],
         ]);
     }
 
     public function publicSite(): void
     {
-        $this->view('site/index', $this->sitePayload('Accueil'));
+        $this->siteView('site/index', 'Accueil', 'home');
     }
 
     public function tracking(): void
     {
-        $this->view('site/tracking', $this->sitePayload('Suivi colis'));
+        $this->siteView('site/tracking', 'Suivi colis', 'tracking', (string) ($_GET['ref'] ?? ''));
     }
 
     public function quote(): void
     {
-        $this->view('site/devis', $this->sitePayload('Demande de devis'));
+        $this->siteView('site/devis', 'Demande de devis', 'quote');
     }
 
     public function contact(): void
     {
-        $this->view('site/contact', $this->sitePayload('Contact'));
+        $this->siteView('site/contact', 'Contact', 'contact');
     }
 
     public function agencies(): void
     {
-        $this->view('site/agences', $this->sitePayload('Nos agences'));
+        $this->siteView('site/agences', 'Nos agences', 'agencies');
     }
 
-    private function sitePayload(string $page): array
+    public function shop(): void
     {
-        return [
-            'pageTitle' => $page . ' - LBP Transit',
-            'shipments' => $this->demoShipments(),
-            'agencies' => $this->demoAgencies(),
-            'services' => $this->demoServices(),
-            'news' => $this->demoNews(),
-            'stats' => [
+        $this->siteView('site/shop', 'Marketplace', 'shop');
+    }
+
+    public function forum(): void
+    {
+        $this->siteView('site/forum', 'Communauté', 'forum');
+    }
+
+    public function blog(): void
+    {
+        $this->siteView('site/blog', 'Actualités', 'blog');
+    }
+
+    public function article(string $slug): void
+    {
+        $article = $this->website->article($slug);
+        if ($article === null) {
+            (new \App\Controllers\Error\ErrorController())->notFound('/site/blog/' . $slug);
+            return;
+        }
+        $content = $this->website->content();
+        $page = new SitePage('Article', 'blog', $this->demoShipments(), $this->demoAgencies(), $content['services'], $this->demoNews(), [], $content['branding'], $content['slides'], $content['products'], $content['topics'], $content['announcements'], $content['articles']);
+        $this->view('site/article', ['pageTitle' => (string) $article['title'], 'page' => $page, 'article' => $article]);
+    }
+
+    private function siteView(string $view, string $title, string $activePage, string $reference = ''): void
+    {
+        $content = $this->website->content();
+        $this->view($view, [
+            'pageTitle' => $title,
+            'page' => new SitePage(
+                $title,
+                $activePage,
+                $this->demoShipments(),
+                $this->demoAgencies(),
+                $content['services'] !== [] ? $content['services'] : $this->demoServices(),
+                $this->demoNews(),
+                [
                 ['label' => 'Pays couverts', 'value' => '14+'],
                 ['label' => 'Dossiers suivis', 'value' => '2 480'],
                 ['label' => 'Agences & points relais', 'value' => '9'],
                 ['label' => 'SLA suivi client', 'value' => '24/7'],
-            ],
-        ];
+                ],
+                $content['branding'],
+                $content['slides'],
+                $content['products'],
+                $content['topics'],
+                $content['announcements'],
+                $content['articles'],
+                $reference,
+            ),
+        ]);
     }
 
     private function demoShipments(): array
