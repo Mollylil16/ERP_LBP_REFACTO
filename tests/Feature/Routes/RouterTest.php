@@ -11,7 +11,7 @@ final class RouterTest extends TestCase
 {
     public function test_dispatch_executes_matching_get_route(): void
     {
-        $router = new Router();
+        $router = $this->routerWithoutMaintenance();
         $router->get('/ping', static function (): void {
             echo 'pong';
         });
@@ -25,7 +25,7 @@ final class RouterTest extends TestCase
 
     public function test_dispatch_passes_route_parameters(): void
     {
-        $router = new Router();
+        $router = $this->routerWithoutMaintenance();
         $router->get('/rh/personnel/{id}', static function (string $id): void {
             echo 'employee:' . $id;
         });
@@ -39,7 +39,7 @@ final class RouterTest extends TestCase
 
     public function test_group_prefix_is_applied(): void
     {
-        $router = new Router();
+        $router = $this->routerWithoutMaintenance();
         $router->group('/admin', static function (Router $router): void {
             $router->get('/permissions', static function (): void {
                 echo 'matrix';
@@ -57,7 +57,7 @@ final class RouterTest extends TestCase
     {
         $_SERVER['SCRIPT_NAME'] = '/ERP_LBP_REFACTO/public/index.php';
 
-        $router = new Router();
+        $router = $this->routerWithoutMaintenance();
         $router->get('/portail', static function (): void {
             echo 'portal';
         });
@@ -67,5 +67,10 @@ final class RouterTest extends TestCase
         $output = ob_get_clean();
 
         self::assertSame('portal', $output);
+    }
+
+    private function routerWithoutMaintenance(): Router
+    {
+        return new Router(static fn(string $path): ?array => null);
     }
 }

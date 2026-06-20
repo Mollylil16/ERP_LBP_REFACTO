@@ -18,8 +18,9 @@ class Database
         $config = require BASE_PATH . '/config/database.php';
 
         $dsn = sprintf(
-            'mysql:host=%s;dbname=%s;charset=%s',
+            'mysql:host=%s;port=%d;dbname=%s;charset=%s',
             $config['host'],
+            $config['port'],
             $config['dbname'],
             $config['charset']
         );
