@@ -11,6 +11,15 @@ abstract class PantherTestCase extends SymfonyPantherTestCase
 {
     protected const BASE_URI = 'http://127.0.0.1:8000';
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        if (static::$pantherClient instanceof Client) {
+            static::$pantherClient->restart();
+        }
+    }
+
     protected function browser(): Client
     {
         $projectRoot = dirname(__DIR__, 2);
