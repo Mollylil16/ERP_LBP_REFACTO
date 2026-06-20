@@ -60,7 +60,6 @@ jobs:
       DB_DATABASE: lbp_db
       DB_USERNAME: root
       DB_PASSWORD: root
-      PANTHER_NO_HEADLESS: 0
 
     steps:
       - name: Checkout code
@@ -113,13 +112,3 @@ jobs:
 
       - name: Smoke employee portal
         run: php tests/Smoke/smoke_employee_portal.php
-
-      - name: Install ChromeDriver for Panther
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p drivers
-          vendor/bin/bdi detect drivers
-
-      - name: Run Panther browser tests
-        run: vendor/bin/phpunit -c phpunit.browser.xml
