@@ -17,8 +17,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
 // Filtrage multi-modules du portail via le select-search standard.
 document.addEventListener("DOMContentLoaded", () => {
-  const moduleSelect = document.querySelector("select[data-portal-module-filter]");
-  const moduleCards = Array.from(document.querySelectorAll("[data-module-card]"));
+  const moduleSelect = document.querySelector(
+    "select[data-portal-module-filter]",
+  );
+  const moduleCards = Array.from(
+    document.querySelectorAll("[data-module-card]"),
+  );
   const countLabel = document.getElementById("moduleSearchCount");
   const emptyState = document.getElementById("moduleEmptyState");
   const resetButton = document.getElementById("moduleFilterReset");
@@ -29,12 +33,13 @@ document.addEventListener("DOMContentLoaded", () => {
     const selected = new Set(
       Array.from(moduleSelect.selectedOptions)
         .map((option) => option.value)
-        .filter(Boolean)
+        .filter(Boolean),
     );
     let visibleCount = 0;
 
     moduleCards.forEach((card) => {
-      const isVisible = selected.size === 0 || selected.has(card.dataset.moduleKey || "");
+      const isVisible =
+        selected.size === 0 || selected.has(card.dataset.moduleKey || "");
       card.hidden = !isVisible;
       if (isVisible) visibleCount += 1;
     });

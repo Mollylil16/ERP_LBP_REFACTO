@@ -5,7 +5,8 @@
     select.classList.add("finea-native-select");
 
     const multiple = select.multiple || select.dataset.multiple === "1";
-    const placeholder = select.dataset.placeholder || "Rechercher et sélectionner...";
+    const placeholder =
+      select.dataset.placeholder || "Rechercher et sélectionner...";
     const wrapper = document.createElement("div");
     wrapper.className = "finea-select-search";
 
@@ -28,11 +29,22 @@
     control.appendChild(input);
     wrapper.appendChild(menu);
 
-    const source = Array.from(select.options).map((option) => ({ value: option.value, label: option.textContent || "" }));
+    const source = Array.from(select.options).map((option) => ({
+      value: option.value,
+      label: option.textContent || "",
+    }));
     const normalize = (value) =>
-      value.toString().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+      value
+        .toString()
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .trim();
 
-    const selectedValues = () => Array.from(select.selectedOptions).map((option) => option.value).filter((value) => value !== "");
+    const selectedValues = () =>
+      Array.from(select.selectedOptions)
+        .map((option) => option.value)
+        .filter((value) => value !== "");
     const setSelected = (value, selected) => {
       Array.from(select.options).forEach((option) => {
         if (option.value === value) option.selected = selected;
@@ -41,7 +53,9 @@
     };
 
     const renderBadges = () => {
-      control.querySelectorAll(".finea-select-badge").forEach((badge) => badge.remove());
+      control
+        .querySelectorAll(".finea-select-badge")
+        .forEach((badge) => badge.remove());
       if (!multiple) return;
       selectedValues().forEach((value) => {
         const item = source.find((option) => option.value === value);
@@ -66,7 +80,8 @@
     const renderSingleLabel = () => {
       if (multiple) return;
       const selected = select.selectedOptions[0];
-      input.placeholder = selected && selected.value !== "" ? selected.textContent : placeholder;
+      input.placeholder =
+        selected && selected.value !== "" ? selected.textContent : placeholder;
     };
 
     const renderMenu = () => {
@@ -89,7 +104,8 @@
         button.type = "button";
         button.className = "finea-select-option";
         button.textContent = option.label;
-        if (!multiple && select.value === option.value) button.classList.add("is-active");
+        if (!multiple && select.value === option.value)
+          button.classList.add("is-active");
         button.addEventListener("click", () => {
           if (multiple) {
             setSelected(option.value, true);
@@ -109,12 +125,24 @@
       });
     };
 
-    const open = () => { wrapper.classList.add("is-open"); renderMenu(); };
-    control.addEventListener("click", () => { input.focus(); open(); });
+    const open = () => {
+      wrapper.classList.add("is-open");
+      renderMenu();
+    };
+    control.addEventListener("click", () => {
+      input.focus();
+      open();
+    });
     input.addEventListener("focus", open);
     input.addEventListener("input", renderMenu);
-    document.addEventListener("click", (event) => { if (!wrapper.contains(event.target)) wrapper.classList.remove("is-open"); });
-    select.addEventListener("change", () => { renderBadges(); renderSingleLabel(); renderMenu(); });
+    document.addEventListener("click", (event) => {
+      if (!wrapper.contains(event.target)) wrapper.classList.remove("is-open");
+    });
+    select.addEventListener("change", () => {
+      renderBadges();
+      renderSingleLabel();
+      renderMenu();
+    });
     renderBadges();
     renderSingleLabel();
     renderMenu();
@@ -128,7 +156,9 @@
     const file = files[0];
     if (file.type.startsWith("image/")) {
       const reader = new FileReader();
-      reader.onload = () => { preview.innerHTML = `<img src="${reader.result}" alt="Aperçu"><span>${file.name}</span>`; };
+      reader.onload = () => {
+        preview.innerHTML = `<img src="${reader.result}" alt="Aperçu"><span>${file.name}</span>`;
+      };
       reader.readAsDataURL(file);
     } else {
       preview.textContent = files.map((item) => item.name).join(", ");
@@ -141,13 +171,25 @@
     zone.dataset.fineaDropzoneEnhanced = "1";
     const input = zone.querySelector('input[type="file"]');
     if (!input) return;
-    ["dragenter", "dragover"].forEach((eventName) => zone.addEventListener(eventName, (event) => { event.preventDefault(); zone.classList.add("is-dragging"); }));
-    ["dragleave", "drop"].forEach((eventName) => zone.addEventListener(eventName, (event) => { event.preventDefault(); zone.classList.remove("is-dragging"); }));
+    ["dragenter", "dragover"].forEach((eventName) =>
+      zone.addEventListener(eventName, (event) => {
+        event.preventDefault();
+        zone.classList.add("is-dragging");
+      }),
+    );
+    ["dragleave", "drop"].forEach((eventName) =>
+      zone.addEventListener(eventName, (event) => {
+        event.preventDefault();
+        zone.classList.remove("is-dragging");
+      }),
+    );
     zone.addEventListener("drop", (event) => {
       const files = event.dataTransfer?.files;
       if (!files?.length) return;
       const dt = new DataTransfer();
-      Array.from(files).slice(0, input.multiple ? files.length : 1).forEach((file) => dt.items.add(file));
+      Array.from(files)
+        .slice(0, input.multiple ? files.length : 1)
+        .forEach((file) => dt.items.add(file));
       input.files = dt.files;
       previewFile(input);
     });
@@ -155,8 +197,14 @@
   };
 
   const init = () => {
-    document.querySelectorAll("select[data-finea-select-search], select[data-select-search]").forEach(initSelectSearch);
-    document.querySelectorAll("[data-finea-dropzone], [data-dropzone]").forEach(initDropzone);
+    document
+      .querySelectorAll(
+        "select[data-finea-select-search], select[data-select-search]",
+      )
+      .forEach(initSelectSearch);
+    document
+      .querySelectorAll("[data-finea-dropzone], [data-dropzone]")
+      .forEach(initDropzone);
     document.querySelectorAll("[data-color-picker]").forEach((picker) => {
       const input = picker.querySelector("[data-color-input]");
       const output = picker.querySelector("[data-color-output]");
@@ -166,11 +214,20 @@
       const sync = (value, notify = false) => {
         input.value = value;
         if (output) output.textContent = value.toUpperCase();
-        swatches.forEach((swatch) => swatch.classList.toggle("is-selected", swatch.dataset.colorValue === value.toLowerCase()));
+        swatches.forEach((swatch) =>
+          swatch.classList.toggle(
+            "is-selected",
+            swatch.dataset.colorValue === value.toLowerCase(),
+          ),
+        );
         if (notify) input.dispatchEvent(new Event("change", { bubbles: true }));
       };
       input.addEventListener("input", () => sync(input.value));
-      swatches.forEach((swatch) => swatch.addEventListener("click", () => sync(swatch.dataset.colorValue, true)));
+      swatches.forEach((swatch) =>
+        swatch.addEventListener("click", () =>
+          sync(swatch.dataset.colorValue, true),
+        ),
+      );
       sync(input.value);
     });
     document.querySelectorAll("[data-nav-group-toggle]").forEach((button) => {
@@ -182,16 +239,24 @@
         button.setAttribute("aria-expanded", collapsed ? "false" : "true");
       });
     });
-    document.querySelector(".module-nav-link.is-active")?.scrollIntoView({ block: "nearest" });
+    document
+      .querySelector(".module-nav-link.is-active")
+      ?.scrollIntoView({ block: "nearest" });
     document.querySelectorAll("[data-modal-open]").forEach((button) => {
       if (button.dataset.modalEnhanced === "1") return;
       button.dataset.modalEnhanced = "1";
-      button.addEventListener("click", () => document.getElementById(button.dataset.modalOpen)?.showModal());
+      button.addEventListener("click", () =>
+        document.getElementById(button.dataset.modalOpen)?.showModal(),
+      );
     });
     document.querySelectorAll("[data-modal]").forEach((modal) => {
       if (modal.dataset.modalEnhanced === "1") return;
       modal.dataset.modalEnhanced = "1";
-      modal.querySelectorAll("[data-modal-close]").forEach((button) => button.addEventListener("click", () => modal.close()));
+      modal
+        .querySelectorAll("[data-modal-close]")
+        .forEach((button) =>
+          button.addEventListener("click", () => modal.close()),
+        );
       modal.addEventListener("click", (event) => {
         if (event.target === modal) modal.close();
       });

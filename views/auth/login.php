@@ -13,19 +13,13 @@ ob_start();
     <div class="auth-visual-panel">
         <div class="auth-badge">ERP LBP Transit</div>
         <h1>Centralisez vos opérations de transit.</h1>
-        <p>Suivez les chargements, les documents et les équipes en temps réel depuis une interface moderne et sécurisée.</p>
+        <p>Suivez les activités, les documents et les équipes en temps réel depuis une interface moderne et sécurisée.</p>
 
         <ul class="auth-highlights">
             <li>Tableau de bord temps réel</li>
             <li>Alertes et suivi quotidien</li>
-            <li>Accès administrateur sécurisé</li>
+            <li>Accès sécurisé</li>
         </ul>
-
-        <div class="auth-credential-box">
-            <strong>Compte par défaut</strong>
-            <span>Identifiant : admin</span>
-            <span>Mot de passe : admin</span>
-        </div>
     </div>
 
     <div class="auth-card">

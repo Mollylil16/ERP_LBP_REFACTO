@@ -1,8 +1,13 @@
+# Nom affiché dans l'onglet « Actions » de GitHub.
 name: ERP LBP Quality
 
+# Événements qui déclenchent le workflow.
 on:
+  # Exécute les contrôles lors d'un push sur les branches du projet.
   push:
     branches: [main, master, develop, "feature/**", "fix/**", "release/**"]
+    # Évite de lancer le workflow lorsque seuls des fichiers sans rapport
+    # avec l'application ou ses tests ont été modifiés.
     paths:
       - "app/**"
       - "bootstrap/**"
@@ -16,6 +21,8 @@ on:
       - "phpunit.xml"
       - "phpunit.browser.xml"
       - ".github/workflows/erp-quality.yml"
+
+  # Exécute également les contrôles sur les pull requests importantes.
   pull_request:
     branches: [main, master, develop]
     paths:
@@ -31,13 +38,17 @@ on:
       - "phpunit.xml"
       - "phpunit.browser.xml"
       - ".github/workflows/erp-quality.yml"
+
+  # Permet de lancer manuellement le workflow depuis GitHub Actions.
   workflow_dispatch:
 
 jobs:
   quality:
-    name: PHP structured ERP checks
+    name: ERP code quality checks
+    # Le job s'exécute dans une machine virtuelle Linux fournie par GitHub.
     runs-on: ubuntu-latest
 
+    # Base MySQL temporaire disponible uniquement pendant l'exécution du job.
     services:
       mysql:
         image: mysql:8.4
@@ -46,12 +57,14 @@ jobs:
           MYSQL_ROOT_PASSWORD: root
         ports:
           - 3306:3306
+        # GitHub attend que MySQL réponde avant de commencer les étapes.
         options: >-
           --health-cmd="mysqladmin ping -h 127.0.0.1 -proot"
           --health-interval=10s
           --health-timeout=5s
           --health-retries=10
 
+    # Variables utilisées par l'application et les tests dans ce job.
     env:
       APP_ENV: testing
       APP_URL: http://127.0.0.1:8000
@@ -62,9 +75,11 @@ jobs:
       DB_PASSWORD: root
 
     steps:
+      # Récupère le contenu du dépôt dans la machine virtuelle.
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # Installe PHP, les extensions requises et Composer.
       - name: Setup PHP 8.3
         uses: shivammathur/setup-php@v2
         with:
@@ -73,15 +88,25 @@ jobs:
           coverage: none
           tools: composer:v2
 
+      # Node.js est nécessaire aux contrôles JavaScript et CSS.
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      # Vérifie que composer.json et composer.lock sont cohérents.
       - name: Validate Composer files
         run: composer validate --no-check-publish
 
+      # Installe les dépendances PHP avec les versions verrouillées.
       - name: Install PHP dependencies
         run: composer install --prefer-dist --no-progress --no-interaction
 
+      # Recherche les vulnérabilités connues dans les dépendances PHP.
       - name: Composer security audit
         run: composer audit --locked
 
+      # Contrôle la syntaxe de chaque fichier PHP sans l'exécuter.
       - name: PHP syntax check
         shell: bash
         run: |
@@ -93,6 +118,7 @@ jobs:
           done
           if [ -f index.php ]; then php -l index.php; fi
 
+      # Contrôle la syntaxe des scripts JavaScript du dossier public.
       - name: JavaScript syntax check
         shell: bash
         run: |
@@ -101,14 +127,22 @@ jobs:
             find public/assets/js -type f -name "*.js" -print0 | xargs -0 -r -n1 node --check
           fi
 
+      # Valide la syntaxe CSS sans nécessiter de fichier .stylelintrc.json.
+      - name: CSS syntax check
+        run: npx --yes csstree-validator@4.0.1 public/assets/css
+
+      # Lance la suite principale de tests automatisés.
       - name: Run PHPUnit
         run: vendor/bin/phpunit
 
+      # Vérifie rapidement les principales fonctions d'administration.
       - name: Smoke admin
         run: php tests/Smoke/smoke_admin.php
 
+      # Vérifie les règles essentielles de visibilité des données.
       - name: Smoke visibility
         run: php tests/Smoke/smoke_visibility.php
 
+      # Vérifie rapidement le bon fonctionnement du portail employé.
       - name: Smoke employee portal
         run: php tests/Smoke/smoke_employee_portal.php

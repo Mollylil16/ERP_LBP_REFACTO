@@ -14,7 +14,10 @@ document.addEventListener("DOMContentLoaded", () => {
   const childrenContainer = document.querySelector("[data-child-documents]");
   const renderChildren = () => {
     if (!childrenInput || !childrenContainer) return;
-    const count = Math.max(0, Math.min(20, parseInt(childrenInput.value || "0", 10)));
+    const count = Math.max(
+      0,
+      Math.min(20, parseInt(childrenInput.value || "0", 10)),
+    );
     childrenContainer.innerHTML = "";
     if (count === 0) return;
     const title = document.createElement("h3");
@@ -46,7 +49,9 @@ document.addEventListener("DOMContentLoaded", () => {
       properties.city,
       properties.state,
       properties.country,
-    ].filter((value, index, values) => value && values.indexOf(value) === index);
+    ].filter(
+      (value, index, values) => value && values.indexOf(value) === index,
+    );
 
     return parts.join(", ") || "Position sélectionnée";
   };
@@ -65,7 +70,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const defaultPosition = [5.359952, -4.008256];
     const initialLatitude = Number.parseFloat(latitude?.value || "");
     const initialLongitude = Number.parseFloat(longitude?.value || "");
-    const hasInitialPosition = Number.isFinite(initialLatitude) && Number.isFinite(initialLongitude);
+    const hasInitialPosition =
+      Number.isFinite(initialLatitude) && Number.isFinite(initialLongitude);
     const initialPosition = hasInitialPosition
       ? [initialLatitude, initialLongitude]
       : defaultPosition;
@@ -128,7 +134,9 @@ document.addEventListener("DOMContentLoaded", () => {
         setPosition(lat, lon, label, false);
       } catch (error) {
         if (error.name === "AbortError") return;
-        if (status) status.textContent = "Position sélectionnée. L’adresse exacte n’a pas pu être chargée.";
+        if (status)
+          status.textContent =
+            "Position sélectionnée. L’adresse exacte n’a pas pu être chargée.";
       }
     };
 
@@ -148,7 +156,8 @@ document.addEventListener("DOMContentLoaded", () => {
       if (features.length === 0) {
         const empty = document.createElement("p");
         empty.className = "finea-geolocation-empty";
-        empty.textContent = "Aucune position trouvée. Précisez la rue, le quartier ou la ville.";
+        empty.textContent =
+          "Aucune position trouvée. Précisez la rue, le quartier ou la ville.";
         results.appendChild(empty);
       } else {
         features.forEach((feature) => {
@@ -196,33 +205,43 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!response.ok) throw new Error("place-search-failed");
         const payload = await response.json();
         renderResults(payload.features || []);
-        if (status) status.textContent = `${payload.features?.length || 0} position(s) disponible(s).`;
+        if (status)
+          status.textContent = `${payload.features?.length || 0} position(s) disponible(s).`;
       } catch (error) {
         if (error.name === "AbortError") return;
         hideResults();
-        if (status) status.textContent = "La recherche de positions est momentanément indisponible.";
+        if (status)
+          status.textContent =
+            "La recherche de positions est momentanément indisponible.";
       }
     };
 
     if (mapContainer && window.L) {
       map = window.L.map(mapContainer, { scrollWheelZoom: false }).setView(
         initialPosition,
-        hasInitialPosition ? 16 : 12
+        hasInitialPosition ? 16 : 12,
       );
       window.L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
         maxZoom: 19,
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+        attribution:
+          '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
       }).addTo(map);
       map.on("click", (event) => {
         setPosition(event.latlng.lat, event.latlng.lng, "", false);
         reversePosition(event.latlng.lat, event.latlng.lng);
       });
       if (hasInitialPosition) {
-        setPosition(initialLatitude, initialLongitude, address?.value || "", false);
+        setPosition(
+          initialLatitude,
+          initialLongitude,
+          address?.value || "",
+          false,
+        );
       }
       window.setTimeout(() => map.invalidateSize(), 0);
     } else if (status) {
-      status.textContent = "La carte n’a pas pu être chargée. La recherche de lieu reste disponible.";
+      status.textContent =
+        "La carte n’a pas pu être chargée. La recherche de lieu reste disponible.";
     }
 
     search?.addEventListener("input", () => {
@@ -236,7 +255,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
     trigger?.addEventListener("click", () => {
       if (!navigator.geolocation) {
-        if (status) status.textContent = "La géolocalisation n’est pas disponible dans ce navigateur.";
+        if (status)
+          status.textContent =
+            "La géolocalisation n’est pas disponible dans ce navigateur.";
         return;
       }
 
@@ -250,10 +271,12 @@ document.addEventListener("DOMContentLoaded", () => {
           trigger.disabled = false;
         },
         () => {
-          if (status) status.textContent = "Position indisponible. Vérifiez l’autorisation du navigateur.";
+          if (status)
+            status.textContent =
+              "Position indisponible. Vérifiez l’autorisation du navigateur.";
           trigger.disabled = false;
         },
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 },
       );
     });
   });
