@@ -6,6 +6,7 @@ namespace App\Services\Admin;
 
 use App\Repositories\Admin\ModuleMaintenanceRepository;
 use RuntimeException;
+use Throwable;
 
 final class ModuleMaintenanceService
 {
@@ -16,13 +17,28 @@ final class ModuleMaintenanceService
     /** @return array<string,array<string,mixed>> */
     public function states(): array
     {
-        return $this->repository->all();
+        try {
+            return $this->repository->all();
+        } catch (Throwable) {
+            return [];
+        }
     }
 
     /** @return array<string,mixed> */
     public function state(string $slug): array
     {
-        return $this->repository->state($this->normalizeSlug($slug));
+        $slug = $this->normalizeSlug($slug);
+
+        try {
+            return $this->repository->state($slug);
+        } catch (Throwable) {
+            return [
+                'is_maintenance' => false,
+                'reason' => '',
+                'updated_by' => null,
+                'updated_at' => '',
+            ];
+        }
     }
 
     /** @return array<string,mixed> */

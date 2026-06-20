@@ -20,6 +20,15 @@ abstract class PantherTestCase extends SymfonyPantherTestCase
         }
     }
 
+    protected function tearDown(): void
+    {
+        try {
+            parent::tearDown();
+        } finally {
+            static::stopWebServer();
+        }
+    }
+
     protected function browser(): Client
     {
         $projectRoot = dirname(__DIR__, 2);
