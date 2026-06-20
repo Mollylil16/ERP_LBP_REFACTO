@@ -14,6 +14,7 @@ on:
       - "composer.json"
       - "composer.lock"
       - "phpunit.xml"
+      - "phpunit.browser.xml"
       - ".github/workflows/erp-quality.yml"
   pull_request:
     branches: [main, master, develop]
@@ -28,6 +29,7 @@ on:
       - "composer.json"
       - "composer.lock"
       - "phpunit.xml"
+      - "phpunit.browser.xml"
       - ".github/workflows/erp-quality.yml"
   workflow_dispatch:
 
@@ -35,6 +37,11 @@ jobs:
   quality:
     name: PHP structured ERP checks
     runs-on: ubuntu-latest
+
+    env:
+      APP_ENV: testing
+      APP_URL: http://127.0.0.1:8000
+      PANTHER_NO_HEADLESS: 0
 
     steps:
       - name: Checkout code
@@ -53,6 +60,9 @@ jobs:
 
       - name: Install PHP dependencies
         run: composer install --prefer-dist --no-progress --no-interaction
+
+      - name: Composer security audit
+        run: composer audit --locked
 
       - name: PHP syntax check
         shell: bash
@@ -84,3 +94,13 @@ jobs:
 
       - name: Smoke employee portal
         run: php tests/Smoke/smoke_employee_portal.php
+
+      - name: Install ChromeDriver for Panther
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p drivers
+          vendor/bin/bdi detect drivers
+
+      - name: Run Panther browser tests
+        run: vendor/bin/phpunit -c phpunit.browser.xml
