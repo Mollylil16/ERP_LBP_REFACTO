@@ -1,3 +1,247 @@
-.site-chat{display:grid;min-height:520px;grid-template-rows:minmax(260px,1fr) auto;border:1px solid #e4e7ec;border-radius:20px;overflow:hidden;background:#fff}.site-chat-messages{display:grid;align-content:start;gap:10px;padding:20px;overflow:auto;background:linear-gradient(180deg,#f8fafc,#fff)}.site-chat-message{display:flex;justify-content:flex-start}.site-chat-message.is-own{justify-content:flex-end}.site-chat-message>div{max-width:min(78%,560px);padding:11px 13px;border-radius:15px 15px 15px 4px;color:#344054;background:#fff;border:1px solid #e4e7ec;box-shadow:0 5px 15px rgba(15,23,42,.05)}.site-chat-message.is-own>div{color:#fff;border-color:var(--site-primary,#111c44);border-radius:15px 15px 4px 15px;background:var(--site-primary,#111c44)}.site-chat-message p{margin:0;line-height:1.5;font-size:.84rem}.site-chat-message time{display:block;margin-top:6px;color:inherit;opacity:.58;font-size:.6rem}.site-chat-attachment img{display:block;max-width:280px;max-height:250px;margin-top:7px;border-radius:10px;object-fit:cover}.site-chat-media{display:block;width:min(100%,360px);max-height:280px;margin-top:7px;border-radius:10px}.site-chat-audio{display:block;width:min(100%,320px);margin-top:7px}.site-chat-file{display:inline-flex;margin-top:7px;padding:8px 10px;border-radius:8px;color:inherit;background:rgba(255,255,255,.15);font-size:.72rem;font-weight:800}.site-chat>form{display:grid;grid-template-columns:minmax(0,1fr) minmax(220px,.6fr) auto;gap:10px;align-items:end;padding:14px;border-top:1px solid #e4e7ec;background:#fff}.site-chat>form .finea-field{margin:0}.site-chat>form .finea-textarea{min-height:76px}.site-chat>form .finea-dropzone{min-height:76px;padding:10px}.site-chat>form .finea-dropzone-icon{display:none}.site-chat>form .finea-dropzone span{font-size:.68rem}.site-chat>form>.finea-action-btn{min-height:46px}.site-chat.is-sending{opacity:.72}.site-chat-error{padding:8px 12px;color:#991b1b;background:#fee2e2;font-size:.75rem}.site-admin-messaging{display:grid;grid-template-columns:330px minmax(0,1fr);gap:16px}.site-admin-conversations{display:grid;align-content:start;gap:8px;max-height:720px;overflow:auto}.site-admin-conversations>a{display:grid;gap:4px;padding:14px;border:1px solid #e4e7ec;border-radius:14px;color:#344054;background:#fff}.site-admin-conversations>a.is-active{border-color:var(--module-accent);background:color-mix(in srgb,var(--module-accent) 8%,#fff)}.site-admin-conversations span,.site-admin-conversations small{overflow:hidden;color:#667085;font-size:.7rem;text-overflow:ellipsis;white-space:nowrap}.site-admin-chat{overflow:hidden;border:1px solid #e4e7ec;border-radius:20px;background:#fff}.site-admin-chat>header{display:flex;justify-content:space-between;align-items:center;padding:15px 18px;border-bottom:1px solid #e4e7ec}.site-admin-chat>header strong,.site-admin-chat>header span{display:block}.site-admin-chat>header span{color:#667085;font-size:.7rem}.site-admin-chat>header em{padding:5px 8px;border-radius:999px;color:#0f766e;background:#ccfbf1;font-size:.68rem;font-style:normal;font-weight:800}@media(max-width:900px){.site-admin-messaging{grid-template-columns:1fr}.site-admin-conversations{max-height:260px}.site-chat>form{grid-template-columns:1fr}.site-chat-message>div{max-width:90%}}
+.site-chat {
+    display: grid;
+    min-height: 520px;
+    grid-template-rows: minmax(260px, 1fr) auto;
+    border: 1px solid #e4e7ec;
+    border-radius: 20px;
+    overflow: hidden;
+    background: #fff
+}
 
-.site-voice-button{grid-column:2;border:1px solid #d0d5dd;border-radius:10px;padding:9px 11px;color:#344054;background:#fff;font-size:.7rem;font-weight:800;cursor:pointer}@media(max-width:900px){.site-voice-button{grid-column:auto}}
+.site-chat-messages {
+    display: grid;
+    align-content: start;
+    gap: 10px;
+    padding: 20px;
+    overflow: auto;
+    background: linear-gradient(180deg, #f8fafc, #fff)
+}
+
+.site-chat-message {
+    display: flex;
+    justify-content: flex-start
+}
+
+.site-chat-message.is-own {
+    justify-content: flex-end
+}
+
+.site-chat-message>div {
+    max-width: min(78%, 560px);
+    padding: 11px 13px;
+    border-radius: 15px 15px 15px 4px;
+    color: #344054;
+    background: #fff;
+    border: 1px solid #e4e7ec;
+    box-shadow: 0 5px 15px rgba(15, 23, 42, .05)
+}
+
+.site-chat-message.is-own>div {
+    color: #fff;
+    border-color: var(--site-primary, #111c44);
+    border-radius: 15px 15px 4px 15px;
+    background: var(--site-primary, #111c44)
+}
+
+.site-chat-message p {
+    margin: 0;
+    line-height: 1.5;
+    font-size: .84rem
+}
+
+.site-chat-message time {
+    display: block;
+    margin-top: 6px;
+    color: inherit;
+    opacity: .58;
+    font-size: .6rem
+}
+
+.site-chat-attachment img {
+    display: block;
+    max-width: 280px;
+    max-height: 250px;
+    margin-top: 7px;
+    border-radius: 10px;
+    object-fit: cover
+}
+
+.site-chat-media {
+    display: block;
+    width: min(100%, 360px);
+    max-height: 280px;
+    margin-top: 7px;
+    border-radius: 10px
+}
+
+.site-chat-audio {
+    display: block;
+    width: min(100%, 320px);
+    margin-top: 7px
+}
+
+.site-chat-file {
+    display: inline-flex;
+    margin-top: 7px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    color: inherit;
+    background: rgba(255, 255, 255, .15);
+    font-size: .72rem;
+    font-weight: 800
+}
+
+.site-chat>form {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(220px, .6fr) auto;
+    gap: 10px;
+    align-items: end;
+    padding: 14px;
+    border-top: 1px solid #e4e7ec;
+    background: #fff
+}
+
+.site-chat>form .finea-field {
+    margin: 0
+}
+
+.site-chat>form .finea-textarea {
+    min-height: 76px
+}
+
+.site-chat>form .finea-dropzone {
+    min-height: 76px;
+    padding: 10px
+}
+
+.site-chat>form .finea-dropzone-icon {
+    display: none
+}
+
+.site-chat>form .finea-dropzone span {
+    font-size: .68rem
+}
+
+.site-chat>form>.finea-action-btn {
+    min-height: 46px
+}
+
+.site-chat.is-sending {
+    opacity: .72
+}
+
+.site-chat-error {
+    padding: 8px 12px;
+    color: #991b1b;
+    background: #fee2e2;
+    font-size: .75rem
+}
+
+.site-admin-messaging {
+    display: grid;
+    grid-template-columns: 330px minmax(0, 1fr);
+    gap: 16px
+}
+
+.site-admin-conversations {
+    display: grid;
+    align-content: start;
+    gap: 8px;
+    max-height: 720px;
+    overflow: auto
+}
+
+.site-admin-conversations>a {
+    display: grid;
+    gap: 4px;
+    padding: 14px;
+    border: 1px solid #e4e7ec;
+    border-radius: 14px;
+    color: #344054;
+    background: #fff
+}
+
+.site-admin-conversations>a.is-active {
+    border-color: var(--module-accent);
+    background: color-mix(in srgb, var(--module-accent) 8%, #fff)
+}
+
+.site-admin-conversations span,
+.site-admin-conversations small {
+    overflow: hidden;
+    color: #667085;
+    font-size: .7rem;
+    text-overflow: ellipsis;
+    white-space: nowrap
+}
+
+.site-admin-chat {
+    overflow: hidden;
+    border: 1px solid #e4e7ec;
+    border-radius: 20px;
+    background: #fff
+}
+
+.site-admin-chat>header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 18px;
+    border-bottom: 1px solid #e4e7ec
+}
+
+.site-admin-chat>header strong,
+.site-admin-chat>header span {
+    display: block
+}
+
+.site-admin-chat>header span {
+    color: #667085;
+    font-size: .7rem
+}
+
+.site-admin-chat>header em {
+    padding: 5px 8px;
+    border-radius: 999px;
+    color: #0f766e;
+    background: #ccfbf1;
+    font-size: .68rem;
+    font-style: normal;
+    font-weight: 800
+}
+
+@media(max-width:900px) {
+    .site-admin-messaging {
+        grid-template-columns: 1fr
+    }
+
+    .site-admin-conversations {
+        max-height: 260px
+    }
+
+    .site-chat>form {
+        grid-template-columns: 1fr
+    }
+
+    .site-chat-message>div {
+        max-width: 90%
+    }
+}
+
+.site-voice-button {
+    grid-column: 2;
+    border: 1px solid #d0d5dd;
+    border-radius: 10px;
+    padding: 9px 11px;
+    color: #344054;
+    background: #fff;
+    font-size: .7rem;
+    font-weight: 800;
+    cursor: pointer
+}
+
+@media(max-width:900px) {
+    .site-voice-button {
+        grid-column: auto
+    }
+}
