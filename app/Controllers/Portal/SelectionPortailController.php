@@ -1,31 +1,30 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Controllers\Portal;
 
 use App\Controllers\BaseController;
-
 use App\Helpers\Auth;
 use App\Middleware\AuthMiddleware;
-use App\Security\PermissionAction;
-use App\Security\PermissionEntityRegistry;
-use App\Services\Shared\ModuleDashboardService;
 use App\Models\Database;
 use App\Repositories\Admin\ModuleMaintenanceRepository;
+use App\Security\PermissionAction;
+use App\Security\PermissionEntityRegistry;
 use App\Services\Admin\ModuleMaintenanceService;
+use App\Services\Shared\ModuleDashboardService;
+use App\View\Pages\Portal\SelectionPage;
 
 /**
- * Portail central de sélection des modules ERP.
- *
- * Point d'entrée privé après connexion : connexion -> selection_portail -> module métier.
+ * Point d’entrée privé après connexion : connexion -> portail -> module métier.
  */
-class SelectionPortailController extends BaseController
+final class SelectionPortailController extends BaseController
 {
     public function index(): void
     {
         AuthMiddleware::check();
 
         $modules = (new ModuleDashboardService())->portalModules();
-
         array_splice($modules, 1, 0, [[
             'key' => 'rh',
             'label' => 'RH',
@@ -74,6 +73,7 @@ class SelectionPortailController extends BaseController
         $maintenanceStates = (new ModuleMaintenanceService(
             new ModuleMaintenanceRepository(Database::getConnection())
         ))->states();
+
         foreach ($modules as &$module) {
             $slug = match ((string) $module['key']) {
                 'employee' => 'espace-employe',
@@ -89,15 +89,11 @@ class SelectionPortailController extends BaseController
         }
         unset($module);
 
-        $user = [
-            'id' => Auth::id(),
-            'name' => Auth::user()?->fullName ?? 'Administrateur',
-        ];
-
         $this->view('selection_portail/index', [
-            'pageTitle' => 'Sélection portail',
-            'user' => $user,
-            'modules' => $modules,
+            'page' => new SelectionPage(
+                Auth::user()?->fullName ?? 'Administrateur',
+                $modules,
+            ),
         ]);
     }
 }

@@ -4,54 +4,37 @@ document.addEventListener("DOMContentLoaded", () => {
   links.forEach((link) => {
     link.addEventListener("click", (event) => {
       const targetId = link.getAttribute("href");
-
-      if (!targetId || targetId === "#") {
-        return;
-      }
+      if (!targetId || targetId === "#") return;
 
       const target = document.querySelector(targetId);
-
-      if (!target) {
-        return;
-      }
+      if (!target) return;
 
       event.preventDefault();
-
-      target.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-      });
+      target.scrollIntoView({ behavior: "smooth", block: "start" });
     });
   });
 });
 
-// Recherche instantanée des modules du portail.
+// Filtrage multi-modules du portail via le select-search standard.
 document.addEventListener("DOMContentLoaded", () => {
-  const searchInput = document.getElementById("moduleSearchInput");
+  const moduleSelect = document.querySelector("select[data-portal-module-filter]");
   const moduleCards = Array.from(document.querySelectorAll("[data-module-card]"));
   const countLabel = document.getElementById("moduleSearchCount");
   const emptyState = document.getElementById("moduleEmptyState");
+  const resetButton = document.getElementById("moduleFilterReset");
 
-  if (!searchInput || moduleCards.length === 0) {
-    return;
-  }
-
-  const normalize = (value) =>
-    value
-      .toString()
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .trim();
+  if (!moduleSelect || moduleCards.length === 0) return;
 
   const updateResults = () => {
-    const query = normalize(searchInput.value);
+    const selected = new Set(
+      Array.from(moduleSelect.selectedOptions)
+        .map((option) => option.value)
+        .filter(Boolean)
+    );
     let visibleCount = 0;
 
     moduleCards.forEach((card) => {
-      const searchableText = normalize(card.dataset.search || "");
-      const isVisible = query === "" || searchableText.includes(query);
-
+      const isVisible = selected.size === 0 || selected.has(card.dataset.moduleKey || "");
       card.hidden = !isVisible;
       if (isVisible) visibleCount += 1;
     });
@@ -59,12 +42,17 @@ document.addEventListener("DOMContentLoaded", () => {
     if (countLabel) {
       countLabel.textContent = `${visibleCount} module${visibleCount > 1 ? "s" : ""} disponible${visibleCount > 1 ? "s" : ""}`;
     }
-
-    if (emptyState) {
-      emptyState.hidden = visibleCount !== 0;
-    }
+    if (emptyState) emptyState.hidden = visibleCount !== 0;
+    if (resetButton) resetButton.hidden = selected.size === 0;
   };
 
-  searchInput.addEventListener("input", updateResults);
+  moduleSelect.addEventListener("change", updateResults);
+  resetButton?.addEventListener("click", () => {
+    Array.from(moduleSelect.options).forEach((option) => {
+      option.selected = false;
+    });
+    moduleSelect.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+
   updateResults();
 });

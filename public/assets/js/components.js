@@ -29,6 +29,8 @@
     wrapper.appendChild(menu);
 
     const source = Array.from(select.options).map((option) => ({ value: option.value, label: option.textContent || "" }));
+    const normalize = (value) =>
+      value.toString().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
 
     const selectedValues = () => Array.from(select.selectedOptions).map((option) => option.value).filter((value) => value !== "");
     const setSelected = (value, selected) => {
@@ -48,6 +50,7 @@
         badge.textContent = item?.label || value;
         const remove = document.createElement("button");
         remove.type = "button";
+        remove.setAttribute("aria-label", `Retirer ${item?.label || value}`);
         remove.textContent = "×";
         remove.addEventListener("click", (event) => {
           event.stopPropagation();
@@ -67,11 +70,11 @@
     };
 
     const renderMenu = () => {
-      const term = input.value.trim().toLowerCase();
+      const term = normalize(input.value);
       const selected = new Set(selectedValues());
       const items = source.filter((option) => {
         if (multiple && selected.has(option.value)) return false;
-        return option.label.toLowerCase().includes(term);
+        return normalize(option.label).includes(term);
       });
       menu.innerHTML = "";
       if (!items.length) {
