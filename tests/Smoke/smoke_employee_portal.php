@@ -4,26 +4,49 @@ declare(strict_types=1);
 
 use App\Models\Database;
 use App\Models\User;
+use App\Repositories\Admin\UserRepository;
 use App\Repositories\Employee\EmployeePortalRepository;
 use App\Repositories\Rh\RhLifecycleRepository;
+use App\Repositories\Rh\RhPersonnelRepository;
 use App\Services\Employee\EmployeePortalService;
 use App\Services\Rh\RhLifecycleService;
+use App\Services\Rh\RhPersonnelService;
 
 require dirname(__DIR__, 2) . '/bootstrap/app.php';
 
 $pdo = Database::getConnection();
-$employeeId = (int) $pdo->query('SELECT id FROM rh_employees ORDER BY id LIMIT 1')->fetchColumn();
-if ($employeeId <= 0) {
-    throw new RuntimeException('SMOKE_EMPLOYEE_PORTAL: aucun collaborateur disponible.');
+$admin = (new UserRepository($pdo))->findByIdentifier('admin');
+if (!$admin) {
+    throw new RuntimeException('SMOKE_EMPLOYEE_PORTAL: compte admin introuvable.');
 }
 
-$user = new User(900001, 'Smoke Employee', 'smoke.employee@local', null, 'x', rhEmployeeId: $employeeId);
+$personnel = new RhPersonnelService(new RhPersonnelRepository($pdo));
 $employeePortal = new EmployeePortalService(new EmployeePortalRepository($pdo));
 $rhWorkflow = new RhLifecycleService(new RhLifecycleRepository($pdo));
+$employeeId = null;
 $requestId = 0;
 $requestIds = [];
 
 try {
+    $suffix = bin2hex(random_bytes(4));
+    $employeeId = $personnel->create([
+        'employee_number' => 'PORTAL-' . strtoupper($suffix),
+        'full_name' => 'Smoke Employee Portal',
+        'email' => 'smoke.employee.' . $suffix . '@erp-lbp.local',
+        'phone' => '+22500000001',
+        'hire_date' => date('Y-m-d'),
+        'start_date' => date('Y-m-d'),
+    ], [], (int) $admin->id);
+
+    $user = new User(
+        900001,
+        'Smoke Employee',
+        'smoke.employee@local',
+        null,
+        'x',
+        rhEmployeeId: $employeeId
+    );
+
     $requestId = $employeePortal->createRequest($user, [
         'request_type' => 'leave',
         'start_date' => date('Y-m-d', strtotime('+10 days')),
@@ -79,5 +102,8 @@ try {
         $placeholders = implode(',', array_fill(0, count($requestIds), '?'));
         $stmt = $pdo->prepare("DELETE FROM employee_legal_requests WHERE id IN ({$placeholders})");
         $stmt->execute($requestIds);
+    }
+    if ($employeeId !== null) {
+        $pdo->prepare('DELETE FROM rh_employees WHERE id = :id')->execute(['id' => $employeeId]);
     }
 }

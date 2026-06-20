@@ -4,11 +4,20 @@ namespace App;
 
 use App\Controllers\Error\ErrorController;
 use App\Middleware\ModuleMaintenanceMiddleware;
+use Closure;
 
 class Router
 {
     private array $routes = [];
     private array $groupPrefixes = [];
+    private Closure $maintenanceResolver;
+
+    public function __construct(?callable $maintenanceResolver = null)
+    {
+        $this->maintenanceResolver = Closure::fromCallable(
+            $maintenanceResolver ?? [ModuleMaintenanceMiddleware::class, 'stateForPath']
+        );
+    }
 
     public function get(string $uri, callable|array $action): void
     {
@@ -46,7 +55,7 @@ class Router
     {
         $requestUri = $this->normalizeUri($requestUri);
         $this->redirectLegacyPhpUrl($requestUri);
-        $maintenance = ModuleMaintenanceMiddleware::stateForPath($requestUri);
+        $maintenance = ($this->maintenanceResolver)($requestUri);
         if ($maintenance !== null) {
             (new ErrorController())->maintenance($maintenance);
             return;

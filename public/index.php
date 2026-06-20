@@ -36,8 +36,15 @@ try {
         ], 500);
     }
 
-    (new ErrorController())->show(
-        500,
-        'L’incident a été enregistré. Vous pouvez revenir au portail sans perdre votre session.'
-    );
+    $detail = getenv('APP_ENV') === 'testing'
+        ? sprintf(
+            '%s: %s dans %s:%d',
+            $exception::class,
+            $exception->getMessage(),
+            $exception->getFile(),
+            $exception->getLine()
+        )
+        : 'L’incident a été enregistré. Vous pouvez revenir au portail sans perdre votre session.';
+
+    (new ErrorController())->show(500, $detail);
 }

@@ -53,4 +53,19 @@ final class ModuleMaintenanceServiceTest extends TestCase
         $this->expectException(RuntimeException::class);
         $service->update('admin', true, 'Maintenance administration', 1);
     }
+
+    public function test_lookup_fails_open_when_storage_is_unavailable(): void
+    {
+        $pdo = new PDO('sqlite::memory:');
+        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        $service = new ModuleMaintenanceService(new ModuleMaintenanceRepository($pdo));
+
+        self::assertSame([], $service->states());
+        self::assertSame([
+            'is_maintenance' => false,
+            'reason' => '',
+            'updated_by' => null,
+            'updated_at' => '',
+        ], $service->state('rh'));
+    }
 }
