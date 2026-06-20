@@ -15,6 +15,7 @@ Thumbs.db
 
 # Composer
 /vendor/
+/drivers/
 
 # Node
 /node_modules/
