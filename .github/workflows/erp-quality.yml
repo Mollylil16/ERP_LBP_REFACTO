@@ -1,0 +1,86 @@
+name: ERP LBP Quality
+
+on:
+  push:
+    branches: [main, master, develop, "feature/**", "fix/**", "release/**"]
+    paths:
+      - "app/**"
+      - "bootstrap/**"
+      - "config/**"
+      - "public/**"
+      - "routes/**"
+      - "tests/**"
+      - "views/**"
+      - "composer.json"
+      - "composer.lock"
+      - "phpunit.xml"
+      - ".github/workflows/erp-quality.yml"
+  pull_request:
+    branches: [main, master, develop]
+    paths:
+      - "app/**"
+      - "bootstrap/**"
+      - "config/**"
+      - "public/**"
+      - "routes/**"
+      - "tests/**"
+      - "views/**"
+      - "composer.json"
+      - "composer.lock"
+      - "phpunit.xml"
+      - ".github/workflows/erp-quality.yml"
+  workflow_dispatch:
+
+jobs:
+  quality:
+    name: PHP structured ERP checks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP 8.3
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          extensions: mbstring, pdo, pdo_mysql
+          coverage: none
+          tools: composer:v2
+
+      - name: Validate Composer files
+        run: composer validate --no-check-publish
+
+      - name: Install PHP dependencies
+        run: composer install --prefer-dist --no-progress --no-interaction
+
+      - name: PHP syntax check
+        shell: bash
+        run: |
+          set -euo pipefail
+          for dir in app bootstrap config public routes tests views; do
+            if [ -d "$dir" ]; then
+              find "$dir" -type f -name "*.php" -print0 | xargs -0 -r -n1 php -l
+            fi
+          done
+          if [ -f index.php ]; then php -l index.php; fi
+
+      - name: JavaScript syntax check
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -d public/assets/js ]; then
+            find public/assets/js -type f -name "*.js" -print0 | xargs -0 -r -n1 node --check
+          fi
+
+      - name: Run PHPUnit
+        run: vendor/bin/phpunit
+
+      - name: Smoke admin
+        run: php tests/Smoke/smoke_admin.php
+
+      - name: Smoke visibility
+        run: php tests/Smoke/smoke_visibility.php
+
+      - name: Smoke employee portal
+        run: php tests/Smoke/smoke_employee_portal.php
