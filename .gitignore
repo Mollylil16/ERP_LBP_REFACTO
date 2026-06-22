@@ -33,3 +33,4 @@ wamp64.conf
 # Uploads futurs
 /public/uploads/*
 !/public/uploads/.gitkeep
+config/database.php
