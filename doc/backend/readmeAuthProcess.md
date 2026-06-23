@@ -162,7 +162,7 @@ Le layout applique le design global de l’application et charge le fichier CSS 
 ## 10. Rôle du middleware d’authentification
 
 Le middleware est dans :
-- app/Middleware/AuthMiddleWare.php
+- app/Middleware/AuthMiddleware.php
 
 ### Son rôle
 Il vérifie que la session contient auth_user_id.
