@@ -16,5 +16,9 @@
         "smoke:admin": "php tests/Smoke/smoke_admin.php",
         "smoke:visibility": "php tests/Smoke/smoke_visibility.php",
         "smoke:employee": "php tests/Smoke/smoke_employee_portal.php"
+    },
+    "config": {
+        "disable-tls": true,
+        "secure-http": false
     }
 }

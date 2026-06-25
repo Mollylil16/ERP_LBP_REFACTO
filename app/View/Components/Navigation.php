@@ -47,7 +47,7 @@ final class Navigation
                 $html .= '<a class="' . View::e($class) . '" href="' . View::e($href) . '"'
                     . ($active ? ' aria-current="page"' : '')
                     . (!$available ? ' aria-disabled="true" data-coming-soon' : '') . '>'
-                    . '<span class="module-nav-icon">' . View::e((string) ($item['icon'] ?? '•')) . '</span>'
+                    . '<span class="module-nav-icon">' . ($item['icon'] ?? '•') . '</span>'
                     . '<span class="module-nav-label">' . View::e((string) $item['label']) . '</span>'
                     . (!$available ? '<small>Bientôt</small>' : '') . '</a>';
             }

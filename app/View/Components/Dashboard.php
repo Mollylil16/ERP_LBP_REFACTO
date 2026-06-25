@@ -243,5 +243,58 @@ final class Dashboard
             . View::e((string) ($module['accent'] ?? '#2563eb')) . '"></span><span style="background: var(--finea-gold)"></span></div></aside></div>'
             . $workflowSection . '</div></div>';
     }
+    /**
+     * Renders the 13 quick-action pill buttons shown in the dashboard header.
+     *
+     * @param array<int,array{label:string,href:string,icon:string,variant?:string,count?:int}> $actions
+     */
+    public static function quickActions(array $actions): string
+    {
+        $html = '<div class="rh-quick-actions">';
+        foreach ($actions as $action) {
+            $variant = (string) ($action['variant'] ?? 'secondary');
+            $class = 'rh-quick-action-btn rh-quick-action-btn--' . preg_replace('/[^a-z0-9_-]/i', '', $variant);
+            $count = (int) ($action['count'] ?? 0);
+            $badge = $count > 0 ? '<span class="rh-quick-action-badge">' . $count . '</span>' : '';
+            $html .= '<a class="' . View::e($class) . '" href="' . View::url(ltrim($action['href'], '/'))
+                . '"><span class="rh-quick-action-icon">' . ($action['icon'] ?? '')
+                . '</span>' . View::e($action['label']) . $badge . '</a>';
+        }
+
+        return $html . '</div>';
+    }
+
+    /**
+     * Renders the "Priorités RH — Dernières demandes à valider" section.
+     *
+     * @param array<int,array{type:string,employee:string,status:string,date:string}> $requests
+     */
+    public static function priorities(array $requests, string $allHref = 'rh/validations'): string
+    {
+        $html = '<section class="finea-section-card rh-priorities-section">'
+            . '<div class="rh-section-heading"><div>'
+            . '<p class="rh-eyebrow">Priorites RH</p>'
+            . '<h2 class="finea-section-title">Dernieres demandes a valider</h2>'
+            . '</div><a class="rh-priorities-link" href="' . View::url(ltrim($allHref, '/'))
+            . '">Tout traiter →</a></div>';
+
+        if ($requests === []) {
+            $html .= '<div class="finea-empty-state">Aucune demande en attente de validation.</div>';
+        } else {
+            $html .= '<div class="rh-priorities-grid">';
+            foreach ($requests as $request) {
+                $html .= '<article class="rh-priority-card">'
+                    . '<strong>' . View::e($request['type']) . '</strong>'
+                    . '<span>' . View::e($request['employee']) . '</span>'
+                    . '<div class="rh-priority-footer">'
+                    . '<span class="finea-status-badge finea-status-badge--warning">' . View::e($request['status']) . '</span>'
+                    . '<time>' . View::e($request['date']) . '</time>'
+                    . '</div></article>';
+            }
+            $html .= '</div>';
+        }
+
+        return $html . '</section>';
+    }
 
 }
