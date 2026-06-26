@@ -16,6 +16,7 @@ use App\Controllers\Rh\RhExplicationController;
 use App\Controllers\Rh\RhMissionController;
 use App\Controllers\Rh\RhAttendanceController;
 use App\Controllers\Rh\RhPayrollController;
+use App\Controllers\Rh\RhPayrollEngineController;
 
 /** @var Router $router */
 
@@ -42,6 +43,9 @@ $router->group('/rh', function (Router $router): void {
     
     // Paie
     $router->get('/paie', [RhPayrollController::class, 'index']);
+    $router->get('/paie/nouveau', [RhPayrollController::class, 'create']);
+    $router->post('/paie/nouveau', [RhPayrollController::class, 'storeWizard']);
+    $router->get('/paie/moteur', [RhPayrollEngineController::class, 'index']);
     $router->post('/paie/periodes', [RhPayrollController::class, 'storePeriod']);
     $router->post('/paie/variables', [RhPayrollController::class, 'storeVariables']);
     $router->post('/paie/calculer/{id}', [RhPayrollController::class, 'calculate']);

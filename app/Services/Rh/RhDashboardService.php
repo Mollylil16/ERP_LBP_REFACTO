@@ -22,14 +22,14 @@ class RhDashboardService
         $alerts = [
             [
                 'label' => 'Demandes employes',
-                'description' => 'Conges, absences, avances et regularisations a traiter.',
+                'description' => 'Absences, conges, prets, avances, heures sup et regularisations a traiter.',
                 'count' => $counts['legalRequests'],
                 'tone' => 'success',
                 'href' => 'rh/cycle-vie?section=workflows',
             ],
             [
                 'label' => 'Contrats a parametrer',
-                'description' => 'Collaborateurs actifs sans contrat exploitable.',
+                'description' => 'Employes actifs sans contrat RH exploitable par la paie.',
                 'count' => $counts['contractsMissing'],
                 'tone' => 'warning',
                 'href' => 'rh/cycle-vie?section=contracts',
@@ -43,14 +43,14 @@ class RhDashboardService
             ],
             [
                 'label' => 'Explications a suivre',
-                'description' => 'Demandes ouvertes en attente de reponse.',
+                'description' => 'Demandes ouvertes ou en attente de reponse employe.',
                 'count' => $counts['explanations'],
-                'tone' => 'danger',
+                'tone' => 'pink',
                 'href' => 'rh/cycle-vie?section=discipline',
             ],
             [
                 'label' => 'Soldes conges a initialiser',
-                'description' => 'Soldes de depart restant a renseigner.',
+                'description' => 'Collaborateurs actifs sans solde initial renseigne.',
                 'count' => $counts['leaveOpeningMissing'],
                 'tone' => 'info',
                 'href' => 'rh/parametrage',
@@ -79,6 +79,9 @@ class RhDashboardService
             analytics: $this->repository->getAnalytics(),
             pendingTotal: array_sum($counts),
             pendingRequests: $this->repository->getRecentPendingRequests(),
+            dailyAttendance: $canViewEmployees ? $this->repository->getDailyAttendance() : [],
+            monthlyTrend: $canViewEmployees ? $this->repository->getMonthlyTrend() : [],
+            employeeList: $canViewEmployees ? $this->repository->getEmployeeList() : [],
         );
     }
 }

@@ -24,11 +24,10 @@ final class RhSignatoryController extends RhBaseController
     public function index(): void
     {
         AuthMiddleware::check();
-        $signatories = $this->repository->all();
-        $employees = $this->repository->getActiveEmployees();
+        $settings = $this->repository->getSettings();
 
-        $this->rhView('rh/signatories/index', 'Signataires RH habilites', 'signatories', [
-            'page' => new SignatoryIndexPage($signatories, $employees),
+        $this->rhView('rh/signatories/index', 'Signataires et identite des contrats', 'signatories', [
+            'page' => new SignatoryIndexPage($settings),
         ]);
     }
 
@@ -40,8 +39,8 @@ final class RhSignatoryController extends RhBaseController
             $this->redirect('/rh/signataires');
         }
         try {
-            $this->repository->save($_POST);
-            Session::flash('success', 'Signataire RH enregistre.');
+            $this->repository->saveSettings($_POST);
+            Session::flash('success', 'Parametrage des contrats enregistre.');
         } catch (RuntimeException $e) {
             Session::flash('error', $e->getMessage());
         }
@@ -51,16 +50,6 @@ final class RhSignatoryController extends RhBaseController
     public function toggle(): void
     {
         AuthMiddleware::check();
-        if (!Csrf::verify($_POST['_csrf_token'] ?? null)) {
-            Session::flash('error', 'Session expiree. Veuillez recommencer.');
-            $this->redirect('/rh/signataires');
-        }
-        try {
-            $this->repository->toggle((int)($_POST['id'] ?? 0));
-            Session::flash('success', 'Statut du signataire mis a jour.');
-        } catch (RuntimeException $e) {
-            Session::flash('error', $e->getMessage());
-        }
         $this->redirect('/rh/signataires');
     }
 }

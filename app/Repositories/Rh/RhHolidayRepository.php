@@ -26,10 +26,25 @@ final class RhHolidayRepository
         $name = trim((string) ($data['name'] ?? ''));
         $date = trim((string) ($data['holiday_date'] ?? ''));
         $isRecurring = isset($data['is_recurring']) ? 1 : 0;
+        
+        if ($date === '') {
+            throw new \RuntimeException('La date est obligatoire.');
+        }
+
+        if ($name === '') {
+            $name = 'Jour ferie';
+        }
+
         $year = $isRecurring ? null : (int) date('Y', strtotime($date));
 
-        if ($name === '' || $date === '') {
-            throw new \RuntimeException('Le nom et la date sont obligatoires.');
+        // Check if a holiday with this date already exists to perform update instead of insert
+        if ($id === 0) {
+            $stmt = $this->pdo->prepare("SELECT id FROM rh_holidays WHERE holiday_date = :date LIMIT 1");
+            $stmt->execute(['date' => $date]);
+            $existingId = $stmt->fetchColumn();
+            if ($existingId !== false) {
+                $id = (int)$existingId;
+            }
         }
 
         if ($id > 0) {

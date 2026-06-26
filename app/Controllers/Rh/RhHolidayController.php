@@ -24,10 +24,15 @@ final class RhHolidayController extends RhBaseController
     public function index(): void
     {
         AuthMiddleware::check();
+        $selectedMonth = (string) ($_GET['month'] ?? date('Y-m'));
+        if (!preg_match('/^\d{4}-\d{2}$/', $selectedMonth)) {
+            $selectedMonth = date('Y-m');
+        }
+
         $holidays = $this->repository->all();
 
-        $this->rhView('rh/holidays/index', 'Calendrier des jours feries', 'holidays', [
-            'page' => new HolidayIndexPage($holidays),
+        $this->rhView('rh/holidays/index', 'Gestion des feries', 'holidays', [
+            'page' => new HolidayIndexPage($holidays, $selectedMonth),
         ]);
     }
 
@@ -44,7 +49,13 @@ final class RhHolidayController extends RhBaseController
         } catch (RuntimeException $e) {
             Session::flash('error', $e->getMessage());
         }
-        $this->redirect('/rh/feries');
+
+        $month = trim((string)($_POST['month'] ?? ''));
+        $redirectUrl = '/rh/feries';
+        if (preg_match('/^\d{4}-\d{2}$/', $month)) {
+            $redirectUrl .= '?month=' . urlencode($month);
+        }
+        $this->redirect($redirectUrl);
     }
 
     public function toggle(): void
@@ -60,6 +71,12 @@ final class RhHolidayController extends RhBaseController
         } catch (RuntimeException $e) {
             Session::flash('error', $e->getMessage());
         }
-        $this->redirect('/rh/feries');
+
+        $month = trim((string)($_POST['month'] ?? ''));
+        $redirectUrl = '/rh/feries';
+        if (preg_match('/^\d{4}-\d{2}$/', $month)) {
+            $redirectUrl .= '?month=' . urlencode($month);
+        }
+        $this->redirect($redirectUrl);
     }
 }

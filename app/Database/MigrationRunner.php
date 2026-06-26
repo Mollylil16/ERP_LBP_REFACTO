@@ -788,6 +788,52 @@ class MigrationRunner
                 CONSTRAINT fk_payroll_slip_employee FOREIGN KEY (employee_id) REFERENCES rh_employees(id) ON DELETE CASCADE
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         ");
+
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS rh_contract_settings (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                employer_name VARCHAR(255) NULL,
+                legal_form VARCHAR(255) NULL,
+                capital_mention VARCHAR(255) NULL,
+                address VARCHAR(255) NULL,
+                rccm VARCHAR(255) NULL,
+                representation_text TEXT NULL,
+                signature_city VARCHAR(255) NULL,
+                dg_signatory_name VARCHAR(255) NULL,
+                dg_title VARCHAR(255) NULL,
+                rh_signatory_name VARCHAR(255) NULL,
+                rh_title VARCHAR(255) NULL,
+                footer_line1 TEXT NULL,
+                footer_line2 TEXT NULL,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME NULL
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+
+        $stmt = $this->pdo->query("SELECT COUNT(*) FROM rh_contract_settings");
+        if ((int)$stmt->fetchColumn() === 0) {
+            $this->pdo->exec("
+                INSERT INTO rh_contract_settings (
+                    id, employer_name, legal_form, capital_mention, address, rccm, representation_text,
+                    signature_city, dg_signatory_name, dg_title, rh_signatory_name, rh_title, footer_line1, footer_line2
+                ) VALUES (
+                    1,
+                    'BANAMUR INDUSTRIES ET TECHNOLOGIES',
+                    'SARL au capital de 100 000 000 FCFA',
+                    'Capital social : 100 000 000 FCFA',
+                    'Abidjan, Koumassi Bd. du Gabon prolonge',
+                    'CI-ABJ-03-2022-B13-02828',
+                    'Representee pour les besoins du present contrat par la Direction Generale ou tout mandataire habilite.',
+                    'Abidjan',
+                    'Paul-Alex BRAUD',
+                    'Directeur General',
+                    'Constant Michel YAO',
+                    'Responsable RH',
+                    'Abidjan, Koumassi Bd. du Gabon prolonge - RCCM CI-ABJ-03-2022-B13-02828 - Tel. +225 27 21 36 27 27',
+                    'Document RH genere depuis le module interne BANAMUR. Signature DG, RH et salarie requise pour prise d effet.'
+                )
+            ");
+        }
     }
 
 

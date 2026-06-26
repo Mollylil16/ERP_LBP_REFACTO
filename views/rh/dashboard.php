@@ -47,17 +47,26 @@ ob_start();
                 ['label' => 'Services couverts', 'value' => number_format($page->dashboard->stats['services'], 0, ',', ' '), 'meta' => 'Services actifs', 'href' => 'rh/parametrage?catalog=services'],
             ]) ?>
 
+            <?php
+            $legalRequestsCount = (int) ($page->dashboard->alerts[0]['count'] ?? 0);
+            $leaveOpeningMissingCount = (int) ($page->dashboard->alerts[4]['count'] ?? 0);
+            ?>
             <?= Dashboard::distributionWithActions(
                 $page->dashboard->services,
                 (int) $page->dashboard->stats['total'],
                 [
-                    ['label' => 'Integrer un collaborateur', 'href' => 'rh/personnel/nouveau', 'hint' => 'Creer un nouveau dossier RH complet avec pieces justificatives'],
+                    ['label' => 'Integrer un collaborateur', 'href' => 'rh/personnel/nouveau', 'hint' => 'Creer un nouveau dossier RH complet avec pieces justificatives', 'tone' => 'success'],
                     ['label' => 'Pointage du jour', 'href' => 'rh/pointage', 'hint' => 'Saisir rapidement les presences, absences, missions et HS'],
                     ['label' => 'Pointage mensuel (1 personne)', 'href' => 'rh/pointage?vue=mensuel', 'hint' => 'Vue jour par jour pour verifier un salarie et corriger le pointage'],
-                    ['label' => 'Demandes employe', 'href' => 'rh/validations', 'hint' => 'Valider ou refuser absences, prets, avances salaire et heures sup'],
-                    ['label' => 'Initialisation conges', 'href' => 'rh/parametrage', 'hint' => 'Renseigner les soldes de depart avant calcul ERP'],
-                    ['label' => 'Demandes d\'explications', 'href' => 'rh/explications', 'hint' => 'Creer, notifier, relancer et cloturer les demandes adressees personnel'],
+                    ['label' => 'Demandes employe', 'href' => 'rh/validations', 'hint' => 'Valider ou refuser absences, prets, avances salaire et heures sup', 'count' => $legalRequestsCount, 'count_tone' => 'success'],
+                    ['label' => 'Initialisation conges', 'href' => 'rh/parametrage', 'hint' => 'Renseigner les soldes de depart avant calcul ERP', 'count' => $leaveOpeningMissingCount, 'count_tone' => 'info'],
+                    ['label' => 'Demandes d\'explications', 'href' => 'rh/explications', 'hint' => 'Creer, notifier, relancer et cloturer les demandes adressees au personnel'],
                 ]
+            ) ?>
+
+            <?= Dashboard::classicRankings(
+                $page->dashboard->functions,
+                $page->dashboard->statuses
             ) ?>
             <?= Dashboard::recentRecords(
                 $page->recentRows,
@@ -79,76 +88,24 @@ ob_start();
                 ]
             ) ?>
         <?php elseif ($page->mode === 'statistique'): ?>
-            <?= Dashboard::kpis([
-                ['label' => 'Effectif global', 'value' => number_format($page->dashboard->stats['total'], 0, ',', ' '), 'meta' => 'Collaborateurs recenses', 'href' => 'rh/personnel?scope=all'],
-                ['label' => 'En poste', 'value' => number_format($page->dashboard->stats['active'], 0, ',', ' '), 'meta' => 'Sans date de sortie', 'href' => 'rh/personnel?scope=active', 'tone' => 'success'],
-                ['label' => 'Sorties', 'value' => number_format($page->dashboard->stats['inactive'], 0, ',', ' '), 'meta' => 'Personnel archive', 'href' => 'rh/mouvements', 'tone' => 'warning'],
-                ['label' => 'Recrutements annee', 'value' => number_format($page->dashboard->stats['currentYearHires'], 0, ',', ' '), 'meta' => 'Depuis janvier', 'href' => 'rh/cycle-vie?section=recruitment'],
-                ['label' => 'Services couverts', 'value' => number_format($page->dashboard->stats['services'], 0, ',', ' '), 'meta' => 'Services actifs', 'href' => 'rh/parametrage?catalog=services'],
-            ]) ?>
-            <?= Dashboard::metrics([
-                [
-                    'eyebrow' => 'Assiduite du mois',
-                    'value' => number_format($page->dashboard->analytics['presenceRate'], 1, ',', ' ') . '%',
-                    'description' => 'Taux de presence sur '
-                        . (int) $page->dashboard->analytics['attendanceRows'] . ' lignes de pointage',
-                ],
-                [
-                    'eyebrow' => 'Retards',
-                    'value' => (int) $page->dashboard->analytics['lateRows'],
-                    'description' => 'Arrivees tardives detectees ce mois',
-                ],
-                [
-                    'eyebrow' => 'Heures supplementaires',
-                    'value' => number_format($page->dashboard->analytics['overtimeHours'], 1, ',', ' ') . ' h',
-                    'description' => 'Volume cumule sur la periode',
-                ],
-                [
-                    'eyebrow' => 'Demandes traitees',
-                    'value' => (int) $page->dashboard->analytics['requestsProcessed'],
-                    'description' => 'Validations, refus et annulations du mois',
-                ],
-            ]) ?>
-            <?= Dashboard::rankings([
-                ['title' => 'Services', 'rows' => $page->dashboard->services],
-                ['title' => 'Fonctions', 'rows' => $page->dashboard->functions],
-                ['title' => 'Statuts', 'rows' => $page->dashboard->statuses],
-            ]) ?>
+            <?= Dashboard::statIntro() ?>
+
+            <?= Dashboard::statKPIs($page->dashboard->analytics) ?>
+
+            <?= Dashboard::dailyAttendanceChart($page->dashboard->dailyAttendance) ?>
+
+            <?= Dashboard::statThreeColumns() ?>
+
+            <?= Dashboard::statTachesEtCharge() ?>
+
+            <?= Dashboard::monthlyTrendChart($page->dashboard->monthlyTrend) ?>
         <?php else: ?>
-            <?= Dashboard::kpis([
-                ['label' => 'Effectif global', 'value' => number_format($page->dashboard->stats['total'], 0, ',', ' '), 'meta' => 'Collaborateurs recenses', 'href' => 'rh/personnel?scope=all'],
-                ['label' => 'En poste', 'value' => number_format($page->dashboard->stats['active'], 0, ',', ' '), 'meta' => 'Sans date de sortie', 'href' => 'rh/personnel?scope=active', 'tone' => 'success'],
-                ['label' => 'Sorties', 'value' => number_format($page->dashboard->stats['inactive'], 0, ',', ' '), 'meta' => 'Personnel archive', 'href' => 'rh/mouvements', 'tone' => 'warning'],
-                ['label' => 'Recrutements annee', 'value' => number_format($page->dashboard->stats['currentYearHires'], 0, ',', ' '), 'meta' => 'Depuis janvier', 'href' => 'rh/cycle-vie?section=recruitment'],
-                ['label' => 'Services couverts', 'value' => number_format($page->dashboard->stats['services'], 0, ',', ' '), 'meta' => 'Services actifs', 'href' => 'rh/parametrage?catalog=services'],
-            ]) ?>
-            <?= Dashboard::analyticIntro(
-                'Lecture analytique',
-                'Le socle de reporting RH est pret.',
-                'Les filtres par periode, service, statut et collaborateur seront branches sur ce service '
-                    . 'sans ajouter de SQL dans les vues ou les controleurs.',
-                'Architecture active'
+            <?= Dashboard::alerts($page->dashboard->alerts) ?>
+            <?= Dashboard::analyticDashboard(
+                $page->dashboard->services,
+                $page->dashboard->statuses,
+                $page->dashboard->employeeList
             ) ?>
-            <?= Dashboard::reports([
-                [
-                    'title' => 'Rapport effectifs',
-                    'description' => 'Effectif actif, sorties, recrutements et repartition organisationnelle.',
-                    'action' => 'Export au prochain lot',
-                    'button' => ['variant' => 'secondary', 'type' => 'button', 'disabled' => true],
-                ],
-                [
-                    'title' => 'Rapport assiduite',
-                    'description' => 'Presences, absences, retards et heures supplementaires par periode.',
-                    'action' => 'Export au prochain lot',
-                    'button' => ['variant' => 'secondary', 'type' => 'button', 'disabled' => true],
-                ],
-                [
-                    'title' => 'Rapport demandes',
-                    'description' => 'Demandes soumises, traitees, validees et refusees par categorie.',
-                    'action' => 'Export au prochain lot',
-                    'button' => ['variant' => 'secondary', 'type' => 'button', 'disabled' => true],
-                ],
-            ]) ?>
         <?php endif; ?>
     </div>
 </div>

@@ -140,6 +140,9 @@ class RhDashboardRepository
             'lateRows' => 0,
             'overtimeHours' => 0.0,
             'requestsProcessed' => 0,
+            'requestsApproved' => 0,
+            'requestsRejected' => 0,
+            'overtimeEmployees' => 0,
         ];
 
         if ($this->tableExists('rh_attendance_daily')) {
@@ -148,7 +151,8 @@ class RhDashboardRepository
                     COUNT(*) AS total_rows,
                     SUM(CASE WHEN attendance_status IN ('present', 'mission', 'conge') THEN 1 ELSE 0 END) AS present_rows,
                     SUM(CASE WHEN check_in_time > '08:00:00' AND attendance_status IN ('present', 'half_day') THEN 1 ELSE 0 END) AS late_rows,
-                    SUM(overtime_hours) AS overtime_hours
+                    SUM(overtime_hours) AS overtime_hours,
+                    COUNT(DISTINCT CASE WHEN overtime_hours > 0 THEN employee_id END) AS overtime_employees
                 FROM rh_attendance_daily
                 WHERE attendance_date BETWEEN DATE_FORMAT(CURDATE(), '%Y-%m-01') AND LAST_DAY(CURDATE())
             ")->fetch() ?: [];
@@ -159,6 +163,7 @@ class RhDashboardRepository
             $analytics['presenceRate'] = $total > 0 ? round(($present / $total) * 100, 1) : 0.0;
             $analytics['lateRows'] = (int) ($row['late_rows'] ?? 0);
             $analytics['overtimeHours'] = round((float) ($row['overtime_hours'] ?? 0), 1);
+            $analytics['overtimeEmployees'] = (int) ($row['overtime_employees'] ?? 0);
         }
 
         if ($this->tableExists('employee_legal_requests')) {
@@ -168,9 +173,89 @@ class RhDashboardRepository
                  AND DATE(COALESCE(decided_at, submitted_at, created_at))
                      BETWEEN DATE_FORMAT(CURDATE(), '%Y-%m-01') AND LAST_DAY(CURDATE())"
             );
+            $analytics['requestsApproved'] = $this->countWhere(
+                'employee_legal_requests',
+                "assigned_team = 'rh' AND status = 'approved'
+                 AND DATE(COALESCE(decided_at, submitted_at, created_at))
+                     BETWEEN DATE_FORMAT(CURDATE(), '%Y-%m-01') AND LAST_DAY(CURDATE())"
+            );
+            $analytics['requestsRejected'] = $this->countWhere(
+                'employee_legal_requests',
+                "assigned_team = 'rh' AND status = 'rejected'
+                 AND DATE(COALESCE(decided_at, submitted_at, created_at))
+                     BETWEEN DATE_FORMAT(CURDATE(), '%Y-%m-01') AND LAST_DAY(CURDATE())"
+            );
         }
 
         return $analytics;
+    }
+
+    /** @return array<string,array{presence:int,absence:int,retard:int}> */
+    public function getDailyAttendance(): array
+    {
+        if (!$this->tableExists('rh_attendance_daily')) {
+            return [];
+        }
+
+        $stmt = $this->pdo->query("
+            SELECT
+                attendance_date,
+                SUM(CASE WHEN attendance_status IN ('present', 'mission', 'conge') THEN 1 ELSE 0 END) AS presence,
+                SUM(CASE WHEN attendance_status IN ('absent', 'maladie', 'suspension') THEN 1 ELSE 0 END) AS absence,
+                SUM(CASE WHEN check_in_time > '08:00:00' AND attendance_status IN ('present', 'half_day') THEN 1 ELSE 0 END) AS retard
+            FROM rh_attendance_daily
+            WHERE attendance_date BETWEEN DATE_FORMAT(CURDATE(), '%Y-%m-01') AND LAST_DAY(CURDATE())
+            GROUP BY attendance_date
+        ");
+
+        $results = [];
+        foreach ($stmt->fetchAll() as $row) {
+            $results[(string) $row['attendance_date']] = [
+                'presence' => (int) $row['presence'],
+                'absence' => (int) $row['absence'],
+                'retard' => (int) $row['retard'],
+            ];
+        }
+
+        return $results;
+    }
+
+    /** @return array<int,array{month:string,presenceRate:float,overtimeHours:float}> */
+    public function getMonthlyTrend(): array
+    {
+        $trends = [];
+        for ($i = 5; $i >= 0; $i--) {
+            $monthStart = date('Y-m-01', strtotime("-$i months"));
+            $monthEnd = date('Y-m-t', strtotime("-$i months"));
+            $monthLabel = date('m/Y', strtotime("-$i months"));
+
+            $presenceRate = 0.0;
+            $overtimeHours = 0.0;
+
+            if ($this->tableExists('rh_attendance_daily')) {
+                $row = $this->pdo->query("
+                    SELECT
+                        COUNT(*) AS total_rows,
+                        SUM(CASE WHEN attendance_status IN ('present', 'mission', 'conge') THEN 1 ELSE 0 END) AS present_rows,
+                        SUM(overtime_hours) AS overtime_hours
+                    FROM rh_attendance_daily
+                    WHERE attendance_date BETWEEN '{$monthStart}' AND '{$monthEnd}'
+                ")->fetch() ?: [];
+
+                $total = (int) ($row['total_rows'] ?? 0);
+                $present = (int) ($row['present_rows'] ?? 0);
+                $presenceRate = $total > 0 ? round(($present / $total) * 100, 1) : 0.0;
+                $overtimeHours = round((float) ($row['overtime_hours'] ?? 0), 1);
+            }
+
+            $trends[] = [
+                'month' => $monthLabel,
+                'presenceRate' => $presenceRate,
+                'overtimeHours' => $overtimeHours,
+            ];
+        }
+
+        return $trends;
     }
 
     private function distribution(string $join, string $labelExpression): array
@@ -235,5 +320,20 @@ class RhDashboardRepository
         }
 
         return isset($this->tables[$table]);
+    }
+
+    /** @return array<int,array{id:int,full_name:string,employee_number:string|null}> */
+    public function getEmployeeList(): array
+    {
+        if (!$this->tableExists('rh_employees')) {
+            return [];
+        }
+
+        return $this->pdo->query("
+            SELECT id, full_name, employee_number
+            FROM rh_employees
+            WHERE is_active = 1
+            ORDER BY full_name ASC
+        ")->fetchAll() ?: [];
     }
 }
