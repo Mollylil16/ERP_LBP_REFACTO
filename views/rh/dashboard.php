@@ -13,7 +13,7 @@ ob_start();
     <div class="finea-container">
         <?= Ui::pageHeader(
             'Pilotage centralise du personnel',
-            'Effectifs, contrats, pointage, demandes et indicateurs RH dans un espace unique.',
+            'Le module RH consolide les effectifs, les affectations de service, les fonctions et les recrutements recents sans sortir du shell de navigation decaissement.',
             [
                 'eyebrow' => 'Ressources humaines',
                 'class' => 'rh-hero',
@@ -24,37 +24,39 @@ ob_start();
                         'neutral',
                         ['class' => 'rh-pending-chip', 'unstyled' => true]
                     ),
-                    Ui::button('Nouveau collaborateur', [
-                        'href' => 'rh/personnel/nouveau',
-                        'variant' => 'accent',
-                    ]),
-
                 ],
             ]
         ) ?>
+
+        <?= Dashboard::quickActions($page->quickActions) ?>
 
         <?= Rh::restrictedData($page->restrictedTables) ?>
 
         <?= Dashboard::tabs($page->tabs, $page->mode) ?>
 
-        <?= Dashboard::kpis([
-            ['label' => 'Effectif global', 'value' => number_format($page->dashboard->stats['total'], 0, ',', ' '), 'meta' => 'Collaborateurs recensés', 'href' => 'rh/personnel?scope=all'],
-            ['label' => 'En poste', 'value' => number_format($page->dashboard->stats['active'], 0, ',', ' '), 'meta' => 'Dossiers actifs', 'href' => 'rh/personnel?scope=active'],
-            ['label' => 'Sorties', 'value' => number_format($page->dashboard->stats['inactive'], 0, ',', ' '), 'meta' => 'Personnel archivé', 'href' => 'rh/mouvements'],
-            ['label' => 'Recrutements ' . date('Y'), 'value' => number_format($page->dashboard->stats['currentYearHires'], 0, ',', ' '), 'meta' => 'Depuis janvier', 'href' => 'rh/cycle-vie?section=recruitment'],
-            ['label' => 'Services couverts', 'value' => number_format($page->dashboard->stats['services'], 0, ',', ' '), 'meta' => 'Services actifs représentés', 'href' => 'rh/parametrage?catalog=services'],
-        ]) ?>
-
         <?php if ($page->mode === 'classic'): ?>
             <?= Dashboard::alerts($page->dashboard->alerts) ?>
+
+            <?= Dashboard::priorities($page->pendingRequests) ?>
+
+            <?= Dashboard::kpis([
+                ['label' => 'Effectif global', 'value' => number_format($page->dashboard->stats['total'], 0, ',', ' '), 'meta' => 'Collaborateurs recenses', 'href' => 'rh/personnel?scope=all'],
+                ['label' => 'En poste', 'value' => number_format($page->dashboard->stats['active'], 0, ',', ' '), 'meta' => 'Sans date de sortie', 'href' => 'rh/personnel?scope=active', 'tone' => 'success'],
+                ['label' => 'Sorties', 'value' => number_format($page->dashboard->stats['inactive'], 0, ',', ' '), 'meta' => 'Personnel archive', 'href' => 'rh/mouvements', 'tone' => 'warning'],
+                ['label' => 'Recrutements annee', 'value' => number_format($page->dashboard->stats['currentYearHires'], 0, ',', ' '), 'meta' => 'Depuis janvier', 'href' => 'rh/cycle-vie?section=recruitment'],
+                ['label' => 'Services couverts', 'value' => number_format($page->dashboard->stats['services'], 0, ',', ' '), 'meta' => 'Services actifs', 'href' => 'rh/parametrage?catalog=services'],
+            ]) ?>
+
             <?= Dashboard::distributionWithActions(
                 $page->dashboard->services,
                 (int) $page->dashboard->stats['total'],
                 [
-                    ['label' => 'Integrer un collaborateur', 'href' => 'rh/personnel/nouveau'],
-                    ['label' => 'Consulter le personnel', 'href' => 'rh/personnel'],
-                    ['label' => 'Gerer les mutations', 'href' => 'rh/mutations'],
-                    ['label' => 'Suivre les entrees / sorties', 'href' => 'rh/mouvements'],
+                    ['label' => 'Integrer un collaborateur', 'href' => 'rh/personnel/nouveau', 'hint' => 'Creer un nouveau dossier RH complet avec pieces justificatives'],
+                    ['label' => 'Pointage du jour', 'href' => 'rh/pointage', 'hint' => 'Saisir rapidement les presences, absences, missions et HS'],
+                    ['label' => 'Pointage mensuel (1 personne)', 'href' => 'rh/pointage?vue=mensuel', 'hint' => 'Vue jour par jour pour verifier un salarie et corriger le pointage'],
+                    ['label' => 'Demandes employe', 'href' => 'rh/validations', 'hint' => 'Valider ou refuser absences, prets, avances salaire et heures sup'],
+                    ['label' => 'Initialisation conges', 'href' => 'rh/parametrage', 'hint' => 'Renseigner les soldes de depart avant calcul ERP'],
+                    ['label' => 'Demandes d\'explications', 'href' => 'rh/explications', 'hint' => 'Creer, notifier, relancer et cloturer les demandes adressees personnel'],
                 ]
             ) ?>
             <?= Dashboard::recentRecords(
@@ -77,6 +79,13 @@ ob_start();
                 ]
             ) ?>
         <?php elseif ($page->mode === 'statistique'): ?>
+            <?= Dashboard::kpis([
+                ['label' => 'Effectif global', 'value' => number_format($page->dashboard->stats['total'], 0, ',', ' '), 'meta' => 'Collaborateurs recenses', 'href' => 'rh/personnel?scope=all'],
+                ['label' => 'En poste', 'value' => number_format($page->dashboard->stats['active'], 0, ',', ' '), 'meta' => 'Sans date de sortie', 'href' => 'rh/personnel?scope=active', 'tone' => 'success'],
+                ['label' => 'Sorties', 'value' => number_format($page->dashboard->stats['inactive'], 0, ',', ' '), 'meta' => 'Personnel archive', 'href' => 'rh/mouvements', 'tone' => 'warning'],
+                ['label' => 'Recrutements annee', 'value' => number_format($page->dashboard->stats['currentYearHires'], 0, ',', ' '), 'meta' => 'Depuis janvier', 'href' => 'rh/cycle-vie?section=recruitment'],
+                ['label' => 'Services couverts', 'value' => number_format($page->dashboard->stats['services'], 0, ',', ' '), 'meta' => 'Services actifs', 'href' => 'rh/parametrage?catalog=services'],
+            ]) ?>
             <?= Dashboard::metrics([
                 [
                     'eyebrow' => 'Assiduite du mois',
@@ -106,6 +115,13 @@ ob_start();
                 ['title' => 'Statuts', 'rows' => $page->dashboard->statuses],
             ]) ?>
         <?php else: ?>
+            <?= Dashboard::kpis([
+                ['label' => 'Effectif global', 'value' => number_format($page->dashboard->stats['total'], 0, ',', ' '), 'meta' => 'Collaborateurs recenses', 'href' => 'rh/personnel?scope=all'],
+                ['label' => 'En poste', 'value' => number_format($page->dashboard->stats['active'], 0, ',', ' '), 'meta' => 'Sans date de sortie', 'href' => 'rh/personnel?scope=active', 'tone' => 'success'],
+                ['label' => 'Sorties', 'value' => number_format($page->dashboard->stats['inactive'], 0, ',', ' '), 'meta' => 'Personnel archive', 'href' => 'rh/mouvements', 'tone' => 'warning'],
+                ['label' => 'Recrutements annee', 'value' => number_format($page->dashboard->stats['currentYearHires'], 0, ',', ' '), 'meta' => 'Depuis janvier', 'href' => 'rh/cycle-vie?section=recruitment'],
+                ['label' => 'Services couverts', 'value' => number_format($page->dashboard->stats['services'], 0, ',', ' '), 'meta' => 'Services actifs', 'href' => 'rh/parametrage?catalog=services'],
+            ]) ?>
             <?= Dashboard::analyticIntro(
                 'Lecture analytique',
                 'Le socle de reporting RH est pret.',

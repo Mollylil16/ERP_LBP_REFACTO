@@ -608,6 +608,13 @@ class MigrationRunner
                 facts TEXT NOT NULL,
                 incident_date DATE NULL,
                 response_due_date DATE NULL,
+                response_due_days INT NULL,
+                incident_period VARCHAR(180) NULL,
+                incident_location VARCHAR(180) NULL,
+                is_dg_copy TINYINT(1) NOT NULL DEFAULT 0,
+                general_context TEXT NULL,
+                expected_explanations TEXT NULL,
+                additional_elements TEXT NULL,
                 employee_response TEXT NULL,
                 response_attachment_path VARCHAR(255) NULL,
                 status ENUM('pending_response','responded','complement_requested','closed','cancelled') NOT NULL DEFAULT 'pending_response',
@@ -664,7 +671,126 @@ class MigrationRunner
         if ($this->schema->columnExists('rh_leave_opening_balance', 'days_acquired')) {
             $this->pdo->exec("UPDATE rh_leave_opening_balance SET acquired_days = days_acquired WHERE acquired_days = 0");
         }
+
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS rh_holidays (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                name VARCHAR(150) NOT NULL,
+                holiday_date DATE NOT NULL,
+                is_recurring TINYINT(1) NOT NULL DEFAULT 0,
+                year INT NULL,
+                is_active TINYINT(1) NOT NULL DEFAULT 1,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME NULL,
+                UNIQUE KEY uniq_rh_holiday_date (holiday_date)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS rh_contract_rules (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                contract_type VARCHAR(50) NOT NULL,
+                trial_duration_days INT UNSIGNED NOT NULL DEFAULT 0,
+                max_renewals INT UNSIGNED NOT NULL DEFAULT 0,
+                alert_days_before_end INT UNSIGNED NOT NULL DEFAULT 30,
+                is_active TINYINT(1) NOT NULL DEFAULT 1,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME NULL,
+                UNIQUE KEY uniq_rh_contract_rules_type (contract_type)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS rh_signatories (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                employee_id INT UNSIGNED NOT NULL,
+                role VARCHAR(80) NOT NULL,
+                title VARCHAR(150) NOT NULL,
+                is_active TINYINT(1) NOT NULL DEFAULT 1,
+                document_types VARCHAR(255) NULL,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME NULL,
+                CONSTRAINT fk_rh_signatories_employee FOREIGN KEY (employee_id) REFERENCES rh_employees(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS rh_missions (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                employee_id INT UNSIGNED NOT NULL,
+                destination VARCHAR(180) NOT NULL,
+                start_date DATE NOT NULL,
+                end_date DATE NOT NULL,
+                purpose TEXT NOT NULL,
+                but_contexte TEXT NULL,
+                liaison_type VARCHAR(80) NULL,
+                expenses_json LONGTEXT NULL,
+                notes TEXT NULL,
+                transport_mode VARCHAR(80) NULL,
+                budget DECIMAL(15,2) NOT NULL DEFAULT 0,
+                status ENUM('draft','submitted','approved','rejected','cancelled') NOT NULL DEFAULT 'draft',
+                approved_by INT UNSIGNED NULL,
+                approved_at DATETIME NULL,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME NULL,
+                CONSTRAINT fk_rh_missions_employee FOREIGN KEY (employee_id) REFERENCES rh_employees(id) ON DELETE CASCADE,
+                CONSTRAINT fk_rh_missions_approved_by FOREIGN KEY (approved_by) REFERENCES rh_employees(id) ON DELETE SET NULL
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS rh_payroll_periods (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                code VARCHAR(30) NOT NULL,
+                start_date DATE NOT NULL,
+                end_date DATE NOT NULL,
+                status ENUM('open', 'calculating', 'closed') NOT NULL DEFAULT 'open',
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME NULL,
+                UNIQUE KEY uniq_payroll_period_code (code)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS rh_payroll_variables (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                period_id INT UNSIGNED NOT NULL,
+                employee_id INT UNSIGNED NOT NULL,
+                worked_days DECIMAL(5,2) NOT NULL DEFAULT 30,
+                absences_days DECIMAL(5,2) NOT NULL DEFAULT 0,
+                overtime_hours DECIMAL(5,2) NOT NULL DEFAULT 0,
+                bonus DECIMAL(15,2) NOT NULL DEFAULT 0,
+                deductions DECIMAL(15,2) NOT NULL DEFAULT 0,
+                notes TEXT NULL,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME NULL,
+                UNIQUE KEY uniq_payroll_var_emp_period (period_id, employee_id),
+                CONSTRAINT fk_payroll_var_period FOREIGN KEY (period_id) REFERENCES rh_payroll_periods(id) ON DELETE CASCADE,
+                CONSTRAINT fk_payroll_var_employee FOREIGN KEY (employee_id) REFERENCES rh_employees(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS rh_payroll_slips (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                period_id INT UNSIGNED NOT NULL,
+                employee_id INT UNSIGNED NOT NULL,
+                base_salary DECIMAL(15,2) NOT NULL DEFAULT 0,
+                bonuses_total DECIMAL(15,2) NOT NULL DEFAULT 0,
+                deductions_total DECIMAL(15,2) NOT NULL DEFAULT 0,
+                net_salary DECIMAL(15,2) NOT NULL DEFAULT 0,
+                status ENUM('draft', 'validated', 'paid') NOT NULL DEFAULT 'draft',
+                pdf_path VARCHAR(255) NULL,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME NULL,
+                UNIQUE KEY uniq_payroll_slip_emp_period (period_id, employee_id),
+                CONSTRAINT fk_payroll_slip_period FOREIGN KEY (period_id) REFERENCES rh_payroll_periods(id) ON DELETE CASCADE,
+                CONSTRAINT fk_payroll_slip_employee FOREIGN KEY (employee_id) REFERENCES rh_employees(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
     }
+
+
 
     private function seedRhStatuses(): void
     {

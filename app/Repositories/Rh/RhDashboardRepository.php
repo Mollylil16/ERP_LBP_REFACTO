@@ -97,7 +97,39 @@ class RhDashboardRepository
             ),
             'contractsMissing' => $this->countEmployeesWithoutContract(),
             'leaveOpeningMissing' => $this->countEmployeesWithoutLeaveOpening(),
+            'salaryClaims' => $this->countWhere(
+                'rh_salary_claims',
+                "status IN ('submitted', 'under_review')"
+            ),
         ];
+    }
+
+    /** @return array<int,array<string,mixed>> */
+    public function getRecentPendingRequests(int $limit = 6): array
+    {
+        if (!$this->tableExists('employee_legal_requests')) {
+            return [];
+        }
+
+        $limit = max(1, min(12, $limit));
+        $stmt = $this->pdo->prepare("
+            SELECT
+                r.id,
+                r.request_type,
+                r.status,
+                r.submitted_at,
+                r.created_at,
+                e.full_name AS employee_name
+            FROM employee_legal_requests r
+            INNER JOIN rh_employees e ON e.id = r.employee_id
+            WHERE r.assigned_team = 'rh' AND r.status = 'submitted'
+            ORDER BY r.submitted_at DESC, r.created_at DESC
+            LIMIT :limit
+        ");
+        $stmt->bindValue('limit', $limit, PDO::PARAM_INT);
+        $stmt->execute();
+
+        return $stmt->fetchAll() ?: [];
     }
 
     public function getAnalytics(): array

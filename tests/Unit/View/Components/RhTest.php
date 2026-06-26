@@ -37,7 +37,6 @@ final class RhTest extends TestCase
         foreach ([
             'views/rh/personnel/exit.php',
             'views/rh/personnel/form.php',
-            'views/rh/personnel/index.php',
             'views/rh/personnel/movements-index.php',
             'views/rh/personnel/mutation.php',
             'views/rh/personnel/mutations-index.php',
@@ -63,12 +62,13 @@ final class RhTest extends TestCase
             'http_build_query',
             'array_map',
             'array_filter',
+            'EmployeeCard::render',
+            'Rh::paginationLinks',
         ] as $forbidden) {
             self::assertStringNotContainsString($forbidden, $source);
         }
 
-        self::assertStringContainsString('EmployeeCard::render', $source);
-        self::assertStringContainsString('Rh::paginationLinks($page->pagination)', $source);
+        self::assertStringContainsString('Personnel::personnelPage', $source);
     }
 
     public function test_rh_views_do_not_rebuild_view_bags_or_navigation(): void

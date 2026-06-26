@@ -35,6 +35,13 @@ class RhDashboardService
                 'href' => 'rh/cycle-vie?section=contracts',
             ],
             [
+                'label' => 'Reclamations salariales',
+                'description' => 'Dossiers en attente de validation RH dans le circuit de paie.',
+                'count' => $counts['salaryClaims'],
+                'tone' => 'danger',
+                'href' => 'rh/validations?type=salary',
+            ],
+            [
                 'label' => 'Explications a suivre',
                 'description' => 'Demandes ouvertes en attente de reponse.',
                 'count' => $counts['explanations'],
@@ -71,6 +78,7 @@ class RhDashboardService
             alerts: $alerts,
             analytics: $this->repository->getAnalytics(),
             pendingTotal: array_sum($counts),
+            pendingRequests: $this->repository->getRecentPendingRequests(),
         );
     }
 }
