@@ -447,6 +447,24 @@ class RhPersonnelRepository
         }
     }
 
+    public function getStats(): array
+    {
+        $stmt = $this->pdo->query("
+            SELECT
+                COUNT(*) AS total,
+                SUM(CASE WHEN is_active = 1 AND exit_date IS NULL THEN 1 ELSE 0 END) AS active_count,
+                SUM(CASE WHEN is_active = 0 OR exit_date IS NOT NULL THEN 1 ELSE 0 END) AS inactive_count
+            FROM rh_employees
+        ");
+        $row = $stmt->fetch() ?: [];
+
+        return [
+            'total' => (int) ($row['total'] ?? 0),
+            'active' => (int) ($row['active_count'] ?? 0),
+            'inactive' => (int) ($row['inactive_count'] ?? 0),
+        ];
+    }
+
     private function baseSelect(): string
     {
         return "
@@ -454,7 +472,8 @@ class RhPersonnelRepository
                 COALESCE(s.name, 'Service non renseigne') AS service_name,
                 COALESCE(f.name, 'Fonction non renseignee') AS function_name,
                 COALESCE(st.name, 'Statut non renseigne') AS status_name,
-                er.name AS exit_reason_name
+                er.name AS exit_reason_name,
+                (SELECT COUNT(*) FROM rh_contracts c WHERE c.employee_id = e.id AND c.status = 'active') AS active_contracts_count
             FROM rh_employees e
             LEFT JOIN rh_services s ON s.id = e.service_id
             LEFT JOIN rh_functions f ON f.id = e.function_id
@@ -479,6 +498,14 @@ class RhPersonnelRepository
                 $conditions[] = "e.{$key} = :{$key}";
                 $params[$key] = (int) $filters[$key];
             }
+        }
+        if (!empty($filters['gender'])) {
+            $conditions[] = "e.gender = :gender";
+            $params['gender'] = $filters['gender'];
+        }
+        if (!empty($filters['site'])) {
+            $conditions[] = "e.site = :site";
+            $params['site'] = $filters['site'];
         }
         if (($filters['scope'] ?? '') === 'active') {
             $conditions[] = 'e.is_active = 1 AND e.exit_date IS NULL';

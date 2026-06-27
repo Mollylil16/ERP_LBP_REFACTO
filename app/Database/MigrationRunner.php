@@ -608,6 +608,13 @@ class MigrationRunner
                 facts TEXT NOT NULL,
                 incident_date DATE NULL,
                 response_due_date DATE NULL,
+                response_due_days INT NULL,
+                incident_period VARCHAR(180) NULL,
+                incident_location VARCHAR(180) NULL,
+                is_dg_copy TINYINT(1) NOT NULL DEFAULT 0,
+                general_context TEXT NULL,
+                expected_explanations TEXT NULL,
+                additional_elements TEXT NULL,
                 employee_response TEXT NULL,
                 response_attachment_path VARCHAR(255) NULL,
                 status ENUM('pending_response','responded','complement_requested','closed','cancelled') NOT NULL DEFAULT 'pending_response',
@@ -664,7 +671,317 @@ class MigrationRunner
         if ($this->schema->columnExists('rh_leave_opening_balance', 'days_acquired')) {
             $this->pdo->exec("UPDATE rh_leave_opening_balance SET acquired_days = days_acquired WHERE acquired_days = 0");
         }
+
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS rh_holidays (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                name VARCHAR(150) NOT NULL,
+                holiday_date DATE NOT NULL,
+                is_recurring TINYINT(1) NOT NULL DEFAULT 0,
+                year INT NULL,
+                is_active TINYINT(1) NOT NULL DEFAULT 1,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME NULL,
+                UNIQUE KEY uniq_rh_holiday_date (holiday_date)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS rh_contract_rules (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                contract_type VARCHAR(50) NOT NULL,
+                trial_duration_days INT UNSIGNED NOT NULL DEFAULT 0,
+                max_renewals INT UNSIGNED NOT NULL DEFAULT 0,
+                alert_days_before_end INT UNSIGNED NOT NULL DEFAULT 30,
+                is_active TINYINT(1) NOT NULL DEFAULT 1,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME NULL,
+                UNIQUE KEY uniq_rh_contract_rules_type (contract_type)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS rh_signatories (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                employee_id INT UNSIGNED NOT NULL,
+                role VARCHAR(80) NOT NULL,
+                title VARCHAR(150) NOT NULL,
+                is_active TINYINT(1) NOT NULL DEFAULT 1,
+                document_types VARCHAR(255) NULL,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME NULL,
+                CONSTRAINT fk_rh_signatories_employee FOREIGN KEY (employee_id) REFERENCES rh_employees(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS rh_missions (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                employee_id INT UNSIGNED NOT NULL,
+                destination VARCHAR(180) NOT NULL,
+                start_date DATE NOT NULL,
+                end_date DATE NOT NULL,
+                purpose TEXT NOT NULL,
+                but_contexte TEXT NULL,
+                liaison_type VARCHAR(80) NULL,
+                expenses_json LONGTEXT NULL,
+                notes TEXT NULL,
+                transport_mode VARCHAR(80) NULL,
+                budget DECIMAL(15,2) NOT NULL DEFAULT 0,
+                status ENUM('draft','submitted','approved','rejected','cancelled') NOT NULL DEFAULT 'draft',
+                approved_by INT UNSIGNED NULL,
+                approved_at DATETIME NULL,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME NULL,
+                CONSTRAINT fk_rh_missions_employee FOREIGN KEY (employee_id) REFERENCES rh_employees(id) ON DELETE CASCADE,
+                CONSTRAINT fk_rh_missions_approved_by FOREIGN KEY (approved_by) REFERENCES rh_employees(id) ON DELETE SET NULL
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS rh_payroll_periods (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                code VARCHAR(30) NOT NULL,
+                start_date DATE NOT NULL,
+                end_date DATE NOT NULL,
+                status ENUM('open', 'calculating', 'closed') NOT NULL DEFAULT 'open',
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME NULL,
+                UNIQUE KEY uniq_payroll_period_code (code)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS rh_payroll_variables (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                period_id INT UNSIGNED NOT NULL,
+                employee_id INT UNSIGNED NOT NULL,
+                worked_days DECIMAL(5,2) NOT NULL DEFAULT 30,
+                absences_days DECIMAL(5,2) NOT NULL DEFAULT 0,
+                overtime_hours DECIMAL(5,2) NOT NULL DEFAULT 0,
+                bonus DECIMAL(15,2) NOT NULL DEFAULT 0,
+                deductions DECIMAL(15,2) NOT NULL DEFAULT 0,
+                notes TEXT NULL,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME NULL,
+                UNIQUE KEY uniq_payroll_var_emp_period (period_id, employee_id),
+                CONSTRAINT fk_payroll_var_period FOREIGN KEY (period_id) REFERENCES rh_payroll_periods(id) ON DELETE CASCADE,
+                CONSTRAINT fk_payroll_var_employee FOREIGN KEY (employee_id) REFERENCES rh_employees(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS rh_payroll_slips (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                period_id INT UNSIGNED NOT NULL,
+                employee_id INT UNSIGNED NOT NULL,
+                base_salary DECIMAL(15,2) NOT NULL DEFAULT 0,
+                bonuses_total DECIMAL(15,2) NOT NULL DEFAULT 0,
+                deductions_total DECIMAL(15,2) NOT NULL DEFAULT 0,
+                net_salary DECIMAL(15,2) NOT NULL DEFAULT 0,
+                status ENUM('draft', 'validated', 'paid') NOT NULL DEFAULT 'draft',
+                pdf_path VARCHAR(255) NULL,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME NULL,
+                UNIQUE KEY uniq_payroll_slip_emp_period (period_id, employee_id),
+                CONSTRAINT fk_payroll_slip_period FOREIGN KEY (period_id) REFERENCES rh_payroll_periods(id) ON DELETE CASCADE,
+                CONSTRAINT fk_payroll_slip_employee FOREIGN KEY (employee_id) REFERENCES rh_employees(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS rh_contract_settings (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                employer_name VARCHAR(255) NULL,
+                legal_form VARCHAR(255) NULL,
+                capital_mention VARCHAR(255) NULL,
+                address VARCHAR(255) NULL,
+                rccm VARCHAR(255) NULL,
+                representation_text TEXT NULL,
+                signature_city VARCHAR(255) NULL,
+                dg_signatory_name VARCHAR(255) NULL,
+                dg_title VARCHAR(255) NULL,
+                rh_signatory_name VARCHAR(255) NULL,
+                rh_title VARCHAR(255) NULL,
+                footer_line1 TEXT NULL,
+                footer_line2 TEXT NULL,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME NULL
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+
+        $stmt = $this->pdo->query("SELECT COUNT(*) FROM rh_contract_settings");
+        if ((int)$stmt->fetchColumn() === 0) {
+            $this->pdo->exec("
+                INSERT INTO rh_contract_settings (
+                    id, employer_name, legal_form, capital_mention, address, rccm, representation_text,
+                    signature_city, dg_signatory_name, dg_title, rh_signatory_name, rh_title, footer_line1, footer_line2
+                ) VALUES (
+                    1,
+                    'BANAMUR INDUSTRIES ET TECHNOLOGIES',
+                    'SARL au capital de 100 000 000 FCFA',
+                    'Capital social : 100 000 000 FCFA',
+                    'Abidjan, Koumassi Bd. du Gabon prolonge',
+                    'CI-ABJ-03-2022-B13-02828',
+                    'Representee pour les besoins du present contrat par la Direction Generale ou tout mandataire habilite.',
+                    'Abidjan',
+                    'Paul-Alex BRAUD',
+                    'Directeur General',
+                    'Constant Michel YAO',
+                    'Responsable RH',
+                    'Abidjan, Koumassi Bd. du Gabon prolonge - RCCM CI-ABJ-03-2022-B13-02828 - Tel. +225 27 21 36 27 27',
+                    'Document RH genere depuis le module interne BANAMUR. Signature DG, RH et salarie requise pour prise d effet.'
+                )
+            ");
+        }
+
+        $this->createRhPayrollWizardTables();
     }
+
+    /**
+     * Crée les tables nécessaires au wizard de paie avancé :
+     * coefficients contrat, rubriques, paramètres fiscaux, colonnes détaillées.
+     */
+    private function createRhPayrollWizardTables(): void
+    {
+        // --- Colonnes supplémentaires sur rh_contracts ---
+        $contractCols = [
+            'base_salary'        => 'DECIMAL(15,2) NULL',
+            'sursalaire'         => 'DECIMAL(15,2) NULL',
+            'category'           => 'VARCHAR(30) NULL',
+            'transport_locality' => 'VARCHAR(150) NULL',
+            'seniority_premium'  => 'DECIMAL(15,2) NOT NULL DEFAULT 0',
+            'other_premiums'     => 'DECIMAL(15,2) NOT NULL DEFAULT 0',
+            'gratification'      => 'DECIMAL(15,2) NOT NULL DEFAULT 0',
+            'paid_leave_premium' => 'DECIMAL(15,2) NOT NULL DEFAULT 0',
+            'precarity_premium'  => 'DECIMAL(15,2) NOT NULL DEFAULT 0',
+        ];
+        foreach ($contractCols as $col => $def) {
+            $this->addColumnIfMissing('rh_contracts', $col, $def);
+        }
+
+        // --- Colonnes supplémentaires sur rh_payroll_slips ---
+        $slipCols = [
+            'transport_premium'  => 'DECIMAL(15,2) NOT NULL DEFAULT 0',
+            'health_insurance'   => 'DECIMAL(15,2) NOT NULL DEFAULT 0',
+            'advance_deduction'  => 'DECIMAL(15,2) NOT NULL DEFAULT 0',
+            'other_deductions'   => 'DECIMAL(15,2) NOT NULL DEFAULT 0',
+            'rounding'           => 'DECIMAL(15,2) NOT NULL DEFAULT 0',
+            'observations'       => 'TEXT NULL',
+            'fiscal_parts'       => 'INT NOT NULL DEFAULT 1',
+            'igr_manual'         => 'DECIMAL(15,2) NOT NULL DEFAULT 0',
+        ];
+        foreach ($slipCols as $col => $def) {
+            $this->addColumnIfMissing('rh_payroll_slips', $col, $def);
+        }
+
+        // --- Paramètres sociaux et fiscaux globaux (1 seule ligne) ---
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS rh_payroll_settings (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                is_salarial_rate DECIMAL(5,2) NOT NULL DEFAULT 1.20,
+                cnps_salarial_rate DECIMAL(5,2) NOT NULL DEFAULT 6.30,
+                cnps_patronal_rate DECIMAL(5,2) NOT NULL DEFAULT 7.70,
+                family_benefits_rate DECIMAL(5,2) NOT NULL DEFAULT 5.75,
+                work_accident_rate DECIMAL(5,2) NOT NULL DEFAULT 5.00,
+                apprentice_tax_rate DECIMAL(5,2) NOT NULL DEFAULT 0.40,
+                professional_training_rate DECIMAL(5,2) NOT NULL DEFAULT 0.60,
+                fdfp_rate DECIMAL(5,2) NOT NULL DEFAULT 0.60,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME NULL
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+        $cnt = (int) $this->pdo->query("SELECT COUNT(*) FROM rh_payroll_settings")->fetchColumn();
+        if ($cnt === 0) {
+            $this->pdo->exec("INSERT INTO rh_payroll_settings (id) VALUES (1)");
+        }
+
+        // --- Coefficients par type de contrat ---
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS rh_payroll_contract_rules (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                contract_type VARCHAR(50) NOT NULL,
+                label VARCHAR(150) NOT NULL,
+                working_days INT UNSIGNED NOT NULL DEFAULT 30,
+                hours_per_day DECIMAL(4,2) NOT NULL DEFAULT 8.00,
+                overtime_multiplier DECIMAL(4,2) NOT NULL DEFAULT 1.00,
+                precarity_auto_rate DECIMAL(5,2) NOT NULL DEFAULT 0,
+                mission_rate DECIMAL(5,2) NOT NULL DEFAULT 100,
+                leave_rate DECIMAL(5,2) NOT NULL DEFAULT 100,
+                half_day_rate DECIMAL(5,2) NOT NULL DEFAULT 50,
+                absence_rate DECIMAL(5,2) NOT NULL DEFAULT 0,
+                sickness_rate DECIMAL(5,2) NOT NULL DEFAULT 0,
+                rest_rate DECIMAL(5,2) NOT NULL DEFAULT 0,
+                is_active TINYINT(1) NOT NULL DEFAULT 1,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME NULL,
+                UNIQUE KEY uniq_payroll_contract_rules_type (contract_type)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+        $cntRules = (int) $this->pdo->query("SELECT COUNT(*) FROM rh_payroll_contract_rules")->fetchColumn();
+        if ($cntRules === 0) {
+            $this->pdo->exec("
+                INSERT INTO rh_payroll_contract_rules
+                    (contract_type, label, working_days, hours_per_day, overtime_multiplier, precarity_auto_rate)
+                VALUES
+                    ('cdd',             'CDD',                          30, 8.00, 1.15, 3),
+                    ('cdi_permanent',   'CDI permanent',                26, 8.00, 1.25, 0),
+                    ('stage',           'Stage de perfectionnement',    22, 8.00, 0.00, 0),
+                    ('vacataire',       'Vacataire',                    26, 8.00, 1.00, 0),
+                    ('libre',           'Parametrage libre',            30, 8.00, 1.00, 0)
+            ");
+        }
+
+        // --- Catalogue des rubriques de paie ---
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS rh_payroll_line_items (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                code VARCHAR(80) NOT NULL,
+                name VARCHAR(180) NOT NULL,
+                nature ENUM('allocation_prime','avantage_nature','gain') NOT NULL DEFAULT 'allocation_prime',
+                is_active TINYINT(1) NOT NULL DEFAULT 1,
+                sort_order INT NOT NULL DEFAULT 0,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME NULL,
+                UNIQUE KEY uniq_payroll_line_items_code (code)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+        $cntItems = (int) $this->pdo->query("SELECT COUNT(*) FROM rh_payroll_line_items")->fetchColumn();
+        if ($cntItems === 0) {
+            $this->pdo->exec("
+                INSERT INTO rh_payroll_line_items (code, name, nature, sort_order) VALUES
+                    ('alloc_assist_famille',  'Allocations assistance famille',           'allocation_prime',  10),
+                    ('alloc_familiales_cps',  'Allocations familiales / CPS',             'allocation_prime',  20),
+                    ('alloc_speciales',       'Allocations speciales non remboursees',     'allocation_prime',  30),
+                    ('indem_apprentissage',   'Indemnite apprentissage',                  'allocation_prime',  40),
+                    ('indem_stage',           'Indemnite de stage',                       'allocation_prime',  50),
+                    ('prime_outillage',       'Prime outillage',                          'allocation_prime',  60),
+                    ('prime_panier',          'Prime panier',                             'allocation_prime',  70),
+                    ('prime_salissure',       'Prime salissure',                          'allocation_prime',  80),
+                    ('prime_tenue',           'Prime tenue',                              'allocation_prime',  90),
+                    ('avantage_logement',     'Avantage logement',                        'avantage_nature',  100),
+                    ('avantage_vehicule',     'Avantage vehicule',                        'avantage_nature',  110),
+                    ('prime_assiduite',       'Prime d''assiduite',                       'gain',             120),
+                    ('prime_bilan',           'Prime de bilan',                           'gain',             130)
+            ");
+        }
+
+        // --- Montants contractuels par contrat/rubrique ---
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS rh_contract_line_items (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                contract_id INT UNSIGNED NOT NULL,
+                line_item_id INT UNSIGNED NOT NULL,
+                amount DECIMAL(15,2) NOT NULL DEFAULT 0,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME NULL,
+                UNIQUE KEY uniq_contract_line_item (contract_id, line_item_id),
+                CONSTRAINT fk_contract_line_items_contract FOREIGN KEY (contract_id) REFERENCES rh_contracts(id) ON DELETE CASCADE,
+                CONSTRAINT fk_contract_line_items_item FOREIGN KEY (line_item_id) REFERENCES rh_payroll_line_items(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+    }
+
 
     private function seedRhStatuses(): void
     {

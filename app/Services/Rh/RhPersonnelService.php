@@ -29,6 +29,8 @@ class RhPersonnelService
             'function_id' => (int) ($query['function_id'] ?? 0),
             'status_id' => (int) ($query['status_id'] ?? 0),
             'scope' => $scope,
+            'gender' => trim((string) ($query['gender'] ?? '')),
+            'site' => trim((string) ($query['site'] ?? '')),
         ];
 
         $pagination = $this->repository->paginate(
@@ -46,6 +48,7 @@ class RhPersonnelService
             'pagination' => $pagination,
             'options' => $this->visibility->options($this->repository->options()),
             'restrictedTables' => $this->visibility->restrictedTables(),
+            'stats' => $this->repository->getStats(),
         ];
     }
 
@@ -56,11 +59,24 @@ class RhPersonnelService
             throw new RuntimeException('Collaborateur introuvable.');
         }
 
+        $documents = $this->repository->documents($id);
+        $birthCertificatePath = '';
+        $employmentContractPath = '';
+        foreach ($documents as $doc) {
+            if ($doc['document_type'] === 'birth_certificate') {
+                $birthCertificatePath = $doc['stored_path'];
+            } elseif ($doc['document_type'] === 'employment_contract') {
+                $employmentContractPath = $doc['stored_path'];
+            }
+        }
+        $employee['birth_certificate_path'] = $birthCertificatePath;
+        $employee['employment_contract_path'] = $employmentContractPath;
+
         return [
             'employee' => $this->visibility->employee($employee),
             'history' => $this->visibility->history($this->repository->history($id)),
             'mutations' => $this->visibility->mutations($this->repository->mutations($id)),
-            'documents' => $this->repository->documents($id),
+            'documents' => $documents,
             'options' => $this->visibility->options($this->repository->options()),
             'restrictedTables' => $this->visibility->restrictedTables(),
         ];
@@ -245,15 +261,19 @@ class RhPersonnelService
         $documents = [];
         $map = [
             'photo' => ['column' => 'photo_path', 'type' => 'photo'],
+            'birth_certificate' => ['type' => 'birth_certificate'],
             'identity_document' => ['column' => 'identity_document_path', 'type' => 'identity'],
             'diploma' => ['column' => 'diploma_path', 'type' => 'diploma'],
+            'employment_contract' => ['type' => 'employment_contract'],
         ];
 
         foreach ($map as $field => $meta) {
             $file = $files[$field] ?? null;
             if ($this->hasUploadedFile($file)) {
                 $stored = $this->storeUploadedFile($file, $meta['type']);
-                $columns[$meta['column']] = $stored['path'];
+                if (isset($meta['column'])) {
+                    $columns[$meta['column']] = $stored['path'];
+                }
                 $documents[] = $stored + ['document_type' => $meta['type'], 'child_index' => null];
             }
         }
