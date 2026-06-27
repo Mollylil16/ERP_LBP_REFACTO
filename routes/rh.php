@@ -45,6 +45,7 @@ $router->group('/rh', function (Router $router): void {
     $router->get('/paie', [RhPayrollController::class, 'index']);
     $router->get('/paie/nouveau', [RhPayrollController::class, 'create']);
     $router->post('/paie/nouveau', [RhPayrollController::class, 'storeWizard']);
+    $router->post('/paie/contrat', [RhPayrollController::class, 'storeContract']);
     $router->get('/paie/moteur', [RhPayrollEngineController::class, 'index']);
     $router->post('/paie/periodes', [RhPayrollController::class, 'storePeriod']);
     $router->post('/paie/variables', [RhPayrollController::class, 'storeVariables']);

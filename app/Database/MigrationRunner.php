@@ -834,8 +834,153 @@ class MigrationRunner
                 )
             ");
         }
+
+        $this->createRhPayrollWizardTables();
     }
 
+    /**
+     * Crée les tables nécessaires au wizard de paie avancé :
+     * coefficients contrat, rubriques, paramètres fiscaux, colonnes détaillées.
+     */
+    private function createRhPayrollWizardTables(): void
+    {
+        // --- Colonnes supplémentaires sur rh_contracts ---
+        $contractCols = [
+            'base_salary'        => 'DECIMAL(15,2) NULL',
+            'sursalaire'         => 'DECIMAL(15,2) NULL',
+            'category'           => 'VARCHAR(30) NULL',
+            'transport_locality' => 'VARCHAR(150) NULL',
+            'seniority_premium'  => 'DECIMAL(15,2) NOT NULL DEFAULT 0',
+            'other_premiums'     => 'DECIMAL(15,2) NOT NULL DEFAULT 0',
+            'gratification'      => 'DECIMAL(15,2) NOT NULL DEFAULT 0',
+            'paid_leave_premium' => 'DECIMAL(15,2) NOT NULL DEFAULT 0',
+            'precarity_premium'  => 'DECIMAL(15,2) NOT NULL DEFAULT 0',
+        ];
+        foreach ($contractCols as $col => $def) {
+            $this->addColumnIfMissing('rh_contracts', $col, $def);
+        }
+
+        // --- Colonnes supplémentaires sur rh_payroll_slips ---
+        $slipCols = [
+            'transport_premium'  => 'DECIMAL(15,2) NOT NULL DEFAULT 0',
+            'health_insurance'   => 'DECIMAL(15,2) NOT NULL DEFAULT 0',
+            'advance_deduction'  => 'DECIMAL(15,2) NOT NULL DEFAULT 0',
+            'other_deductions'   => 'DECIMAL(15,2) NOT NULL DEFAULT 0',
+            'rounding'           => 'DECIMAL(15,2) NOT NULL DEFAULT 0',
+            'observations'       => 'TEXT NULL',
+            'fiscal_parts'       => 'INT NOT NULL DEFAULT 1',
+            'igr_manual'         => 'DECIMAL(15,2) NOT NULL DEFAULT 0',
+        ];
+        foreach ($slipCols as $col => $def) {
+            $this->addColumnIfMissing('rh_payroll_slips', $col, $def);
+        }
+
+        // --- Paramètres sociaux et fiscaux globaux (1 seule ligne) ---
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS rh_payroll_settings (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                is_salarial_rate DECIMAL(5,2) NOT NULL DEFAULT 1.20,
+                cnps_salarial_rate DECIMAL(5,2) NOT NULL DEFAULT 6.30,
+                cnps_patronal_rate DECIMAL(5,2) NOT NULL DEFAULT 7.70,
+                family_benefits_rate DECIMAL(5,2) NOT NULL DEFAULT 5.75,
+                work_accident_rate DECIMAL(5,2) NOT NULL DEFAULT 5.00,
+                apprentice_tax_rate DECIMAL(5,2) NOT NULL DEFAULT 0.40,
+                professional_training_rate DECIMAL(5,2) NOT NULL DEFAULT 0.60,
+                fdfp_rate DECIMAL(5,2) NOT NULL DEFAULT 0.60,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME NULL
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+        $cnt = (int) $this->pdo->query("SELECT COUNT(*) FROM rh_payroll_settings")->fetchColumn();
+        if ($cnt === 0) {
+            $this->pdo->exec("INSERT INTO rh_payroll_settings (id) VALUES (1)");
+        }
+
+        // --- Coefficients par type de contrat ---
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS rh_payroll_contract_rules (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                contract_type VARCHAR(50) NOT NULL,
+                label VARCHAR(150) NOT NULL,
+                working_days INT UNSIGNED NOT NULL DEFAULT 30,
+                hours_per_day DECIMAL(4,2) NOT NULL DEFAULT 8.00,
+                overtime_multiplier DECIMAL(4,2) NOT NULL DEFAULT 1.00,
+                precarity_auto_rate DECIMAL(5,2) NOT NULL DEFAULT 0,
+                mission_rate DECIMAL(5,2) NOT NULL DEFAULT 100,
+                leave_rate DECIMAL(5,2) NOT NULL DEFAULT 100,
+                half_day_rate DECIMAL(5,2) NOT NULL DEFAULT 50,
+                absence_rate DECIMAL(5,2) NOT NULL DEFAULT 0,
+                sickness_rate DECIMAL(5,2) NOT NULL DEFAULT 0,
+                rest_rate DECIMAL(5,2) NOT NULL DEFAULT 0,
+                is_active TINYINT(1) NOT NULL DEFAULT 1,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME NULL,
+                UNIQUE KEY uniq_payroll_contract_rules_type (contract_type)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+        $cntRules = (int) $this->pdo->query("SELECT COUNT(*) FROM rh_payroll_contract_rules")->fetchColumn();
+        if ($cntRules === 0) {
+            $this->pdo->exec("
+                INSERT INTO rh_payroll_contract_rules
+                    (contract_type, label, working_days, hours_per_day, overtime_multiplier, precarity_auto_rate)
+                VALUES
+                    ('cdd',             'CDD',                          30, 8.00, 1.15, 3),
+                    ('cdi_permanent',   'CDI permanent',                26, 8.00, 1.25, 0),
+                    ('stage',           'Stage de perfectionnement',    22, 8.00, 0.00, 0),
+                    ('vacataire',       'Vacataire',                    26, 8.00, 1.00, 0),
+                    ('libre',           'Parametrage libre',            30, 8.00, 1.00, 0)
+            ");
+        }
+
+        // --- Catalogue des rubriques de paie ---
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS rh_payroll_line_items (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                code VARCHAR(80) NOT NULL,
+                name VARCHAR(180) NOT NULL,
+                nature ENUM('allocation_prime','avantage_nature','gain') NOT NULL DEFAULT 'allocation_prime',
+                is_active TINYINT(1) NOT NULL DEFAULT 1,
+                sort_order INT NOT NULL DEFAULT 0,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME NULL,
+                UNIQUE KEY uniq_payroll_line_items_code (code)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+        $cntItems = (int) $this->pdo->query("SELECT COUNT(*) FROM rh_payroll_line_items")->fetchColumn();
+        if ($cntItems === 0) {
+            $this->pdo->exec("
+                INSERT INTO rh_payroll_line_items (code, name, nature, sort_order) VALUES
+                    ('alloc_assist_famille',  'Allocations assistance famille',           'allocation_prime',  10),
+                    ('alloc_familiales_cps',  'Allocations familiales / CPS',             'allocation_prime',  20),
+                    ('alloc_speciales',       'Allocations speciales non remboursees',     'allocation_prime',  30),
+                    ('indem_apprentissage',   'Indemnite apprentissage',                  'allocation_prime',  40),
+                    ('indem_stage',           'Indemnite de stage',                       'allocation_prime',  50),
+                    ('prime_outillage',       'Prime outillage',                          'allocation_prime',  60),
+                    ('prime_panier',          'Prime panier',                             'allocation_prime',  70),
+                    ('prime_salissure',       'Prime salissure',                          'allocation_prime',  80),
+                    ('prime_tenue',           'Prime tenue',                              'allocation_prime',  90),
+                    ('avantage_logement',     'Avantage logement',                        'avantage_nature',  100),
+                    ('avantage_vehicule',     'Avantage vehicule',                        'avantage_nature',  110),
+                    ('prime_assiduite',       'Prime d''assiduite',                       'gain',             120),
+                    ('prime_bilan',           'Prime de bilan',                           'gain',             130)
+            ");
+        }
+
+        // --- Montants contractuels par contrat/rubrique ---
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS rh_contract_line_items (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                contract_id INT UNSIGNED NOT NULL,
+                line_item_id INT UNSIGNED NOT NULL,
+                amount DECIMAL(15,2) NOT NULL DEFAULT 0,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME NULL,
+                UNIQUE KEY uniq_contract_line_item (contract_id, line_item_id),
+                CONSTRAINT fk_contract_line_items_contract FOREIGN KEY (contract_id) REFERENCES rh_contracts(id) ON DELETE CASCADE,
+                CONSTRAINT fk_contract_line_items_item FOREIGN KEY (line_item_id) REFERENCES rh_payroll_line_items(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+    }
 
 
     private function seedRhStatuses(): void

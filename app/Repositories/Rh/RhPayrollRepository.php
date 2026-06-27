@@ -162,4 +162,158 @@ final class RhPayrollRepository
         ");
         $stmt->execute(['id' => $periodId]);
     }
+
+    /** @return array<int,array<string,mixed>> */
+    public function getContractRules(): array
+    {
+        return $this->pdo->query("
+            SELECT * FROM rh_payroll_contract_rules
+            WHERE is_active = 1
+            ORDER BY id ASC
+        ")->fetchAll() ?: [];
+    }
+
+    /** @return array<int,array<string,mixed>> */
+    public function getLineItems(): array
+    {
+        return $this->pdo->query("
+            SELECT * FROM rh_payroll_line_items
+            WHERE is_active = 1
+            ORDER BY sort_order ASC
+        ")->fetchAll() ?: [];
+    }
+
+    /** @return array<string,mixed> */
+    public function getPayrollSettings(): array
+    {
+        $row = $this->pdo->query("SELECT * FROM rh_payroll_settings LIMIT 1")->fetch();
+        return $row ?: [
+            'is_salarial_rate' => 1.2,
+            'cnps_salarial_rate' => 6.3,
+            'cnps_patronal_rate' => 7.7,
+            'family_benefits_rate' => 5.75,
+            'work_accident_rate' => 5.0,
+            'apprentice_tax_rate' => 0.4,
+            'professional_training_rate' => 0.6,
+            'fdfp_rate' => 0.6,
+        ];
+    }
+
+    /**
+     * Retourne les contrats actifs indexés par employee_id, avec leurs line items.
+     * @return array<int,array<string,mixed>>
+     */
+    public function getEmployeeContracts(): array
+    {
+        $contracts = $this->pdo->query("
+            SELECT c.*, e.full_name
+            FROM rh_contracts c
+            INNER JOIN rh_employees e ON e.id = c.employee_id
+            WHERE c.status = 'active'
+            ORDER BY c.start_date DESC
+        ")->fetchAll() ?: [];
+
+        $lineItemStmt = $this->pdo->prepare("
+            SELECT cli.line_item_id, cli.amount, pli.code, pli.name, pli.nature
+            FROM rh_contract_line_items cli
+            INNER JOIN rh_payroll_line_items pli ON pli.id = cli.line_item_id
+            WHERE cli.contract_id = :contract_id
+        ");
+
+        $result = [];
+        foreach ($contracts as $c) {
+            $empId = (int) $c['employee_id'];
+            $lineItemStmt->execute(['contract_id' => (int) $c['id']]);
+            $c['line_items'] = $lineItemStmt->fetchAll() ?: [];
+            $result[$empId] = $c;
+        }
+
+        return $result;
+    }
+
+    /**
+     * Retourne les résumés de pointage mensuels par employé.
+     * @return array<int,array<string,mixed>>
+     */
+    public function getAttendanceSummaries(): array
+    {
+        return $this->pdo->query("
+            SELECT 
+                employee_id,
+                DATE_FORMAT(attendance_date, '%Y-%m') as month_code,
+                SUM(CASE WHEN attendance_status = 'present' THEN 1 ELSE 0 END) as count_present,
+                SUM(CASE WHEN attendance_status = 'absent' THEN 1 ELSE 0 END) as count_absent,
+                SUM(CASE WHEN attendance_status = 'half_day' THEN 1 ELSE 0 END) as count_half_day,
+                SUM(CASE WHEN attendance_status = 'mission' THEN 1 ELSE 0 END) as count_mission,
+                SUM(CASE WHEN attendance_status = 'conge' THEN 1 ELSE 0 END) as count_conge,
+                SUM(CASE WHEN attendance_status = 'rest' THEN 1 ELSE 0 END) as count_rest,
+                SUM(overtime_hours) as total_overtime
+            FROM rh_attendance_daily
+            GROUP BY employee_id, DATE_FORMAT(attendance_date, '%Y-%m')
+        ")->fetchAll() ?: [];
+    }
+
+    /**
+     * Crée ou met à jour un contrat RH depuis le wizard de paie.
+     */
+    public function saveContractFromWizard(array $data): int
+    {
+        $employeeId = (int) ($data['employee_id'] ?? 0);
+        $contractType = trim((string) ($data['contract_type'] ?? 'libre'));
+        $startDate = trim((string) ($data['start_date'] ?? date('Y-m-d')));
+        $endDate = !empty($data['end_date']) ? trim((string) $data['end_date']) : null;
+        $baseSalary = (float) ($data['base_salary'] ?? 0);
+        $sursalaire = (float) ($data['sursalaire'] ?? 0);
+        $transportLocality = trim((string) ($data['transport_locality'] ?? ''));
+
+        if ($employeeId <= 0) {
+            throw new \RuntimeException('L\'employé est obligatoire.');
+        }
+
+        // Check for existing active contract
+        $existing = $this->pdo->prepare("
+            SELECT id FROM rh_contracts
+            WHERE employee_id = :emp AND status = 'active'
+            LIMIT 1
+        ");
+        $existing->execute(['emp' => $employeeId]);
+        $existingRow = $existing->fetch();
+
+        if ($existingRow) {
+            $stmt = $this->pdo->prepare("
+                UPDATE rh_contracts
+                SET contract_type = :type, start_date = :start, end_date = :end,
+                    base_salary = :salary, sursalaire = :sur, transport_locality = :transport,
+                    updated_at = NOW()
+                WHERE id = :id
+            ");
+            $stmt->execute([
+                'type' => $contractType,
+                'start' => $startDate,
+                'end' => $endDate,
+                'salary' => $baseSalary,
+                'sur' => $sursalaire,
+                'transport' => $transportLocality,
+                'id' => (int) $existingRow['id'],
+            ]);
+            return (int) $existingRow['id'];
+        }
+
+        $stmt = $this->pdo->prepare("
+            INSERT INTO rh_contracts
+                (employee_id, contract_type, start_date, end_date, base_salary, sursalaire,
+                 transport_locality, status, created_at)
+            VALUES (:emp, :type, :start, :end, :salary, :sur, :transport, 'active', NOW())
+        ");
+        $stmt->execute([
+            'emp' => $employeeId,
+            'type' => $contractType,
+            'start' => $startDate,
+            'end' => $endDate,
+            'salary' => $baseSalary,
+            'sur' => $sursalaire,
+            'transport' => $transportLocality,
+        ]);
+        return (int) $this->pdo->lastInsertId();
+    }
 }

@@ -3748,8 +3748,269 @@
 	.rh-print-report-footer .signature-line .sig-space {
 		border-bottom: 1px solid #cbd5e1;
 		height: 35px;
+		border-bottom: 1px solid #cbd5e1;
 	}
 }
+
+/* ========================================================================
+   WIZARD DE PAIE AVANCÉ
+   ======================================================================== */
+
+.rh-payroll-wizard-page {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+.payroll-wizard-left-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    padding: 30px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.02);
+}
+
+/* Stepper */
+.payroll-wizard-stepper {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 30px;
+    border-bottom: 2px solid #f1f5f9;
+    padding-bottom: 15px;
+}
+
+.payroll-step-tab {
+    flex: 1;
+    text-align: center;
+    padding: 10px 15px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #94a3b8;
+    border-radius: 8px;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+}
+
+.payroll-step-tab.active {
+    color: var(--finea-primary, #6d28d9);
+    background: #f5f3ff;
+}
+
+.payroll-step-tab.done {
+    color: #10b981;
+    background: #ecfdf5;
+}
+
+/* Grille de contrats */
+.payroll-contract-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 15px;
+    margin-bottom: 25px;
+}
+
+.payroll-contract-card {
+    background: #f8fafc;
+    border: 2px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 16px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.payroll-contract-card:hover {
+    border-color: #cbd5e1;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+}
+
+.payroll-contract-card.selected {
+    border-color: var(--finea-primary, #6d28d9);
+    background: #fdfdfd;
+    box-shadow: 0 8px 20px rgba(109, 40, 217, 0.08);
+}
+
+/* Section contrat actif */
+.payroll-active-contract {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    padding: 24px;
+    margin-bottom: 25px;
+}
+
+/* Grille de règles de contrat */
+.payroll-rules-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+}
+
+.payroll-rules-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 12px 16px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.01);
+}
+
+/* Liste des ajustements */
+.payroll-adjustments-section {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 25px;
+}
+
+/* Bannières et info-box */
+.payroll-alert-banner {
+    background: #fef2f2;
+    border: 1px solid #fca5a5;
+    border-radius: 10px;
+    padding: 16px;
+    color: #b91c1c;
+    font-size: 0.9rem;
+    font-weight: 500;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.payroll-info-box {
+    border-radius: 10px;
+    padding: 15px 18px;
+    font-size: 0.85rem;
+    line-height: 1.5;
+    margin-bottom: 20px;
+}
+
+.payroll-info-box--muted {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    color: #64748b;
+}
+
+.payroll-info-box--danger {
+    background: #fff5f5;
+    border: 1px solid #feb2b2;
+    color: #c53030;
+}
+
+.payroll-info-box--success {
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    color: #15803d;
+}
+
+/* Formulaire contrat étape 3 */
+.payroll-contract-form-section {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 25px;
+}
+
+/* Grille de rubriques */
+.payroll-line-items-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 15px;
+}
+
+.payroll-line-item-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 14px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.01);
+}
+
+/* Sidebar d'aperçu */
+.payroll-preview-sidebar {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.02);
+    position: sticky;
+    top: 30px;
+    height: fit-content;
+}
+
+/* Actions wizard */
+.payroll-wizard-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 30px;
+    border-top: 1px solid #f1f5f9;
+    padding-top: 20px;
+}
+
+.payroll-nav-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 24px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: none;
+}
+
+.payroll-nav-btn--prev {
+    background: #f1f5f9;
+    color: #475569;
+}
+
+.payroll-nav-btn--prev:hover:not(:disabled) {
+    background: #e2e8f0;
+}
+
+.payroll-nav-btn--next {
+    background: var(--finea-primary, #6d28d9);
+    color: #ffffff;
+}
+
+.payroll-nav-btn--next:hover {
+    filter: brightness(1.1);
+}
+
+.payroll-nav-btn--calc {
+    background: #0f172a;
+    color: #ffffff;
+}
+
+.payroll-nav-btn--calc:hover {
+    background: #1e293b;
+}
+
+.payroll-nav-btn--save {
+    background: var(--finea-danger, #dc2626);
+    color: #ffffff;
+}
+
+.payroll-nav-btn--save:hover {
+    background: #b91c1c;
+}
+
+.payroll-form-input {
+    border-radius: 8px !important;
+    border: 1px solid #cbd5e1 !important;
+    padding: 10px 14px !important;
+    font-size: 0.9rem !important;
+    transition: all 0.2s ease !important;
+}
+
+.payroll-form-input:focus {
+    border-color: var(--finea-primary, #6d28d9) !important;
+    box-shadow: 0 0 0 3px rgba(109, 40, 217, 0.1) !important;
+}
+
 
 
 

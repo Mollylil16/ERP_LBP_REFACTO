@@ -127,6 +127,7 @@ final class PayrollEngine
                 ['Prime de precarite', 'Gain', 'Oui', 'Oui', 'Aucune exoneration', 'Oui'],
                 ['Prime de rendement', 'Gain', 'Oui', 'Oui', 'Aucune exoneration', 'Oui'],
                 ['Salaire categoriel', 'Gain', 'Oui', 'Oui', 'Aucune exoneration', 'Oui'],
+                ['Sursalaire', 'Gain', 'Oui', 'Oui', 'Aucune exoneration', 'Oui'],
             ]
         );
         $rubriquesCard = self::baseCard($rubriquesHtml . $rubriquesTable);
@@ -160,6 +161,7 @@ final class PayrollEngine
             ['240 000 - 800 000', '21,00%'],
             ['800 000 - 2 400 000', '24,00%'],
             ['2 400 000 - 8 000 000', '28,00%'],
+            ['8 000 000 - Sans limite', '32,00%'],
         ];
         $baremeHtml = '<h3 style="font-size: 16px; font-weight: 600; margin-bottom: 15px;">Bareme progressif</h3>'
             . '<table style="width: 100%; border-collapse: collapse;">';
@@ -179,7 +181,7 @@ final class PayrollEngine
         $cotisationsRows = [
             ['Accident du travail', 'Part salarie / part employeur. Base Salaire brut social, plafond aucun', '0 FCFA / 3,00 %'],
             ['Couverture maladie universelle', 'Part salarie / part employeur. Base Salaire brut social, plafond aucun', '500 FCFA / 500 FCFA'],
-            ['Retraite generale CNPS', 'Part salarie / part employeur. Base Salaire brut social, plafond aucun', '6,30 % / 7,70 %'],
+            ['Retraite generale CNPS', 'Part salarie / part employeur. Base Salaire brut social, plafond 3 375 000', '6,30 % / 7,70 %'],
             ['Prestations familiales', 'Part salarie / part employeur. Base Salaire brut social, plafond 75 000', '0 FCFA / 5,75 %'],
         ];
         $cotisationsHtml = '<h3 style="font-size: 16px; font-weight: 600; margin-bottom: 4px;">Cotisations sociales</h3>'

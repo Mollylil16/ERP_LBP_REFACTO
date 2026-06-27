@@ -43,29 +43,47 @@ final class RhPayrollController extends RhBaseController
     public function create(): void
     {
         AuthMiddleware::check();
-        $periods = $this->repository->getPeriods();
         
         $pdo = Database::getConnection();
         $stmt = $pdo->query("SELECT id, full_name, employee_number FROM rh_employees WHERE is_active = 1 ORDER BY full_name ASC");
         $employees = $stmt->fetchAll() ?: [];
 
-        // Fetch active contracts
-        $stmtContracts = $pdo->query("SELECT employee_id, contract_type, base_salary, start_date FROM rh_contracts WHERE status = 'active'");
-        $contracts = $stmtContracts->fetchAll() ?: [];
-        
-        $contractsByEmployee = [];
-        foreach ($contracts as $c) {
-            $contractsByEmployee[(int)$c['employee_id']] = [
-                'type' => $c['contract_type'],
-                'salary' => (float)$c['base_salary'],
-                'start_date' => $c['start_date']
-            ];
-        }
+        $periods = $this->repository->getPeriods();
+        $contractRules = $this->repository->getContractRules();
+        $lineItems = $this->repository->getLineItems();
+        $payrollSettings = $this->repository->getPayrollSettings();
+        $employeeContracts = $this->repository->getEmployeeContracts();
+        $attendanceSummaries = $this->repository->getAttendanceSummaries();
 
         $this->rhView('rh/payroll/create', 'Nouvelle Fiche de Paie', 'payroll', [
-            'page' => new PayrollWizardPage($employees, $periods),
-            'contracts' => $contractsByEmployee,
+            'page' => new PayrollWizardPage(
+                employees: $employees,
+                periods: $periods,
+                contractRules: $contractRules,
+                lineItems: $lineItems,
+                payrollSettings: $payrollSettings,
+                employeeContracts: $employeeContracts,
+                attendanceSummaries: $attendanceSummaries,
+            ),
         ]);
+    }
+
+    public function storeContract(): void
+    {
+        AuthMiddleware::check();
+        if (!Csrf::verify($_POST['_csrf_token'] ?? null)) {
+            Session::flash('error', 'Session expirée. Veuillez recommencer.');
+            $this->redirect('/rh/paie/nouveau');
+        }
+
+        try {
+            $this->repository->saveContractFromWizard($_POST);
+            Session::flash('success', 'Contrat RH enregistré avec succès.');
+        } catch (\RuntimeException $e) {
+            Session::flash('error', $e->getMessage());
+        }
+
+        $this->redirect('/rh/paie/nouveau');
     }
 
     public function storeWizard(): void
@@ -78,25 +96,59 @@ final class RhPayrollController extends RhBaseController
 
         try {
             $employeeId = (int) ($_POST['employee_id'] ?? 0);
-            $periodId = (int) ($_POST['period_id'] ?? 0);
             $baseSalary = (float) ($_POST['base_salary'] ?? 0);
             $bonusesTotal = (float) ($_POST['bonuses_total'] ?? 0);
             $deductionsTotal = (float) ($_POST['deductions_total'] ?? 0);
             $netSalary = (float) ($_POST['net_salary'] ?? 0);
 
-            if ($employeeId <= 0 || $periodId <= 0 || $baseSalary <= 0) {
-                throw new \RuntimeException('Le salarié, la période et le salaire de base sont obligatoires.');
-            }
+            $transportPremium = (float) ($_POST['transport_premium'] ?? 0.0);
+            $healthInsurance = (float) ($_POST['health_insurance'] ?? 0.0);
+            $advanceDeduction = (float) ($_POST['advance_deduction'] ?? 0.0);
+            $otherDeductions = (float) ($_POST['other_deductions'] ?? 0.0);
+            $rounding = (float) ($_POST['rounding'] ?? 0.0);
+            $observations = isset($_POST['observations']) ? trim((string) $_POST['observations']) : null;
+            $fiscalParts = (int) ($_POST['fiscal_parts'] ?? 1);
+            $igrManual = (float) ($_POST['igr_manual'] ?? 0.0);
 
             $pdo = Database::getConnection();
-            
+
+            // Resolve period_id from period_month (e.g. 2026-06)
+            $periodMonth = trim((string) ($_POST['period_month'] ?? ''));
+            $periodId = 0;
+            if ($periodMonth !== '') {
+                $stmtPeriod = $pdo->prepare("SELECT id FROM rh_payroll_periods WHERE code = ?");
+                $stmtPeriod->execute([$periodMonth]);
+                $periodId = (int) $stmtPeriod->fetchColumn();
+            }
+            if ($periodId <= 0) {
+                $periodId = (int) ($_POST['period_id'] ?? 0);
+            }
+
+            if ($employeeId <= 0 || $periodId <= 0 || $baseSalary <= 0) {
+                throw new \RuntimeException('Le salarié, la période de paie valide (ouverte) et le salaire de base sont obligatoires.');
+            }
+
             // Delete existing slip for this employee and period if any
             $del = $pdo->prepare("DELETE FROM rh_payroll_slips WHERE period_id = ? AND employee_id = ?");
             $del->execute([$periodId, $employeeId]);
 
-            // Save slip to database
-            $stmt = $pdo->prepare("INSERT INTO rh_payroll_slips (period_id, employee_id, base_salary, bonuses_total, deductions_total, net_salary, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, 'draft', NOW(), NOW())");
-            $stmt->execute([$periodId, $employeeId, $baseSalary, $bonusesTotal, $deductionsTotal, $netSalary]);
+            // Save slip to database with all detailed fields
+            $stmt = $pdo->prepare("
+                INSERT INTO rh_payroll_slips (
+                    period_id, employee_id, base_salary, bonuses_total, deductions_total, net_salary, status,
+                    transport_premium, health_insurance, advance_deduction, other_deductions, rounding, observations,
+                    fiscal_parts, igr_manual, created_at, updated_at
+                ) VALUES (
+                    ?, ?, ?, ?, ?, ?, 'draft',
+                    ?, ?, ?, ?, ?, ?,
+                    ?, ?, NOW(), NOW()
+                )
+            ");
+            $stmt->execute([
+                $periodId, $employeeId, $baseSalary, $bonusesTotal, $deductionsTotal, $netSalary,
+                $transportPremium, $healthInsurance, $advanceDeduction, $otherDeductions, $rounding, $observations,
+                $fiscalParts, $igrManual
+            ]);
 
             // Save variables for this period
             $check = $pdo->prepare("SELECT id FROM rh_payroll_variables WHERE period_id = ? AND employee_id = ?");
