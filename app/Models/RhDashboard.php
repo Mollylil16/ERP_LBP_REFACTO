@@ -16,5 +16,9 @@ class RhDashboard
         public readonly array $alerts,
         public readonly array $analytics,
         public readonly int $pendingTotal,
+        public readonly array $pendingRequests = [],
+        public readonly array $dailyAttendance = [],
+        public readonly array $monthlyTrend = [],
+        public readonly array $employeeList = [],
     ) {}
 }

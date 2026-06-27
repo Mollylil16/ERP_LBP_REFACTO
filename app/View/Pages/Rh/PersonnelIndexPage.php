@@ -24,6 +24,10 @@ final class PersonnelIndexPage
     public readonly array $restrictedTables;
 
     public readonly int $total;
+    public readonly int $currentPage;
+    public readonly int $totalPages;
+    /** @var array{total:int,active:int,inactive:int} */
+    public readonly array $stats;
     public readonly bool $canCreate;
 
     /**
@@ -43,11 +47,21 @@ final class PersonnelIndexPage
         $this->total = (int) ($pagination['total'] ?? 0);
         $currentPage = max(1, (int) ($pagination['page'] ?? 1));
         $totalPages = max(1, (int) ($pagination['totalPages'] ?? 1));
+        $this->currentPage = $currentPage;
+        $this->totalPages = $totalPages;
+        $this->stats = is_array($data['stats'] ?? null) ? $data['stats'] : ['total' => 0, 'active' => 0, 'inactive' => 0];
 
         $this->filterOptions = [
             'services' => self::options($options['services'] ?? []),
             'functions' => self::options($options['functions'] ?? []),
             'statuses' => self::options($options['statuses'] ?? []),
+            'sites' => array_merge(
+                [['value' => '', 'label' => 'Tous les sites']],
+                array_map(static fn(array $row): array => [
+                    'value' => (string) ($row['name'] ?? ''),
+                    'label' => (string) ($row['name'] ?? ''),
+                ], is_array($options['sites'] ?? null) ? $options['sites'] : [])
+            ),
         ];
 
         $canView = (bool) ($permissions['view'] ?? false);
