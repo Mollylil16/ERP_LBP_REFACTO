@@ -5,7 +5,6 @@ use App\View\Pages\Rh\AttendanceMonthlyPage;
 
 /** @var AttendanceMonthlyPage $page */
 
-ob_start();
 ?>
 <div class="finea-shell rh-attendance-monthly-page">
     <div class="finea-container">
@@ -127,6 +126,3 @@ ob_start();
         </div>
     </div>
 </div>
-<?php
-$content = ob_get_clean();
-require BASE_PATH . '/views/layouts/module.php';

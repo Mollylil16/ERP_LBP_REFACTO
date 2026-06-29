@@ -9,7 +9,6 @@ use App\View\Pages\Rh\PersonnelFormPage;
 
 /** @var PersonnelFormPage $page */
 
-ob_start();
 ?>
 <div class="finea-shell">
     <div class="finea-container">
@@ -231,7 +230,3 @@ ob_start();
         </form>
     </div>
 </div>
-<?php
-$content = ob_get_clean();
-require BASE_PATH . '/views/layouts/module.php';
-?>
