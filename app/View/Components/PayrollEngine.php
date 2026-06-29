@@ -24,7 +24,7 @@ final class PayrollEngine
         // Metrics under header
         $metricsHtml = '<div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: -15px; margin-bottom: 30px; position: relative; z-index: 10;">'
             . self::metricCard('VERSION', 'PAYROLL_CI_2024')
-            . self::metricCard('RUBRIQUES', '22')
+            . self::metricCard('RUBRIQUES', (string) count($page->lineItems))
             . self::metricCard('TRANCHES', '6')
             . self::metricCard('COTISATIONS', '4')
             . '</div>';
@@ -56,15 +56,23 @@ final class PayrollEngine
             . '<button class="finea-btn" style="background: #0B1120; color: white; border: none; padding: 8px 16px; border-radius: 6px; font-weight: 600;">Parametrer les contrats</button>'
             . '</div>';
         
+        $contratsRows = [];
+        foreach ($page->contractRules as $rule) {
+            $contratsRows[] = [
+                $rule['label'],
+                number_format((float)$rule['working_days'], 2, ',', ' '),
+                number_format((float)$rule['hours_per_day'], 2, ',', ' '),
+                number_format((float)$rule['overtime_multiplier'], 2, ',', ' '),
+                number_format((float)$rule['precarity_auto_rate'], 0) . ' %',
+                number_format((float)$rule['mission_rate'], 0) . ' %',
+                number_format((float)$rule['leave_rate'], 0) . ' %',
+                number_format((float)$rule['absence_rate'], 0) . ' %',
+            ];
+        }
+
         $contratsTable = self::createTable(
             ['TYPE DE CONTRAT', 'JOURS', 'HEURES / JOUR', 'HEURES SUPP.', 'PRECARITE', 'MISSION', 'CONGE', 'ABSENCE'],
-            [
-                ['CDD', '30,00', '8,00', '1,15', '300 %', '100 %', '100 %', '0 %'],
-                ['CDI permanent', '26,00', '8,00', '1,25', '0 %', '100 %', '100 %', '0 %'],
-                ['Stage de perfectionnement', '22,00', '7,00', '0,00', '0 %', '100 %', '50 %', '0 %'],
-                ['Vacataire', '26,00', '8,00', '1,00', '0 %', '100 %', '0 %', '0 %'],
-                ['Parametrage libre', '30,00', '8,00', '1,00', '0 %', '100 %', '100 %', '0 %'],
-            ]
+            $contratsRows
         );
         $contratsCard = self::baseCard($contratsHtml . $contratsTable);
 
@@ -103,32 +111,54 @@ final class PayrollEngine
 
         // 7. Rubriques de paie
         $rubriquesHtml = '<h3 style="font-size: 16px; font-weight: 600; margin-bottom: 15px;">Rubriques de paie</h3>';
+        
+        $rubriqueMetadata = [
+            'alloc_assist_famille' => ['fiscal' => 'Non', 'social' => 'Oui', 'exon' => 'Aucune exoneration'],
+            'alloc_familiales_cps' => ['fiscal' => 'Non', 'social' => 'Non', 'exon' => 'Totalement exonere'],
+            'alloc_speciales'      => ['fiscal' => 'Partiel', 'social' => 'Oui', 'exon' => 'Exonere jusqu a 10 % du salaire'],
+            'indem_apprentissage'  => ['fiscal' => 'Partiel', 'social' => 'Oui', 'exon' => 'Indemnite d apprentissage exoneree jusqu a 100 000 FCFA'],
+            'indem_stage'          => ['fiscal' => 'Partiel', 'social' => 'Oui', 'exon' => 'Indemnite de stage exoneree jusqu a 150 000 FCFA'],
+            'prime_outillage'      => ['fiscal' => 'Partiel', 'social' => 'Oui', 'exon' => 'Exonere jusqu a 10 x SMIG horaire'],
+            'prime_panier'         => ['fiscal' => 'Partiel', 'social' => 'Oui', 'exon' => 'Exonere jusqu a 3 x SMIG horaire'],
+            'prime_salissure'      => ['fiscal' => 'Partiel', 'social' => 'Oui', 'exon' => 'Exonere jusqu a 13 x SMIG horaire'],
+            'prime_tenue'          => ['fiscal' => 'Partiel', 'social' => 'Oui', 'exon' => 'Exonere jusqu a 7 x SMIG horaire'],
+            'prime_transport'      => ['fiscal' => 'Partiel', 'social' => 'Oui', 'exon' => 'Exonere jusqu a 30 000 FCFA'],
+            'avantage_logement'    => ['fiscal' => 'Oui', 'social' => 'Oui', 'exon' => 'Aucune exoneration'],
+            'avantage_vehicule'    => ['fiscal' => 'Oui', 'social' => 'Oui', 'exon' => 'Aucune exoneration'],
+            'heures_supp'          => ['fiscal' => 'Oui', 'social' => 'Oui', 'exon' => 'Aucune exoneration'],
+            'prime_anciennete'     => ['fiscal' => 'Oui', 'social' => 'Oui', 'exon' => 'Aucune exoneration'],
+            'prime_assiduite'      => ['fiscal' => 'Oui', 'social' => 'Oui', 'exon' => 'Aucune exoneration'],
+            'prime_bilan'          => ['fiscal' => 'Oui', 'social' => 'Oui', 'exon' => 'Aucune exoneration'],
+            'indemnites_conges'    => ['fiscal' => 'Oui', 'social' => 'Oui', 'exon' => 'Aucune exoneration'],
+            'prime_fin_annee'      => ['fiscal' => 'Oui', 'social' => 'Oui', 'exon' => 'Aucune exoneration'],
+            'prime_precarite'      => ['fiscal' => 'Oui', 'social' => 'Oui', 'exon' => 'Aucune exoneration'],
+            'prime_rendement'      => ['fiscal' => 'Oui', 'social' => 'Oui', 'exon' => 'Aucune exoneration'],
+            'salaire_categoriel'   => ['fiscal' => 'Oui', 'social' => 'Oui', 'exon' => 'Aucune exoneration'],
+            'sursalaire'           => ['fiscal' => 'Oui', 'social' => 'Oui', 'exon' => 'Aucune exoneration'],
+        ];
+
+        $rubriquesRows = [];
+        foreach ($page->lineItems as $item) {
+            $meta = $rubriqueMetadata[$item['code']] ?? ['fiscal' => 'Oui', 'social' => 'Oui', 'exon' => 'Aucune exoneration'];
+            $natureLabel = [
+                'allocation_prime' => 'Allocation / prime',
+                'avantage_nature' => 'Avantage en nature',
+                'gain' => 'Gain'
+            ][$item['nature']] ?? $item['nature'];
+            
+            $rubriquesRows[] = [
+                $item['name'],
+                $natureLabel,
+                $meta['fiscal'],
+                $meta['social'],
+                $meta['exon'],
+                $item['is_active'] ? 'Oui' : 'Non'
+            ];
+        }
+
         $rubriquesTable = self::createTable(
             ['RUBRIQUE', 'TYPE', 'IMPACT FISCAL ?', 'IMPACT SOCIAL ?', 'MODE D\'EXONERATION ?', 'UTILISEE'],
-            [
-                ['Allocations assistance famille', 'Allocation / prime', 'Non', 'Oui', 'Aucune exoneration', 'Oui'],
-                ['Allocations familiales / CPS', 'Allocation / prime', 'Non', 'Non', 'Totalement exonere', 'Oui'],
-                ['Allocations speciales non remboursees', 'Allocation / prime', 'Partiel', 'Oui', 'Exonere jusqu a 10 % du salaire', 'Oui'],
-                ['Indemnite apprentissage', 'Allocation / prime', 'Partiel', 'Oui', 'Indemnite d apprentissage exoneree jusqu a 100 000 FCFA', 'Oui'],
-                ['Indemnite de stage', 'Allocation / prime', 'Partiel', 'Oui', 'Indemnite de stage exoneree jusqu a 150 000 FCFA', 'Oui'],
-                ['Prime outillage', 'Allocation / prime', 'Partiel', 'Oui', 'Exonere jusqu a 10 x SMIG horaire', 'Oui'],
-                ['Prime panier', 'Allocation / prime', 'Partiel', 'Oui', 'Exonere jusqu a 3 x SMIG horaire', 'Oui'],
-                ['Prime salissure', 'Allocation / prime', 'Partiel', 'Oui', 'Exonere jusqu a 13 x SMIG horaire', 'Oui'],
-                ['Prime tenue', 'Allocation / prime', 'Partiel', 'Oui', 'Exonere jusqu a 7 x SMIG horaire', 'Oui'],
-                ['Prime de transport', 'Allocation / prime', 'Partiel', 'Oui', 'Exonere jusqu a 30 000 FCFA', 'Oui'],
-                ['Avantage logement', 'Avantage en nature', 'Oui', 'Oui', 'Aucune exoneration', 'Oui'],
-                ['Avantage vehicule', 'Avantage en nature', 'Oui', 'Oui', 'Aucune exoneration', 'Oui'],
-                ['Heures supplementaires', 'Gain', 'Oui', 'Oui', 'Aucune exoneration', 'Oui'],
-                ['Prime d\'anciennete', 'Gain', 'Oui', 'Oui', 'Aucune exoneration', 'Oui'],
-                ['Prime d\'assiduite', 'Gain', 'Oui', 'Oui', 'Aucune exoneration', 'Oui'],
-                ['Prime de bilan', 'Gain', 'Oui', 'Oui', 'Aucune exoneration', 'Oui'],
-                ['Indemnites et conges payes', 'Gain', 'Oui', 'Oui', 'Aucune exoneration', 'Oui'],
-                ['Prime de fin d\'annee', 'Gain', 'Oui', 'Oui', 'Aucune exoneration', 'Oui'],
-                ['Prime de precarite', 'Gain', 'Oui', 'Oui', 'Aucune exoneration', 'Oui'],
-                ['Prime de rendement', 'Gain', 'Oui', 'Oui', 'Aucune exoneration', 'Oui'],
-                ['Salaire categoriel', 'Gain', 'Oui', 'Oui', 'Aucune exoneration', 'Oui'],
-                ['Sursalaire', 'Gain', 'Oui', 'Oui', 'Aucune exoneration', 'Oui'],
-            ]
+            $rubriquesRows
         );
         $rubriquesCard = self::baseCard($rubriquesHtml . $rubriquesTable);
 
@@ -140,9 +170,34 @@ final class PayrollEngine
 
         // 9. Historique des bulletins
         $historiqueHtml = '<h3 style="font-size: 16px; font-weight: 600; margin-bottom: 15px;">Historique des bulletins</h3>';
+        
+        $slipsRows = [];
+        foreach ($page->slips as $slip) {
+            $monthsFr = [
+                1 => 'Janvier', 2 => 'Février', 3 => 'Mars', 4 => 'Avril', 5 => 'Mai', 6 => 'Juin',
+                7 => 'Juillet', 8 => 'Août', 9 => 'Septembre', 10 => 'Octobre', 11 => 'Novembre', 12 => 'Décembre'
+            ];
+            $periodLabel = ($monthsFr[(int)$slip['month']] ?? $slip['month']) . ' ' . $slip['year'];
+            $sbi = number_format((float)$slip['base_salary'], 0, ',', ' ') . ' FCFA';
+            $sbs = number_format((float)$slip['base_salary'] + (float)$slip['bonuses_total'], 0, ',', ' ') . ' FCFA';
+            $net = number_format((float)$slip['net_salary'], 0, ',', ' ') . ' FCFA';
+            $statusFr = ['draft' => 'Brouillon', 'validated' => 'Validé', 'paid' => 'Payé'][$slip['status']] ?? $slip['status'];
+            
+            $slipsRows[] = [
+                $slip['id'],
+                $periodLabel,
+                $slip['full_name'],
+                'PAYROLL_CI_2024',
+                $sbi,
+                $sbs,
+                $net,
+                $statusFr
+            ];
+        }
+
         $historiqueTable = self::createTable(
             ['N', 'PERIODE', 'SALARIE', 'VERSION', 'SBI', 'SBS', 'NET', 'ETAT'],
-            [] // empty table
+            $slipsRows
         );
         $historiqueCard = self::baseCard($historiqueHtml . $historiqueTable);
 
@@ -178,11 +233,16 @@ final class PayrollEngine
             . '</div>';
         $baremeCard = self::baseCard($baremeHtml);
 
+        $accidentRate = number_format((float)($page->payrollSettings['work_accident_rate'] ?? 3.00), 2, ',', ' ') . ' %';
+        $cnpsSalarial = number_format((float)($page->payrollSettings['cnps_salarial_rate'] ?? 6.30), 2, ',', ' ') . ' %';
+        $cnpsPatronal = number_format((float)($page->payrollSettings['cnps_patronal_rate'] ?? 7.70), 2, ',', ' ') . ' %';
+        $familyRate = number_format((float)($page->payrollSettings['family_benefits_rate'] ?? 5.75), 2, ',', ' ') . ' %';
+
         $cotisationsRows = [
-            ['Accident du travail', 'Part salarie / part employeur. Base Salaire brut social, plafond aucun', '0 FCFA / 3,00 %'],
+            ['Accident du travail', 'Part salarie / part employeur. Base Salaire brut social, plafond aucun', '0 FCFA / ' . $accidentRate],
             ['Couverture maladie universelle', 'Part salarie / part employeur. Base Salaire brut social, plafond aucun', '500 FCFA / 500 FCFA'],
-            ['Retraite generale CNPS', 'Part salarie / part employeur. Base Salaire brut social, plafond 3 375 000', '6,30 % / 7,70 %'],
-            ['Prestations familiales', 'Part salarie / part employeur. Base Salaire brut social, plafond 75 000', '0 FCFA / 5,75 %'],
+            ['Retraite generale CNPS', 'Part salarie / part employeur. Base Salaire brut social, plafond 3 375 000', $cnpsSalarial . ' / ' . $cnpsPatronal],
+            ['Prestations familiales', 'Part salarie / part employeur. Base Salaire brut social, plafond 75 000', '0 FCFA / ' . $familyRate],
         ];
         $cotisationsHtml = '<h3 style="font-size: 16px; font-weight: 600; margin-bottom: 4px;">Cotisations sociales</h3>'
             . '<p style="color: var(--finea-text-muted); font-size: 13px; margin-bottom: 20px;">Utilisez les taux pour les cotisations proportionnelles et les montants fixes pour les cotisations forfaitaires comme la CMU.</p>'

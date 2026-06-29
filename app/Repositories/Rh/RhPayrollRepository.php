@@ -316,4 +316,15 @@ final class RhPayrollRepository
         ]);
         return (int) $this->pdo->lastInsertId();
     }
+
+    public function getAllSlips(): array
+    {
+        return $this->pdo->query("
+            SELECT s.*, e.full_name, MONTH(p.start_date) AS month, YEAR(p.start_date) AS year
+            FROM rh_payroll_slips s
+            INNER JOIN rh_employees e ON e.id = s.employee_id
+            INNER JOIN rh_payroll_periods p ON p.id = s.period_id
+            ORDER BY s.id DESC
+        ")->fetchAll() ?: [];
+    }
 }

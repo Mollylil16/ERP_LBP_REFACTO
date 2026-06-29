@@ -8,7 +8,4 @@ use App\View\Pages\Rh\MissionIndexPage;
 $searchVal = trim((string)($_GET['search'] ?? ''));
 $statusVal = trim((string)($_GET['status'] ?? ''));
 
-ob_start();
 echo Missions::missionsIndexPage($page, $searchVal, $statusVal, Csrf::token());
-$content = ob_get_clean();
-require BASE_PATH . '/views/layouts/module.php';
