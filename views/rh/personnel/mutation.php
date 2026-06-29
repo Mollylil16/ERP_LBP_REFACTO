@@ -9,7 +9,6 @@ use App\View\Pages\Rh\PersonnelMutationPage;
 
 /** @var PersonnelMutationPage $page */
 
-ob_start();
 ?>
 
 <div class="finea-shell">
@@ -105,7 +104,3 @@ ob_start();
         ) ?>
     </div>
 </div>
-
-<?php
-$content = ob_get_clean();
-require BASE_PATH . '/views/layouts/module.php';

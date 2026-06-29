@@ -13,7 +13,4 @@ if ($mission && !empty($mission['expenses_json'])) {
     $expenses = json_decode($mission['expenses_json'], true) ?: [];
 }
 
-ob_start();
 echo Missions::missionFormPage($employees, $mission, Csrf::token(), $id, $status, $expenses);
-$content = ob_get_clean();
-require BASE_PATH . '/views/layouts/module.php';
