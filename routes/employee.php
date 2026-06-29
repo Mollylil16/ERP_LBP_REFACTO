@@ -15,4 +15,5 @@ $router->group('/espace-employe', function (Router $router): void {
     $router->get('/demandes/{id}', [EmployeePortalController::class, 'showRequest']);
     $router->post('/demandes/{id}/annuler', [EmployeePortalController::class, 'cancelRequest']);
     $router->post('/explications/{id}/repondre', [EmployeePortalController::class, 'respondExplanation']);
+    $router->post('/changer-mot-de-passe', [EmployeePortalController::class, 'changePassword']);
 });

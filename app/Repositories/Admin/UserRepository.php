@@ -229,6 +229,12 @@ class UserRepository
         $stmt->execute($params);
     }
 
+    public function updatePassword(int $userId, string $newPasswordHash): void
+    {
+        $stmt = $this->pdo->prepare('UPDATE users SET password_hash = :hash, updated_at = NOW() WHERE id = :id');
+        $stmt->execute(['hash' => $newPasswordHash, 'id' => $userId]);
+    }
+
     public function setStatus(int $id, string $status): void
     {
         $stmt = $this->pdo->prepare('UPDATE users SET status = :status, updated_at = NOW() WHERE id = :id');
