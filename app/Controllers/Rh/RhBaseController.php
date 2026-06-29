@@ -26,11 +26,20 @@ abstract class RhBaseController extends BaseController
         array $data = [],
         array $layout = [],
     ): void {
-        $this->view($view, array_replace(
+        $data = array_replace(
+            \App\Support\ViewBag::defaults(),
             $this->rhLayoutData($pageTitle, $activeModule),
             $layout,
             $data,
-        ));
+        );
+        $viewData = \App\Support\ViewBag::from($data);
+        extract($data, EXTR_SKIP);
+
+        ob_start();
+        require BASE_PATH . '/views/' . $view . '.php';
+        $content = ob_get_clean();
+
+        require BASE_PATH . '/views/layouts/module.php';
     }
 
     /** @return array<string,mixed> */
