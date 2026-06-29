@@ -6,7 +6,4 @@ use App\View\Pages\Rh\PayrollWizardPage;
 
 /** @var PayrollWizardPage $page */
 
-ob_start();
 echo Payroll::wizardPage($page, Csrf::token());
-$content = ob_get_clean();
-require BASE_PATH . '/views/layouts/module.php';

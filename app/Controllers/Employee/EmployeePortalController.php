@@ -109,6 +109,46 @@ final class EmployeePortalController extends EmployeeBaseController
         $this->redirect('/espace-employe');
     }
 
+    public function changePassword(): void
+    {
+        $this->guard();
+        $user = Auth::user();
+        if (!$user) {
+            $this->redirect('/login');
+        }
+
+        $currentPassword = (string) ($_POST['current_password'] ?? '');
+        $newPassword = (string) ($_POST['new_password'] ?? '');
+        $confirmPassword = (string) ($_POST['confirm_password'] ?? '');
+
+        if ($newPassword !== $confirmPassword) {
+            Session::flash('error', 'Le nouveau mot de passe et sa confirmation ne correspondent pas.');
+            $this->back();
+        }
+
+        if (strlen($newPassword) < 6) {
+            Session::flash('error', 'Le nouveau mot de passe doit contenir au moins 6 caractères.');
+            $this->back();
+        }
+
+        // Verify current password
+        if (!password_verify($currentPassword, $user->passwordHash)) {
+            Session::flash('error', 'Le mot de passe actuel est incorrect.');
+            $this->back();
+        }
+
+        try {
+            $newHash = password_hash($newPassword, PASSWORD_DEFAULT);
+            $repo = new \App\Repositories\Admin\UserRepository(Database::getConnection());
+            $repo->updatePassword($user->id, $newHash);
+            Session::flash('success', 'Votre mot de passe a été modifié avec succès.');
+        } catch (\Exception $e) {
+            Session::flash('error', $e->getMessage());
+        }
+
+        $this->redirect('/espace-employe');
+    }
+
     private function guard(): void
     {
         AuthMiddleware::check();
