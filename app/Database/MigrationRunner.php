@@ -33,6 +33,7 @@ class MigrationRunner
         $this->createSystemTestTables();
         $this->createModuleMaintenanceTable();
         $this->linkUsersToRhEmployees();
+        $this->createColisageTables();
     }
 
 
@@ -1553,7 +1554,16 @@ class MigrationRunner
     private function seedCompanySites(): void
     {
         $stmt = $this->pdo->prepare("INSERT IGNORE INTO company_sites (name, code, country, city, is_active) VALUES (:name, :code, :country, :city, 1)");
-        foreach ([['Siege Abidjan','ABJ-HQ','Cote d Ivoire','Abidjan'], ['Agence San Pedro','SPY','Cote d Ivoire','San Pedro'], ['Bureau international','INTL','International', null]] as [$name,$code,$country,$city]) {
+        foreach ([
+            ['Siege Abidjan','ABJ-HQ','Cote d Ivoire','Abidjan'],
+            ['Agence San Pedro','SPY','Cote d Ivoire','San Pedro'],
+            ['Bureau international','INTL','International', null],
+            ['Agence France','FRA','France','Paris'],
+            ['Agence Sénégal','SEN','Sénégal','Dakar'],
+            ['Aéroport Port Bouët Fret','ABJ-FRET','Cote d Ivoire','Abidjan'],
+            ['Agence Abobo Dokui','ABO-DOK','Cote d Ivoire','Abidjan'],
+            ['Agence Adjamé Pharmacie Latin','ADJ-LAT','Cote d Ivoire','Abidjan']
+        ] as [$name,$code,$country,$city]) {
             $stmt->execute(['name'=>$name,'code'=>$code,'country'=>$country,'city'=>$city]);
         }
     }
@@ -1620,6 +1630,316 @@ class MigrationRunner
                  'Vérifiez le fournisseur, définissez clairement les incoterms, contrôlez les documents commerciaux et anticipez les formalités douanières avant l’embarquement.',
                  'Équipe LBP', 1, NOW())
         ");
+    }
+
+    private function createColisageTables(): void
+    {
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS lbp_clients (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                name VARCHAR(150) NOT NULL,
+                phone VARCHAR(60) NULL,
+                email VARCHAR(150) NULL,
+                address VARCHAR(255) NULL,
+                type ENUM('standard', 'corporate') NOT NULL DEFAULT 'standard',
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME NULL
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS lbp_livreurs (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                user_id INT NOT NULL,
+                modele_vehicule VARCHAR(120) NULL,
+                plaque_immatriculation VARCHAR(60) NULL,
+                statut ENUM('Disponible', 'En course') NOT NULL DEFAULT 'Disponible',
+                latitude DECIMAL(10,7) NULL,
+                longitude DECIMAL(10,7) NULL,
+                derniere_localisation DATETIME NULL,
+                UNIQUE KEY uniq_lbp_livreurs_user (user_id),
+                CONSTRAINT fk_lbp_livreurs_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS lbp_expeditions (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                reference VARCHAR(120) NOT NULL,
+                type_transport ENUM('AÉRIEN', 'MARITIME', 'TERRESTRE') NOT NULL,
+                agence_depart_id INT UNSIGNED NULL,
+                agence_arrivee_id INT UNSIGNED NULL,
+                date_depart_prevue DATE NULL,
+                date_arrivee_estimee DATE NULL,
+                livreur_id INT UNSIGNED NULL,
+                statut ENUM('BROUILLON', 'EN_PREPARATION', 'EN_TRANSIT', 'ARRIVE', 'CLOTURE') NOT NULL DEFAULT 'BROUILLON',
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME NULL,
+                UNIQUE KEY uniq_lbp_expeditions_ref (reference),
+                CONSTRAINT fk_lbp_expeditions_depart FOREIGN KEY (agence_depart_id) REFERENCES company_sites(id) ON DELETE SET NULL,
+                CONSTRAINT fk_lbp_expeditions_arrivee FOREIGN KEY (agence_arrivee_id) REFERENCES company_sites(id) ON DELETE SET NULL,
+                CONSTRAINT fk_lbp_expeditions_livreur FOREIGN KEY (livreur_id) REFERENCES lbp_livreurs(id) ON DELETE SET NULL
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS lbp_colis (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                numero_tracking VARCHAR(100) NOT NULL,
+                expediteur_id INT UNSIGNED NOT NULL,
+                destinataire_id INT UNSIGNED NOT NULL,
+                poids_total DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+                nombre_colis INT UNSIGNED NOT NULL DEFAULT 1,
+                valeur_declaree DECIMAL(15,2) NOT NULL DEFAULT 0.00,
+                montant_total DECIMAL(15,2) NOT NULL DEFAULT 0.00,
+                montant_total_eur DECIMAL(15,2) NULL,
+                devise VARCHAR(10) NOT NULL DEFAULT 'XOF',
+                agence_depart_id INT UNSIGNED NULL,
+                agence_arrivee_id INT UNSIGNED NULL,
+                statut ENUM('RÉCEPTIONNÉ', 'EN_PRÉPARATION', 'EN_TRANSIT', 'ARRIVÉ', 'LIVRÉ', 'RETIRÉ') NOT NULL DEFAULT 'RÉCEPTIONNÉ',
+                type_expediteur VARCHAR(80) NULL,
+                trajet VARCHAR(50) NULL,
+                trafic VARCHAR(80) NULL,
+                expedition_id INT UNSIGNED NULL,
+                recup_nom VARCHAR(180) NULL,
+                recup_cni VARCHAR(100) NULL,
+                recup_telephone VARCHAR(60) NULL,
+                recup_date_heure DATETIME NULL,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME NULL,
+                UNIQUE KEY uniq_lbp_colis_tracking (numero_tracking),
+                CONSTRAINT fk_lbp_colis_expediteur FOREIGN KEY (expediteur_id) REFERENCES lbp_clients(id) ON DELETE RESTRICT,
+                CONSTRAINT fk_lbp_colis_destinataire FOREIGN KEY (destinataire_id) REFERENCES lbp_clients(id) ON DELETE RESTRICT,
+                CONSTRAINT fk_lbp_colis_depart FOREIGN KEY (agence_depart_id) REFERENCES company_sites(id) ON DELETE SET NULL,
+                CONSTRAINT fk_lbp_colis_arrivee FOREIGN KEY (agence_arrivee_id) REFERENCES company_sites(id) ON DELETE SET NULL,
+                CONSTRAINT fk_lbp_colis_exped FOREIGN KEY (expedition_id) REFERENCES lbp_expeditions(id) ON DELETE SET NULL
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS lbp_marchandises (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                colis_id INT UNSIGNED NOT NULL,
+                description VARCHAR(255) NOT NULL,
+                emballage VARCHAR(120) NULL,
+                quantite INT UNSIGNED NOT NULL DEFAULT 1,
+                nbre_colis INT UNSIGNED NOT NULL DEFAULT 1,
+                qte_emballage INT UNSIGNED NOT NULL DEFAULT 1,
+                poids_unitaire DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+                prix_kg DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+                total_ligne DECIMAL(15,2) NOT NULL DEFAULT 0.00,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                CONSTRAINT fk_lbp_marchandises_colis FOREIGN KEY (colis_id) REFERENCES lbp_colis(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS lbp_tracking_gps (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                colis_id INT UNSIGNED NULL,
+                expedition_id INT UNSIGNED NULL,
+                etape VARCHAR(255) NOT NULL,
+                latitude DECIMAL(10,7) NULL,
+                longitude DECIMAL(10,7) NULL,
+                date_etape DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                CONSTRAINT fk_lbp_tracking_colis FOREIGN KEY (colis_id) REFERENCES lbp_colis(id) ON DELETE CASCADE,
+                CONSTRAINT fk_lbp_tracking_exped FOREIGN KEY (expedition_id) REFERENCES lbp_expeditions(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS lbp_inventaires (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                agence_id INT UNSIGNED NOT NULL,
+                date_inventaire DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                statut ENUM('BROUILLON', 'CLOTURE') NOT NULL DEFAULT 'BROUILLON',
+                commentaires TEXT NULL,
+                cree_par INT NULL,
+                CONSTRAINT fk_lbp_inventaires_agence FOREIGN KEY (agence_id) REFERENCES company_sites(id) ON DELETE RESTRICT,
+                CONSTRAINT fk_lbp_inventaires_creator FOREIGN KEY (cree_par) REFERENCES users(id) ON DELETE SET NULL
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS lbp_inventaire_lignes (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                inventaire_id INT UNSIGNED NOT NULL,
+                colis_id INT UNSIGNED NOT NULL,
+                etat ENUM('PRÉSENT', 'MANQUANT', 'ENDOMMAGÉ') NOT NULL DEFAULT 'PRÉSENT',
+                commentaires TEXT NULL,
+                CONSTRAINT fk_lbp_inv_lines_inv FOREIGN KEY (inventaire_id) REFERENCES lbp_inventaires(id) ON DELETE CASCADE,
+                CONSTRAINT fk_lbp_inv_lines_colis FOREIGN KEY (colis_id) REFERENCES lbp_colis(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS lbp_produits (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                nom VARCHAR(180) NOT NULL,
+                categorie VARCHAR(100) NULL,
+                nature VARCHAR(50) NULL,
+                prix_unitaire DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+                prix_forfaitaire DECIMAL(12,2) NULL,
+                poids_min DECIMAL(10,2) NULL,
+                poids_max DECIMAL(10,2) NULL,
+                description VARCHAR(255) NULL,
+                actif TINYINT(1) NOT NULL DEFAULT 1,
+                unite VARCHAR(20) NOT NULL DEFAULT 'kg',
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME NULL,
+                UNIQUE KEY uniq_lbp_produits_nom (nom)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS lbp_credits_interagence (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                agence_creanciere_id INT UNSIGNED NOT NULL,
+                agence_debitrice_id INT UNSIGNED NOT NULL,
+                colis_id INT UNSIGNED NULL,
+                montant DECIMAL(15,2) NOT NULL DEFAULT 0.00,
+                devise VARCHAR(10) NOT NULL DEFAULT 'XOF',
+                statut ENUM('NON_REGLE', 'REGLE') NOT NULL DEFAULT 'NON_REGLE',
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME NULL,
+                CONSTRAINT fk_credits_creanciere FOREIGN KEY (agence_creanciere_id) REFERENCES company_sites(id) ON DELETE RESTRICT,
+                CONSTRAINT fk_credits_debitrice FOREIGN KEY (agence_debitrice_id) REFERENCES company_sites(id) ON DELETE RESTRICT,
+                CONSTRAINT fk_credits_colis FOREIGN KEY (colis_id) REFERENCES lbp_colis(id) ON DELETE SET NULL
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS lbp_demandes_fournitures (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                agence_id INT UNSIGNED NOT NULL,
+                user_id INT NOT NULL,
+                description TEXT NOT NULL,
+                statut ENUM('SOUMIS', 'VALIDEE', 'REFUSEE', 'LIVREE') NOT NULL DEFAULT 'SOUMIS',
+                motif_refus TEXT NULL,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME NULL,
+                CONSTRAINT fk_fournitures_agence FOREIGN KEY (agence_id) REFERENCES company_sites(id) ON DELETE RESTRICT,
+                CONSTRAINT fk_fournitures_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+
+        $this->seedColisageProducts();
+    }
+
+    private function seedColisageProducts(): void
+    {
+        $products = [
+            [297,"DENREES ALIMENTAIRES","DENREE","PRIX_UNITAIRE","900.00","3500.00","0.00","4.00","A PARTIR DE 5 KG",1,"kg"],
+            [298,"ATTIEKE","DENREE","PRIX_UNITAIRE","900.00","3500.00","0.00","4.00","A PARTIR DE 5 KG",1,"kg"],
+            [299,"PLACALI","DENREE","PRIX_UNITAIRE","900.00","3500.00","0.00","4.00","A PARTIR DE 5 KG",1,"kg"],
+            [300,"GARI","DENREE","PRIX_UNITAIRE","900.00","3500.00","0.00","4.00","A PARTIR DE 5 KG",1,"kg"],
+            [301,"CHAT NOIR","DENREE","PRIX_UNITAIRE","900.00","3500.00","0.00","4.00","A PARTIR DE 5 KG",1,"kg"],
+            [302,"POUDRE DE CACAO","DENREE","PRIX_UNITAIRE","900.00","3500.00","0.00","4.00","A PARTIR DE 5 KG",1,"kg"],
+            [303,"GOMBO","DENREE","PRIX_UNITAIRE","900.00","3500.00","0.00","4.00","A PARTIR DE 5 KG",1,"kg"],
+            [304,"GNANGNAN","DENREE","PRIX_UNITAIRE","900.00","3500.00","0.00","4.00","A PARTIR DE 5 KG",1,"kg"],
+            [305,"FEUILLE DE PATATE","DENREE","PRIX_UNITAIRE","900.00","3500.00","0.00","4.00","A PARTIR DE 5 KG",1,"kg"],
+            [306,"SOUMARA","DENREE","PRIX_UNITAIRE","900.00","3500.00","0.00","4.00","A PARTIR DE 5 KG",1,"kg"],
+            [307,"PATE D'ARACHIDE","DENREE","PRIX_UNITAIRE","900.00","3500.00","0.00","4.00","A PARTIR DE 5 KG",1,"kg"],
+            [308,"DORKOUNOU","DENREE","PRIX_UNITAIRE","900.00","3500.00","0.00","4.00","A PARTIR DE 5 KG",1,"kg"],
+            [309,"AKASSA","DENREE","PRIX_UNITAIRE","900.00","3500.00","0.00","4.00","A PARTIR DE 5 KG",1,"kg"],
+            [310,"CHIPS","DENREE","PRIX_UNITAIRE","900.00","3500.00","0.00","4.00","A PARTIR DE 5 KG",1,"kg"],
+            [311,"SHIPS","DENREE","PRIX_UNITAIRE","900.00","3500.00","0.00","4.00","A PARTIR DE 5 KG",1,"kg"],
+            [312,"BISSAP","DENREE","PRIX_UNITAIRE","900.00","3500.00","0.00","4.00","A PARTIR DE 5 KG",1,"kg"],
+            [313,"TAMARIN","DENREE","PRIX_UNITAIRE","900.00","3500.00","0.00","4.00","A PARTIR DE 5 KG",1,"kg"],
+            [314,"PATE DE GINGEMBRE","DENREE","PRIX_UNITAIRE","900.00","3500.00","0.00","4.00","A PARTIR DE 5 KG",1,"kg"],
+            [315,"POUDRE DE MIL","DENREE","PRIX_UNITAIRE","900.00","3500.00","0.00","4.00","A PARTIR DE 5 KG",1,"kg"],
+            [316,"POUDRE DE MAIS","DENREE","PRIX_UNITAIRE","900.00","3500.00","0.00","4.00","A PARTIR DE 5 KG",1,"kg"],
+            [317,"POUDRE DE PIMENT","DENREE","PRIX_UNITAIRE","900.00","3500.00","0.00","4.00","A PARTIR DE 5 KG",1,"kg"],
+            [318,"POUDRE DE GINGEMBRE","DENREE","PRIX_UNITAIRE","900.00","3500.00","0.00","4.00","A PARTIR DE 5 KG",1,"kg"],
+            [319,"GINGEMBRE SECHE","DENREE","PRIX_UNITAIRE","900.00","3500.00","0.00","4.00","A PARTIR DE 5 KG",1,"kg"],
+            [320,"POUDRE DE GOMBO","DENREE","PRIX_UNITAIRE","900.00","3500.00","0.00","4.00","A PARTIR DE 5 KG",1,"kg"],
+            [321,"MIL","DENREE","PRIX_UNITAIRE","900.00","3500.00","0.00","4.00","A PARTIR DE 5 KG",1,"kg"],
+            [322,"HARICOT","DENREE","PRIX_UNITAIRE","900.00","3500.00","0.00","4.00","A PARTIR DE 5 KG",1,"kg"],
+            [323,"TCHONGON","DENREE","PRIX_UNITAIRE","900.00","3500.00","0.00","4.00","A PARTIR DE 5 KG",1,"kg"],
+            [324,"RIZ","DENREE","PRIX_UNITAIRE","900.00","3500.00","0.00","4.00","A PARTIR DE 5 KG",1,"kg"],
+            [325,"ANANAS SECHE","DENREE","PRIX_UNITAIRE","900.00","3500.00","0.00","4.00","A PARTIR DE 5 KG",1,"kg"],
+            [326,"MANGUE SECHE","DENREE","PRIX_UNITAIRE","900.00","3500.00","0.00","4.00","A PARTIR DE 5 KG",1,"kg"],
+            [327,"COUSCOUS","DENREE","PRIX_UNITAIRE","900.00","3500.00","0.00","4.00","A PARTIR DE 5 KG",1,"kg"],
+            [328,"AROME","DENREE","PRIX_UNITAIRE","900.00","3500.00","0.00","4.00","A PARTIR DE 5 KG",1,"kg"],
+            [329,"GRAINE PILE","DENREE","PRIX_UNITAIRE","900.00","3500.00","0.00","4.00","A PARTIR DE 5 KG",1,"kg"],
+            [330,"EPICE","DENREE","PRIX_UNITAIRE","900.00","3500.00","0.00","4.00","A PARTIR DE 5 KG",1,"kg"],
+            [331,"MAIS","DENREE","PRIX_UNITAIRE","900.00","3500.00","0.00","4.00","A PARTIR DE 5 KG",1,"kg"],
+            [332,"GNONMI","DENREE","PRIX_UNITAIRE","900.00","3500.00","0.00","4.00","A PARTIR DE 5 KG",1,"kg"],
+            [333,"BAOBAB","DENREE","PRIX_UNITAIRE","900.00","3500.00","0.00","4.00","A PARTIR DE 5 KG",1,"kg"],
+            [334,"BONBON","DENREE","PRIX_UNITAIRE","900.00","3500.00","0.00","4.00","A PARTIR DE 5 KG",1,"kg"],
+            [335,"CACAHOUETTE","DENREE","PRIX_UNITAIRE","900.00","3500.00","0.00","4.00","A PARTIR DE 5 KG",1,"kg"],
+            [336,"CROQUETTE","DENREE","PRIX_UNITAIRE","900.00","3500.00","0.00","4.00","A PARTIR DE 5 KG",1,"kg"],
+            [337,"PETIT COLAS","HUILE_ET_KARITE","PRIX_UNITAIRE","1100.00","4500.00","0.00","4.00","A PARTIR DE 5 KG",1,"kg"],
+            [338,"HUILE DE COCO","HUILE_ET_KARITE","PRIX_UNITAIRE","1100.00","4500.00","0.00","4.00","A PARTIR DE 5 KG",1,"kg"],
+            [339,"BEURRE DE KARITE","HUILE_ET_KARITE","PRIX_UNITAIRE","1100.00","4500.00","0.00","4.00","A PARTIR DE 5 KG",1,"kg"],
+            [340,"KINKELIBA","HUILE_ET_KARITE","PRIX_UNITAIRE","1100.00","4500.00","0.00","4.00","A PARTIR DE 5 KG",1,"kg"],
+            [341,"DJEKA","HUILE_ET_KARITE","PRIX_UNITAIRE","1100.00","4500.00","0.00","4.00","A PARTIR DE 5 KG",1,"kg"],
+            [342,"INFUSION","HUILE_ET_KARITE","PRIX_UNITAIRE","1100.00","4500.00","0.00","4.00","A PARTIR DE 5 KG",1,"kg"],
+            [343,"VETEMENTS","DIVERS","PRIX_UNITAIRE","1850.00","5000.00","0.00","2.00","A PARTIR DE 2 KG",1,"kg"],
+            [344,"CHAUSSURES","DIVERS","PRIX_UNITAIRE","1850.00","5000.00","0.00","2.00","A PARTIR DE 2 KG",1,"kg"],
+            [345,"DRAPS","DIVERS","PRIX_UNITAIRE","1850.00","5000.00","0.00","2.00","A PARTIR DE 2 KG",1,"kg"],
+            [346,"OUVRAGE EN PLASTIQUE","DIVERS","PRIX_UNITAIRE","1850.00","5000.00","0.00","2.00","A PARTIR DE 2 KG",1,"kg"],
+            [347,"USTENSILES DE CUISINE","DIVERS","PRIX_UNITAIRE","1850.00","5000.00","0.00","2.00","A PARTIR DE 2 KG",1,"kg"],
+            [348,"VALISE","DIVERS","PRIX_UNITAIRE","1850.00","5000.00","0.00","2.00","A PARTIR DE 2 KG",1,"kg"],
+            [349,"ENCENS","DIVERS","PRIX_UNITAIRE","1850.00","5000.00","0.00","2.00","A PARTIR DE 2 KG",1,"kg"],
+            [350,"SAVOIR NOIR","DIVERS","PRIX_UNITAIRE","1850.00","5000.00","0.00","2.00","A PARTIR DE 2 KG",1,"kg"],
+            [351,"SAC A MAIN","DIVERS","PRIX_UNITAIRE","1850.00","5000.00","0.00","2.00","A PARTIR DE 2 KG",1,"kg"],
+            [352,"L'EAU BENITE","DIVERS","PRIX_UNITAIRE","1850.00","5000.00","0.00","2.00","A PARTIR DE 2 KG",1,"kg"],
+            [353,"ECORCE","DIVERS","PRIX_UNITAIRE","1850.00","5000.00","0.00","2.00","A PARTIR DE 2 KG",1,"kg"],
+            [354,"4 COTES","DIVERS","PRIX_UNITAIRE","1850.00","5000.00","0.00","2.00","A PARTIR DE 2 KG",1,"kg"],
+            [355,"CAOLIN","DIVERS","PRIX_UNITAIRE","1850.00","5000.00","0.00","2.00","A PARTIR DE 2 KG",1,"kg"],
+            [356,"NEP NEP","DIVERS","PRIX_UNITAIRE","1850.00","5000.00","0.00","2.00","A PARTIR DE 2 KG",1,"kg"],
+            [357,"ATTOTE","DIVERS","PRIX_UNITAIRE","2100.00","5000.00","0.00","2.00","A PARTIR DE 2 KG",1,"kg"],
+            [358,"HUILE ROUGE","DIVERS","PRIX_UNITAIRE","1600.00","3500.00","0.00","2.00","A PARTIR DE 2 KG",1,"kg"],
+            [359,"BOUILLONS","DIVERS","PRIX_UNITAIRE","1600.00","3500.00","0.00","2.00","A PARTIR DE 2 KG",1,"kg"],
+            [360,"CUBE MAGGI","DIVERS","PRIX_UNITAIRE","1600.00","3500.00","0.00","2.00","A PARTIR DE 2 KG",1,"kg"],
+            [361,"VETEMENTS DE MARQUE","DIVERS","PRIX_UNITAIRE","3500.00","5000.00","0.00","2.00","A PARTIR DE 2 KG",1,"kg"],
+            [362,"CHAUSSURES DE MARQUE","DIVERS","PRIX_UNITAIRE","3500.00","5000.00","0.00","2.00","A PARTIR DE 2 KG",1,"kg"],
+            [363,"SACS DE MARQUE","DIVERS","PRIX_UNITAIRE","3500.00","5000.00","0.00","2.00","A PARTIR DE 2 KG",1,"kg"],
+            [364,"POISSON FUME","COLIS_RAPIDE_EXPORT","PRIX_UNITAIRE","5500.00","7500.00","0.00","1.00","A PARTIR DE 2 KG",1,"kg"],
+            [365,"CREVETTE FUMEE","COLIS_RAPIDE_EXPORT","PRIX_UNITAIRE","5500.00","7500.00","0.00","1.00","A PARTIR DE 2 KG",1,"kg"],
+            [366,"ESCARGOT","COLIS_RAPIDE_EXPORT","PRIX_UNITAIRE","5500.00","7500.00","0.00","1.00","A PARTIR DE 2 KG",1,"kg"],
+            [367,"POULET FUME","COLIS_RAPIDE_EXPORT","PRIX_UNITAIRE","5500.00","7500.00","0.00","1.00","A PARTIR DE 2 KG",1,"kg"],
+            [368,"POISSON EN POUDRE","COLIS_RAPIDE_EXPORT","PRIX_UNITAIRE","5500.00","7500.00","0.00","1.00","A PARTIR DE 2 KG",1,"kg"],
+            [369,"CREVETTE EN POUDRE","COLIS_RAPIDE_EXPORT","PRIX_UNITAIRE","5500.00","7500.00","0.00","1.00","A PARTIR DE 2 KG",1,"kg"],
+            [370,"KPLO FUME","COLIS_RAPIDE_EXPORT","PRIX_UNITAIRE","5500.00","7500.00","0.00","1.00","A PARTIR DE 2 KG",1,"kg"],
+            [371,"VIANDE FUME","COLIS_RAPIDE_EXPORT","PRIX_UNITAIRE","5500.00","7500.00","0.00","1.00","A PARTIR DE 2 KG",1,"kg"],
+            [372,"COSMETIQUE","COLIS_RAPIDE_EXPORT","PRIX_UNITAIRE","5850.00","8000.00","0.00","1.00","A PARTIR DE 2 KG",1,"kg"],
+            [373,"DENREES ET DIVERS IMPORT","COLIS_RAPIDE_IMPORT","PRIX_UNITAIRE","7216.00",null,null,null,"11 €/kg — Paris → Abidjan",1,"kg"],
+            [374,"TELEPHONE ET APPAREIL ELECTRONIQUE","COLIS_RAPIDE_IMPORT","PRIX_UNITAIRE","11807.00",null,null,null,"À partir de 18 €/kg — Paris → Abidjan",1,"kg"],
+        ];
+
+        $stmt = $this->pdo->prepare("
+            INSERT INTO lbp_produits (id, nom, categorie, nature, prix_unitaire, prix_forfaitaire, poids_min, poids_max, description, actif, unite)
+            VALUES (:id, :nom, :categorie, :nature, :prix_unitaire, :prix_forfaitaire, :poids_min, :poids_max, :description, :actif, :unite)
+            ON DUPLICATE KEY UPDATE
+                nom = VALUES(nom),
+                categorie = VALUES(categorie),
+                nature = VALUES(nature),
+                prix_unitaire = VALUES(prix_unitaire),
+                prix_forfaitaire = VALUES(prix_forfaitaire),
+                poids_min = VALUES(poids_min),
+                poids_max = VALUES(poids_max),
+                description = VALUES(description),
+                actif = VALUES(actif),
+                unite = VALUES(unite)
+        ");
+
+        foreach ($products as $p) {
+            $stmt->execute([
+                'id' => $p[0],
+                'nom' => $p[1],
+                'categorie' => $p[2],
+                'nature' => $p[3],
+                'prix_unitaire' => $p[4],
+                'prix_forfaitaire' => $p[5],
+                'poids_min' => $p[6],
+                'poids_max' => $p[7],
+                'description' => $p[8],
+                'actif' => $p[9],
+                'unite' => $p[10],
+            ]);
+        }
     }
 
     /**

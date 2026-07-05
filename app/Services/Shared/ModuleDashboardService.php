@@ -313,12 +313,27 @@ final class ModuleDashboardService
     private function navigation(array $module): array
     {
         $base = '/' . $module['slug'];
-        return [
+        $nav = [
             ['key' => 'dashboard', 'label' => 'Tableau de bord', 'icon' => 'DB', 'url' => $base . '/dashboard', 'available' => true],
             ['key' => 'operations', 'label' => 'Opérations', 'icon' => 'OP', 'url' => $base . '/dashboard', 'available' => true],
+        ];
+
+        if ($module['slug'] === 'logistique') {
+            $nav[] = [
+                'key' => 'exploitation_fournitures',
+                'label' => 'Fournitures bureau',
+                'icon' => 'FT',
+                'url' => 'colisage/exploitation/fournitures',
+                'available' => \App\Helpers\Auth::can(\App\Security\PermissionEntityRegistry::EXPLOITATION_FOURNITURES)
+            ];
+        }
+
+        $nav = array_merge($nav, [
             ['key' => 'documents', 'label' => 'Documents', 'icon' => 'DOC', 'url' => $base . '/dashboard', 'available' => true],
             ['key' => 'reporting', 'label' => 'Reporting', 'icon' => 'RP', 'url' => $base . '/dashboard', 'available' => true],
             ['key' => 'settings', 'label' => 'Paramétrage', 'icon' => 'PR', 'url' => $base . '/dashboard', 'available' => true],
-        ];
+        ]);
+
+        return $nav;
     }
 }

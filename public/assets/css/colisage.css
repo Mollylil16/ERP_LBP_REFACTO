@@ -1,0 +1,414 @@
+/* ----------------------------------------------------
+   Colisage & Logistique - Premium Design Theme (LBP-CI)
+   ---------------------------------------------------- */
+
+:root {
+  --lbp-blue-deep: #0f172a;
+  --lbp-blue: #1e3a8a;
+  --lbp-blue-light: #3b82f6;
+  --lbp-blue-subtle: #eff6ff;
+  --lbp-gold: #d97706;
+  --lbp-gold-light: #fef3c7;
+  --lbp-gold-dark: #b45309;
+  --lbp-border: #e2e8f0;
+  --lbp-bg-gray: #f8fafc;
+  --lbp-text: #334155;
+  --lbp-text-muted: #64748b;
+  --lbp-success: #10b981;
+  --lbp-success-bg: #ecfdf5;
+}
+
+/* Base layouts improvements */
+.finea-shell {
+  background-color: var(--lbp-bg-gray);
+  min-height: 100vh;
+  font-family: 'Inter', sans-serif;
+  color: var(--lbp-text);
+  padding: 1.5rem;
+}
+
+/* Hero section styling */
+.rh-hero-white {
+  background: linear-gradient(135deg, var(--lbp-blue-deep) 0%, #1e293b 100%) !important;
+  color: #ffffff !important;
+  border-radius: 16px;
+  padding: 2.5rem !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
+  margin-bottom: 2rem !important;
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+.rh-hero-white::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -20%;
+  width: 300px;
+  height: 300px;
+  background: radial-gradient(circle, rgba(59, 130, 246, 0.15) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.rh-hero-white .finea-page-header__title {
+  color: #ffffff !important;
+  font-weight: 800 !important;
+  font-size: 2.2rem !important;
+  letter-spacing: -0.025em;
+  margin-bottom: 0.5rem;
+}
+
+.rh-hero-white .finea-page-header__description {
+  color: #94a3b8 !important;
+  font-size: 1.05rem !important;
+  max-width: 600px;
+}
+
+/* Step cards */
+.rh-form-step-card {
+  background: #ffffff;
+  border: 1px solid var(--lbp-border);
+  border-radius: 16px;
+  padding: 2rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+  position: relative;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.rh-form-step-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
+}
+
+.rh-step-badge {
+  position: absolute;
+  top: -12px;
+  left: 24px;
+  background: linear-gradient(135deg, var(--lbp-gold) 0%, var(--lbp-gold-dark) 100%);
+  color: #ffffff;
+  font-size: 0.75rem;
+  font-weight: 800;
+  padding: 0.35rem 0.85rem;
+  border-radius: 20px;
+  box-shadow: 0 4px 10px rgba(217, 119, 6, 0.3);
+  letter-spacing: 0.05em;
+}
+
+.rh-step-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--lbp-blue-deep);
+  margin-top: 0.5rem;
+  margin-bottom: 1.5rem;
+  border-bottom: 2px solid var(--lbp-blue-subtle);
+  padding-bottom: 0.75rem;
+}
+
+/* Premium custom table design matching the invoice image */
+.finea-table-wrapper {
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--lbp-border);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02);
+  background: #ffffff;
+}
+
+.finea-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.finea-table th {
+  background-color: var(--lbp-blue-deep) !important;
+  color: #ffffff !important;
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  padding: 1rem 1.25rem !important;
+  border-bottom: none !important;
+}
+
+.finea-table td {
+  padding: 1rem 1.25rem !important;
+  border-bottom: 1px solid var(--lbp-border);
+  font-size: 0.9rem;
+  color: var(--lbp-text);
+  vertical-align: middle;
+}
+
+.finea-table tr:hover td {
+  background-color: var(--lbp-blue-subtle) !important;
+}
+
+/* Inputs styled premium */
+.finea-input, input[type="text"], input[type="number"], select {
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 8px !important;
+  padding: 0.6rem 0.9rem !important;
+  font-size: 0.9rem !important;
+  color: var(--lbp-text) !important;
+  background-color: #ffffff !important;
+  transition: all 0.2s ease-in-out !important;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.finea-input:focus, input[type="text"]:focus, input[type="number"]:focus, select:focus {
+  border-color: var(--lbp-blue-light) !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15) !important;
+  outline: none !important;
+}
+
+/* Custom premium status badge styling */
+.finea-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.85rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-width: 1px;
+  border-style: solid;
+}
+
+.finea-badge--success {
+  background-color: var(--lbp-success-bg);
+  color: var(--lbp-success);
+  border-color: #a7f3d0;
+}
+
+.finea-badge--info {
+  background-color: var(--lbp-blue-subtle);
+  color: var(--lbp-blue-light);
+  border-color: #bfdbfe;
+}
+
+.finea-badge--warning {
+  background-color: var(--lbp-gold-light);
+  color: var(--lbp-gold);
+  border-color: #fde68a;
+}
+
+.finea-badge--primary {
+  background-color: rgba(59, 130, 246, 0.1);
+  color: var(--lbp-blue-light);
+  border-color: rgba(59, 130, 246, 0.25);
+}
+
+.finea-badge--accent {
+  background-color: #faf5ff;
+  color: #8b5cf6;
+  border-color: #e9d5ff;
+}
+
+/* General clean details layout */
+.finea-section-card {
+  background: #ffffff;
+  border: 1px solid var(--lbp-border);
+  border-radius: 16px;
+  padding: 2rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+}
+
+.finea-section-heading {
+  border-bottom: 2px solid var(--lbp-border);
+  padding-bottom: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.finea-section-title {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--lbp-blue-deep);
+  margin: 0;
+}
+
+/* Buttons style override to look gorgeous */
+.finea-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  border-radius: 8px;
+  padding: 0.55rem 1.25rem;
+  font-size: 0.875rem;
+  transition: all 0.2s;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+
+.finea-button--primary {
+  background-color: var(--lbp-blue) !important;
+  color: #ffffff !important;
+}
+
+.finea-button--primary:hover {
+  background-color: var(--lbp-blue-deep) !important;
+}
+
+.finea-button--accent {
+  background: linear-gradient(135deg, var(--lbp-gold) 0%, var(--lbp-gold-dark) 100%) !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 10px rgba(217, 119, 6, 0.2) !important;
+}
+
+.finea-button--accent:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 12px rgba(217, 119, 6, 0.3) !important;
+}
+
+.finea-button--secondary {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #475569 !important;
+}
+
+.finea-button--secondary:hover {
+  background-color: #f1f5f9 !important;
+}
+
+/* Facture print Specific aesthetics */
+.facture-signature-box {
+  border: 1px dashed #cbd5e1;
+  border-radius: 12px;
+  padding: 1.5rem;
+  min-height: 120px;
+  background-color: var(--lbp-bg-gray);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.facture-header-logo-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 2px solid var(--lbp-blue-deep);
+  padding-bottom: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+/* =====================================================
+   RH Filter Components (replicated from rh.css)
+   Needed because colisage module does not load rh.css
+   ===================================================== */
+.rh-personnel-filters {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  border: 1px solid var(--lbp-border);
+  margin-bottom: 1.5rem;
+}
+
+.rh-personnel-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  align-items: flex-end;
+}
+
+.rh-personnel-filter-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  align-items: center;
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid #f1f5f9;
+}
+
+.rh-filter-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 9px 16px;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-decoration: none !important;
+  transition: all 0.2s ease-in-out;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+
+.rh-btn-icon {
+  width: 14px;
+  height: 14px;
+}
+
+.rh-filter-btn--primary {
+  background: var(--lbp-blue-light);
+  color: #ffffff !important;
+  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.15);
+}
+
+.rh-filter-btn--primary:hover {
+  background: var(--lbp-blue);
+}
+
+.rh-filter-btn--reset {
+  background: #ffffff;
+  color: var(--lbp-text-muted) !important;
+  border-color: #cbd5e1;
+}
+
+.rh-filter-btn--reset:hover {
+  background: #f8fafc;
+  border-color: #94a3b8;
+}
+
+/* Step cards for creation forms */
+.rh-form-step-card {
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 2rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  border: 1px solid var(--lbp-border);
+  position: relative;
+}
+
+.rh-step-badge {
+  display: inline-block;
+  background: linear-gradient(135deg, var(--lbp-gold) 0%, var(--lbp-gold-dark) 100%);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  padding: 4px 12px;
+  border-radius: 20px;
+  margin-bottom: 0.8rem;
+}
+
+.rh-step-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--lbp-blue-deep);
+  margin-bottom: 1.2rem;
+  padding-bottom: 0.8rem;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.rh-form-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+
+@media (max-width: 768px) {
+  .rh-form-grid-3 {
+    grid-template-columns: 1fr;
+  }
+  .rh-personnel-filter-grid {
+    grid-template-columns: 1fr;
+  }
+}

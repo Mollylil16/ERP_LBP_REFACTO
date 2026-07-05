@@ -14,6 +14,11 @@ final class PermissionEntityRegistry
     public const RH_FUNCTIONS = 'rh_functions';
     public const RH_SERVICES = 'rh_services';
     public const RH_STATUSES = 'rh_statuses';
+    
+    public const EXPLOITATION_SYNTHESE = 'exploitation_synthese';
+    public const EXPLOITATION_TRACKING = 'exploitation_tracking';
+    public const EXPLOITATION_CREDITS = 'exploitation_credits';
+    public const EXPLOITATION_FOURNITURES = 'exploitation_fournitures';
 
     public static function all(): array
     {
@@ -77,6 +82,30 @@ final class PermissionEntityRegistry
                 'name' => 'Statuts contractuels',
                 'description' => 'Référentiel des statuts du personnel.',
                 'sort_order' => 160,
+            ],
+            self::EXPLOITATION_SYNTHESE => [
+                'module' => 'Colisage',
+                'name' => 'Synthèse d\'exploitation',
+                'description' => 'Accès aux indicateurs et recettes consolidés.',
+                'sort_order' => 200,
+            ],
+            self::EXPLOITATION_TRACKING => [
+                'module' => 'Colisage',
+                'name' => 'Suivi logistique GPS',
+                'description' => 'Mise à jour des coordonnées des expéditions.',
+                'sort_order' => 210,
+            ],
+            self::EXPLOITATION_CREDITS => [
+                'module' => 'Colisage',
+                'name' => 'Compensation inter-agences',
+                'description' => 'Gestion et règlement des créances réciproques.',
+                'sort_order' => 220,
+            ],
+            self::EXPLOITATION_FOURNITURES => [
+                'module' => 'Colisage',
+                'name' => 'Fournitures de bureau',
+                'description' => 'Validation et circuit des fournitures de bureau.',
+                'sort_order' => 230,
             ],
         ];
     }
