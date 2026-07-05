@@ -34,6 +34,7 @@ class MigrationRunner
         $this->createModuleMaintenanceTable();
         $this->linkUsersToRhEmployees();
         $this->createColisageTables();
+        $this->createLbpUnifiedFlowTables();
     }
 
 
@@ -1982,6 +1983,28 @@ class MigrationRunner
                 REFERENCES {$referenceTable}({$referenceColumn})
                 ON DELETE {$onDelete}
             ");
+        }
+    }
+
+    /**
+     * Charge et exécute la migration SQL pour le flux unifié LBP.
+     */
+    private function createLbpUnifiedFlowTables(): void
+    {
+        if ($this->schema->tableExists('lbp_factures')) {
+            return;
+        }
+
+        $sqlFile = dirname(__DIR__, 2) . '/doc/backend/migrations/2026_07_05_lbp_unified_flow.sql';
+        if (file_exists($sqlFile)) {
+            $sql = file_get_contents($sqlFile);
+            if ($sql !== false) {
+                // Retirer les directives DELIMITER qui ne sont pas supportées par PDO
+                $sql = preg_replace('/DELIMITER\s+\S+/i', '', $sql);
+                // Remplacer les délimiteurs // par ;
+                $sql = str_replace('//', ';', $sql);
+                $this->pdo->exec($sql);
+            }
         }
     }
 }
