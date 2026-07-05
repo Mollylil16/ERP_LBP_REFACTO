@@ -129,7 +129,7 @@ final class FinanceController extends BaseController
             $stmt = $this->db->query("
                 SELECT c.*, cl.name as expediteur_name,
                        (SELECT SUM(m.poids_unitaire * m.quantite) FROM lbp_marchandises m WHERE m.colis_id = c.id) as poids_total,
-                       (SELECT SUM(m.prix_unitaire * m.quantite) FROM lbp_marchandises m WHERE m.colis_id = c.id) as montant_total
+                       (SELECT SUM(m.total_ligne) FROM lbp_marchandises m WHERE m.colis_id = c.id) as montant_total
                 FROM lbp_colis c
                 JOIN lbp_clients cl ON c.expediteur_id = cl.id
                 WHERE c.id NOT IN (SELECT colis_id FROM lbp_factures)
@@ -140,7 +140,7 @@ final class FinanceController extends BaseController
             $stmt = $this->db->prepare("
                 SELECT c.*, cl.name as expediteur_name,
                        (SELECT SUM(m.poids_unitaire * m.quantite) FROM lbp_marchandises m WHERE m.colis_id = c.id) as poids_total,
-                       (SELECT SUM(m.prix_unitaire * m.quantite) FROM lbp_marchandises m WHERE m.colis_id = c.id) as montant_total
+                       (SELECT SUM(m.total_ligne) FROM lbp_marchandises m WHERE m.colis_id = c.id) as montant_total
                 FROM lbp_colis c
                 JOIN lbp_clients cl ON c.expediteur_id = cl.id
                 WHERE c.agence_depart_id = :agence_id AND c.id NOT IN (SELECT colis_id FROM lbp_factures)
@@ -187,7 +187,7 @@ final class FinanceController extends BaseController
         }
 
         // Calculer le montant total à partir des marchandises
-        $stmt = $this->db->prepare("SELECT SUM(prix_unitaire * quantite) FROM lbp_marchandises WHERE colis_id = :colis_id");
+        $stmt = $this->db->prepare("SELECT SUM(total_ligne) FROM lbp_marchandises WHERE colis_id = :colis_id");
         $stmt->execute(['colis_id' => $colisId]);
         $totalXof = (float) $stmt->fetchColumn();
 
@@ -244,11 +244,11 @@ final class FinanceController extends BaseController
     /**
      * Détails d'une facture.
      */
-    public function factureShow(array $params): void
+    public function factureShow(string $id): void
     {
         RoleMiddleware::check(['caissiere', 'caissiere_principale', 'chef_agence', 'dg', 'comptable', 'superviseur_regional', 'superviseur_general']);
 
-        $id = (int) ($params['id'] ?? 0);
+        $id = (int) $id;
         $facture = $this->factureRepo->findById($id);
 
         if (!$facture) {
@@ -291,11 +291,11 @@ final class FinanceController extends BaseController
     /**
      * Enregistrer un encaissement physique.
      */
-    public function factureEncaisser(array $params): void
+    public function factureEncaisser(string $id): void
     {
         RoleMiddleware::check(['caissiere', 'caissiere_principale', 'chef_agence', 'dg']);
 
-        $id = (int) ($params['id'] ?? 0);
+        $id = (int) $id;
         $facture = $this->factureRepo->findById($id);
 
         if (!$facture) {
@@ -408,11 +408,11 @@ final class FinanceController extends BaseController
     /**
      * Envoyer un rappel de solde.
      */
-    public function factureRelancer(array $params): void
+    public function factureRelancer(string $id): void
     {
         RoleMiddleware::check(['caissiere', 'caissiere_principale', 'chef_agence', 'dg']);
 
-        $id = (int) ($params['id'] ?? 0);
+        $id = (int) $id;
         $facture = $this->factureRepo->findById($id);
 
         if (!$facture) {
@@ -541,11 +541,11 @@ final class FinanceController extends BaseController
     /**
      * Traiter une demande de dépense (Valider/Rejeter).
      */
-    public function depenseValider(array $params): void
+    public function depenseValider(string $id): void
     {
         RoleMiddleware::check(['caissiere_principale', 'dg']);
 
-        $id = (int) ($params['id'] ?? 0);
+        $id = (int) $id;
         $demande = $this->demandeRepo->findById($id);
 
         if (!$demande) {
@@ -743,11 +743,11 @@ final class FinanceController extends BaseController
     /**
      * Consolidation du point de caisse par la caissière principale (Verrouillage central).
      */
-    public function clotureConsolider(array $params): void
+    public function clotureConsolider(string $id): void
     {
         RoleMiddleware::check(['caissiere_principale', 'dg']);
 
-        $id = (int) ($params['id'] ?? 0);
+        $id = (int) $id;
         $report = $this->etatRepo->findById($id);
 
         if (!$report) {

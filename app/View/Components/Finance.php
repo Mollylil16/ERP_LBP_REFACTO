@@ -6,6 +6,7 @@ namespace App\View\Components;
 
 use App\Helpers\View;
 use App\Helpers\Auth;
+use App\Models\Finance\Facture;
 use App\View\Components\Ui;
 use App\View\Components\Form;
 

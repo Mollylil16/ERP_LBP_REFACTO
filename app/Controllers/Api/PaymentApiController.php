@@ -36,9 +36,9 @@ final class PaymentApiController extends BaseController
     /**
      * Affiche la page de paiement publique pour le client.
      */
-    public function pay(array $params): void
+    public function pay(string $id): void
     {
-        $id = (int) ($params['id'] ?? 0);
+        $id = (int) $id;
         $facture = $this->factureRepo->findById($id);
 
         if (!$facture) {
@@ -62,9 +62,9 @@ final class PaymentApiController extends BaseController
     /**
      * Génère et redirige vers un QR code de paiement.
      */
-    public function qrcode(array $params): void
+    public function qrcode(string $id): void
     {
-        $id = (int) ($params['id'] ?? 0);
+        $id = (int) $id;
         $facture = $this->factureRepo->findById($id);
 
         if (!$facture) {
