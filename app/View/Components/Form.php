@@ -317,4 +317,28 @@ final class Form
     {
         return 'field_' . preg_replace('/[^a-zA-Z0-9_\-]/', '_', $name);
     }
+
+    /** @param array<string,mixed> $attrs */
+    public static function rawInput(string $name, mixed $value = '', array $attrs = []): string
+    {
+        $type = (string) ($attrs['type'] ?? 'text');
+        unset($attrs['type']);
+        $inputAttrs = array_merge([
+            'class' => Html::classes(['finea-input', (string) ($attrs['class'] ?? '')]),
+            'type' => $type,
+            'name' => $name,
+            'value' => (string) $value,
+        ], $attrs);
+        return '<input' . Html::attrs($inputAttrs) . '>';
+    }
+
+    /** @param array<int,array{value:mixed,label:mixed}> $options @param array<string,mixed> $attrs */
+    public static function rawSelect(string $name, array $options, mixed $selected = null, array $attrs = []): string
+    {
+        $selectAttrs = array_merge([
+            'class' => Html::classes(['finea-select', (string) ($attrs['class'] ?? '')]),
+            'name' => $name,
+        ], $attrs);
+        return '<select' . Html::attrs($selectAttrs) . '>' . self::options($options, $selected) . '</select>';
+    }
 }

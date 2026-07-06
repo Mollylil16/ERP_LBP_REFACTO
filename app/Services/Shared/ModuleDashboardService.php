@@ -26,9 +26,9 @@ final class ModuleDashboardService
                     ['label' => 'Alertes', 'value' => '0', 'meta' => 'Anomalies financières à surveiller'],
                 ],
                 'actions' => [
-                    ['label' => 'Nouvelle dépense', 'hint' => 'Préparer une demande de décaissement', 'url' => '/finance/dashboard'],
-                    ['label' => 'Facturation', 'hint' => 'Suivre les factures et avoirs', 'url' => '/finance/dashboard'],
-                    ['label' => 'Trésorerie', 'hint' => 'Consulter les flux et prévisions', 'url' => '/finance/dashboard'],
+                    ['label' => 'Nouvelle dépense', 'hint' => 'Préparer une demande de décaissement', 'url' => '/finance/depenses'],
+                    ['label' => 'Facturation', 'hint' => 'Suivre les factures et règlements', 'url' => '/finance/factures'],
+                    ['label' => 'Trésorerie / Comptabilité', 'hint' => 'Consulter le grand livre', 'url' => '/finance/comptabilite'],
                 ],
             ],
             'colisage' => [
@@ -58,9 +58,9 @@ final class ModuleDashboardService
                     ['label' => 'Incidents', 'value' => '0', 'meta' => 'Événements terrain ouverts'],
                 ],
                 'actions' => [
-                    ['label' => 'Planifier un enlèvement', 'hint' => 'Organiser le transport terrain', 'url' => '/logistique/dashboard'],
-                    ['label' => 'Suivi livraison', 'hint' => 'Consulter les mouvements en cours', 'url' => '/logistique/dashboard'],
-                    ['label' => 'Transporteurs', 'hint' => 'Gérer les partenaires logistiques', 'url' => '/logistique/dashboard'],
+                    ['label' => 'Enregistrer un colis', 'hint' => 'Saisie fiche de colisage', 'url' => '/colisage/parcels/nouveau'],
+                    ['label' => 'Suivi de livraison', 'hint' => 'Consulter les colis actifs', 'url' => '/colisage/parcels'],
+                    ['label' => 'Suivi GPS', 'hint' => 'Mettre à jour les coordonnées logistiques', 'url' => '/colisage/exploitation/tracking'],
                 ],
             ],
             'employee' => [
@@ -170,9 +170,9 @@ final class ModuleDashboardService
                     ['label' => 'CA estimé', 'value' => '0', 'meta' => 'Indicateur à brancher'],
                 ],
                 'actions' => [
-                    ['label' => 'Nouvelle facture', 'hint' => 'Créer une facture ou proforma', 'url' => '/facturation/dashboard'],
-                    ['label' => 'Règlements', 'hint' => 'Suivre les paiements clients', 'url' => '/facturation/dashboard'],
-                    ['label' => 'Relances', 'hint' => 'Préparer les relances d’impayés', 'url' => '/facturation/dashboard'],
+                    ['label' => 'Nouvelle facture', 'hint' => 'Créer une facture', 'url' => '/finance/factures/nouveau'],
+                    ['label' => 'Factures & Règlements', 'hint' => 'Suivre les règlements clients', 'url' => '/finance/factures'],
+                    ['label' => 'Points de caisse', 'hint' => 'Faire mon point de caisse', 'url' => '/finance/clotures'],
                 ],
             ],
             'entrepots' => [
@@ -301,7 +301,7 @@ final class ModuleDashboardService
             ['title' => 'Controllers', 'text' => 'Le contrôleur ne fait que protéger la route, appeler le service et transmettre les données à la vue.'],
             ['title' => 'Services / Repositories', 'text' => 'La logique applicative et les futures requêtes SQL sont préparées pour évoluer sans régression.'],
         ];
-        $module['showWorkflow'] = true;
+        $module['showWorkflow'] = false;
 
         return $module;
     }
@@ -312,13 +312,46 @@ final class ModuleDashboardService
      */
     private function navigation(array $module): array
     {
+        if ($module['slug'] === 'finance') {
+            return [
+                ['key' => 'dashboard', 'label' => 'Tableau de bord', 'icon' => 'DB', 'url' => '/finance/dashboard', 'available' => true],
+                ['key' => 'factures', 'label' => 'Factures Clients', 'icon' => 'FAC', 'url' => '/finance/factures', 'available' => true],
+                ['key' => 'clotures', 'label' => 'Points de Caisse', 'icon' => 'CLT', 'url' => '/finance/clotures', 'available' => true],
+                ['key' => 'depenses', 'label' => 'Dépenses Prestataires', 'icon' => 'DEP', 'url' => '/finance/depenses', 'available' => true],
+                ['key' => 'comptabilite', 'label' => 'Comptabilité', 'icon' => 'CPT', 'url' => '/finance/comptabilite', 'available' => true],
+            ];
+        }
+
+        if ($module['slug'] === 'facturation') {
+            return [
+                ['key' => 'dashboard', 'label' => 'Tableau de bord', 'icon' => 'DB', 'url' => '/facturation/dashboard', 'available' => true],
+                ['key' => 'factures', 'label' => 'Factures Clients', 'icon' => 'FAC', 'url' => '/finance/factures', 'available' => true],
+                ['key' => 'clotures', 'label' => 'Points de Caisse', 'icon' => 'CLT', 'url' => '/finance/clotures', 'available' => true],
+            ];
+        }
+
+        if ($module['slug'] === 'logistique') {
+            return [
+                ['key' => 'dashboard', 'label' => 'Tableau de bord', 'icon' => 'DB', 'url' => '/logistique/dashboard', 'available' => true],
+                ['key' => 'parcels', 'label' => 'Gestion des Colis', 'icon' => 'CL', 'url' => '/colisage/parcels', 'available' => true],
+                ['key' => 'groupage', 'label' => 'Groupage & Expéditions', 'icon' => 'GP', 'url' => '/colisage/groupage', 'available' => true],
+                ['key' => 'tracking', 'label' => 'Suivi GPS', 'icon' => 'GPS', 'url' => '/colisage/exploitation/tracking', 'available' => true],
+                ['key' => 'exploitation_fournitures', 'label' => 'Fournitures bureau', 'icon' => 'FT', 'url' => '/colisage/exploitation/fournitures', 'available' => \App\Helpers\Auth::can(\App\Security\PermissionEntityRegistry::EXPLOITATION_FOURNITURES)],
+            ];
+        }
+
         $base = '/' . $module['slug'];
-        return [
+        $nav = [
             ['key' => 'dashboard', 'label' => 'Tableau de bord', 'icon' => 'DB', 'url' => $base . '/dashboard', 'available' => true],
             ['key' => 'operations', 'label' => 'Opérations', 'icon' => 'OP', 'url' => $base . '/dashboard', 'available' => true],
+        ];
+
+        $nav = array_merge($nav, [
             ['key' => 'documents', 'label' => 'Documents', 'icon' => 'DOC', 'url' => $base . '/dashboard', 'available' => true],
             ['key' => 'reporting', 'label' => 'Reporting', 'icon' => 'RP', 'url' => $base . '/dashboard', 'available' => true],
             ['key' => 'settings', 'label' => 'Paramétrage', 'icon' => 'PR', 'url' => $base . '/dashboard', 'available' => true],
-        ];
+        ]);
+
+        return $nav;
     }
 }

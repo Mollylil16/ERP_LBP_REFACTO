@@ -252,8 +252,16 @@ class UserRepository
      */
     private function mapToUser(array $row): User
     {
+        $userId = (int) $row['id'];
+        $roles = [];
+        try {
+            $stmt = $this->pdo->prepare("SELECT role FROM lbp_user_roles WHERE user_id = :user_id");
+            $stmt->execute(['user_id' => $userId]);
+            $roles = $stmt->fetchAll(PDO::FETCH_COLUMN) ?: [];
+        } catch (\Exception $e) {}
+
         return new User(
-            id: (int) $row['id'],
+            id: $userId,
             fullName: (string) $row['full_name'],
             email: (string) $row['email'],
             phone: $row['phone'] ?? null,
@@ -261,6 +269,9 @@ class UserRepository
             status: (string) $row['status'],
             isAdmin: (bool) ($row['is_admin'] ?? false),
             rhEmployeeId: isset($row['rh_employee_id']) ? (int) $row['rh_employee_id'] : null,
+            agenceId: isset($row['agence_id']) ? (int) $row['agence_id'] : null,
+            zoneRegionaleId: isset($row['zone_regionale_id']) ? (int) $row['zone_regionale_id'] : null,
+            roles: $roles,
             createdAt: $row['created_at'] ?? null,
             updatedAt: $row['updated_at'] ?? null,
         );
