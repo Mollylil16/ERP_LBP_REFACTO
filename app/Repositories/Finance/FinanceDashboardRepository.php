@@ -9,6 +9,14 @@ use PDO;
 final class FinanceDashboardRepository extends \App\Repositories\Shared\ModuleDashboardRepository
 {
     /**
+     * @return array<string,mixed>
+     */
+    public function dashboard(): array
+    {
+        return $this->dashboardFor('finance');
+    }
+
+    /**
      * Get rich financial statistics for the dashboard
      *
      * @return array<string, mixed>
