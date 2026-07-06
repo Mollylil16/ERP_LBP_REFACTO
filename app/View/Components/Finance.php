@@ -423,7 +423,7 @@ final class Finance
         if (Auth::hasAnyRole(['superviseur_regional', 'superviseur_general'])) {
             $prestOpts = [['value' => '', 'label' => '-- Sélectionner le prestataire --']];
             foreach ($prestataires as $p) {
-                $prestOpts[] = ['value' => (string) $p['id'], 'label' => $p['nom'] . ' (' . $p['type_prestation'] . ')'];
+                $prestOpts[] = ['value' => (string) $p['id'], 'label' => $p['name'] . ' (' . $p['type'] . ')'];
             }
 
             $formCreate = '<form method="post" action="' . View::url('finance/depenses/enregistrer') . '" class="js-protect-form" style="margin-bottom:2rem;">'
@@ -548,18 +548,24 @@ final class Finance
                 . '<p style="font-size:0.85rem; color:#64748b; margin-bottom:1.5rem;">Veuillez soumettre ou mettre à jour votre point de caisse avant 15h locales.</p>';
 
             if ($activeReport) {
-                $statutBadge = match($activeReport['statut']) {
+                $statut = $activeReport['statut'] ?? 'brouillon';
+                $totalFactureXof = (float) ($activeReport['totalFactureXof'] ?? $activeReport['total_facture_xof'] ?? 0);
+                $totalFactureEur = (float) ($activeReport['totalFactureEur'] ?? $activeReport['total_facture_eur'] ?? 0);
+                $totalEncaisseXof = (float) ($activeReport['totalEncaisseXof'] ?? $activeReport['total_encaisse_xof'] ?? 0);
+                $totalEncaisseEur = (float) ($activeReport['totalEncaisseEur'] ?? $activeReport['total_encaisse_eur'] ?? 0);
+
+                $statutBadge = match($statut) {
                     'consolide' => 'success',
                     'soumis' => 'primary',
                     default => 'warning'
                 };
                 $submissionForm .= '<div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:1.5rem; margin-bottom:1.5rem;">'
-                    . '<div><small style="color:#64748b;">Statut actuel :</small><br>' . Ui::badge(strtoupper($activeReport['statut']), $statutBadge) . '</div>'
-                    . '<div><small style="color:#64748b;">Totaux facturés :</small><br><strong>' . number_format($activeReport['total_facture_xof'], 2, ',', ' ') . ' XOF</strong> / <strong>' . number_format($activeReport['total_facture_eur'], 2, ',', ' ') . ' EUR</strong></div>'
-                    . '<div><small style="color:#64748b;">Totaux encaissés (solde caisse) :</small><br><strong style="color:#16a34a;">' . number_format($activeReport['total_encaisse_xof'], 2, ',', ' ') . ' XOF</strong> / <strong style="color:#16a34a;">' . number_format($activeReport['total_encaisse_eur'], 2, ',', ' ') . ' EUR</strong></div>'
+                    . '<div><small style="color:#64748b;">Statut actuel :</small><br>' . Ui::badge(strtoupper($statut), $statutBadge) . '</div>'
+                    . '<div><small style="color:#64748b;">Totaux facturés :</small><br><strong>' . number_format($totalFactureXof, 2, ',', ' ') . ' XOF</strong> / <strong>' . number_format($totalFactureEur, 2, ',', ' ') . ' EUR</strong></div>'
+                    . '<div><small style="color:#64748b;">Totaux encaissés (solde caisse) :</small><br><strong style="color:#16a34a;">' . number_format($totalEncaisseXof, 2, ',', ' ') . ' XOF</strong> / <strong style="color:#16a34a;">' . number_format($totalEncaisseEur, 2, ',', ' ') . ' EUR</strong></div>'
                     . '</div>';
 
-                if ($activeReport['statut'] === 'brouillon') {
+                if ($statut === 'brouillon') {
                     $submissionForm .= '<form method="post" action="' . View::url('finance/clotures/soumettre') . '" class="js-protect-form">'
                         . '<button type="submit" class="finea-button finea-button--accent">Soumettre le point (Verrouillage à 15h)</button>'
                         . '</form>';

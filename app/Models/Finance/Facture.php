@@ -23,4 +23,7 @@ class Facture
         public ?string $dateEcheanceSolde = null,
         public ?string $updatedAt = null
     ) {}
+
+    public ?string $colis_tracking = null;
+    public ?string $client_name = null;
 }

@@ -18,4 +18,6 @@ class DemandePaiement
         public ?string $dateTraitement = null,
         public ?string $updatedAt = null
     ) {}
+
+    public ?string $prestataire_name = null;
 }

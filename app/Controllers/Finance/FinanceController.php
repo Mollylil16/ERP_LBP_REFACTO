@@ -482,7 +482,7 @@ final class FinanceController extends BaseController
 
         // Hydrater le nom des prestataires
         foreach ($demandes as $d) {
-            $stmt = $this->db->prepare("SELECT nom FROM lbp_prestataires WHERE id = :id LIMIT 1");
+            $stmt = $this->db->prepare("SELECT name FROM lbp_prestataires WHERE id = :id LIMIT 1");
             $stmt->execute(['id' => $d->prestataireId]);
             $d->prestataire_name = $stmt->fetchColumn() ?: '';
         }
@@ -585,7 +585,7 @@ final class FinanceController extends BaseController
 
             if ($decision === 'approuver') {
                 // Charger le prestataire pour le libellé
-                $stmt = $this->db->prepare("SELECT nom FROM lbp_prestataires WHERE id = :id LIMIT 1");
+                $stmt = $this->db->prepare("SELECT name FROM lbp_prestataires WHERE id = :id LIMIT 1");
                 $stmt->execute(['id' => $demande->prestataireId]);
                 $prestName = $stmt->fetchColumn() ?: 'Prestataire';
 
@@ -864,7 +864,7 @@ final class FinanceController extends BaseController
                 ['key' => 'depenses', 'label' => 'Dépenses Prestataires', 'icon' => 'DEP', 'url' => '/finance/depenses', 'available' => true],
                 ['key' => 'comptabilite', 'label' => 'Comptabilité', 'icon' => 'CPT', 'url' => '/finance/comptabilite', 'available' => Auth::hasAnyRole(['comptable', 'dg'])],
             ],
-            'additionalStyles' => ['css/finea-ui.css'],
+            'additionalStyles' => ['css/finea-ui.css', 'css/finance.css'],
         ];
     }
 }

@@ -301,7 +301,7 @@ final class ModuleDashboardService
             ['title' => 'Controllers', 'text' => 'Le contrôleur ne fait que protéger la route, appeler le service et transmettre les données à la vue.'],
             ['title' => 'Services / Repositories', 'text' => 'La logique applicative et les futures requêtes SQL sont préparées pour évoluer sans régression.'],
         ];
-        $module['showWorkflow'] = true;
+        $module['showWorkflow'] = false;
 
         return $module;
     }

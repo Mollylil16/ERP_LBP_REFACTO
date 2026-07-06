@@ -1,0 +1,316 @@
+/* =============================================================================
+   ERP LBP - Dedicated Finance Module Stylesheet
+   ============================================================================= */
+
+/* Fix giant SVG icons inside filter/reset buttons */
+.rh-btn-icon {
+    width: 16px !important;
+    height: 16px !important;
+    min-width: 16px;
+    min-height: 16px;
+    display: inline-block;
+    vertical-align: middle;
+    margin-right: 6px;
+    fill: none;
+    stroke: currentColor;
+}
+
+/* Modernized Page Header Banner */
+.finea-page-header {
+    background: linear-gradient(135deg, #1d2b57 0%, #2563eb 100%) !important;
+    border-radius: 16px !important;
+    padding: 2.2rem !important;
+    box-shadow: 0 16px 36px rgba(29, 67, 180, 0.14) !important;
+    border: none !important;
+    margin-bottom: 2rem;
+}
+
+.finea-page-header h1 {
+    font-family: 'Inter', sans-serif;
+    font-weight: 800;
+    font-size: 2rem;
+    letter-spacing: -0.02em;
+    color: #ffffff;
+}
+
+.finea-page-header p {
+    color: rgba(255, 255, 255, 0.85) !important;
+    font-size: 0.95rem;
+    margin-top: 0.5rem;
+}
+
+/* Section Cards & KPI Blocks */
+.finea-section-card {
+    background: #ffffff;
+    border: 1px solid rgba(29, 43, 87, 0.08) !important;
+    border-radius: 16px !important;
+    padding: 2rem !important;
+    box-shadow: 0 10px 30px rgba(29, 43, 87, 0.04) !important;
+    margin-bottom: 2rem;
+}
+
+.finea-section-title {
+    color: #1d2b57 !important;
+    font-weight: 700;
+    font-size: 1.25rem;
+    letter-spacing: -0.01em;
+    margin-bottom: 1.5rem;
+    border-bottom: 2px solid rgba(29, 43, 87, 0.05);
+    padding-bottom: 0.75rem;
+}
+
+/* KPI Summary Cards */
+.finea-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1.5rem;
+    margin: 1.5rem 0 2.5rem 0;
+}
+
+.finea-kpi-card {
+    background: #ffffff;
+    border: 1px solid rgba(29, 43, 87, 0.08) !important;
+    border-radius: 16px !important;
+    padding: 1.5rem !important;
+    box-shadow: 0 8px 24px rgba(29, 43, 87, 0.03) !important;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.finea-kpi-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 30px rgba(29, 43, 87, 0.08) !important;
+}
+
+.finea-kpi-label {
+    color: #64748b;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.finea-kpi-value {
+    color: #1d2b57;
+    font-size: 1.85rem;
+    font-weight: 800;
+    margin-top: 0.5rem;
+    letter-spacing: -0.02em;
+}
+
+/* Advanced Filter Toolbar & Grid Styling */
+.finea-filter-card {
+    background: #ffffff;
+    border: 1px solid rgba(29, 43, 87, 0.08) !important;
+    border-radius: 16px !important;
+    padding: 1.5rem !important;
+    box-shadow: 0 8px 24px rgba(29, 43, 87, 0.03) !important;
+    margin-bottom: 2rem;
+}
+
+.rh-personnel-filters {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    background: #ffffff;
+}
+
+.rh-personnel-filter-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.25rem;
+    align-items: end;
+    width: 100%;
+}
+
+.rh-personnel-filter-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: center;
+    margin-top: 0.5rem;
+}
+
+/* Inputs & Form Elements */
+.finea-field {
+    margin-bottom: 1.25rem;
+}
+
+.finea-field label {
+    display: block;
+    margin-bottom: 0.5rem;
+    color: #334155;
+    font-weight: 600;
+    font-size: 0.85rem;
+}
+
+.finea-input,
+.finea-select {
+    width: 100%;
+    min-height: 44px;
+    padding: 10px 14px;
+    color: #0f172a;
+    background-color: #f8fafc;
+    border: 1px solid #cbd5e1;
+    border-radius: 10px;
+    font-size: 0.9rem;
+    transition: all 0.15s ease-in-out;
+}
+
+.finea-input:focus,
+.finea-select:focus {
+    background-color: #ffffff;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+    outline: none;
+}
+
+/* Filter buttons */
+.rh-filter-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding: 10px 22px;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.15s ease-in-out;
+    text-decoration: none;
+    border: 1px solid transparent;
+}
+
+.rh-filter-btn--primary {
+    color: #ffffff;
+    background-color: #2563eb;
+}
+
+.rh-filter-btn--primary:hover {
+    background-color: #1d4ed8;
+}
+
+.rh-filter-btn--reset {
+    color: #475569;
+    background-color: #f1f5f9;
+    border: 1px solid #e2e8f0;
+}
+
+.rh-filter-btn--reset:hover {
+    background-color: #e2e8f0;
+    color: #1e293b;
+}
+
+/* Premium Table Styles */
+.finea-table-wrap {
+    background: #ffffff;
+    border: 1px solid rgba(29, 43, 87, 0.08) !important;
+    border-radius: 16px !important;
+    box-shadow: 0 8px 24px rgba(29, 43, 87, 0.03) !important;
+    overflow: hidden;
+}
+
+.finea-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.finea-table th {
+    background-color: #1d2b57 !important;
+    color: #ffffff !important;
+    font-weight: 600;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 14px 18px !important;
+    border-bottom: none;
+}
+
+.finea-table td {
+    padding: 14px 18px !important;
+    border-bottom: 1px solid #f1f5f9 !important;
+    vertical-align: middle;
+    color: #334155;
+    font-size: 0.9rem;
+}
+
+.finea-table tr:last-child td {
+    border-bottom: none !important;
+}
+
+.finea-table tr:hover td {
+    background-color: #f8fafc;
+}
+
+/* Badges */
+.finea-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 12px;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.finea-badge--success {
+    background-color: #dcfce7;
+    color: #15803d;
+}
+
+.finea-badge--warning {
+    background-color: #fef3c7;
+    color: #b45309;
+}
+
+.finea-badge--danger {
+    background-color: #fee2e2;
+    color: #b91c1c;
+}
+
+.finea-badge--info {
+    background-color: #dbeafe;
+    color: #1d4ed8;
+}
+
+.finea-badge--neutral {
+    background-color: #f1f5f9;
+    color: #475569;
+}
+
+/* Action Buttons inside tables */
+.finea-action-btn {
+    min-height: 36px !important;
+    padding: 6px 14px !important;
+    border-radius: 8px !important;
+    font-size: 0.85rem !important;
+}
+
+/* Form block style */
+.js-protect-form {
+    background: #ffffff;
+    border: 1px solid rgba(29, 43, 87, 0.08);
+    border-radius: 16px;
+    padding: 1.75rem;
+    box-shadow: 0 10px 30px rgba(29, 43, 87, 0.04);
+}
+
+.js-protect-form h3 {
+    color: #1d2b57;
+    font-weight: 700;
+    margin-bottom: 1.25rem;
+    font-size: 1.15rem;
+}
+
+/* Flex layout tweaks */
+.finea-actions {
+    gap: 12px;
+}
+
+/* Custom KPI Card Tone Highlights */
+.finea-kpi-card.tone-primary { border-left: 5px solid #2563eb !important; }
+.finea-kpi-card.tone-success { border-left: 5px solid #16a34a !important; }
+.finea-kpi-card.tone-warning { border-left: 5px solid #ea580c !important; }
+.finea-kpi-card.tone-danger { border-left: 5px solid #7c3aed !important; }
+.finea-kpi-card.tone-info { border-left: 5px solid #fabd02 !important; }
+

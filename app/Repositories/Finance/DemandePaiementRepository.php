@@ -91,14 +91,14 @@ class DemandePaiementRepository
     // PRESTATAIRES
     // -----------------------------------------------------
 
-    public function createPrestataire(string $nom, string $type, ?string $contact, ?int $zoneId): int
+    public function createPrestataire(string $name, string $type, ?string $contact, ?int $zoneId): int
     {
         $stmt = $this->pdo->prepare("
-            INSERT INTO lbp_prestataires (nom, type_prestation, contact, zone_regionale_id)
-            VALUES (:nom, :type, :contact, :zone_id)
+            INSERT INTO lbp_prestataires (name, type, contact_info, zone_regionale_id)
+            VALUES (:name, :type, :contact, :zone_id)
         ");
         $stmt->execute([
-            'nom' => $nom,
+            'name' => $name,
             'type' => $type,
             'contact' => $contact,
             'zone_id' => $zoneId,
@@ -109,11 +109,11 @@ class DemandePaiementRepository
     public function getPrestataires(?int $zoneId = null): array
     {
         if ($zoneId !== null) {
-            $stmt = $this->pdo->prepare("SELECT * FROM lbp_prestataires WHERE zone_regionale_id = :zone_id OR zone_regionale_id IS NULL ORDER BY nom ASC");
+            $stmt = $this->pdo->prepare("SELECT * FROM lbp_prestataires WHERE zone_regionale_id = :zone_id OR zone_regionale_id IS NULL ORDER BY name ASC");
             $stmt->execute(['zone_id' => $zoneId]);
             return $stmt->fetchAll() ?: [];
         }
-        return $this->pdo->query("SELECT * FROM lbp_prestataires ORDER BY nom ASC")->fetchAll() ?: [];
+        return $this->pdo->query("SELECT * FROM lbp_prestataires ORDER BY name ASC")->fetchAll() ?: [];
     }
 
     private function mapToDemande(array $row): DemandePaiement
