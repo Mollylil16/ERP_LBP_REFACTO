@@ -25,8 +25,18 @@ final class FinanceDashboardController extends BaseController
 
         $module = $this->service->dashboard();
 
+        // Fetch live finance stats and recent records
+        $stats = $this->service->getFinanceStats();
+        $recentFactures = $this->service->getRecentFactures(5);
+        $recentEtats = $this->service->getRecentEtats(5);
+        $recentEcritures = $this->service->getRecentEcritures(5);
+
         $this->view('finance/dashboard', $this->viewData($module) + [
             'dashboardModule' => $module,
+            'stats' => $stats,
+            'recentFactures' => $recentFactures,
+            'recentEtats' => $recentEtats,
+            'recentEcritures' => $recentEcritures,
         ]);
     }
 
@@ -43,7 +53,7 @@ final class FinanceDashboardController extends BaseController
             'moduleTheme' => $module,
             'activeModule' => 'dashboard',
             'moduleNavigation' => (array) $module['navigation'],
-            'additionalStyles' => ['css/finea-ui.css'],
+            'additionalStyles' => ['css/finea-ui.css', 'css/finance.css'],
         ];
     }
 }

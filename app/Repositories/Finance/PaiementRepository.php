@@ -35,12 +35,12 @@ class PaiementRepository
         ");
         $stmt->execute([
             'facture_id' => $paiement->factureId,
+            'date_paiement' => Accounting::getAccountingDateTime(),
             'caissiere_id' => $paiement->caissiereId,
             'montant' => $paiement->montant,
             'devise' => $paiement->devise,
             'mode' => $paiement->mode,
             'type' => $paiement->type,
-            'date_paiement' => Accounting::getAccountingDateTime(),
         ]);
         return (int) $this->pdo->lastInsertId();
     }
@@ -57,9 +57,9 @@ class PaiementRepository
         ");
         $stmt->execute([
             'paiement_id' => $recu->paiementId,
+            'date_emission' => Accounting::getAccountingDateTime(),
             'numero_recu' => $recu->numeroRecu,
             'pdf_url' => $recu->pdfUrl,
-            'date_emission' => Accounting::getAccountingDateTime(),
         ]);
         return (int) $this->pdo->lastInsertId();
     }

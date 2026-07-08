@@ -206,6 +206,7 @@ final class ColisageRepository
         ");
         $stmt->execute([
             'numero_tracking' => trim((string) $data['numero_tracking']),
+            'created_at' => Accounting::getAccountingDateTime(),
             'expediteur_id' => (int) $data['expediteur_id'],
             'destinataire_id' => (int) $data['destinataire_id'],
             'poids_total' => (float) ($data['poids_total'] ?? 0.0),
@@ -218,7 +219,6 @@ final class ColisageRepository
             'agence_arrivee_id' => isset($data['agence_arrivee_id']) ? (int) $data['agence_arrivee_id'] : null,
             'type_expediteur' => trim((string) $data['type_expediteur']),
             'trafic' => trim((string) ($data['trafic'] ?? '')),
-            'created_at' => Accounting::getAccountingDateTime(),
         ]);
         return (int) $this->pdo->lastInsertId();
     }

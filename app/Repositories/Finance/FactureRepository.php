@@ -50,6 +50,7 @@ class FactureRepository
 
         $stmt->execute([
             'numero_facture' => $facture->numeroFacture,
+            'date_emission' => Accounting::getAccountingDateTime(),
             'colis_id' => $facture->colisId,
             'client_id' => $facture->clientId,
             'caissiere_id' => $facture->caissiereId,
@@ -63,7 +64,6 @@ class FactureRepository
             'qr_code_paiement' => $facture->qrCodePaiement,
             'date_expiration_qr' => $facture->dateExpirationQr,
             'date_echeance_solde' => $facture->dateEcheanceSolde,
-            'date_emission' => Accounting::getAccountingDateTime(),
         ]);
 
         return (int) $this->pdo->lastInsertId();

@@ -20,6 +20,9 @@ class User
         public string $status = 'active',
         public bool $isAdmin = false,
         public ?int $rhEmployeeId = null,
+        public ?int $agenceId = null,
+        public ?int $zoneRegionaleId = null,
+        public array $roles = [],
         public ?string $createdAt = null,
         public ?string $updatedAt = null,
     ) {}
