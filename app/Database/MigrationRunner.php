@@ -2070,13 +2070,17 @@ class MigrationRunner
                 -- Wilfried Abassi (ID 5)
                 INSERT IGNORE INTO user_permissions (user_id, entity_id, can_view, can_create, can_update, can_delete)
                 VALUES (5, {$viewId}, 1, 1, 1, 1), (5, {$manageId}, 1, 1, 1, 1) ON DUPLICATE KEY UPDATE can_view=1;
-
-                -- Roles
-                INSERT IGNORE INTO user_permissions (user_id, entity_id, can_view, can_create, can_update, can_delete)
-                SELECT ur.user_id, {$viewId}, 1, 1, 1, 1 FROM lbp_user_roles ur WHERE ur.role IN ('chef_agence', 'superviseur_regional', 'superviseur_general', 'assistant_dg', 'dg');
-                INSERT IGNORE INTO user_permissions (user_id, entity_id, can_view, can_create, can_update, can_delete)
-                SELECT ur.user_id, {$manageId}, 1, 1, 1, 1 FROM lbp_user_roles ur WHERE ur.role IN ('chef_agence', 'superviseur_regional', 'superviseur_general', 'assistant_dg', 'dg');
             ");
+
+            if ($this->schema->tableExists('lbp_user_roles')) {
+                $this->pdo->exec("
+                    -- Roles
+                    INSERT IGNORE INTO user_permissions (user_id, entity_id, can_view, can_create, can_update, can_delete)
+                    SELECT ur.user_id, {$viewId}, 1, 1, 1, 1 FROM lbp_user_roles ur WHERE ur.role IN ('chef_agence', 'superviseur_regional', 'superviseur_general', 'assistant_dg', 'dg');
+                    INSERT IGNORE INTO user_permissions (user_id, entity_id, can_view, can_create, can_update, can_delete)
+                    SELECT ur.user_id, {$manageId}, 1, 1, 1, 1 FROM lbp_user_roles ur WHERE ur.role IN ('chef_agence', 'superviseur_regional', 'superviseur_general', 'assistant_dg', 'dg');
+                ");
+            }
         }
     }
 }
