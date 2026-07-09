@@ -19,6 +19,9 @@ final class PermissionEntityRegistry
     public const EXPLOITATION_TRACKING = 'exploitation_tracking';
     public const EXPLOITATION_CREDITS = 'exploitation_credits';
     public const EXPLOITATION_FOURNITURES = 'exploitation_fournitures';
+    
+    public const CALL_CENTER_VIEW = 'call_center_view';
+    public const CALL_CENTER_MANAGE = 'call_center_manage';
 
     public static function all(): array
     {
@@ -106,6 +109,18 @@ final class PermissionEntityRegistry
                 'name' => 'Fournitures de bureau',
                 'description' => 'Validation et circuit des fournitures de bureau.',
                 'sort_order' => 230,
+            ],
+            self::CALL_CENTER_VIEW => [
+                'module' => 'Call Center',
+                'name' => 'Call Center - Consulter',
+                'description' => 'Consulter le tableau de bord Call Center, les appels et les litiges.',
+                'sort_order' => 240,
+            ],
+            self::CALL_CENTER_MANAGE => [
+                'module' => 'Call Center',
+                'name' => 'Call Center - Gérer',
+                'description' => 'Enregistrer des appels, ouvrir, modifier et résoudre des litiges.',
+                'sort_order' => 250,
             ],
         ];
     }

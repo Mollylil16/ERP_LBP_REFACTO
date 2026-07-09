@@ -844,6 +844,83 @@ final class FinanceController extends BaseController
     }
 
     /**
+     * Point Mensuel de toutes les agences.
+     */
+    public function reportingMensuel(): void
+    {
+        RoleMiddleware::check(['superviseur_regional', 'superviseur_general', 'caissiere_principale', 'dg', 'comptable']);
+
+        $month = $_GET['month'] ?? date('Y-m');
+        if (!preg_match('/^\d{4}-\d{2}$/', $month)) {
+            $month = date('Y-m');
+        }
+
+        // 1. Agréger les états journaliers consolidés/soumis pour ce mois
+        $stmt = $this->db->prepare("
+            SELECT 
+                agence_id,
+                SUM(nb_colis_enregistres) as monthly_colis,
+                SUM(nb_factures_emises) as monthly_factures,
+                SUM(total_facture_xof) as total_facture_xof,
+                SUM(total_facture_eur) as total_facture_eur,
+                SUM(total_encaisse_xof) as total_encaisse_xof,
+                SUM(total_encaisse_eur) as total_encaisse_eur,
+                SUM(total_restant_du_xof) as total_restant_du_xof,
+                SUM(total_restant_du_eur) as total_restant_du_eur
+            FROM lbp_etats_journaliers
+            WHERE DATE_FORMAT(date_jour, '%Y-%m') = :month
+            GROUP BY agence_id
+        ");
+        $stmt->execute(['month' => $month]);
+        $agencePoints = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+        // 2. Agréger les dépenses prestataires payées ce mois
+        $stmt = $this->db->prepare("
+            SELECT 
+                prestataire_id,
+                SUM(CASE WHEN devise = 'XOF' THEN montant ELSE 0 END) as total_xof,
+                SUM(CASE WHEN devise = 'EUR' THEN montant ELSE 0 END) as total_eur
+            FROM lbp_demandes_paiement_prestataires
+            WHERE statut = 'payee' AND DATE_FORMAT(date_demande, '%Y-%m') = :month
+            GROUP BY prestataire_id
+        ");
+        $stmt->execute(['month' => $month]);
+        $payoutsRaw = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+        $payoutsSummary = [];
+        foreach ($payoutsRaw as $row) {
+            $pId = (int)$row['prestataire_id'];
+            $st = $this->db->prepare("SELECT name, type FROM lbp_prestataires WHERE id = :id LIMIT 1");
+            $st->execute(['id' => $pId]);
+            $pData = $st->fetch(PDO::FETCH_ASSOC);
+            $payoutsSummary[] = [
+                'name' => $pData['name'] ?? ('Prestataire ID: ' . $pId),
+                'type' => $pData['type'] ?? '',
+                'total_xof' => (float)$row['total_xof'],
+                'total_eur' => (float)$row['total_eur']
+            ];
+        }
+
+        // 3. Charger les noms des agences
+        $sitesStmt = $this->db->query("SELECT id, name FROM company_sites");
+        $sites = $sitesStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        $siteNames = [];
+        foreach ($sites as $s) {
+            $siteNames[(int)$s['id']] = $s['name'];
+        }
+
+        $nav = $this->viewData();
+        $nav['activeModule'] = 'reporting_mensuel';
+
+        $this->view('finance/reporting/mensuel', $nav + [
+            'month' => $month,
+            'agencePoints' => $agencePoints,
+            'payoutsSummary' => $payoutsSummary,
+            'siteNames' => $siteNames,
+        ]);
+    }
+
+    /**
      * Prépare le menu de navigation et les styles pour les pages Finance.
      */
     private function viewData(): array
@@ -863,6 +940,7 @@ final class FinanceController extends BaseController
                 ['key' => 'clotures', 'label' => 'Points de Caisse', 'icon' => 'CLT', 'url' => '/finance/clotures', 'available' => true],
                 ['key' => 'depenses', 'label' => 'Dépenses Prestataires', 'icon' => 'DEP', 'url' => '/finance/depenses', 'available' => true],
                 ['key' => 'comptabilite', 'label' => 'Comptabilité', 'icon' => 'CPT', 'url' => '/finance/comptabilite', 'available' => Auth::hasAnyRole(['comptable', 'dg'])],
+                ['key' => 'reporting_mensuel', 'label' => 'Point Mensuel', 'icon' => 'RPM', 'url' => '/finance/reporting/mensuel', 'available' => true],
             ],
             'additionalStyles' => ['css/finea-ui.css', 'css/finance.css'],
         ];

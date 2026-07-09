@@ -775,4 +775,154 @@ final class Finance
             . '</div>'
             . '</div></div>';
     }
+
+    /**
+     * Rendu de la page de Point Mensuel consolidé des agences LBP.
+     */
+    public static function pointMensuelPage(string $month, array $agencePoints, array $payoutsSummary, array $siteNames): string
+    {
+        $header = Ui::pageHeader(
+            'Point Mensuel Consolidé',
+            'Rapport mensuel des entrées, crédits et dépenses prestataires pour toutes les agences LBP.',
+            [
+                'eyebrow' => 'Monthly Consolidated Statements',
+                'class' => 'rh-hero-white',
+            ]
+        );
+
+        $form = '<form method="get" action="" class="finea-filter-bar" style="margin-bottom: 1.5rem; display: flex; gap: 1rem; align-items: flex-end; max-width: 400px;">'
+            . Form::input('month', ['label' => 'Sélectionner le mois', 'type' => 'month', 'value' => $month, 'required' => true])
+            . '<button type="submit" class="finea-button finea-button--primary">Afficher</button>'
+            . '</form>';
+
+        // Calculs globaux du mois
+        $totalColis = 0;
+        $totalFactures = 0;
+        
+        $factureXof = 0.0;
+        $factureEur = 0.0;
+        $encaisseXof = 0.0;
+        $encaisseEur = 0.0;
+        $restantXof = 0.0;
+        $restantEur = 0.0;
+
+        foreach ($agencePoints as $ap) {
+            $totalColis += (int)$ap['monthly_colis'];
+            $totalFactures += (int)$ap['monthly_factures'];
+            $factureXof += (float)$ap['total_facture_xof'];
+            $factureEur += (float)$ap['total_facture_eur'];
+            $encaisseXof += (float)$ap['total_encaisse_xof'];
+            $encaisseEur += (float)$ap['total_encaisse_eur'];
+            $restantXof += (float)$ap['total_restant_du_xof'];
+            $restantEur += (float)$ap['total_restant_du_eur'];
+        }
+
+        // Dépenses globales prestataires sur ce mois
+        $totalDepensesXof = 0.0;
+        $totalDepensesEur = 0.0;
+        foreach ($payoutsSummary as $p) {
+            $totalDepensesXof += $p['total_xof'];
+            $totalDepensesEur += $p['total_eur'];
+        }
+
+        // Cartes de synthèse (KPIs)
+        $kpisHtml = '<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:1rem; margin-bottom:2rem;">'
+            . Ui::card('Activité logistique', '<strong>' . $totalColis . '</strong> colis / <strong>' . $totalFactures . '</strong> factures', ['icon' => '📦'])
+            . Ui::card('Facturation Globale', '<strong>' . number_format($factureXof, 0, ',', ' ') . ' XOF</strong><br><strong>' . number_format($factureEur, 2, ',', ' ') . ' EUR</strong>', ['icon' => '📝'])
+            . Ui::card('Encaissements Réalisés', '<strong>' . number_format($encaisseXof, 0, ',', ' ') . ' XOF</strong><br><strong>' . number_format($encaisseEur, 2, ',', ' ') . ' EUR</strong>', ['icon' => '💵'])
+            . Ui::card('Crédits / Reste à Recouvrer', '<strong>' . number_format($restantXof, 0, ',', ' ') . ' XOF</strong><br><strong>' . number_format($restantEur, 2, ',', ' ') . ' EUR</strong>', ['icon' => '💳'])
+            . Ui::card('Dépenses Prestataires', '<strong>' . number_format($totalDepensesXof, 0, ',', ' ') . ' XOF</strong><br><strong>' . number_format($totalDepensesEur, 2, ',', ' ') . ' EUR</strong>', ['icon' => '💸'])
+            . '</div>';
+
+        // Tableau détaillé par Agence
+        $rows = '';
+        if ($agencePoints === []) {
+            $rows = '<tr><td colspan="9" style="text-align:center; color:#64748b;">Aucune donnée d\'activité pour ce mois.</td></tr>';
+        } else {
+            foreach ($agencePoints as $ap) {
+                $aId = (int)$ap['agence_id'];
+                $aName = $siteNames[$aId] ?? ('Agence ID: ' . $aId);
+                
+                $rows .= '<tr>'
+                    . '<td style="font-weight:600; color:#1e293b;">' . View::e($aName) . '</td>'
+                    . '<td style="text-align:center;">' . $ap['monthly_colis'] . '</td>'
+                    . '<td style="text-align:center;">' . $ap['monthly_factures'] . '</td>'
+                    . '<td style="text-align:right;">' . number_format($ap['total_facture_xof'], 0, ',', ' ') . ' XOF</td>'
+                    . '<td style="text-align:right;">' . number_format($ap['total_facture_eur'], 2, ',', ' ') . ' EUR</td>'
+                    . '<td style="text-align:right; font-weight:600; color:#16a34a;">' . number_format($ap['total_encaisse_xof'], 0, ',', ' ') . ' XOF</td>'
+                    . '<td style="text-align:right; font-weight:600; color:#16a34a;">' . number_format($ap['total_encaisse_eur'], 2, ',', ' ') . ' EUR</td>'
+                    . '<td style="text-align:right; color:#b91c1c;">' . number_format($ap['total_restant_du_xof'], 0, ',', ' ') . ' XOF</td>'
+                    . '<td style="text-align:right; color:#b91c1c;">' . number_format($ap['total_restant_du_eur'], 2, ',', ' ') . ' EUR</td>'
+                    . '</tr>';
+            }
+        }
+
+        $tableAgences = '<div class="finea-table-wrapper">'
+            . '<table class="finea-table">'
+            . '<thead>'
+            . '<tr>'
+            . '<th>Agence</th>'
+            . '<th style="text-align:center;">Colis</th>'
+            . '<th style="text-align:center;">Factures</th>'
+            . '<th style="text-align:right;">Facturé XOF</th>'
+            . '<th style="text-align:right;">Facturé EUR</th>'
+            . '<th style="text-align:right;">Encaissé XOF</th>'
+            . '<th style="text-align:right;">Encaissé EUR</th>'
+            . '<th style="text-align:right;">Crédits XOF</th>'
+            . '<th style="text-align:right;">Crédits EUR</th>'
+            . '</tr>'
+            . '</thead>'
+            . '<tbody>' . $rows . '</tbody>'
+            . '</table>'
+            . '</div>';
+
+        // Tableau détaillé des Prestataires
+        $rowsP = '';
+        if ($payoutsSummary === []) {
+            $rowsP = '<tr><td colspan="4" style="text-align:center; color:#64748b;">Aucune dépense prestataire réglée sur ce mois.</td></tr>';
+        } else {
+            foreach ($payoutsSummary as $p) {
+                $typeLabel = match($p['type']) {
+                    'compagnies_aeriennes', 'compagnie_aerienne' => 'Compagnie Aérienne',
+                    'transitaire' => 'Transitaire',
+                    default => 'Autre Prestataire'
+                };
+                $rowsP .= '<tr>'
+                    . '<td style="font-weight:600; color:#1e293b;">' . View::e($p['name']) . '</td>'
+                    . '<td>' . $typeLabel . '</td>'
+                    . '<td style="text-align:right; font-weight:700; color:#b91c1c;">- ' . number_format($p['total_xof'], 0, ',', ' ') . ' XOF</td>'
+                    . '<td style="text-align:right; font-weight:700; color:#b91c1c;">- ' . number_format($p['total_eur'], 2, ',', ' ') . ' EUR</td>'
+                    . '</tr>';
+            }
+        }
+
+        $tablePrestataires = '<div class="finea-table-wrapper">'
+            . '<table class="finea-table">'
+            . '<thead>'
+            . '<tr>'
+            . '<th>Fournisseur / Prestataire</th>'
+            . '<th>Type de prestation</th>'
+            . '<th style="text-align:right;">Montant réglé XOF</th>'
+            . '<th style="text-align:right;">Montant réglé EUR</th>'
+            . '</tr>'
+            . '</thead>'
+            . '<tbody>' . $rowsP . '</tbody>'
+            . '</table>'
+            . '</div>';
+
+        return '<div class="finea-shell">'
+            . '<div class="finea-container">'
+            . $header
+            . $form
+            . $kpisHtml
+            . '<div class="finea-section-card" style="margin-top: 1.5rem;">'
+            . '<div class="finea-section-heading"><h2 class="finea-section-title">Performances d\'activité par Agence</h2></div>'
+            . $tableAgences
+            . '</div>'
+            . '<div class="finea-section-card" style="margin-top: 2rem;">'
+            . '<div class="finea-section-heading"><h2 class="finea-section-title">Règlements & Dépenses Fournisseurs (Corsair, Air France, Sealogis, etc.)</h2></div>'
+            . $tablePrestataires
+            . '</div>'
+            . '</div></div>';
+    }
 }

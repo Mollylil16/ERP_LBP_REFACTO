@@ -239,6 +239,21 @@ final class ModuleDashboardService
                     ['label' => 'Performance', 'hint' => 'Comparer délais et qualité de service', 'url' => '/agents-correspondants/dashboard'],
                 ],
             ],
+            'call-center' => [
+                'slug' => 'call-center', 'label' => 'Call Center', 'code' => 'CAL', 'iconKey' => 'tickets',
+                'accent' => '#0ea5e9', 'accent2' => '#0369a1', 'gradient' => 'linear-gradient(135deg, #0369a1, #0ea5e9)',
+                'description' => 'Gestion de la relation client, des appels de suivi, des réclamations et des litiges.',
+                'kpis' => [
+                    ['label' => 'Appels du mois', 'value' => '0', 'meta' => 'Appels de suivi enregistrés'],
+                    ['label' => 'Satisfaction', 'value' => '0%', 'meta' => 'Taux de satisfaction client'],
+                    ['label' => 'Litiges ouverts', 'value' => '0', 'meta' => 'Litiges et réclamations en cours'],
+                    ['label' => 'Taux de résolution', 'value' => '0%', 'meta' => 'Litiges résolus avec succès'],
+                ],
+                'actions' => [
+                    ['label' => 'Journal des appels', 'hint' => 'Historiser un appel de suivi client', 'url' => '/call-center/appels'],
+                    ['label' => 'Réclamations & Litiges', 'hint' => 'Enregistrer et traiter une réclamation client', 'url' => '/call-center/litiges'],
+                ],
+            ],
             'pilotage-dg' => [
                 'slug' => 'pilotage-dg', 'label' => 'Centre de Pilotage DG', 'code' => 'DG', 'iconKey' => 'pilotage',
                 'accent' => '#eab308', 'accent2' => '#854d0e', 'gradient' => 'linear-gradient(135deg, #854d0e, #eab308)',
@@ -312,6 +327,14 @@ final class ModuleDashboardService
      */
     private function navigation(array $module): array
     {
+        if ($module['slug'] === 'call-center') {
+            return [
+                ['key' => 'dashboard', 'label' => 'Tableau de bord', 'icon' => 'DB', 'url' => '/call-center/dashboard', 'available' => true],
+                ['key' => 'appels', 'label' => 'Journal des Appels', 'icon' => 'CAL', 'url' => '/call-center/appels', 'available' => true],
+                ['key' => 'litiges', 'label' => 'Réclamations & Litiges', 'icon' => 'LTG', 'url' => '/call-center/litiges', 'available' => true],
+            ];
+        }
+
         if ($module['slug'] === 'finance') {
             return [
                 ['key' => 'dashboard', 'label' => 'Tableau de bord', 'icon' => 'DB', 'url' => '/finance/dashboard', 'available' => true],
@@ -319,6 +342,7 @@ final class ModuleDashboardService
                 ['key' => 'clotures', 'label' => 'Points de Caisse', 'icon' => 'CLT', 'url' => '/finance/clotures', 'available' => true],
                 ['key' => 'depenses', 'label' => 'Dépenses Prestataires', 'icon' => 'DEP', 'url' => '/finance/depenses', 'available' => true],
                 ['key' => 'comptabilite', 'label' => 'Comptabilité', 'icon' => 'CPT', 'url' => '/finance/comptabilite', 'available' => true],
+                ['key' => 'reporting_mensuel', 'label' => 'Point Mensuel', 'icon' => 'RPM', 'url' => '/finance/reporting/mensuel', 'available' => true],
             ];
         }
 

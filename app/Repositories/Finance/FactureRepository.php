@@ -4,6 +4,7 @@ namespace App\Repositories\Finance;
 
 use App\Models\Finance\Facture;
 use PDO;
+use App\Helpers\Accounting;
 
 class FactureRepository
 {
@@ -43,12 +44,13 @@ class FactureRepository
             ) VALUES (
                 :numero_facture, :colis_id, :client_id, :caissiere_id, :agence_id,
                 :montant_total, :montant_encaisse, :montant_restant, :devise, :taux_change,
-                :statut, :qr_code_paiement, :date_expiration_qr, :date_echeance_solde, NOW()
+                :statut, :qr_code_paiement, :date_expiration_qr, :date_echeance_solde, :date_emission
             )
         ");
 
         $stmt->execute([
             'numero_facture' => $facture->numeroFacture,
+            'date_emission' => Accounting::getAccountingDateTime(),
             'colis_id' => $facture->colisId,
             'client_id' => $facture->clientId,
             'caissiere_id' => $facture->caissiereId,
