@@ -62,9 +62,28 @@ final class ColisageService
     /** @param array<string, mixed> $data */
     public function registerParcel(array $data): int
     {
-        // Auto-generate unique tracking number: LB-CI-MMYY-NNN
+        // Determine tracking prefix code based on parcel type
+        $type = $data['type_expediteur'] ?? '';
+        $code = 'LB-CI';
+        
+        if ($type === 'export_aerien') {
+            $code = 'SP-CI';
+        } elseif ($type === 'export_maritime') {
+            $code = 'MP-CI';
+        } elseif ($type === 'import_maritime') {
+            $code = 'MP-FR';
+        } elseif ($type === 'import_aerien') {
+            $code = 'SP-FR';
+        } elseif ($type === 'colis_rapide_export') {
+            $code = 'CA-CI';
+        } elseif ($type === 'colis_rapide_import') {
+            $code = 'CA-FR';
+        } elseif ($type === 'dhl') {
+            $code = 'DL-CI';
+        }
+
         $mmyy = date('my'); // e.g. 0726 for July 2026
-        $prefix = 'LB-CI-' . $mmyy;
+        $prefix = $code . '-' . $mmyy;
         $pdo = \App\Models\Database::getConnection();
         $stmt = $pdo->prepare("SELECT COUNT(*) FROM lbp_colis WHERE numero_tracking LIKE :prefix");
         $stmt->execute(['prefix' => $prefix . '%']);
