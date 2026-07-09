@@ -9,11 +9,18 @@
  *
  * @return array The database configuration settings.
  */
+$host = $_SERVER['DB_HOST'] ?? $_ENV['DB_HOST'] ?? getenv('DB_HOST');
+$port = $_SERVER['DB_PORT'] ?? $_ENV['DB_PORT'] ?? getenv('DB_PORT');
+$dbname = $_SERVER['DB_DATABASE'] ?? $_ENV['DB_DATABASE'] ?? getenv('DB_DATABASE');
+$username = $_SERVER['DB_USERNAME'] ?? $_ENV['DB_USERNAME'] ?? getenv('DB_USERNAME');
+$password = $_SERVER['DB_PASSWORD'] ?? $_ENV['DB_PASSWORD'] ?? getenv('DB_PASSWORD');
+$charset = $_SERVER['DB_CHARSET'] ?? $_ENV['DB_CHARSET'] ?? getenv('DB_CHARSET');
+
 return [
-    'host' => $_SERVER['DB_HOST'] ?? $_ENV['DB_HOST'] ?? getenv('DB_HOST') ?: 'localhost',
-    'port' => (int) ($_SERVER['DB_PORT'] ?? $_ENV['DB_PORT'] ?? getenv('DB_PORT') ?: 3306),
-    'dbname' => $_SERVER['DB_DATABASE'] ?? $_ENV['DB_DATABASE'] ?? getenv('DB_DATABASE') ?: 'lbp_db',
-    'username' => $_SERVER['DB_USERNAME'] ?? $_ENV['DB_USERNAME'] ?? getenv('DB_USERNAME') ?: 'admin',
-    'password' => ($_SERVER['DB_PASSWORD'] ?? $_ENV['DB_PASSWORD'] ?? getenv('DB_PASSWORD') ?? '@Succes2019'),
-    'charset' => $_SERVER['DB_CHARSET'] ?? $_ENV['DB_CHARSET'] ?? getenv('DB_CHARSET') ?: 'utf8mb4',
+    'host' => ($host !== false && $host !== null) ? $host : 'localhost',
+    'port' => (int) (($port !== false && $port !== null) ? $port : 3306),
+    'dbname' => ($dbname !== false && $dbname !== null) ? $dbname : 'lbp_db',
+    'username' => ($username !== false && $username !== null) ? $username : 'admin',
+    'password' => ($password !== false && $password !== null) ? (string)$password : '@Succes2019',
+    'charset' => ($charset !== false && $charset !== null) ? $charset : 'utf8mb4',
 ];
