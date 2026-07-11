@@ -35,7 +35,6 @@ class MigrationRunner
         $this->linkUsersToRhEmployees();
         $this->createColisageTables();
         $this->createLbpUnifiedFlowTables();
-        $this->createCallCenterTables();
     }
 
 
@@ -2005,81 +2004,6 @@ class MigrationRunner
                 // Remplacer les délimiteurs // par ;
                 $sql = str_replace('//', ';', $sql);
                 $this->pdo->exec($sql);
-            }
-        }
-    }
-
-    /**
-     * Crée les tables pour le module Call Center et assigne les permissions par défaut.
-     */
-    private function createCallCenterTables(): void
-    {
-        if ($this->schema->tableExists('lbp_call_center_appels')) {
-            return;
-        }
-
-        $this->pdo->exec("
-            CREATE TABLE IF NOT EXISTS lbp_call_center_appels (
-                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-                client_id INT UNSIGNED NOT NULL,
-                agent_id INT NOT NULL,
-                type_appel ENUM('suivi', 'reclamation', 'information', 'autre') NOT NULL,
-                description TEXT NOT NULL,
-                statut ENUM('traite', 'a_rappeler', 'en_attente') NOT NULL DEFAULT 'traite',
-                satisfaction_score TINYINT NULL,
-                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                CONSTRAINT fk_appels_client FOREIGN KEY (client_id) REFERENCES lbp_clients(id) ON DELETE CASCADE,
-                CONSTRAINT fk_appels_agent FOREIGN KEY (agent_id) REFERENCES users(id) ON DELETE CASCADE
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-            CREATE TABLE IF NOT EXISTS lbp_call_center_litiges (
-                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-                client_id INT UNSIGNED NOT NULL,
-                colis_id INT UNSIGNED NULL,
-                agent_id INT NOT NULL,
-                type_litige ENUM('perte', 'retard', 'endommage', 'facturation', 'autre') NOT NULL,
-                description TEXT NOT NULL,
-                gravite ENUM('basse', 'moyenne', 'haute', 'critique') NOT NULL DEFAULT 'moyenne',
-                statut ENUM('nouveau', 'en_cours', 'resolu', 'annule') NOT NULL DEFAULT 'nouveau',
-                solution_apporte TEXT NULL,
-                date_ouverture DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                date_resolution DATETIME NULL,
-                CONSTRAINT fk_litiges_client FOREIGN KEY (client_id) REFERENCES lbp_clients(id) ON DELETE CASCADE,
-                CONSTRAINT fk_litiges_colis FOREIGN KEY (colis_id) REFERENCES lbp_colis(id) ON DELETE SET NULL,
-                CONSTRAINT fk_litiges_agent FOREIGN KEY (agent_id) REFERENCES users(id) ON DELETE CASCADE
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-            INSERT IGNORE INTO permission_entities (code, module, name, description, sort_order, is_active) VALUES
-            ('call_center_view', 'call-center', 'Call Center - Consulter', 'Consulter le tableau de bord Call Center, les appels et les litiges.', 10, 1),
-            ('call_center_manage', 'call-center', 'Call Center - Gerer', 'Enregistrer des appels, ouvrir, modifier et resoudre des litiges.', 11, 1);
-        ");
-
-        $stmtView = $this->pdo->query("SELECT id FROM permission_entities WHERE code = 'call_center_view' LIMIT 1");
-        $viewId = $stmtView ? $stmtView->fetchColumn() : null;
-        $stmtManage = $this->pdo->query("SELECT id FROM permission_entities WHERE code = 'call_center_manage' LIMIT 1");
-        $manageId = $stmtManage ? $stmtManage->fetchColumn() : null;
-
-        if ($viewId && $manageId) {
-            $this->pdo->exec("
-                -- Admins
-                INSERT IGNORE INTO user_permissions (user_id, entity_id, can_view, can_create, can_update, can_delete)
-                SELECT id, {$viewId}, 1, 1, 1, 1 FROM users WHERE is_admin = 1;
-                INSERT IGNORE INTO user_permissions (user_id, entity_id, can_view, can_create, can_update, can_delete)
-                SELECT id, {$manageId}, 1, 1, 1, 1 FROM users WHERE is_admin = 1;
-
-                -- Wilfried Abassi (ID 5)
-                INSERT IGNORE INTO user_permissions (user_id, entity_id, can_view, can_create, can_update, can_delete)
-                VALUES (5, {$viewId}, 1, 1, 1, 1), (5, {$manageId}, 1, 1, 1, 1) ON DUPLICATE KEY UPDATE can_view=1;
-            ");
-
-            if ($this->schema->tableExists('lbp_user_roles')) {
-                $this->pdo->exec("
-                    -- Roles
-                    INSERT IGNORE INTO user_permissions (user_id, entity_id, can_view, can_create, can_update, can_delete)
-                    SELECT ur.user_id, {$viewId}, 1, 1, 1, 1 FROM lbp_user_roles ur WHERE ur.role IN ('chef_agence', 'superviseur_regional', 'superviseur_general', 'assistant_dg', 'dg');
-                    INSERT IGNORE INTO user_permissions (user_id, entity_id, can_view, can_create, can_update, can_delete)
-                    SELECT ur.user_id, {$manageId}, 1, 1, 1, 1 FROM lbp_user_roles ur WHERE ur.role IN ('chef_agence', 'superviseur_regional', 'superviseur_general', 'assistant_dg', 'dg');
-                ");
             }
         }
     }

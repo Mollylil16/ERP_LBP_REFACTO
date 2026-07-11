@@ -25,8 +25,11 @@ final class FacturationDashboardController extends BaseController
 
         $module = $this->service->dashboard();
 
+        $page = new \App\View\Pages\Facturation\DashboardPage($module);
+
         $this->view('facturation/dashboard', $this->viewData($module) + [
             'dashboardModule' => $module,
+            'page' => $page,
         ]);
     }
 

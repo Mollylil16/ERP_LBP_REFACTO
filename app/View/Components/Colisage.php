@@ -11,6 +11,63 @@ use App\View\Components\Form;
 
 final class Colisage
 {
+    public static function recentParcels(array $rows): string
+    {
+        $html = '<section class="finea-section-card" style="margin-top: 1rem;">'
+            . '<div class="finea-table-wrapper"><table class="finea-table"><thead><tr>'
+            . '<th>N° Tracking</th><th>Expéditeur</th><th>Statut</th></tr></thead><tbody>';
+            
+        if ($rows === []) {
+            $html .= '<tr><td colspan="3" style="text-align:center; padding:1.5rem; color:#64748b;">Aucun colis enregistré récemment.</td></tr>';
+        } else {
+            foreach ($rows as $p) {
+                $html .= '<tr>'
+                    . '<td><strong><a href="' . View::url('colisage/parcels/' . $p['id']) . '">' . View::e($p['numero_tracking']) . '</a></strong></td>'
+                    . '<td>' . View::e($p['expediteur_name']) . '</td>'
+                    . '<td>' . Ui::badge($p['statut'], $p['status_tone']) . '</td>'
+                    . '</tr>';
+            }
+        }
+        $html .= '</tbody></table></div></section>';
+        return $html;
+    }
+
+    public static function recentExpeditions(array $rows): string
+    {
+        $html = '<section class="finea-section-card" style="margin-top: 1rem;">'
+            . '<div class="finea-table-wrapper"><table class="finea-table"><thead><tr>'
+            . '<th>Référence</th><th>Destination</th><th>Statut</th></tr></thead><tbody>';
+            
+        if ($rows === []) {
+            $html .= '<tr><td colspan="3" style="text-align:center; padding:1.5rem; color:#64748b;">Aucun manifeste planifié.</td></tr>';
+        } else {
+            foreach ($rows as $e) {
+                $html .= '<tr>'
+                    . '<td><strong><a href="' . View::url('colisage/groupage/' . $e['id']) . '">' . View::e($e['reference']) . '</a></strong></td>'
+                    . '<td>' . View::e($e['agence_arrivee_name']) . '</td>'
+                    . '<td>' . Ui::badge($e['statut'], $e['status_tone']) . '</td>'
+                    . '</tr>';
+            }
+        }
+        $html .= '</tbody></table></div></section>';
+        return $html;
+    }
+
+    public static function agencesOverview(): string
+    {
+        return '<div class="finea-section-card" style="margin-top: 1rem; padding: 1.5rem;">'
+            . '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">'
+            . '<div class="finea-section-card-nested" style="background: rgba(249, 115, 22, 0.05); padding: 1rem; border: 1px solid rgba(249, 115, 22, 0.1); border-radius: 8px;">'
+            . '<strong>Europe</strong><p style="margin-top: 0.5rem; font-size: 0.9rem; color: #475569;">Agence France (Paris)</p></div>'
+            . '<div class="finea-section-card-nested" style="background: rgba(249, 115, 22, 0.05); padding: 1rem; border: 1px solid rgba(249, 115, 22, 0.1); border-radius: 8px;">'
+            . '<strong>Afrique de l\'Ouest</strong><p style="margin-top: 0.5rem; font-size: 0.9rem; color: #475569;">Agence Sénégal (Dakar)</p></div>'
+            . '<div class="finea-section-card-nested" style="background: rgba(249, 115, 22, 0.05); padding: 1rem; border: 1px solid rgba(249, 115, 22, 0.1); border-radius: 8px;">'
+            . '<strong>Zone Aéroportuaire</strong><p style="margin-top: 0.5rem; font-size: 0.9rem; color: #475569;">Aéroport Port Bouët Fret</p></div>'
+            . '<div class="finea-section-card-nested" style="background: rgba(249, 115, 22, 0.05); padding: 1rem; border: 1px solid rgba(249, 115, 22, 0.1); border-radius: 8px;">'
+            . '<strong>Côte d\'Ivoire (Abidjan)</strong><p style="margin-top: 0.5rem; font-size: 0.9rem; color: #475569;">Siege Abidjan, Abobo Dokui, Adjamé Pharmacie Latin</p></div>'
+            . '</div></div>';
+    }
+
     public static function listPage(ColisageIndexPage $page): string
     {
         $actionHtml = Ui::button('Enregistrer un colis', [

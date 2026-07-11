@@ -25,8 +25,11 @@ final class CrmDashboardController extends BaseController
 
         $module = $this->service->dashboard();
 
+        $page = new \App\View\Pages\Crm\DashboardPage($module);
+
         $this->view('crm/dashboard', $this->viewData($module) + [
             'dashboardModule' => $module,
+            'page' => $page,
         ]);
     }
 

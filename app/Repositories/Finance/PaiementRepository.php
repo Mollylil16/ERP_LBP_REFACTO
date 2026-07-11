@@ -6,7 +6,6 @@ use App\Models\Finance\Paiement;
 use App\Models\Finance\Recu;
 use App\Models\Finance\PaiementCallback;
 use PDO;
-use App\Helpers\Accounting;
 
 class PaiementRepository
 {
@@ -31,11 +30,10 @@ class PaiementRepository
     {
         $stmt = $this->pdo->prepare("
             INSERT INTO lbp_paiements (facture_id, caissiere_id, montant, devise, mode, type, date_paiement)
-            VALUES (:facture_id, :caissiere_id, :montant, :devise, :mode, :type, :date_paiement)
+            VALUES (:facture_id, :caissiere_id, :montant, :devise, :mode, :type, NOW())
         ");
         $stmt->execute([
             'facture_id' => $paiement->factureId,
-            'date_paiement' => Accounting::getAccountingDateTime(),
             'caissiere_id' => $paiement->caissiereId,
             'montant' => $paiement->montant,
             'devise' => $paiement->devise,
@@ -53,11 +51,10 @@ class PaiementRepository
     {
         $stmt = $this->pdo->prepare("
             INSERT INTO lbp_recus (paiement_id, numero_recu, pdf_url, date_emission)
-            VALUES (:paiement_id, :numero_recu, :pdf_url, :date_emission)
+            VALUES (:paiement_id, :numero_recu, :pdf_url, NOW())
         ");
         $stmt->execute([
             'paiement_id' => $recu->paiementId,
-            'date_emission' => Accounting::getAccountingDateTime(),
             'numero_recu' => $recu->numeroRecu,
             'pdf_url' => $recu->pdfUrl,
         ]);

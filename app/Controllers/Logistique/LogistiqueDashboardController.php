@@ -25,8 +25,11 @@ final class LogistiqueDashboardController extends BaseController
 
         $module = $this->service->dashboard();
 
+        $page = new \App\View\Pages\Logistique\DashboardPage($module);
+
         $this->view('logistique/dashboard', $this->viewData($module) + [
             'dashboardModule' => $module,
+            'page' => $page,
         ]);
     }
 

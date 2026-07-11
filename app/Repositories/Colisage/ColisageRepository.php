@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Repositories\Colisage;
 
 use PDO;
-use App\Helpers\Accounting;
 
 final class ColisageRepository
 {
@@ -201,12 +200,11 @@ final class ColisageRepository
                 :numero_tracking, :expediteur_id, :destinataire_id, :poids_total, :nombre_colis,
                 :valeur_declaree, :montant_total, :montant_total_eur, :devise,
                 :agence_depart_id, :agence_arrivee_id,
-                'RÉCEPTIONNÉ', :type_expediteur, :trafic, :created_at
+                'RÉCEPTIONNÉ', :type_expediteur, :trafic, NOW()
             )
         ");
         $stmt->execute([
             'numero_tracking' => trim((string) $data['numero_tracking']),
-            'created_at' => Accounting::getAccountingDateTime(),
             'expediteur_id' => (int) $data['expediteur_id'],
             'destinataire_id' => (int) $data['destinataire_id'],
             'poids_total' => (float) ($data['poids_total'] ?? 0.0),

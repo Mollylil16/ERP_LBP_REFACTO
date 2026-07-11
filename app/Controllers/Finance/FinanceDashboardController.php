@@ -31,12 +31,16 @@ final class FinanceDashboardController extends BaseController
         $recentEtats = $this->service->getRecentEtats(5);
         $recentEcritures = $this->service->getRecentEcritures(5);
 
+        $page = new \App\View\Pages\Finance\DashboardPage(
+            $stats,
+            $recentFactures,
+            $recentEcritures,
+            $recentEtats
+        );
+
         $this->view('finance/dashboard', $this->viewData($module) + [
             'dashboardModule' => $module,
-            'stats' => $stats,
-            'recentFactures' => $recentFactures,
-            'recentEtats' => $recentEtats,
-            'recentEcritures' => $recentEcritures,
+            'page' => $page,
         ]);
     }
 

@@ -32,7 +32,4 @@ $router->group('/finance', function (Router $router): void {
 
     // Comptabilité
     $router->get('/comptabilite', [FinanceController::class, 'comptabilite']);
-
-    // Point Mensuel
-    $router->get('/reporting/mensuel', [FinanceController::class, 'reportingMensuel']);
 });

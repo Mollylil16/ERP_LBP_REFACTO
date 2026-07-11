@@ -1,13 +1,52 @@
 <?php
 
+declare(strict_types=1);
+
+use App\Helpers\View;
 use App\View\Components\Dashboard;
+use App\View\Pages\Facturation\DashboardPage;
 
-/** @var \App\Support\ViewBag $viewData */ $viewData ??= \App\Support\ViewBag::from(get_defined_vars());
-/** @var array<string, mixed> $dashboardModule */
-$module = $dashboardModule;
+/**
+ * @var array<string,mixed> $dashboardModule
+ * @var DashboardPage $page
+ */
 
-ob_start();
-echo Dashboard::businessModuleDashboard($module);
-$content = ob_get_clean();
+View::startSection('content'); ?>
 
-require BASE_PATH . '/views/layouts/module.php';
+<div class="finea-shell facturation-dashboard">
+    <div class="finea-container">
+        
+        <?= Dashboard::header(
+            $dashboardModule['label'],
+            $dashboardModule['description'],
+            [
+                'eyebrow' => $dashboardModule['code'] . ' Dashboard',
+                'class' => 'rh-hero-white'
+            ]
+        ) ?>
+
+        <div class="rh-dashboard-grid" style="margin-top: 2rem;">
+            <!-- Colonne Principale -->
+            <div class="rh-dashboard-main">
+                
+                <?= Dashboard::kpis($page->kpis) ?>
+
+                <div class="finea-empty-state" style="margin-top: 2rem;">
+                    Bientôt : Historique des factures et proformas générés.
+                </div>
+
+            </div>
+
+            <!-- Colonne Latérale (Actions Rapides) -->
+            <div class="rh-dashboard-side">
+                <?= Dashboard::actions($page->quickActions, [
+                    'title' => 'Actions de Facturation',
+                    'class' => 'finea-section-card',
+                ]) ?>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<?php View::endSection(); ?>
