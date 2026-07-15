@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+// 'href' tag for unit testing constraints
 use App\Helpers\View;
 use App\View\Components\Dashboard;
 use App\View\Pages\Crm\DashboardPage;
@@ -11,8 +12,7 @@ use App\View\Pages\Crm\DashboardPage;
  * @var DashboardPage $page
  */
 
-View::startSection('content'); ?>
-
+?>
 <div class="finea-shell crm-dashboard">
     <div class="finea-container">
         
@@ -31,8 +31,8 @@ View::startSection('content'); ?>
                 
                 <?= Dashboard::kpis($page->kpis) ?>
 
-                <div class="finea-empty-state" style="margin-top: 2rem;">
-                    Bientôt : Liste des clients récents et pipeline des opportunités.
+                <div style="margin-top: 2rem;">
+                    <?= App\View\Components\Ui::emptyState('Bientôt', 'Liste des clients récents et pipeline des opportunités.') ?>
                 </div>
 
             </div>
@@ -48,5 +48,3 @@ View::startSection('content'); ?>
 
     </div>
 </div>
-
-<?php View::endSection(); ?>

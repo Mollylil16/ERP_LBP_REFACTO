@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+// 'href' tag for unit testing constraints
 use App\Helpers\View;
 use App\View\Components\Dashboard;
 use App\View\Components\Finance;
@@ -13,7 +14,7 @@ use App\View\Pages\Finance\DashboardPage;
  */
 
 // Basic styling adjustments for specific layout if needed
-View::startSection('styles'); ?>
+?>
 <style>
     .module-section-heading {
         display: flex;
@@ -28,9 +29,6 @@ View::startSection('styles'); ?>
         margin-bottom: 0.25rem;
     }
 </style>
-<?php View::endSection();
-
-View::startSection('content'); ?>
 
 <div class="finea-shell">
     <div class="finea-container">
@@ -72,5 +70,3 @@ View::startSection('content'); ?>
 
     </div>
 </div>
-
-<?php View::endSection(); ?>

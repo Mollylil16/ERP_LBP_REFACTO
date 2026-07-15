@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Helpers\View;
 use App\View\Components\Form;
 use App\View\Components\Ui;
+use App\View\Components\Colisage;
 
 /** @var array<int, array<string, mixed>> $sites */
 /** @var array<int, array<string, mixed>> $clients */
@@ -89,9 +90,9 @@ foreach ($products as $p) {
                 <h3 class="rh-step-title">Service Express & Trajet</h3>
                 <div class="rh-form-grid-3">
                     <?= Form::select('type_expediteur', [
-                        ['value' => 'dhl', 'label' => '📦 DHL Express'],
-                        ['value' => 'colis_rapide_export', 'label' => '⚡ Colis Rapide Export'],
-                        ['value' => 'colis_rapide_import', 'label' => '⚡ Colis Rapide Import'],
+                        ['value' => 'dhl', 'label' => ' DHL Express'],
+                        ['value' => 'colis_rapide_export', 'label' => ' Colis Rapide Export'],
+                        ['value' => 'colis_rapide_import', 'label' => ' Colis Rapide Import'],
                     ], 'dhl', ['label' => 'Service de transport', 'required' => true, 'id' => 'service_selector']) ?>
 
                     <!-- Trajet selector (hidden by default unless Colis Rapide is selected) -->
@@ -129,66 +130,14 @@ foreach ($products as $p) {
             <div class="rh-form-step-card">
                 <div class="rh-step-badge">ÉTAPE 3</div>
                 <h3 class="rh-step-title">Détail des marchandises</h3>
-                <p style="color:#64748b; font-size:0.9rem; margin-bottom:1rem;">Conforme au format facture LBP-CI : N°, Nbre Colis, Description, Emballage, Qté Emb., Poids (kg), Prix/Kg, Total</p>
-                <div class="finea-table-wrapper">
-                    <table class="finea-table">
-                        <thead>
-                            <tr style="background:#1e3a5f; color:#fff;">
-                                <th style="width:5%;">N°</th>
-                                <th style="width:8%;">Nbre Colis</th>
-                                <th>Description</th>
-                                <th style="width:13%;">Emballage</th>
-                                <th style="width:8%;">Qté Emb.</th>
-                                <th style="width:10%;">Poids (kg)</th>
-                                <th style="width:10%;">Prix / Kg</th>
-                                <th style="width:10%;">Total</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php for ($i = 0; $i < 5; $i++): ?>
-                                <tr>
-                                    <td style="text-align:center; font-weight:600;"><?= $i + 1 ?></td>
-                                    <td><?= Form::rawInput('m_nbre_colis[]', '1', ['type' => 'number', 'min' => '1']) ?></td>
-                                    <td>
-                                        <?= Form::rawSelect('m_product_id[]', $prodOptions, '', ['id' => 'm_product_id_' . $i]) ?>
-                                        <div style="margin-top:0.4rem; display:flex; gap:0.4rem;">
-                                            <?= Form::rawInput('m_custom_name[]', '', ['placeholder' => 'Ou saisir un nom...']) ?>
-                                            <?= Form::rawInput('m_custom_price[]', '', ['type' => 'number', 'step' => '0.01', 'placeholder' => 'Prix unit.']) ?>
-                                        </div>
-                                    </td>
-                                    <td><?= Form::rawInput('m_emballage[]', '', ['placeholder' => 'Carton, Sac...']) ?></td>
-                                    <td><?= Form::rawInput('m_qte_emballage[]', '1', ['type' => 'number', 'min' => '1']) ?></td>
-                                    <td><?= Form::rawInput('m_weight[]', '0.00', ['type' => 'number', 'step' => '0.01', 'min' => '0']) ?></td>
-                                    <td><?= Form::rawInput('m_prix_kg[]', '0.00', ['type' => 'number', 'step' => '0.01', 'min' => '0']) ?></td>
-                                    <td style="background:rgba(0,0,0,0.02); text-align:right; font-weight:600;">
-                                        <span class="ligne-total">0 FCFA</span>
-                                    </td>
-                                </tr>
-                            <?php endfor; ?>
-                        </tbody>
-                        <tfoot>
-                            <tr>
-                                <td colspan="7" style="text-align:right; font-weight:600;">SOUS-TOTAL</td>
-                                <td style="text-align:right; font-weight:600;" id="sous_total">0 FCFA</td>
-                            </tr>
-                            <tr style="background:#1e3a5f; color:#fff;">
-                                <td colspan="7" style="text-align:right; font-weight:700; font-size:1.1rem;">MONTANT TOTAL</td>
-                                <td style="text-align:right; font-weight:700; font-size:1.1rem;">
-                                    <span id="montant_total_fcfa">0 FCFA</span><br>
-                                    <small id="montant_total_eur">≈ 0.00 €</small>
-                                </td>
-                            </tr>
-                        </tfoot>
-                    </table>
-                </div>
+                <p style="color:#64748b; font-size:0.9rem; margin-bottom:1rem;">Conforme au format facture LB-CI : N°, Nbre Colis, Description, Emballage, Qté Emb., Poids (kg), Prix/Kg, Total</p>
+                <?= Colisage::marchandisesInputTable($prodOptions) ?>
             </div>
 
             <!-- Actions -->
             <div style="margin-top:2rem; display:flex; gap:1rem; justify-content:flex-end; padding-bottom:3rem;">
                 <?= Ui::button('Annuler', ['href' => 'colisage/autres', 'variant' => 'secondary']) ?>
-                <button type="submit" class="finea-button finea-button--accent" style="font-size:1rem; padding:0.8rem 2rem;">
-                    Enregistrer & Générer la facture
-                </button>
+                <?= Ui::button('Enregistrer & Générer la facture', ['type' => 'submit', 'variant' => 'accent', 'style' => 'font-size:1rem; padding:0.8rem 2rem;']) ?>
             </div>
 
         </form>
@@ -294,15 +243,53 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Attach event listeners to all input elements in table
     rows.forEach(row => {
-        // Watch product dropdown to auto-set price/kg
-        const prodSelect = row.querySelector('select[name="m_product_id[]"]');
+        // Watch product dropdown to auto-set price/kg (can be multiple select name like m_product_id_0[])
+        const prodSelect = row.querySelector('select[name^="m_product_id_"]');
         if (prodSelect) {
             prodSelect.addEventListener('change', function() {
-                const product = productsData.find(p => p.id == this.value);
-                if (product) {
+                const selectedOptions = Array.from(this.selectedOptions).filter(opt => opt.value !== "");
+                if (selectedOptions.length > 0) {
+                    let firstPrice = null;
+                    let validValues = [];
+                    let hasPriceMismatch = false;
+
+                    selectedOptions.forEach(opt => {
+                        const product = productsData.find(p => p.id == opt.value);
+                        if (product) {
+                            const price = Math.round(parseFloat(product.prix_unitaire) || 0);
+                            if (firstPrice === null) {
+                                firstPrice = price;
+                                validValues.push(opt.value);
+                            } else if (firstPrice === price) {
+                                validValues.push(opt.value);
+                            } else {
+                                hasPriceMismatch = true;
+                            }
+                        }
+                    });
+
+                    if (hasPriceMismatch) {
+                        alert("Attention : Tous les produits sélectionnés sur une même ligne doivent avoir le même prix unitaire !");
+                        // Deselect options that don't match the first price
+                        Array.from(this.options).forEach(opt => {
+                            if (opt.value && !validValues.includes(opt.value)) {
+                                opt.selected = false;
+                            }
+                        });
+                        // Re-trigger change to update UI select-search
+                        this.dispatchEvent(new Event("change", { bubbles: true }));
+                        return;
+                    }
+
+                    const priceInput = row.querySelector('input[name="m_prix_kg[]"]');
+                    if (priceInput && firstPrice !== null) {
+                        priceInput.value = firstPrice;
+                        calculateTotals();
+                    }
+                } else {
                     const priceInput = row.querySelector('input[name="m_prix_kg[]"]');
                     if (priceInput) {
-                        priceInput.value = Math.round(parseFloat(product.prix_unitaire) || 0);
+                        priceInput.value = '0.00';
                         calculateTotals();
                     }
                 }

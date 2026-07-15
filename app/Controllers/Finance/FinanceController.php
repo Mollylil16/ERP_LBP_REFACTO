@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Controllers\Finance;
 
-use App\Controllers\BaseController;
 use App\Helpers\Auth;
 use App\Helpers\Session;
 use App\Helpers\Response;
@@ -27,7 +26,7 @@ use App\Services\Shared\AuditLogService;
 use App\Services\Shared\NotificationService;
 use PDO;
 
-final class FinanceController extends BaseController
+final class FinanceController extends FinanceBaseController
 {
     private PDO $db;
     private FactureRepository $factureRepo;
@@ -106,10 +105,7 @@ final class FinanceController extends BaseController
 
         $agences = $this->db->query("SELECT id, name FROM company_sites WHERE is_active = 1")->fetchAll() ?: [];
 
-        $nav = $this->viewData();
-        $nav['activeModule'] = 'factures';
-
-        $this->view('finance/factures/index', $nav + [
+        $this->financeView('finance/factures/index', 'Gestion de la Facturation', 'factures', [
             'factures' => $factures,
             'filters' => $filters,
             'agences' => $agences,
@@ -150,10 +146,7 @@ final class FinanceController extends BaseController
             $colisSansFacture = $stmt->fetchAll() ?: [];
         }
 
-        $nav = $this->viewData();
-        $nav['activeModule'] = 'factures';
-
-        $this->view('finance/factures/create', $nav + [
+        $this->financeView('finance/factures/create', 'Créer une Facture', 'factures', [
             'colisSansFacture' => $colisSansFacture,
         ]);
     }
@@ -276,10 +269,7 @@ final class FinanceController extends BaseController
         $paiements = $this->paiementRepo->findByFactureId($facture->id);
         $callbacks = $this->paiementRepo->findCallbacksByFactureId($facture->id);
 
-        $nav = $this->viewData();
-        $nav['activeModule'] = 'factures';
-
-        $this->view('finance/factures/show', $nav + [
+        $this->financeView('finance/factures/show', 'Facture ' . $facture->numeroFacture, 'factures', [
             'facture' => $facture,
             'paiements' => $paiements,
             'callbacks' => $callbacks,
@@ -490,10 +480,7 @@ final class FinanceController extends BaseController
         // Charger prestataires
         $prestataires = $this->demandeRepo->getPrestataires(Auth::zoneRegionaleId());
 
-        $nav = $this->viewData();
-        $nav['activeModule'] = 'depenses';
-
-        $this->view('finance/depenses/index', $nav + [
+        $this->financeView('finance/depenses/index', 'Dépenses Prestataires', 'depenses', [
             'demandes' => $demandes,
             'prestataires' => $prestataires,
         ]);
@@ -657,10 +644,7 @@ final class FinanceController extends BaseController
 
         $agences = $this->db->query("SELECT id, name FROM company_sites WHERE is_active = 1")->fetchAll() ?: [];
 
-        $nav = $this->viewData();
-        $nav['activeModule'] = 'clotures';
-
-        $this->view('finance/clotures/index', $nav + [
+        $this->financeView('finance/clotures/index', 'Points de Caisse', 'clotures', [
             'reports' => $reports,
             'agences' => $agences,
             'activeReport' => $activeReport,
@@ -833,38 +817,10 @@ final class FinanceController extends BaseController
         $ecritures = $this->comptabiliteRepo->getEcritures($filters);
         $accounts = $this->comptabiliteRepo->getPlanComptable();
 
-        $nav = $this->viewData();
-        $nav['activeModule'] = 'comptabilite';
-
-        $this->view('finance/comptabilite/index', $nav + [
+        $this->financeView('finance/comptabilite/index', 'Comptabilité', 'comptabilite', [
             'ecritures' => $ecritures,
             'accounts' => $accounts,
             'filters' => $filters,
         ]);
-    }
-
-    /**
-     * Prépare le menu de navigation et les styles pour les pages Finance.
-     */
-    private function viewData(): array
-    {
-        return [
-            'pageTitle' => 'Gestion Financière',
-            'moduleName' => 'Finance',
-            'moduleCode' => 'FIN',
-            'moduleTheme' => [
-                'accent' => '#2563eb',
-                'accent2' => '#1d2b57',
-                'gradient' => 'linear-gradient(135deg, #1d2b57, #2563eb)',
-            ],
-            'moduleNavigation' => [
-                ['key' => 'dashboard', 'label' => 'Tableau de bord', 'icon' => 'DB', 'url' => '/finance/dashboard', 'available' => true],
-                ['key' => 'factures', 'label' => 'Factures Clients', 'icon' => 'FAC', 'url' => '/finance/factures', 'available' => true],
-                ['key' => 'clotures', 'label' => 'Points de Caisse', 'icon' => 'CLT', 'url' => '/finance/clotures', 'available' => true],
-                ['key' => 'depenses', 'label' => 'Dépenses Prestataires', 'icon' => 'DEP', 'url' => '/finance/depenses', 'available' => true],
-                ['key' => 'comptabilite', 'label' => 'Comptabilité', 'icon' => 'CPT', 'url' => '/finance/comptabilite', 'available' => Auth::hasAnyRole(['comptable', 'dg'])],
-            ],
-            'additionalStyles' => ['css/finea-ui.css', 'css/finance.css'],
-        ];
     }
 }

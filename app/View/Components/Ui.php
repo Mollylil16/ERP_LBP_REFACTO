@@ -140,4 +140,27 @@ final class Ui
     {
         return '<div class="finea-empty-state"><strong>' . View::e($title) . '</strong>' . ($message !== '' ? '<p>' . View::e($message) . '</p>' : '') . '</div>';
     }
+
+    /**
+     * Generic modal dialog component.
+     *
+     * @param array<string,mixed> $options  Optional: 'btnLabel', 'btnVariant', 'formId'
+     */
+    public static function modal(string $id, string $title, string $fieldsHtml, string $action = '', array $options = []): string
+    {
+        $btnLabel = $options['btnLabel'] ?? 'Enregistrer';
+        $btnVariant = $options['btnVariant'] ?? 'accent';
+        $formId = $options['formId'] ?? '';
+        $formIdAttr = $formId !== '' ? ' id="' . View::e($formId) . '"' : '';
+
+        return '<div id="' . View::e($id) . '" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:999; justify-content:center; align-items:center; padding:1.5rem;">'
+            . '<div class="finea-section-card" style="max-width:550px; width:100%; margin:0; box-shadow:0 20px 25px -5px rgba(0,0,0,0.2);">'
+            . '<h3 class="rh-step-title" style="margin-bottom:1rem; padding-bottom:0.5rem;">' . View::e($title) . '</h3>'
+            . '<form method="post" action="' . ($action !== '' ? $action : '') . '"' . $formIdAttr . '>'
+            . '<div class="rh-form-grid-3" style="grid-template-columns:1fr; gap:1rem;">' . $fieldsHtml . '</div>'
+            . '<div style="margin-top:1.5rem; display:flex; justify-content:flex-end; gap:0.5rem;">'
+            . '<button type="button" class="finea-button finea-button--secondary" onclick="document.getElementById(\'' . View::e($id) . '\').style.display=\'none\'">Fermer</button>'
+            . '<button type="submit" class="finea-button finea-button--' . View::e($btnVariant) . '">' . View::e($btnLabel) . '</button>'
+            . '</div></form></div></div>';
+    }
 }

@@ -277,7 +277,7 @@ final class Finance
             . '</div>'
             . '<div style="margin-top:2.5rem; display:flex; gap:1rem; justify-content:flex-end;">'
             . Ui::button('Annuler', ['href' => 'finance/factures', 'variant' => 'secondary'])
-            . '<button type="submit" class="finea-button finea-button--accent">Générer la Facture</button>'
+            . Ui::button('Générer la Facture', ['type' => 'submit', 'variant' => 'accent'])
             . '</div>'
             . '</form>';
 
@@ -438,7 +438,7 @@ final class Finance
                 . '<p style="font-size:0.85rem; color:#64748b; margin-bottom:1rem;">Remplir ce formulaire si le client règle directement au guichet.</p>'
                 . $formFields
                 . '<div style="margin-top: 1rem; display:flex; justify-content:flex-end;">'
-                . '<button type="submit" class="finea-button finea-button--accent">Valider l\'encaissement</button>'
+                . Ui::button('Valider l\'encaissement', ['type' => 'submit', 'variant' => 'accent'])
                 . '</div>'
                 . '</form>';
         }
@@ -466,7 +466,7 @@ final class Finance
                     ['value' => 'whatsapp', 'label' => '🟢 WhatsApp Business'],
                     ['value' => 'email', 'label' => '📧 Courriel (Email)'],
                 ], 'whatsapp', ['required' => true])
-                . '<button type="submit" class="finea-button finea-button--primary">Envoyer le Rappel de Solde</button>'
+                . Ui::button('Envoyer le Rappel de Solde', ['type' => 'submit', 'variant' => 'primary'])
                 . '</div>'
                 . '</form>'
                 . '</div>'
@@ -521,7 +521,7 @@ final class Finance
                 . Form::input('justificatif_url', ['label' => 'Lien de la facture justificative'])
                 . '</div>'
                 . '<div style="margin-top:1rem; display:flex; justify-content:flex-end;">'
-                . '<button type="submit" class="finea-button finea-button--accent">Soumettre la demande</button>'
+                . Ui::button('Soumettre la demande', ['type' => 'submit', 'variant' => 'accent'])
                 . '</div>'
                 . '</form>';
         }
@@ -555,11 +555,11 @@ final class Finance
                             $actionsHtml = '<div style="display:flex; gap:0.5rem;">'
                                 . '<form method="post" action="' . View::url('finance/depenses/' . $d->id . '/valider') . '" class="js-protect-form">'
                                 . '<input type="hidden" name="decision" value="approuver">'
-                                . '<button type="submit" class="finea-button finea-button--success finea-button-sm">Payer</button>'
+                                . Ui::button('Payer', ['type' => 'submit', 'variant' => 'success', 'class' => 'finea-button-sm'])
                                 . '</form>'
                                 . '<form method="post" action="' . View::url('finance/depenses/' . $d->id . '/valider') . '" class="js-protect-form">'
                                 . '<input type="hidden" name="decision" value="rejeter">'
-                                . '<button type="submit" class="finea-button finea-button--danger finea-button-sm">Rejeter</button>'
+                                . Ui::button('Rejeter', ['type' => 'submit', 'variant' => 'danger', 'class' => 'finea-button-sm'])
                                 . '</form>'
                                 . '</div>';
                         } else {
@@ -650,7 +650,7 @@ final class Finance
 
                 if ($statut === 'brouillon') {
                     $submissionForm .= '<form method="post" action="' . View::url('finance/clotures/soumettre') . '" class="js-protect-form">'
-                        . '<button type="submit" class="finea-button finea-button--accent">Soumettre le point (Verrouillage à 15h)</button>'
+                        . Ui::button('Soumettre le point (Verrouillage à 15h)', ['type' => 'submit', 'variant' => 'accent'])
                         . '</form>';
                 } else {
                     $submissionForm .= '<p style="color:#16a34a; font-weight:600;"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" style="display:inline; margin-right:0.25rem;"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg> Point soumis et verrouillé.</p>';
@@ -658,7 +658,7 @@ final class Finance
             } else {
                 $submissionForm .= '<form method="post" action="' . View::url('finance/clotures/soumettre') . '" class="js-protect-form">'
                     . '<p style="color:#64748b; margin-bottom:1rem;">Aucun colis ou facture n\'a encore été enregistré aujourd\'hui pour votre agence. Soumettre un état à 0.</p>'
-                    . '<button type="submit" class="finea-button finea-button--accent">Initialiser et soumettre le point</button>'
+                    . Ui::button('Initialiser et soumettre le point', ['type' => 'submit', 'variant' => 'accent'])
                     . '</form>';
             }
             $submissionForm .= '</div>';
@@ -684,7 +684,7 @@ final class Finance
                 $actionsHtml = '—';
                 if ($r->statut === 'soumis' && Auth::hasRole('caissiere_principale')) {
                     $actionsHtml = '<form method="post" action="' . View::url('finance/clotures/' . $r->id . '/consolider') . '" class="js-protect-form">'
-                        . '<button type="submit" class="finea-button finea-button--success finea-button-sm">Consolider</button>'
+                        . Ui::button('Consolider', ['type' => 'submit', 'variant' => 'success', 'class' => 'finea-button-sm'])
                         . '</form>';
                 }
 
@@ -819,7 +819,7 @@ final class Finance
 
                 $rows .= '<tr>'
                     . '<td>' . View::e($e->dateEcriture) . '</td>'
-                    . '<td><span class="finea-badge">' . View::e(strtoupper($e->journal)) . '</span></td>'
+                    . '<td>' . Ui::badge(strtoupper($e->journal)) . '</td>'
                     . '<td><strong>' . View::e($e->compteDebit) . '</strong><br><small style="color:#64748b;">' . View::e($compteDebName) . '</small></td>'
                     . '<td><strong>' . View::e($e->compteCredit) . '</strong><br><small style="color:#64748b;">' . View::e($compteCredName) . '</small></td>'
                     . '<td style="text-align:right; font-weight:700; color:#1e293b;">' . View::e(number_format($e->montant, 2, ',', ' ')) . ' ' . View::e($e->devise) . '</td>'

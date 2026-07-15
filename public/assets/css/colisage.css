@@ -77,6 +77,11 @@
   transition: transform 0.2s, box-shadow 0.2s;
 }
 
+.rh-form-step-card:focus-within,
+.rh-form-step-card:has(.finea-select-search.is-open) {
+  z-index: 10;
+}
+
 .rh-form-step-card:hover {
   transform: translateY(-2px);
   box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
@@ -109,7 +114,8 @@
 /* Premium custom table design matching the invoice image */
 .finea-table-wrapper {
   border-radius: 12px;
-  overflow: hidden;
+  overflow: auto;
+  overflow-x: auto;
   border: 1px solid var(--lbp-border);
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02);
   background: #ffffff;
@@ -132,7 +138,7 @@
 }
 
 .finea-table td {
-  padding: 1rem 1.25rem !important;
+  padding: 0.75rem 1rem !important;
   border-bottom: 1px solid var(--lbp-border);
   font-size: 0.9rem;
   color: var(--lbp-text);
@@ -141,6 +147,42 @@
 
 .finea-table tr:hover td {
   background-color: var(--lbp-blue-subtle) !important;
+}
+
+/* Compact inputs inside finea-table - specificity boost to prevent general overrides */
+.finea-table td input,
+.finea-table td input[type="text"],
+.finea-table td input[type="number"],
+.finea-table td select {
+  padding: 0.35rem 0.5rem !important;
+  font-size: 0.82rem !important;
+  width: 100% !important;
+  height: 32px !important;
+  box-sizing: border-box;
+}
+
+/* Compact style for custom select search inside table */
+.finea-table td .finea-select-control {
+  min-height: 32px !important;
+  padding: 2px 6px !important;
+  border-radius: 8px !important;
+}
+.finea-table td .finea-select-badge {
+  padding: 2px 6px !important;
+  font-size: 0.78rem !important;
+  font-weight: 700 !important;
+  border-radius: 6px !important;
+}
+.finea-table td .finea-select-input {
+  padding: 2px 0 !important;
+  font-size: 0.82rem !important;
+}
+
+/* Ensure total row text color is white on dark blue background */
+.finea-table tfoot tr[style*="background:#1e3a5f"] td,
+.finea-table tfoot tr[style*="background:#1e3a5f"] td span,
+.finea-table tfoot tr[style*="background:#1e3a5f"] td small {
+  color: #ffffff !important;
 }
 
 /* Inputs styled premium */

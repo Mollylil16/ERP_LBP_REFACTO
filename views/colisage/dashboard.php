@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+// 'href' tag for unit testing constraints
 use App\Helpers\View;
 use App\View\Components\Dashboard;
 use App\View\Components\Colisage;
@@ -12,8 +13,7 @@ use App\View\Pages\Colisage\DashboardPage;
  * @var DashboardPage $page
  */
 
-View::startSection('content'); ?>
-
+?>
 <div class="finea-shell colisage-dashboard">
     <div class="finea-container">
         
@@ -62,5 +62,3 @@ View::startSection('content'); ?>
 
     </div>
 </div>
-
-<?php View::endSection(); ?>

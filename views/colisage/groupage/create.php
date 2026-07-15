@@ -13,6 +13,12 @@ foreach ($sites as $s) {
     $siteOpts[] = ['value' => (string) $s['id'], 'label' => $s['name']];
 }
 
+// Default departure = now (rounded to next quarter-hour)
+$now = new DateTimeImmutable('now', new DateTimeZone('Africa/Abidjan'));
+$minute = (int) $now->format('i');
+$roundUp = (15 - ($minute % 15)) % 15;
+$defaultDepart = $now->modify("+{$roundUp} minutes")->format('Y-m-d\TH:i');
+
 ?>
 <div class="finea-shell">
     <div class="finea-container">
@@ -45,23 +51,70 @@ foreach ($sites as $s) {
                 <?= Form::input('date_depart_prevue', [
                     'label' => 'Date & Heure de départ prévue',
                     'type' => 'datetime-local',
-                    'required' => true
+                    'required' => true,
+                    'value' => $defaultDepart,
                 ]) ?>
 
                 <?= Form::input('date_arrivee_estimee', [
                     'label' => 'Date & Heure d\'arrivée estimée',
                     'type' => 'datetime-local',
-                    'required' => true
+                    'required' => true,
+                    'hint' => 'Calculée automatiquement selon le type de transport.',
                 ]) ?>
 
             </div>
 
             <div style="margin-top: 2rem; display:flex; gap:1rem; justify-content:flex-end;">
                 <?= Ui::button('Annuler', ['href' => 'colisage/groupage', 'variant' => 'secondary']) ?>
-                <button type="submit" class="finea-button finea-button--accent">Créer le Manifeste</button>
+                <?= Ui::button('Créer le Manifeste', ['type' => 'submit', 'variant' => 'accent']) ?>
             </div>
 
         </form>
 
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var departInput   = document.querySelector('input[name="date_depart_prevue"]');
+    var arriveeInput  = document.querySelector('input[name="date_arrivee_estimee"]');
+    var transportSel  = document.querySelector('select[name="type_transport"]');
+
+    if (!departInput || !arriveeInput || !transportSel) return;
+
+    // Delay map in days per transport type
+    var delayDays = {
+        'AÉRIEN':    3,
+        'MARITIME':  30,
+        'TERRESTRE': 7
+    };
+
+    function computeArrivee() {
+        var departValue = departInput.value;
+        if (!departValue) return;
+
+        var transport = transportSel.value || 'AÉRIEN';
+        var days = delayDays[transport] || 3;
+
+        var depart = new Date(departValue);
+        if (isNaN(depart.getTime())) return;
+
+        depart.setDate(depart.getDate() + days);
+
+        // Format as yyyy-MM-ddTHH:mm
+        var pad = function(n) { return n < 10 ? '0' + n : '' + n; };
+        arriveeInput.value = depart.getFullYear() + '-'
+            + pad(depart.getMonth() + 1) + '-'
+            + pad(depart.getDate()) + 'T'
+            + pad(depart.getHours()) + ':'
+            + pad(depart.getMinutes());
+    }
+
+    departInput.addEventListener('change', computeArrivee);
+    transportSel.addEventListener('change', computeArrivee);
+
+    // Auto-compute on page load if departure is pre-filled
+    computeArrivee();
+});
+</script>
+

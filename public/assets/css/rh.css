@@ -1898,7 +1898,6 @@
 	box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
 }
 
-/* Step cards layout */
 .rh-form-step-card {
 	background: #ffffff;
 	border: 1px solid #dfe6f1;
@@ -1906,6 +1905,11 @@
 	padding: 32px;
 	margin-bottom: 24px;
 	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.015);
+	position: relative;
+}
+.rh-form-step-card:focus-within,
+.rh-form-step-card:has(.finea-select-search.is-open) {
+	z-index: 10;
 }
 .rh-step-badge {
 	font-size: 0.72rem;

@@ -106,11 +106,18 @@ final class ColisageService
             foreach ($data['marchandises'] as $m) {
                 $description = '';
 
-                if (!empty($m['product_id'])) {
-                    // Get name from selected product
-                    $stmt = \App\Models\Database::getConnection()->prepare("SELECT nom FROM lbp_produits WHERE id = :id");
-                    $stmt->execute(['id' => (int) $m['product_id']]);
-                    $description = (string) $stmt->fetchColumn() ?: 'Produit Inconnu';
+                $prodIds = !empty($m['product_ids']) ? (array) $m['product_ids'] : (!empty($m['product_id']) ? [$m['product_id']] : []);
+                if (!empty($prodIds)) {
+                    $names = [];
+                    foreach ($prodIds as $pid) {
+                        $stmt = \App\Models\Database::getConnection()->prepare("SELECT nom FROM lbp_produits WHERE id = :id");
+                        $stmt->execute(['id' => (int) $pid]);
+                        $name = $stmt->fetchColumn();
+                        if ($name) {
+                            $names[] = $name;
+                        }
+                    }
+                    $description = implode(' + ', $names) ?: 'Produit Inconnu';
                 } elseif (!empty($m['custom_name'])) {
                     $customName = trim((string) $m['custom_name']);
                     // Check if it already exists
