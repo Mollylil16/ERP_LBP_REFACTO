@@ -10,6 +10,8 @@ use App\Repositories\Colisage\ColisageRepository;
 use App\Services\Colisage\ColisageService;
 use App\Helpers\View;
 
+use App\View\Pages\Colisage\ColisageIndexPage;
+
 final class ColisageController extends ColisageBaseController
 {
     private ColisageService $service;
@@ -37,9 +39,7 @@ final class ColisageController extends ColisageBaseController
         $sites = $sitesStmt->fetchAll(\PDO::FETCH_ASSOC) ?: [];
 
         $this->colisageView('colisage/parcels/index', 'Gestion des Colis', 'operations', [
-            'parcelsData' => $data,
-            'filters' => $filters,
-            'sites' => $sites,
+            'page' => new ColisageIndexPage(array_replace($data, ['filters' => $filters]), $sites),
         ]);
     }
 

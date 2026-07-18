@@ -6,7 +6,7 @@ namespace App\Repositories\Colisage;
 
 use PDO;
 
-final class ColisageRepository
+class ColisageRepository
 {
     public function __construct(private PDO $pdo) {}
 
@@ -513,5 +513,28 @@ final class ColisageRepository
             'id' => $parcelId,
             'expedition_id' => $expeditionId,
         ]);
+    }
+
+    public function countParcelsWithTrackingPrefix(string $prefix): int
+    {
+        $stmt = $this->pdo->prepare("SELECT COUNT(*) FROM lbp_colis WHERE numero_tracking LIKE :prefix");
+        $stmt->execute(['prefix' => $prefix . '%']);
+        return (int) $stmt->fetchColumn();
+    }
+
+    public function getProductNameById(int $id): ?string
+    {
+        $stmt = $this->pdo->prepare("SELECT nom FROM lbp_produits WHERE id = :id");
+        $stmt->execute(['id' => $id]);
+        $name = $stmt->fetchColumn();
+        return $name ? (string) $name : null;
+    }
+
+    public function getAgencyNameById(int $id): ?string
+    {
+        $stmt = $this->pdo->prepare("SELECT name FROM company_sites WHERE id = :id");
+        $stmt->execute(['id' => $id]);
+        $name = $stmt->fetchColumn();
+        return $name ? (string) $name : null;
     }
 }

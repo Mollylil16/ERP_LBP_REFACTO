@@ -62,32 +62,71 @@ final class ColisageService
     /** @param array<string, mixed> $data */
     public function registerParcel(array $data): int
     {
-        // Determine tracking prefix code based on parcel type
+        // Determine tracking prefix code based on parcel type and route
         $type = $data['type_expediteur'] ?? '';
-        $code = 'LB-CI';
-        
-        if ($type === 'export_aerien') {
-            $code = 'SP-CI';
-        } elseif ($type === 'export_maritime') {
+        $code = 'LB-CI'; // default fallback
+
+        // Determine countries based on departure and arrival agencies
+        $from = $this->getCountryFromAgencyId(!empty($data['agence_depart_id']) ? (int) $data['agence_depart_id'] : null);
+        $to = $this->getCountryFromAgencyId(!empty($data['agence_arrivee_id']) ? (int) $data['agence_arrivee_id'] : null);
+
+        // If trajet is explicitly passed in data
+        if (!empty($data['trajet'])) {
+            $parts = explode('_', $data['trajet']);
+            if (count($parts) === 2) {
+                $from = $parts[0] === 'CIV' ? 'CIV' : ($parts[0] === 'FR' ? 'FR' : ($parts[0] === 'SEN' ? 'SEN' : ($parts[0] === 'CAN' ? 'CAN' : $from)));
+                $to = $parts[1] === 'CIV' ? 'CIV' : ($parts[1] === 'FR' ? 'FR' : ($parts[1] === 'SEN' ? 'SEN' : ($parts[1] === 'CAN' ? 'CAN' : $to)));
+            }
+        }
+
+        if ($type === 'export_maritime') {
             $code = 'MP-CI';
         } elseif ($type === 'import_maritime') {
             $code = 'MP-FR';
-        } elseif ($type === 'import_aerien') {
-            $code = 'SP-FR';
-        } elseif ($type === 'colis_rapide_export') {
-            $code = 'CA-CI';
-        } elseif ($type === 'colis_rapide_import') {
-            $code = 'CA-FR';
         } elseif ($type === 'dhl') {
             $code = 'DL-CI';
+        } else {
+            // Air Cargo and Express (Colis Rapide) routing rules
+            if ($type === 'colis_rapide_export' || $type === 'colis_rapide_import') {
+                if ($from === 'FR' && $to === 'SEN') {
+                    $code = 'F-SN';
+                } elseif ($from === 'CIV' && $to === 'FR') {
+                    $code = 'CA-CI';
+                } elseif ($from === 'FR' && $to === 'CIV') {
+                    $code = 'CA-FR';
+                } elseif ($from === 'SEN' && $to === 'CIV') {
+                    $code = 'CA-SN';
+                } elseif ($from === 'CIV' && $to === 'SEN') {
+                    $code = 'CA-IS';
+                } elseif ($from === 'CIV' && $to === 'CAN') {
+                    $code = 'CA-IC';
+                } elseif ($from === 'CAN' && $to === 'CIV') {
+                    $code = 'CA-CC';
+                } else {
+                    $code = ($from === 'FR' || $to === 'CIV') ? 'CA-FR' : 'CA-CI';
+                }
+            } elseif ($type === 'export_aerien' || $type === 'import_aerien') {
+                if ($from === 'CIV' && $to === 'FR') {
+                    $code = 'LB-CI';
+                } elseif ($from === 'FR' && $to === 'CIV') {
+                    $code = 'LB-FR';
+                } elseif ($from === 'SEN' && $to === 'FR') {
+                    $code = 'S-FR';
+                } elseif ($from === 'CIV' && $to === 'CAN') {
+                    $code = 'LB-CA';
+                } else {
+                    if ($from === 'FR' || $to === 'CIV') {
+                        $code = 'LB-FR';
+                    } else {
+                        $code = 'LB-CI';
+                    }
+                }
+            }
         }
 
         $mmyy = date('my'); // e.g. 0726 for July 2026
         $prefix = $code . '-' . $mmyy;
-        $pdo = \App\Models\Database::getConnection();
-        $stmt = $pdo->prepare("SELECT COUNT(*) FROM lbp_colis WHERE numero_tracking LIKE :prefix");
-        $stmt->execute(['prefix' => $prefix . '%']);
-        $seq = ((int) $stmt->fetchColumn()) + 1;
+        $seq = $this->repository->countParcelsWithTrackingPrefix($prefix) + 1;
         $data['numero_tracking'] = $prefix . '-' . str_pad((string) $seq, 3, '0', STR_PAD_LEFT);
 
         // Determine trafic label from type_expediteur
@@ -97,7 +136,7 @@ final class ColisageService
             'import_aerien' => 'Import Aérien',
             'import_maritime' => 'Import Maritime',
         ];
-        $data['trafic'] = $traficMap[$data['type_expediteur'] ?? ''] ?? 'Groupage Aérien';
+        $data['trafic'] = $data['trafic'] ?? $traficMap[$data['type_expediteur'] ?? ''] ?? 'Groupage Aérien';
 
         $parcelId = $this->repository->createParcel($data);
 
@@ -110,9 +149,7 @@ final class ColisageService
                 if (!empty($prodIds)) {
                     $names = [];
                     foreach ($prodIds as $pid) {
-                        $stmt = \App\Models\Database::getConnection()->prepare("SELECT nom FROM lbp_produits WHERE id = :id");
-                        $stmt->execute(['id' => (int) $pid]);
-                        $name = $stmt->fetchColumn();
+                        $name = $this->repository->getProductNameById((int) $pid);
                         if ($name) {
                             $names[] = $name;
                         }
@@ -306,5 +343,30 @@ final class ColisageService
     public function getParcelsAvailableForGroupage(int $agencyId): array
     {
         return $this->repository->getParcelsAvailableForGroupage($agencyId);
+    }
+
+    private function getCountryFromAgencyId(?int $id): string
+    {
+        if ($id === null) {
+            return '';
+        }
+        $name = $this->repository->getAgencyNameById($id);
+        if (!$name) {
+            return '';
+        }
+        $name = mb_strtolower($name);
+        if (str_contains($name, 'abidjan') || str_contains($name, 'san pedro') || str_contains($name, 'dokui') || str_contains($name, 'adjamé') || str_contains($name, 'bouët') || str_contains($name, 'siege') || str_contains($name, 'côte d\'ivoire') || str_contains($name, 'civ') || str_contains($name, 'abj')) {
+            return 'CIV';
+        }
+        if (str_contains($name, 'france') || str_contains($name, 'paris') || str_contains($name, 'bobigny') || str_contains($name, 'fr')) {
+            return 'FR';
+        }
+        if (str_contains($name, 'sénégal') || str_contains($name, 'senegal') || str_contains($name, 'dakar') || str_contains($name, 'sen')) {
+            return 'SEN';
+        }
+        if (str_contains($name, 'canada') || str_contains($name, 'montreal') || str_contains($name, 'toronto') || str_contains($name, 'can')) {
+            return 'CAN';
+        }
+        return '';
     }
 }

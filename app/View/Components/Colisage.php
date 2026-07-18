@@ -11,6 +11,844 @@ use App\View\Components\Form;
 
 final class Colisage
 {
+    public static function dashboardPage(\App\View\Pages\Colisage\DashboardPage $page, array $dashboardModule): string
+    {
+        $header = \App\View\Components\Dashboard::header(
+            $dashboardModule['label'],
+            "Le module colisage orchestre la réception en agence, le groupage des manifestes, le transport et les retraits de colis.",
+            [
+                'eyebrow' => $dashboardModule['code'] . ' Dashboard',
+                'class' => 'rh-hero-white'
+            ]
+        );
+
+        $kpis = \App\View\Components\Dashboard::kpis($page->kpis);
+        $overview = self::agencesOverview();
+        $recentParcels = self::recentParcels($page->recentParcels);
+        $recentExpeditions = self::recentExpeditions($page->recentExpeditions);
+        $actions = \App\View\Components\Dashboard::actions($page->quickActions, [
+            'title' => 'Raccourcis Opérationnels',
+            'class' => 'finea-section-card',
+        ]);
+
+        return '<div class="finea-shell colisage-dashboard">'
+            . '<div class="finea-container">'
+            . $header
+            . '<div class="rh-dashboard-grid" style="margin-top: 2rem;">'
+            . '<div class="rh-dashboard-main">'
+            . $kpis
+            . '<div style="margin-top: 2rem;">'
+            . '<h3>Réseau des Agences Actives</h3>'
+            . '<p style="color: #64748b; font-size: 0.95rem; margin-top: 0.2rem;">Suivi de l\'activité par point de vente / agence d\'expédition.</p>'
+            . $overview
+            . '</div>'
+            . '<div style="margin-top: 2rem; display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">'
+            . '<div>'
+            . '<h3>Derniers Colis Enregistrés</h3>'
+            . $recentParcels
+            . '</div>'
+            . '<div>'
+            . '<h3>Dernières Expéditions (Groupage)</h3>'
+            . $recentExpeditions
+            . '</div>'
+            . '</div>'
+            . '</div>'
+            . '<div class="rh-dashboard-side">'
+            . $actions
+            . '</div>'
+            . '</div>'
+            . '</div>'
+            . '</div>';
+    }
+
+    public static function autresListPage(array $parcels, array $filters, ?array $pagination): string
+    {
+        $actionHtml = Ui::button('Nouvel envoi express', [
+            'href' => 'colisage/autres/nouveau',
+            'variant' => 'accent',
+        ]);
+
+        $header = Ui::pageHeader(
+            'Autres Envois (Express)',
+            'Suivi, saisie et édition des factures pour les envois express (DHL & Colis Rapide).',
+            [
+                'eyebrow' => 'Flux Express Internationaux',
+                'class' => 'rh-hero-white',
+                'actions' => [
+                    $actionHtml,
+                ],
+            ]
+        );
+
+        $filterForm = self::autresFilterForm($filters);
+        $listTable = self::autresListTable($parcels);
+
+        $paginationHtml = '';
+        if ($pagination && ($pagination['totalPages'] ?? 1) > 1) {
+            $paginationLinks = [];
+            for ($pNum = 1; $pNum <= $pagination['totalPages']; $pNum++) {
+                $query = http_build_query(array_filter(
+                    $filters + ['page' => $pNum],
+                    static fn(mixed $val): bool => $val !== '' && $val !== 0
+                ));
+                $paginationLinks[] = [
+                    'number' => $pNum,
+                    'href' => View::url('colisage/autres?' . $query),
+                    'active' => $pNum === $pagination['currentPage'],
+                ];
+            }
+            $paginationHtml = Rh::paginationLinks($paginationLinks);
+        }
+
+        return '<div class="finea-shell">'
+            . '<div class="finea-container">'
+            . $header
+            . $filterForm
+            . $listTable
+            . $paginationHtml
+            . '</div>'
+            . '</div>';
+    }
+
+    public static function autresCreatePage(array $sites, array $clients, array $products, float $eurToXofRate): string
+    {
+        $clientOpts = [['value' => '', 'label' => '-- Choisir un client existant --']];
+        foreach ($clients as $c) {
+            $clientOpts[] = ['value' => (string) $c['id'], 'label' => $c['name'] . ' (' . $c['phone'] . ')'];
+        }
+
+        $siteOpts = [['value' => '', 'label' => '-- Sélectionner l\'agence --']];
+        foreach ($sites as $s) {
+            $siteOpts[] = ['value' => (string) $s['id'], 'label' => $s['name']];
+        }
+
+        $prodOptions = [['value' => '', 'label' => '-- Sélectionner un produit --']];
+        foreach ($products as $p) {
+            $prodOptions[] = [
+                'value' => (string) $p['id'],
+                'label' => $p['nom'] . ' (' . number_format((float) $p['prix_unitaire'], 0, ',', ' ') . ' XOF/' . $p['unite'] . ')'
+            ];
+        }
+
+        $header = Ui::pageHeader(
+            'Enregistrer un Envoi Express',
+            'Saisie d\'une fiche de colisage pour DHL Express ou Colis Rapide inter-pays.',
+            [
+                'eyebrow' => 'Nouveau Colis Express — Facture',
+                'class' => 'rh-hero-white',
+                'actions' => [
+                    Ui::button('Retour à la liste', ['href' => 'colisage/autres', 'variant' => 'secondary'])
+                ],
+            ]
+        );
+
+        $formContent = '<form method="post" action="' . View::url('colisage/autres/enregistrer') . '">'
+            . '<div class="rh-form-step-card">'
+            . '<div class="rh-step-badge">ÉTAPE 1</div>'
+            . '<h3 class="rh-step-title">Expéditeur & Destinataire</h3>'
+            . '<div style="display:grid; grid-template-columns:1fr 1fr; gap:2rem;">'
+            . '<div>'
+            . '<h4 style="margin-bottom:0.8rem; color:#1e40af;">EXPÉDITEUR</h4>'
+            . Form::selectSearch('expediteur_id', $clientOpts, '', ['label' => 'Client existant'])
+            . '<div style="margin-top:1rem; padding:1rem; background:rgba(0,0,0,0.015); border-radius:8px; border:1px solid rgba(0,0,0,0.05);">'
+            . '<small style="color:#64748b;">Ou créer un nouvel expéditeur :</small>'
+            . '<div class="rh-form-grid-3" style="margin-top:0.5rem;">'
+            . Form::input('expediteur_name', ['label' => 'Nom complet', 'placeholder' => 'Ex: AICHA OUATTARA'])
+            . Form::input('expediteur_phone', ['label' => 'Tél. Exp.', 'placeholder' => 'Ex: 0789665421'])
+            . Form::input('expediteur_email', ['label' => 'E-mail'])
+            . Form::input('expediteur_address', ['label' => 'Adresse'])
+            . '</div></div></div>'
+            . '<div>'
+            . '<h4 style="margin-bottom:0.8rem; color:#1e40af;">DESTINATAIRE</h4>'
+            . Form::selectSearch('destinataire_id', $clientOpts, '', ['label' => 'Client existant'])
+            . '<div style="margin-top:1rem; padding:1rem; background:rgba(0,0,0,0.015); border-radius:8px; border:1px solid rgba(0,0,0,0.05);">'
+            . '<small style="color:#64748b;">Ou créer un nouveau destinataire :</small>'
+            . '<div class="rh-form-grid-3" style="margin-top:0.5rem;">'
+            . Form::input('destinataire_name', ['label' => 'Nom complet', 'placeholder' => 'Ex: KOUAO YVES'])
+            . Form::input('destinataire_phone', ['label' => 'Tél. Dest.', 'placeholder' => 'Ex: +33 178255886'])
+            . Form::input('destinataire_email', ['label' => 'E-mail'])
+            . Form::input('destinataire_address', ['label' => 'Adresse'])
+            . '</div></div></div></div></div>'
+            . '<div class="rh-form-step-card">'
+            . '<div class="rh-step-badge">ÉTAPE 2</div>'
+            . '<h3 class="rh-step-title">Service Express & Trajet</h3>'
+            . '<div class="rh-form-grid-3">'
+            . Form::select('type_expediteur', [
+                ['value' => 'dhl', 'label' => ' DHL Express'],
+                ['value' => 'colis_rapide_export', 'label' => ' Colis Rapide Export'],
+                ['value' => 'colis_rapide_import', 'label' => ' Colis Rapide Import'],
+            ], 'dhl', ['label' => 'Service de transport', 'required' => true, 'id' => 'service_selector'])
+            . '<div id="trajet_container" style="display:none;">'
+            . Form::select('trajet', [
+                ['value' => '', 'label' => '-- Sélectionner le trajet --'],
+                ['value' => 'CIV_SEN', 'label' => 'CIV ➔ SEN'],
+                ['value' => 'SEN_CIV', 'label' => 'SEN ➔ CIV'],
+                ['value' => 'CIV_FR', 'label' => 'CIV ➔ FR'],
+                ['value' => 'FR_CIV', 'label' => 'FR ➔ CIV'],
+                ['value' => 'SEN_FR', 'label' => 'SEN ➔ FR'],
+                ['value' => 'FR_SEN', 'label' => 'FR ➔ SEN'],
+            ], '', ['label' => 'Trajet inter-pays'])
+            . '</div>'
+            . Form::selectSearch('agence_depart_id', $siteOpts, '', ['label' => 'Agence de départ', 'required' => true])
+            . Form::selectSearch('agence_arrivee_id', $siteOpts, '', ['label' => 'DESTINATION (agence d\'arrivée)', 'required' => true])
+            . Form::input('nombre_colis', ['label' => 'Nombre total de colis', 'type' => 'number', 'min' => 1, 'value' => '1', 'required' => true])
+            . Form::input('poids_total', ['label' => 'Poids total (kg)', 'type' => 'number', 'step' => '0.01', 'required' => true])
+            . Form::select('devise', [
+                ['value' => 'XOF', 'label' => 'Franc CFA (XOF / FCFA)'],
+                ['value' => 'EUR', 'label' => 'Euro (EUR)'],
+                ['value' => 'USD', 'label' => 'US Dollar (USD)'],
+            ], 'XOF', ['label' => 'Devise'])
+            . Form::input('valeur_declaree', ['label' => 'Valeur déclarée (assurance/douane)', 'type' => 'number', 'step' => '1'])
+            . '</div></div>'
+            . '<div class="rh-form-step-card">'
+            . '<div class="rh-step-badge">ÉTAPE 3</div>'
+            . '<h3 class="rh-step-title">Détail des marchandises</h3>'
+            . '<p style="color:#64748b; font-size:0.9rem; margin-bottom:1rem;">Conforme au format facture LB-CI : N°, Nbre Colis, Description, Emballage, Qté Emb., Poids (kg), Prix/Kg, Total</p>'
+            . self::marchandisesInputTable($prodOptions)
+            . '</div>'
+            . '<div style="margin-top:2rem; display:flex; gap:1rem; justify-content:flex-end; padding-bottom:3rem;">'
+            . Ui::button('Annuler', ['href' => 'colisage/autres', 'variant' => 'secondary'])
+            . Ui::button('Enregistrer & Générer la facture', ['type' => 'submit', 'variant' => 'accent', 'style' => 'font-size:1rem; padding:0.8rem 2rem;'])
+            . '</div></form>';
+
+        $script = '<script>'
+            . 'document.addEventListener(\'DOMContentLoaded\', function() {'
+            . '    const clientsData = ' . json_encode($clients) . ';'
+            . '    const productsData = ' . json_encode($products) . ';'
+            . '    const rows = document.querySelectorAll(\'.finea-table tbody tr\');'
+            . '    const sousTotalEl = document.getElementById(\'sous_total\');'
+            . '    const totalFcfaEl = document.getElementById(\'montant_total_fcfa\');'
+            . '    const totalEurEl = document.getElementById(\'montant_total_eur\');'
+            . '    const inputValeurDeclaree = document.querySelector(\'input[name="valeur_declaree"]\');'
+            . '    const serviceSelector = document.getElementById(\'service_selector\');'
+            . '    const trajetContainer = document.getElementById(\'trajet_container\');'
+            . '    const trajetSelect = document.querySelector(\'select[name="trajet"]\');'
+            . '    const eurToXofRate = ' . (float) $eurToXofRate . ';'
+            . '    function toggleTrajet() {'
+            . '        const val = serviceSelector.value;'
+            . '        if (val === \'colis_rapide_export\' || val === \'colis_rapide_import\') {'
+            . '            trajetContainer.style.display = \'block\';'
+            . '            trajetSelect.required = true;'
+            . '        } else {'
+            . '            trajetContainer.style.display = \'none\';'
+            . '            trajetSelect.required = false;'
+            . '            trajetSelect.value = \'\';'
+            . '        }'
+            . '    }'
+            . '    if (serviceSelector) {'
+            . '        serviceSelector.addEventListener(\'change\', toggleTrajet);'
+            . '        toggleTrajet();'
+            . '    }'
+            . '    const inputClientExp = document.querySelector(\'select[name="expediteur_id"]\');'
+            . '    if (inputClientExp) {'
+            . '        inputClientExp.addEventListener(\'change\', function() {'
+            . '            const client = clientsData.find(c => c.id == this.value);'
+            . '            if (client) {'
+            . '                document.querySelector(\'input[name="expediteur_name"]\').value = client.name || \'\';'
+            . '                document.querySelector(\'input[name="expediteur_phone"]\').value = client.phone || \'\';'
+            . '                document.querySelector(\'input[name="expediteur_email"]\').value = client.email || \'\';'
+            . '                document.querySelector(\'input[name="expediteur_address"]\').value = client.adresse || \'\';'
+            . '            }'
+            . '        });'
+            . '    }'
+            . '    const inputClientDest = document.querySelector(\'select[name="destinataire_id"]\');'
+            . '    if (inputClientDest) {'
+            . '        inputClientDest.addEventListener(\'change\', function() {'
+            . '            const client = clientsData.find(c => c.id == this.value);'
+            . '            if (client) {'
+            . '                document.querySelector(\'input[name="destinataire_name"]\').value = client.name || \'\';'
+            . '                document.querySelector(\'input[name="destinataire_phone"]\').value = client.phone || \'\';'
+            . '                document.querySelector(\'input[name="destinataire_email"]\').value = client.email || \'\';'
+            . '                document.querySelector(\'input[name="destinataire_address"]\').value = client.adresse || \'\';'
+            . '            }'
+            . '        });'
+            . '    }'
+            . '    function calculateTotals() {'
+            . '        let subtotal = 0;'
+            . '        let totalWeight = 0;'
+            . '        let totalCount = 0;'
+            . '        rows.forEach(row => {'
+            . '            const qtyInput = row.querySelector(\'input[name="m_qty[]"]\');'
+            . '            const weightInput = row.querySelector(\'input[name="m_weight[]"]\');'
+            . '            const priceInput = row.querySelector(\'input[name="m_prix_kg[]"]\');'
+            . '            const totalInput = row.querySelector(\'.js-item-total\');'
+            . '            if (qtyInput && weightInput && priceInput && totalInput) {'
+            . '                const qty = parseInt(qtyInput.value) || 0;'
+            . '                const weight = parseFloat(weightInput.value) || 0;'
+            . '                const price = parseFloat(priceInput.value) || 0;'
+            . '                const total = weight * price * qty;'
+            . '                subtotal += total;'
+            . '                totalWeight += weight * qty;'
+            . '                totalCount += qty;'
+            . '                totalInput.innerText = Math.round(total).toLocaleString() + \' XOF\';'
+            . '            }'
+            . '        });'
+            . '        if (sousTotalEl) sousTotalEl.innerText = Math.round(subtotal).toLocaleString() + \' XOF\';'
+            . '        if (totalFcfaEl) totalFcfaEl.innerText = Math.round(subtotal).toLocaleString() + \' XOF\';'
+            . '        if (totalEurEl) totalEurEl.innerText = (subtotal / eurToXofRate).toFixed(2).toLocaleString() + \' €\';'
+            . '        const inputPoidsTotal = document.querySelector(\'input[name="poids_total"]\');'
+            . '        if (inputPoidsTotal) inputPoidsTotal.value = totalWeight.toFixed(2);'
+            . '        const inputNombreColis = document.querySelector(\'input[name="nombre_colis"]\');'
+            . '        if (inputNombreColis) inputNombreColis.value = totalCount;'
+            . '        if (inputValeurDeclaree && (!inputValeurDeclaree.value || inputValeurDeclaree.dataset.auto === \'true\')) {'
+            . '            inputValeurDeclaree.value = Math.round(subtotal);'
+            . '            inputValeurDeclaree.dataset.auto = \'true\';'
+            . '        }'
+            . '    }'
+            . '    rows.forEach(row => {'
+            . '        const prodSelect = row.querySelector(\'select[name="m_product_id[]"]\');'
+            . '        if (prodSelect) {'
+            . '            prodSelect.addEventListener(\'change\', function() {'
+            . '                const selectedOptions = Array.from(this.selectedOptions).filter(opt => opt.value !== "");'
+            . '                if (selectedOptions.length > 0) {'
+            . '                    let firstPrice = null;'
+            . '                    let validValues = [];'
+            . '                    let hasPriceMismatch = false;'
+            . '                    selectedOptions.forEach(opt => {'
+            . '                        const product = productsData.find(p => p.id == opt.value);'
+            . '                        if (product) {'
+            . '                            const price = Math.round(parseFloat(product.prix_unitaire) || 0);'
+            . '                            if (firstPrice === null) {'
+            . '                                firstPrice = price;'
+            . '                                validValues.push(opt.value);'
+            . '                            } else if (firstPrice === price) {'
+            . '                                validValues.push(opt.value);'
+            . '                            } else {'
+            . '                                hasPriceMismatch = true;'
+            . '                            }'
+            . '                        }'
+            . '                    });'
+            . '                    if (hasPriceMismatch) {'
+            . '                        alert("Attention : Tous les produits sélectionnés sur une même ligne doivent avoir le même prix unitaire !");'
+            . '                        Array.from(this.options).forEach(opt => {'
+            . '                            if (opt.value && !validValues.includes(opt.value)) {'
+            . '                                opt.selected = false;'
+            . '                            }'
+            . '                        });'
+            . '                        this.dispatchEvent(new Event("change", { bubbles: true }));'
+            . '                        return;'
+            . '                    }'
+            . '                    const priceInput = row.querySelector(\'input[name="m_prix_kg[]"]\');'
+            . '                    if (priceInput && firstPrice !== null) {'
+            . '                        priceInput.value = firstPrice;'
+            . '                        calculateTotals();'
+            . '                    }'
+            . '                } else {'
+            . '                    const priceInput = row.querySelector(\'input[name="m_prix_kg[]"]\');'
+            . '                    if (priceInput) {'
+            . '                        priceInput.value = \'0.00\';'
+            . '                        calculateTotals();'
+            . '                    }'
+            . '                }'
+            . '            });'
+            . '        }'
+            . '        const inputs = row.querySelectorAll(\'input\');'
+            . '        inputs.forEach(input => {'
+            . '            input.addEventListener(\'input\', calculateTotals);'
+            . '        });'
+            . '    });'
+            . '    if (inputValeurDeclaree) {'
+            . '        inputValeurDeclaree.addEventListener(\'input\', function() {'
+            . '            this.dataset.auto = \'false\';'
+            . '        });'
+            . '    }'
+            . '    const form = document.querySelector(\'form\');'
+            . '    if (form) {'
+            . '        form.addEventListener(\'submit\', function(e) {'
+            . '            const submitBtn = form.querySelector(\'button[type="submit"]\');'
+            . '            if (submitBtn) {'
+            . '                if (submitBtn.dataset.submitted === \'true\') {'
+            . '                    e.preventDefault();'
+            . '                    return;'
+            . '                }'
+            . '                submitBtn.dataset.submitted = \'true\';'
+            . '                submitBtn.disabled = true;'
+            . '                submitBtn.innerHTML = \'<span style="display:inline-flex;align-items:center;gap:0.5rem;"><svg width="16" height="16" viewBox="0 0 24 24" style="animation:spin 1s linear infinite;"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" stroke-dasharray="31 31"/></svg> Enregistrement en cours...</span>\';'
+            . '            }'
+            . '        });'
+            . '    }'
+            . '    calculateTotals();'
+            . '});'
+            . '</script>'
+            . '<style>@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }</style>';
+
+        return '<div class="finea-shell">'
+            . '<div class="finea-container">'
+            . $header
+            . $formContent
+            . '</div></div>'
+            . $script;
+    }
+
+    public static function groupageIndexPage(array $expeditions): string
+    {
+        $header = Ui::pageHeader(
+            'Groupage & Manifestes',
+            'Planification des voyages de groupage et affectation des colis aux conteneurs ou palettes.',
+            [
+                'eyebrow' => 'Logistique & Fret',
+                'class' => 'rh-hero-white',
+                'actions' => [
+                    Ui::button('Planifier un voyage', [
+                        'href' => 'colisage/groupage/nouveau',
+                        'variant' => 'accent'
+                    ])
+                ]
+            ]
+        );
+
+        $list = self::groupageListTable($expeditions);
+
+        return '<div class="finea-shell">'
+            . '<div class="finea-container">'
+            . $header
+            . $list
+            . '</div>'
+            . '</div>';
+    }
+
+    public static function groupageCreatePage(array $sites, string $defaultDepart): string
+    {
+        $siteOpts = [['value' => '', 'label' => '-- Sélectionner l\'agence --']];
+        foreach ($sites as $s) {
+            $siteOpts[] = ['value' => (string) $s['id'], 'label' => $s['name']];
+        }
+
+        $header = Ui::pageHeader(
+            'Planifier un Voyage de Groupage',
+            'Enregistrement d\'un nouveau manifeste d\'expédition de fret.',
+            [
+                'eyebrow' => 'Nouveau Manifeste',
+                'class' => 'rh-hero-white',
+            ]
+        );
+
+        $formContent = '<form method="post" action="' . View::url('colisage/groupage/enregistrer') . '" class="finea-section-card" style="max-width: 800px; margin-top: 1.5rem;">'
+            . '<div style="display:grid; grid-template-columns:1fr 1fr; gap:1.5rem;">'
+            . Form::select('type_transport', [
+                ['value' => 'AÉRIEN', 'label' => '✈️ AÉRIEN (Fret aérien rapide)'],
+                ['value' => 'MARITIME', 'label' => '🚢 MARITIME (Fret maritime conteneur)'],
+                ['value' => 'TERRESTRE', 'label' => 'Terrestre (Route / Flotte livreurs)'],
+            ], 'AÉRIEN', ['label' => 'Type de transport', 'required' => true])
+            . '<div></div>'
+            . Form::selectSearch('agence_depart_id', $siteOpts, '', ['label' => 'Agence de départ', 'required' => true])
+            . Form::selectSearch('agence_arrivee_id', $siteOpts, '', ['label' => 'Agence de destination', 'required' => true])
+            . Form::input('date_depart_prevue', [
+                'label' => 'Date & Heure de départ prévue',
+                'type' => 'datetime-local',
+                'required' => true,
+                'value' => $defaultDepart,
+            ])
+            . Form::input('date_arrivee_estimee', [
+                'label' => 'Date & Heure d\'arrivée estimée',
+                'type' => 'datetime-local',
+                'required' => true,
+            ])
+            . '</div>'
+            . '<div style="margin-top: 2rem; display:flex; gap:1rem; justify-content:flex-end;">'
+            . Ui::button('Annuler', ['href' => 'colisage/groupage', 'variant' => 'secondary'])
+            . Ui::button('Créer le manifeste', ['type' => 'submit', 'variant' => 'accent'])
+            . '</div>'
+            . '</form>';
+
+        return '<div class="finea-shell">'
+            . '<div class="finea-container">'
+            . $header
+            . $formContent
+            . '</div>'
+            . '</div>';
+    }
+
+    public static function groupageShowPage(array $exp, array $availableParcels): string
+    {
+        $badgeTone = match($exp['statut']) {
+            'ARRIVÉ' => 'success',
+            'EN_TRANSIT' => 'primary',
+            'BROUILLON' => 'warning',
+            default => 'neutral'
+        };
+
+        $assignedParcels = $exp['parcels'] ?? [];
+
+        $parcelOpts = [['value' => '', 'label' => '-- Sélectionner un colis à ajouter --']];
+        foreach ($availableParcels as $ap) {
+            $parcelOpts[] = [
+                'value' => (string) $ap['id'],
+                'label' => $ap['numero_tracking'] . ' - ' . $ap['expediteur_name'] . ' (' . $ap['poids_total'] . ' kg)'
+            ];
+        }
+
+        $header = Ui::pageHeader(
+            'Manifeste ' . $exp['reference'],
+            'Gestion du groupage et du voyage d\'expédition.',
+            [
+                'eyebrow' => 'Groupage Fret',
+                'class' => 'rh-hero-white',
+                'actions' => [
+                    Ui::badge($exp['statut'], $badgeTone, ['class' => 'finea-badge--large']),
+                    Ui::button('Retour à la liste', [
+                        'href' => 'colisage/groupage',
+                        'variant' => 'secondary'
+                    ])
+                ]
+            ]
+        );
+
+        $addFormSection = '';
+        if ($exp['statut'] === 'BROUILLON') {
+            $addForm = '';
+            if (empty($availableParcels)) {
+                $addForm = '<p style="color: #64748b; font-size: 0.95rem;">Aucun colis en agence n\'est actuellement en attente d\'expédition pour ce trajet.</p>';
+            } else {
+                $addForm = '<form method="post" action="' . View::url('colisage/groupage/' . $exp['id'] . '/colis') . '" style="display:flex; align-items:flex-end; gap:1rem;" class="js-protect-form">'
+                    . '<div style="flex-grow:1;">'
+                    . Form::selectSearch('colis_id', $parcelOpts, '', ['label' => 'Colis disponible à l\'agence de départ (' . View::e($exp['agence_depart_name']) . ')'])
+                    . '</div>'
+                    . Ui::button('Affecter au groupage', ['type' => 'submit', 'variant' => 'primary', 'style' => 'height: 42px;', 'data-label' => 'Affecter au groupage'])
+                    . '</form>';
+            }
+            $addFormSection = Ui::section('Scanner & Charger des colis dans ce manifeste', $addForm);
+        }
+
+        $detail = self::groupageDetail($exp);
+        $parcelsTable = self::groupageParcelsTable($assignedParcels);
+
+        $script = '<script>'
+            . 'document.addEventListener(\'DOMContentLoaded\', function() {'
+            . '    document.querySelectorAll(\'.js-protect-form\').forEach(function(form) {'
+            . '        form.addEventListener(\'submit\', function(e) {'
+            . '            const btn = form.querySelector(\'button[type="submit"]\');'
+            . '            if (btn) {'
+            . '                if (btn.dataset.submitted === \'true\') { e.preventDefault(); return; }'
+            . '                btn.dataset.submitted = \'true\';'
+            . '                btn.disabled = true;'
+            . '                btn.innerHTML = \'<span style="display:inline-flex;align-items:center;gap:0.5rem;"><svg width="16" height="16" viewBox="0 0 24 24" style="animation:spin 1s linear infinite;"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" stroke-dasharray="31 31"/></svg> Traitement en cours...</span>\';'
+            . '            }'
+            . '        });'
+            . '    });'
+            . '});'
+            . '</script>'
+            . '<style>@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }</style>';
+
+        return '<div class="finea-shell">'
+            . '<div class="finea-container">'
+            . $header
+            . '<div style="display:grid; grid-template-columns: 1fr; gap: 1.5rem;">'
+            . $detail
+            . $addFormSection
+            . $parcelsTable
+            . '</div>'
+            . '</div>'
+            . '</div>'
+            . $script;
+    }
+
+    public static function synthesePage(array $dailyRevenue, array $agencyStats, array $unpaidStats, array $transitExpeditions): string
+    {
+        $header = Ui::pageHeader(
+            'Synthèse de l\'Exploitation',
+            'Vision consolidée en temps réel de l\'activité opérationnelle et financière du réseau d\'agences.',
+            [
+                'eyebrow' => 'Exploitation & Suivi Réseau',
+                'class' => 'rh-hero-white'
+            ]
+        );
+
+        $cards = self::syntheseCards($dailyRevenue, count($transitExpeditions));
+        $agencyStatsTable = self::agencyStatsTable($agencyStats);
+        $unpaidTable = self::unpaidTable($unpaidStats);
+        $transitTable = self::transitTable($transitExpeditions);
+
+        return '<div class="finea-shell">'
+            . '<div class="finea-container">'
+            . $header
+            . $cards
+            . '<div style="margin-top:2rem;">'
+            . '<h3>Performances Commerciales des Agences</h3>'
+            . $agencyStatsTable
+            . '</div>'
+            . '<div style="margin-top:2rem; display:grid; grid-template-columns: 1fr 1fr; gap:2rem;">'
+            . '<div>'
+            . '<h3>Créances clients (Factures non payées)</h3>'
+            . $unpaidTable
+            . '</div>'
+            . '<div>'
+            . '<h3>Expéditions inter-agences en Transit</h3>'
+            . $transitTable
+            . '</div>'
+            . '</div>'
+            . '</div>'
+            . '</div>';
+    }
+
+    public static function trackingPage(array $expeditions, array $recentGps): string
+    {
+        $header = Ui::pageHeader(
+            'Suivi Cartographique & Logistique',
+            'Saisie des coordonnées GPS et suivi des expéditions inter-agences en cours de route.',
+            [
+                'eyebrow' => 'Suivi de transit (Fret)',
+                'class' => 'rh-hero-white'
+            ]
+        );
+
+        $trackingForm = self::trackingForm($expeditions);
+        $trackingMapMockup = self::trackingMapMockup();
+        $gpsEventsTable = self::gpsEventsTable($recentGps);
+
+        return '<div class="finea-shell">'
+            . '<div class="finea-container">'
+            . $header
+            . '<div style="display:grid; grid-template-columns: 1fr 1fr; gap:1.5rem; margin-bottom:2rem;">'
+            . $trackingForm
+            . $trackingMapMockup
+            . '</div>'
+            . $gpsEventsTable
+            . '</div>'
+            . '</div>'
+            . '<script>'
+            . 'document.addEventListener(\'DOMContentLoaded\', function() {'
+            . '    const form = document.getElementById(\'gps-form\');'
+            . '    const select = document.getElementById(\'exp_select\');'
+            . '    if (form && select) {'
+            . '        const updateAction = () => {'
+            . '            const val = select.value;'
+            . '            form.action = \'' . View::url('colisage/exploitation/tracking/') . '\' + val;'
+            . '        };'
+            . '        select.addEventListener(\'change\', updateAction);'
+            . '        updateAction();'
+            . '    }'
+            . '});'
+            . '</script>';
+    }
+
+    public static function creditsPage(array $credits, array $balances, array $sites): string
+    {
+        $siteOpts = [];
+        foreach ($sites as $s) {
+            $siteOpts[] = ['value' => (string) $s['id'], 'label' => $s['name']];
+        }
+
+        $header = Ui::pageHeader(
+            'Compensation Financière Inter-Agences',
+            'Suivi des dettes croisées et règlement des flux financiers réciproques du réseau.',
+            [
+                'eyebrow' => 'Grand Livre Logistique & Trésorerie',
+                'class' => 'rh-hero-white',
+                'actions' => [
+                    Ui::button('Déclarer un crédit', [
+                        'href' => '#',
+                        'variant' => 'accent',
+                        'onclick' => 'document.getElementById("modal-credit").style.display="flex"; return false;'
+                    ])
+                ]
+            ]
+        );
+
+        $balancesTable = self::balancesTable($balances);
+        $creditsTable = self::creditsTable($credits);
+        $creditModal = self::creditModal($siteOpts);
+
+        return '<div class="finea-shell">'
+            . '<div class="finea-container">'
+            . $header
+            . $balancesTable
+            . $creditsTable
+            . '</div>'
+            . '</div>'
+            . $creditModal;
+    }
+
+    public static function fournituresPage(array $demandes, array $sites): string
+    {
+        $siteOpts = [];
+        foreach ($sites as $s) {
+            $siteOpts[] = ['value' => (string) $s['id'], 'label' => $s['name']];
+        }
+
+        $header = Ui::pageHeader(
+            'Fournitures de Bureau & Logistique Interne',
+            'Suivi, contrôle budgétaire et validation des demandes de fournitures du réseau d\'agences.',
+            [
+                'eyebrow' => 'Ressources Internes',
+                'class' => 'rh-hero-white',
+                'actions' => [
+                    Ui::button('Nouvelle demande (Simulation)', [
+                        'href' => '#',
+                        'variant' => 'accent',
+                        'onclick' => 'document.getElementById("modal-demande").style.display="flex"; return false;'
+                    ])
+                ]
+            ]
+        );
+
+        $table = self::fournituresTable($demandes);
+        $modal = self::fournitureModal($siteOpts);
+        $refusal = self::refusalModal();
+
+        return '<div class="finea-shell">'
+            . '<div class="finea-container">'
+            . $header
+            . $table
+            . '</div>'
+            . '</div>'
+            . $modal
+            . $refusal;
+    }
+
+    public static function documentsPage(array $manifests, array $parcels): string
+    {
+        $header = Ui::pageHeader(
+            'Gestion Documentaire & Impressions',
+            'Édition des manifestes de fret, étiquettes colis et documents de transport LBP.',
+            [
+                'eyebrow' => 'Documents Logistiques',
+                'class' => 'rh-hero-white'
+            ]
+        );
+
+        $manifestsTable = self::manifestsTable($manifests);
+        $parcelsDocTable = self::parcelsDocTable($parcels);
+
+        return '<div class="finea-shell">'
+            . '<div class="finea-container">'
+            . $header
+            . '<div style="display:grid; grid-template-columns: 1fr 1fr; gap:2rem; margin-bottom:2rem;">'
+            . $manifestsTable
+            . $parcelsDocTable
+            . '</div>'
+            . '</div>'
+            . '</div>';
+    }
+
+    public static function reportingPage(array $tonnageData, array $caData, array $delaiData, string $dateDebut, string $dateFin): string
+    {
+        $header = Ui::pageHeader(
+            'Reporting & Analyses Opérationnelles',
+            'Indicateurs clés de performance fret, volumes de groupage et statistiques financières.',
+            [
+                'eyebrow' => 'Décisionnel & Analytics',
+                'class' => 'rh-hero-white'
+            ]
+        );
+
+        $dateFilter = self::dateFilter($dateDebut, $dateFin);
+        $tonnageTable = self::tonnageTable($tonnageData);
+        $revenueTable = self::revenueTable($caData);
+        $delaysTable = self::delaysTable($delaiData);
+
+        return '<div class="finea-shell">'
+            . '<div class="finea-container">'
+            . $header
+            . $dateFilter
+            . '<div style="display:grid; grid-template-columns: 1fr 1fr; gap:2rem; margin-bottom:2rem;">'
+            . $tonnageTable
+            . $revenueTable
+            . '</div>'
+            . $delaysTable
+            . '</div>'
+            . '</div>';
+    }
+
+    public static function settingsPage(float $tauxChangeEur, array $devisesRates, array $allSettings): string
+    {
+        $header = Ui::pageHeader(
+            'Paramétrage du module Colisage',
+            'Configuration des taux de change, préférences logistiques et paramètres opérationnels.',
+            [
+                'eyebrow' => 'Configuration & Préférences',
+                'class' => 'rh-hero-white',
+            ]
+        );
+
+        $ratesTable = self::settingsRatesTable($devisesRates);
+
+        $section1Content = '<form method="post" action="' . View::url('colisage/settings/enregistrer') . '" class="js-protect-form">'
+            . '<input type="hidden" name="section" value="taux_change">'
+            . '<div style="background: rgba(30,58,95,0.03); border-radius: 10px; padding: 1.5rem; margin-bottom: 1.5rem;">'
+            . '<div style="display:flex; align-items:center; gap:1rem; margin-bottom:1rem;">'
+            . '<span style="background:#1e3a5f; color:#fff; padding:0.4rem 0.8rem; border-radius:6px; font-weight:700; font-size:0.85rem;">EUR → XOF</span>'
+            . '<span style="color:#64748b; font-size:0.85rem;">Parité de conversion</span>'
+            . '</div>'
+            . Form::input('taux_change_eur', [
+                'label' => 'Valeur de 1 € en Francs CFA (XOF)',
+                'type' => 'number',
+                'step' => '0.000001',
+                'min' => '0.01',
+                'value' => number_format($tauxChangeEur, 6, '.', ''),
+                'required' => true,
+            ])
+            . '<p style="margin-top:0.75rem; font-size:0.8rem; color:#94a3b8;">'
+            . 'Parité officielle BCEAO : 655,957 FCFA. Dernière mise à jour : '
+            . '<strong>' . View::e($allSettings['taux_change_eur_updated'] ?? date('d/m/Y')) . '</strong>'
+            . '</p></div>'
+            . $ratesTable
+            . '<div style="display:flex; justify-content:flex-end;">'
+            . Ui::button('Enregistrer le taux de change', [
+                'type' => 'submit',
+                'variant' => 'accent',
+                'data-label' => 'Enregistrer le taux',
+            ])
+            . '</div></form>';
+
+        $section2Content = '<form method="post" action="' . View::url('colisage/settings/enregistrer') . '" class="js-protect-form">'
+            . '<input type="hidden" name="section" value="preferences">'
+            . '<div style="background: rgba(30,58,95,0.03); border-radius: 10px; padding: 1.5rem; margin-bottom: 1.5rem;">'
+            . '<h4 style="margin-bottom: 1rem; color: #1e3a5f;">Règles Logistiques & Sécurité</h4>'
+            . Form::select('pref_delai_transit_max', [
+                ['value' => '24', 'label' => '24 heures (Fret Express)'],
+                ['value' => '48', 'label' => '48 heures (Standard standardisé)'],
+                ['value' => '72', 'label' => '72 heures (Tolérance normale)'],
+                ['value' => '168', 'label' => '1 week (Fret maritime)'],
+            ], (string) ($allSettings['pref_delai_transit_max'] ?? '48'), ['label' => 'Délai de transit max autorisé'])
+            . '<div style="margin-top:1rem;">'
+            . Form::select('pref_double_validation_groupage', [
+                ['value' => '1', 'label' => 'Activée (Validation agence départ + chef d\'exploitation)'],
+                ['value' => '0', 'label' => 'Désactivée (Le chargeur valide seul le départ)'],
+            ], (string) ($allSettings['pref_double_validation_groupage'] ?? '1'), ['label' => 'Sécurité de Groupage'])
+            . '</div>'
+            . '<div style="margin-top:1rem;">'
+            . Form::select('pref_alerte_poids_colis', [
+                ['value' => '30', 'label' => '30 kg (Seuil de pénibilité standard)'],
+                ['value' => '50', 'label' => '50 kg (Colis lourds avec surtaxe)'],
+                ['value' => '100', 'label' => '100 kg (Palettes obligatoires)'],
+            ], (string) ($allSettings['pref_alerte_poids_colis'] ?? '30'), ['label' => 'Alerte poids colis individuel'])
+            . '</div></div>'
+            . '<div style="display:flex; justify-content:flex-end;">'
+            . Ui::button('Enregistrer les préférences', [
+                'type' => 'submit',
+                'variant' => 'accent',
+                'data-label' => 'Enregistrer les préférences',
+            ])
+            . '</div></form>';
+
+        return '<div class="finea-shell">'
+            . '<div class="finea-container">'
+            . $header
+            . '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">'
+            . Ui::section('Gestion des Devises & Taux', $section1Content)
+            . Ui::section('Préférences Logistiques & Alertes', $section2Content)
+            . '</div>'
+            . '</div>'
+            . '</div>'
+            . '<script>'
+            . 'document.addEventListener(\'DOMContentLoaded\', function() {'
+            . '    document.querySelectorAll(\'.js-protect-form\').forEach(function(form) {'
+            . '        form.addEventListener(\'submit\', function(e) {'
+            . '            const btn = form.querySelector(\'button[type="submit"]\');'
+            . '            if (btn) {'
+            . '                if (btn.dataset.submitted === \'true\') { e.preventDefault(); return; }'
+            . '                btn.dataset.submitted = \'true\';'
+            . '                btn.disabled = true;'
+            . '                btn.innerHTML = \'<span style="display:inline-flex;align-items:center;gap:0.5rem;"><svg width="16" height="16" viewBox="0 0 24 24" style="animation:spin 1s linear infinite;"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" stroke-dasharray="31 31"/></svg> Enregistrement...</span>\';'
+            . '            }'
+            . '        });'
+            . '    });'
+            . '});'
+            . '</script>'
+            . '<style>@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }</style>';
+    }
+
     public static function recentParcels(array $rows): string
     {
         $html = '<section class="finea-section-card" style="margin-top: 1rem;">'

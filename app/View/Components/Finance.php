@@ -12,6 +12,64 @@ use App\View\Components\Form;
 
 final class Finance
 {
+    public static function dashboardPage(\App\View\Pages\Finance\DashboardPage $page, array $dashboardModule): string
+    {
+        $style = '<style>'
+            . '    .module-section-heading {'
+            . '        display: flex;'
+            . '        justify-content: space-between;'
+            . '        align-items: flex-end;'
+            . '        margin-bottom: 1rem;'
+            . '    }'
+            . '    .finea-eyebrow {'
+            . '        font-size: 0.75rem;'
+            . '        font-weight: 700;'
+            . '        letter-spacing: 0.05em;'
+            . '        margin-bottom: 0.25rem;'
+            . '    }'
+            . '</style>';
+
+        $header = \App\View\Components\Dashboard::header(
+            $dashboardModule['label'],
+            "Vue d'ensemble des flux financiers, facturation et états de caisse.",
+            [
+                'eyebrow' => $dashboardModule['code'] . ' Dashboard',
+                'class' => 'rh-hero-white'
+            ]
+        );
+
+        $kpis = \App\View\Components\Dashboard::kpis($page->kpis);
+        $recentFactures = self::recentFactures($page->recentFactures);
+        $recentEcritures = self::recentEcritures($page->recentEcritures);
+        $recentEtats = self::recentEtats($page->recentEtats);
+        $actions = \App\View\Components\Dashboard::actions($page->quickActions, [
+            'title' => 'Actions Financières',
+            'class' => 'finea-section-card',
+        ]);
+
+        return $style
+            . '<div class="finea-shell">'
+            . '<div class="finea-container">'
+            . $header
+            . '<div class="rh-dashboard-grid" style="margin-top: 2rem;">'
+            . '<div class="rh-dashboard-main">'
+            . $kpis
+            . '<div style="margin-top: 2rem;">'
+            . $recentFactures
+            . '</div>'
+            . '<div style="margin-top: 2rem; display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">'
+            . $recentEcritures
+            . $recentEtats
+            . '</div>'
+            . '</div>'
+            . '<div class="rh-dashboard-side">'
+            . $actions
+            . '</div>'
+            . '</div>'
+            . '</div>'
+            . '</div>';
+    }
+
     public static function recentFactures(array $rows): string
     {
         $html = '<section class="finea-section-card">'
