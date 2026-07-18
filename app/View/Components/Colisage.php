@@ -1046,7 +1046,7 @@ final class Colisage
             . '</div></div>';
     }
 
-    public static function createPage(array $sites, array $clients, array $products = []): string
+    public static function createPage(array $sites, array $clients, array $products = [], float $tauxChangeEur = 655.957): string
     {
         $header = Ui::pageHeader(
             'Enregistrer un Colis',
@@ -1118,8 +1118,8 @@ final class Colisage
             . $devise . $depAgency . $arrAgency
             . '</div>';
 
-        // Prep options for products dropdown
-        $prodOptions = [['value' => '', 'label' => '-- Sélectionner un produit existant --']];
+        // Prep options for products dropdown (multi-select needs no default -- option)
+        $prodOptions = [];
         foreach ($products as $p) {
             $prodOptions[] = [
                 'value' => (string) $p['id'],
@@ -1130,34 +1130,57 @@ final class Colisage
         // Marchandises list
         $marchandisesHtml = '<div style="margin-top: 1.5rem;">'
             . '<h3>Marchandises contenues dans le colis</h3>'
-            . '<table class="finea-table" style="margin-top:0.5rem;" id="marchandises-table">'
-            . '<thead>'
-            . '<tr><th>Description / Sélection du produit</th><th style="width: 15%;">Quantité</th><th style="width: 20%;">Poids Unitaire (kg)</th></tr>'
-            . '</thead>'
-            . '<tbody>';
+            . '<div class="finea-table-wrapper" style="margin-top:0.5rem;">'
+            . '<table class="finea-table" style="table-layout: auto;" id="marchandises-table">'
+            . '<thead><tr style="background:#1e3a5f; color:#fff;">'
+            . '<th style="width:3%; min-width:30px;">N°</th>'
+            . '<th style="width:7%; min-width:80px;">Nbre Colis</th>'
+            . '<th style="width:35%; min-width:320px;">Description</th>'
+            . '<th style="width:12%; min-width:110px;">Emballage</th>'
+            . '<th style="width:7%; min-width:80px;">Qté Emb.</th>'
+            . '<th style="width:11%; min-width:105px;">Poids (kg)</th>'
+            . '<th style="width:11%; min-width:110px;">Prix / Kg</th>'
+            . '<th style="width:14%; min-width:120px;">Total</th>'
+            . '</tr></thead>'
+            . '<tbody id="marchandises-tbody">';
 
-        for ($i = 0; $i < 3; $i++) {
-            $selectHtml = Form::select('m_product_id[]', $prodOptions, '', [
-                'class' => 'finea-select',
-                'id' => 'm_product_id_' . $i
+        for ($i = 0; $i < 5; $i++) {
+            $selectHtml = Form::rawSelect('m_product_id_' . $i . '[]', $prodOptions, '', [
+                'id' => 'm_product_id_' . $i,
+                'multiple' => 'multiple',
+                'data-finea-select-search' => '1',
+                'class' => 'finea-native-select finea-select-search-source',
             ]);
 
-            $customNameInput = '<input type="text" name="m_custom_name[]" class="finea-input" placeholder="Ou nom du nouveau produit...">';
-            $customPriceInput = '<input type="number" name="m_custom_price[]" class="finea-input" step="0.01" placeholder="Prix unitaire XOF...">';
+            $customNameInput = Form::rawInput('m_custom_name[]', '', ['placeholder' => 'Ou saisir un nom...']);
+            $customPriceInput = Form::rawInput('m_custom_price[]', '', ['type' => 'number', 'step' => '0.01', 'placeholder' => 'Prix unit.']);
 
             $marchandisesHtml .= '<tr>'
-                . '<td style="vertical-align: top;">' 
-                . $selectHtml 
-                . '<div style="margin-top: 0.5rem; display: flex; gap: 0.5rem;">' 
-                . $customNameInput 
-                . $customPriceInput 
+                . '<td style="text-align:center; font-weight:600;" class="row-num">' . ($i + 1) . '</td>'
+                . '<td>' . Form::rawInput('m_nbre_colis[]', '1', ['type' => 'number', 'min' => '1']) . '</td>'
+                . '<td>'
+                . $selectHtml
+                . '<div style="margin-top:0.4rem; display:flex; gap:0.4rem;">'
+                . $customNameInput
+                . $customPriceInput
                 . '</div>'
                 . '</td>'
-                . '<td style="vertical-align: top;"><input type="number" name="m_qty[]" class="finea-input" value="1"></td>'
-                . '<td style="vertical-align: top;"><input type="number" name="m_weight[]" class="finea-input" step="0.01" value="0.00"></td>'
+                . '<td>' . Form::rawInput('m_emballage[]', '', ['placeholder' => 'Carton, Sac...']) . '</td>'
+                . '<td>' . Form::rawInput('m_qte_emballage[]', '1', ['type' => 'number', 'min' => '1']) . '</td>'
+                . '<td>' . Form::rawInput('m_weight[]', '0.00', ['type' => 'number', 'step' => '0.01', 'min' => '0']) . '</td>'
+                . '<td>' . Form::rawInput('m_prix_kg[]', '0.00', ['type' => 'number', 'step' => '0.01', 'min' => '0']) . '</td>'
+                . '<td style="background:rgba(0,0,0,0.02); text-align:right; font-weight:600;"><span class="ligne-total">0 FCFA</span></td>'
                 . '</tr>';
         }
-        $marchandisesHtml .= '</tbody></table></div>';
+
+        $marchandisesHtml .= '</tbody>'
+            . '<tfoot>'
+            . '<tr><td colspan="7" style="text-align:right; font-weight:600;">SOUS-TOTAL</td><td style="text-align:right; font-weight:600;" id="sous_total">0 FCFA</td></tr>'
+            . '<tr style="background:#1e3a5f; color:#fff;"><td colspan="7" style="background:#1e3a5f !important; text-align:right; font-weight:700; font-size:1.1rem; color:#ffffff !important;">MONTANT TOTAL</td>'
+            . '<td style="background:#1e3a5f !important; text-align:right; font-weight:700; font-size:1.1rem; color:#ffffff !important;"><span id="montant_total_fcfa" style="color:#ffffff !important;">0 FCFA</span><br><small id="montant_total_eur" style="color:rgba(255,255,255,0.85) !important;">≈ 0.00 €</small></td></tr>'
+            . '</tfoot></table></div>'
+            . '<button type="button" id="add-row-btn" class="finea-button finea-button--secondary" style="margin-top: 1rem;">+ Ajouter une ligne</button>'
+            . '</div>';
 
         $formContent = '<form method="post" action="' . View::url('colisage/parcels/enregistrer') . '">'
             . '<div style="display:grid; grid-template-columns: 1fr 1fr; gap:2rem;">'
@@ -1173,10 +1196,177 @@ final class Colisage
             . '</div>'
             . '</form>';
 
+        $script = '<script>'
+            . 'document.addEventListener("DOMContentLoaded", function() {'
+            . '    const clientsData = ' . json_encode($clients) . ';'
+            . '    const productsData = ' . json_encode($products) . ';'
+            . '    const tbody = document.getElementById("marchandises-tbody");'
+            . '    const sousTotalEl = document.getElementById("sous_total");'
+            . '    const totalFcfaEl = document.getElementById("montant_total_fcfa");'
+            . '    const totalEurEl = document.getElementById("montant_total_eur");'
+            . '    const inputValeurDeclaree = document.querySelector(\'input[name="valeur_declaree"]\');'
+            . '    const tauxChangeEur = ' . json_encode($tauxChangeEur) . ';'
+            . '    const expSelect = document.querySelector(\'select[name="expediteur_id"]\');'
+            . '    const destSelect = document.querySelector(\'select[name="destinataire_id"]\');'
+            . '    if (expSelect) {'
+            . '        expSelect.addEventListener("change", function() {'
+            . '            const client = clientsData.find(c => c.id == this.value);'
+            . '            if (client) {'
+            . '                document.querySelector(\'input[name="expediteur_name"]\').value = client.name || "";'
+            . '                document.querySelector(\'input[name="expediteur_phone"]\').value = client.phone || "";'
+            . '                document.querySelector(\'input[name="expediteur_email"]\').value = client.email || "";'
+            . '                document.querySelector(\'input[name="expediteur_address"]\').value = client.address || "";'
+            . '            }'
+            . '        });'
+            . '    }'
+            . '    if (destSelect) {'
+            . '        destSelect.addEventListener("change", function() {'
+            . '            const client = clientsData.find(c => c.id == this.value);'
+            . '            if (client) {'
+            . '                document.querySelector(\'input[name="destinataire_name"]\').value = client.name || "";'
+            . '                document.querySelector(\'input[name="destinataire_phone"]\').value = client.phone || "";'
+            . '                document.querySelector(\'input[name="destinataire_email"]\').value = client.email || "";'
+            . '                document.querySelector(\'input[name="destinataire_address"]\').value = client.address || "";'
+            . '            }'
+            . '        });'
+            . '    }'
+            . '    function calculateTotals() {'
+            . '        let grandTotal = 0;'
+            . '        const rows = tbody.querySelectorAll("tr");'
+            . '        rows.forEach(row => {'
+            . '            const nbreColis = parseFloat(row.querySelector(\'input[name="m_nbre_colis[]"]\').value) || 0;'
+            . '            const weight = parseFloat(row.querySelector(\'input[name="m_weight[]"]\').value) || 0;'
+            . '            const prixKg = parseFloat(row.querySelector(\'input[name="m_prix_kg[]"]\').value) || 0;'
+            . '            const lineTotal = nbreColis * weight * prixKg;'
+            . '            grandTotal += lineTotal;'
+            . '            const totalSpan = row.querySelector(".ligne-total");'
+            . '            if (totalSpan) {'
+            . '                totalSpan.textContent = new Intl.NumberFormat("fr-FR").format(Math.round(lineTotal)) + " FCFA";'
+            . '            }'
+            . '        });'
+            . '        const formattedGrandTotal = new Intl.NumberFormat("fr-FR").format(Math.round(grandTotal)) + " FCFA";'
+            . '        if (sousTotalEl) sousTotalEl.textContent = formattedGrandTotal;'
+            . '        if (totalFcfaEl) totalFcfaEl.textContent = formattedGrandTotal;'
+            . '        const grandTotalEur = grandTotal / tauxChangeEur;'
+            . '        if (totalEurEl) {'
+            . '            totalEurEl.textContent = "≈ " + new Intl.NumberFormat("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(grandTotalEur) + " €";'
+            . '        }'
+            . '        if (inputValeurDeclaree && grandTotal > 0 && (!inputValeurDeclaree.value || inputValeurDeclaree.value === "0" || inputValeurDeclaree.dataset.auto === "true")) {'
+            . '            inputValeurDeclaree.value = Math.round(grandTotal);'
+            . '            inputValeurDeclaree.dataset.auto = "true";'
+            . '        }'
+            . '    }'
+            . '    tbody.addEventListener("input", calculateTotals);'
+            . '    tbody.addEventListener("change", function(e) {'
+            . '        if (e.target && e.target.name && e.target.name.startsWith("m_product_id_")) {'
+            . '            const row = e.target.closest("tr");'
+            . '            const selectedOptions = Array.from(e.target.selectedOptions).filter(opt => opt.value !== "");'
+            . '            if (selectedOptions.length > 0) {'
+            . '                let firstPrice = null;'
+            . '                let validValues = [];'
+            . '                let hasPriceMismatch = false;'
+            . '                selectedOptions.forEach(opt => {'
+            . '                    const product = productsData.find(p => p.id == opt.value);'
+            . '                    if (product) {'
+            . '                        const price = Math.round(parseFloat(product.prix_unitaire) || 0);'
+            . '                        if (firstPrice === null) {'
+            . '                            firstPrice = price;'
+            . '                            validValues.push(opt.value);'
+            . '                        } else if (firstPrice === price) {'
+            . '                            validValues.push(opt.value);'
+            . '                        } else {'
+            . '                            hasPriceMismatch = true;'
+            . '                        }'
+            . '                    }'
+            . '                });'
+            . '                if (hasPriceMismatch) {'
+            . '                    alert("Attention : Tous les produits sélectionnés sur une même ligne doivent avoir le même prix unitaire !");'
+            . '                    Array.from(e.target.options).forEach(opt => {'
+            . '                        if (opt.value && !validValues.includes(opt.value)) {'
+            . '                            opt.selected = false;'
+            . '                        }'
+            . '                    });'
+            . '                    e.target.dispatchEvent(new Event("change", { bubbles: true }));'
+            . '                    return;'
+            . '                }'
+            . '                const priceInput = row.querySelector(\'input[name="m_prix_kg[]"]\');'
+            . '                if (priceInput && firstPrice !== null) {'
+            . '                    priceInput.value = firstPrice;'
+            . '                    calculateTotals();'
+            . '                }'
+            . '            } else {'
+            . '                const priceInput = row.querySelector(\'input[name="m_prix_kg[]"]\');'
+            . '                if (priceInput) {'
+            . '                    priceInput.value = "0.00";'
+            . '                    calculateTotals();'
+            . '                }'
+            . '            }'
+            . '        }'
+            . '    });'
+            . '    if (inputValeurDeclaree) {'
+            . '        inputValeurDeclaree.addEventListener("input", function() {'
+            . '            this.dataset.auto = "false";'
+            . '        });'
+            . '    }'
+            . '    let rowIndex = 5;'
+            . '    const addRowBtn = document.getElementById("add-row-btn");'
+            . '    if (addRowBtn) {'
+            . '        addRowBtn.addEventListener("click", function() {'
+            . '            const tr = document.createElement("tr");'
+            . '            let optionsHtml = "";'
+            . '            productsData.forEach(p => {'
+            . '                const label = p.nom + " (" + new Intl.NumberFormat("fr-FR").format(p.prix_unitaire) + " XOF/" + p.unite + ")";'
+            . '                optionsHtml += \'<option value="\' + p.id + \'">\' + label + \'</option>\';'
+            . '            });'
+            . '            tr.innerHTML = \'<td style="text-align:center; font-weight:600;" class="row-num">\' + (rowIndex + 1) + \'</td>\''
+            . '                + \'<td><input class="finea-input" type="number" name="m_nbre_colis[]" value="1" min="1"></td>\''
+            . '                + \'<td>\''
+            . '                + \'<select class="finea-native-select finea-select-search-source" name="m_product_id_\' + rowIndex + \'[]" id="m_product_id_\' + rowIndex + \'" multiple="multiple" data-finea-select-search="1">\''
+            . '                + optionsHtml'
+            . '                + \'</select>\''
+            . '                + \'<div style="margin-top:0.4rem; display:flex; gap:0.4rem;">\''
+            . '                + \'<input class="finea-input" name="m_custom_name[]" placeholder="Ou saisir un nom...">\''
+            . '                + \'<input class="finea-input" name="m_custom_price[]" type="number" step="0.01" placeholder="Prix unit.">\''
+            . '                + \'</div>\''
+            . '                + \'</td>\''
+            . '                + \'<td><input class="finea-input" name="m_emballage[]" placeholder="Carton, Sac..."></td>\''
+            . '                + \'<td><input class="finea-input" type="number" name="m_qte_emballage[]" value="1" min="1"></td>\''
+            . '                + \'<td><input class="finea-input" type="number" name="m_weight[]" value="0.00" step="0.01" min="0"></td>\''
+            . '                + \'<td><input class="finea-input" type="number" name="m_prix_kg[]" value="0.00" step="0.01" min="0"></td>\''
+            . '                + \'<td style="background:rgba(0,0,0,0.02); text-align:right; font-weight:600;"><span class="ligne-total">0 FCFA</span></td>\';'
+            . '            tbody.appendChild(tr);'
+            . '            if (window.FineaComponents && typeof window.FineaComponents.init === "function") {'
+            . '                window.FineaComponents.init();'
+            . '            }'
+            . '            rowIndex++;'
+            . '            calculateTotals();'
+            . '        });'
+            . '    }'
+            . '    const form = document.querySelector("form");'
+            . '    if (form) {'
+            . '        form.addEventListener("submit", function(e) {'
+            . '            const submitBtn = form.querySelector(\'button[type="submit"]\');'
+            . '            if (submitBtn) {'
+            . '                if (submitBtn.dataset.submitted === "true") {'
+            . '                    e.preventDefault();'
+            . '                    return;'
+            . '                }'
+            . '                submitBtn.dataset.submitted = "true";'
+            . '                submitBtn.disabled = true;'
+            . '                submitBtn.innerHTML = \'<span style="display:inline-flex;align-items:center;gap:0.5rem;"><svg width="16" height="16" viewBox="0 0 24 24" style="animation:spin 1s linear infinite;"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" stroke-dasharray="31 31"/></svg> Enregistrement en cours...</span>\';'
+            . '            }'
+            . '        });'
+            . '    }'
+            . '    calculateTotals();'
+            . '});'
+            . '</script>'
+            . '<style>@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }</style>';
+
         return '<div class="finea-shell">'
             . '<div class="finea-container">'
             . $header
             . $formContent
+            . $script
             . '</div></div>';
     }
 

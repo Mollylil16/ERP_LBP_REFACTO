@@ -8,4 +8,4 @@ use App\View\Components\Colisage;
 /** @var array<int, array<string, mixed>> $clients */
 /** @var array<int, array<string, mixed>> $products */
 
-echo Colisage::createPage($sites, $clients, $products);
+echo Colisage::createPage($sites, $clients, $products, $tauxChangeEur ?? 655.957);

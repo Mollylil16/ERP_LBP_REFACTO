@@ -105,7 +105,7 @@ final class ColisageController extends ColisageBaseController
         }
 
         $marchandises = [];
-        for ($idx = 0; $idx < 5; $idx++) {
+        for ($idx = 0; $idx < 100; $idx++) {
             $prodIds = $_POST['m_product_id_' . $idx] ?? [];
             if (!is_array($prodIds)) {
                 $prodIds = [$prodIds];
