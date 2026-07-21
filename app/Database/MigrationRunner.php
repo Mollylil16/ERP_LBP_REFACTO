@@ -35,6 +35,7 @@ class MigrationRunner
         $this->linkUsersToRhEmployees();
         $this->createColisageTables();
         $this->createLbpUnifiedFlowTables();
+        $this->createLogistiqueRayonsAndSettingsTables();
     }
 
 
@@ -2005,6 +2006,82 @@ class MigrationRunner
                 $sql = str_replace('//', ';', $sql);
                 $this->pdo->exec($sql);
             }
+        }
+    }
+
+    /**
+     * Crée les tables pour les rayons de stock et les paramètres de garde/pénalités.
+     */
+    private function createLogistiqueRayonsAndSettingsTables(): void
+    {
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS logistique_rayons (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                agence_id INT UNSIGNED NOT NULL,
+                code_rayon VARCHAR(50) NOT NULL,
+                nom_rayon VARCHAR(120) NOT NULL,
+                capacite_max INT UNSIGNED NOT NULL DEFAULT 50,
+                statut ENUM('ACTIF', 'PLEIN', 'MAINTENANCE') NOT NULL DEFAULT 'ACTIF',
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME NULL,
+                UNIQUE KEY uniq_logistique_rayons_code (agence_id, code_rayon),
+                KEY idx_logistique_rayons_agence (agence_id, statut)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS logistique_settings (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                agence_id INT UNSIGNED NULL,
+                delai_gratuit_jours INT UNSIGNED NOT NULL DEFAULT 7,
+                frais_gardiennage_par_jour DECIMAL(10, 2) NOT NULL DEFAULT 500.00,
+                auto_assign_rayon TINYINT(1) NOT NULL DEFAULT 1,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME NULL,
+                UNIQUE KEY uniq_logistique_settings_agence (agence_id)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+
+        $this->pdo->exec("
+            INSERT IGNORE INTO logistique_settings (agence_id, delai_gratuit_jours, frais_gardiennage_par_jour, auto_assign_rayon)
+            VALUES (NULL, 7, 500.00, 1)
+        ");
+
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS logistique_mouvements_rayon (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                colis_id INT NOT NULL,
+                rayon_id INT UNSIGNED NULL,
+                type_mouvement ENUM('ENTREE', 'SORTIE', 'DEPLACEMENT') NOT NULL,
+                effectue_par INT UNSIGNED NULL,
+                commentaires VARCHAR(255) NULL,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                KEY idx_mouvements_colis (colis_id),
+                KEY idx_mouvements_rayon (rayon_id)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS lbp_notifications (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                colis_id INT NOT NULL,
+                destinataire_telephone VARCHAR(50) NULL,
+                destinataire_email VARCHAR(150) NULL,
+                type_notification ENUM('ARRIVEE_AGENCE', 'RAPPEL_GARDIENNAGE', 'RETRAIT_CONFIRME') NOT NULL,
+                statut ENUM('ENVOYÉ', 'EN_ATTENTE', 'ÉCHOUÉ') NOT NULL DEFAULT 'ENVOYÉ',
+                message TEXT NOT NULL,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                KEY idx_notifications_colis (colis_id)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+
+        if ($this->schema->tableExists('lbp_colis')) {
+            $this->addColumnIfMissing('lbp_colis', 'rayon_id', "INT UNSIGNED NULL");
+            $this->addColumnIfMissing('lbp_colis', 'date_arrivee_agence', "DATETIME NULL");
+            $this->addColumnIfMissing('lbp_colis', 'date_limite_retrait', "DATETIME NULL");
+            $this->addColumnIfMissing('lbp_colis', 'frais_gardiennage_appliques', "DECIMAL(10, 2) NOT NULL DEFAULT 0.00");
+
+            $this->addIndexIfMissing('lbp_colis', 'idx_lbp_colis_rayon', 'rayon_id');
         }
     }
 }

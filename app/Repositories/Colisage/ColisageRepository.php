@@ -236,6 +236,7 @@ class ColisageRepository
                 recup_nom = :recup_nom,
                 recup_cni = :recup_cni,
                 recup_telephone = :recup_telephone,
+                frais_gardiennage_appliques = :frais_gardiennage,
                 recup_date_heure = NOW(),
                 updated_at = NOW()
             WHERE id = :id
@@ -245,6 +246,7 @@ class ColisageRepository
             'recup_nom' => trim((string) ($data['recup_nom'] ?? '')),
             'recup_cni' => trim((string) ($data['recup_cni'] ?? '')),
             'recup_telephone' => trim((string) ($data['recup_telephone'] ?? '')),
+            'frais_gardiennage' => (float) ($data['frais_gardiennage_appliques'] ?? 0.0),
         ]);
     }
 

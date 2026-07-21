@@ -333,10 +333,19 @@ final class ModuleDashboardService
         if ($module['slug'] === 'logistique') {
             return [
                 ['key' => 'dashboard', 'label' => 'Tableau de bord', 'icon' => 'DB', 'url' => '/logistique/dashboard', 'available' => true],
+                ['key' => 'rayons', 'label' => 'Gestion des Rayons', 'icon' => 'RY', 'url' => '/logistique/rayons', 'available' => true],
+                ['key' => 'parametres', 'label' => 'Délais & Gardiennage', 'icon' => 'PR', 'url' => '/logistique/parametres', 'available' => true],
                 ['key' => 'parcels', 'label' => 'Gestion des Colis', 'icon' => 'CL', 'url' => '/colisage/parcels', 'available' => true],
                 ['key' => 'groupage', 'label' => 'Groupage & Expéditions', 'icon' => 'GP', 'url' => '/colisage/groupage', 'available' => true],
                 ['key' => 'tracking', 'label' => 'Suivi GPS', 'icon' => 'GPS', 'url' => '/colisage/exploitation/tracking', 'available' => true],
                 ['key' => 'exploitation_fournitures', 'label' => 'Fournitures bureau', 'icon' => 'FT', 'url' => '/colisage/exploitation/fournitures', 'available' => \App\Helpers\Auth::can(\App\Security\PermissionEntityRegistry::EXPLOITATION_FOURNITURES)],
+            ];
+        }
+
+        if ($module['slug'] === 'crm') {
+            return [
+                ['key' => 'dashboard', 'label' => 'Tableau de bord', 'icon' => 'DB', 'url' => '/crm/dashboard', 'available' => true],
+                ['key' => 'callcenter', 'label' => 'Recherche Call Center', 'icon' => 'CC', 'url' => '/crm/callcenter', 'available' => true],
             ];
         }
 

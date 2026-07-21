@@ -5,10 +5,32 @@ declare(strict_types=1);
 namespace App\Services\Colisage;
 
 use App\Repositories\Colisage\ColisageRepository;
+use App\Repositories\Logistique\RayonRepository;
+use App\Repositories\Logistique\LogistiqueSettingsRepository;
+use App\Repositories\Shared\NotificationRepository;
+use App\Services\Logistique\RayonService;
+use App\Services\Logistique\GardiennageService;
+use App\Services\Shared\NotificationService;
+use App\Models\Database;
 
 final class ColisageService
 {
-    public function __construct(private ColisageRepository $repository) {}
+    private ?RayonService $rayonService = null;
+    private ?GardiennageService $gardiennageService = null;
+    private ?RayonRepository $rayonRepository = null;
+    private ?NotificationService $notificationService = null;
+
+    public function __construct(private ColisageRepository $repository)
+    {
+        $pdo = Database::getConnection();
+        $settingsRepo = new LogistiqueSettingsRepository($pdo);
+        $this->rayonRepository = new RayonRepository($pdo);
+        $notificationRepo = new NotificationRepository($pdo);
+
+        $this->rayonService = new RayonService($this->rayonRepository, $settingsRepo);
+        $this->gardiennageService = new GardiennageService($settingsRepo);
+        $this->notificationService = new NotificationService($notificationRepo);
+    }
 
     // ==========================================
     // CLIENTS
@@ -140,6 +162,46 @@ final class ColisageService
 
         $parcelId = $this->repository->createParcel($data);
 
+        // Affectation automatique du rayon et calcul de la date limite de retrait
+        $agenceArriveeId = !empty($data['agence_arrivee_id']) ? (int) $data['agence_arrivee_id'] : 1;
+        if ($this->rayonService !== null) {
+            $assignResult = $this->rayonService->autoAssignRayonForColis($agenceArriveeId, $data);
+            try {
+                $pdo = Database::getConnection();
+                $stmt = $pdo->prepare("
+                    UPDATE lbp_colis
+                    SET rayon_id = :rayon_id,
+                        date_arrivee_agence = :date_arrivee,
+                        date_limite_retrait = :date_limite
+                    WHERE id = :id
+                ");
+                $stmt->execute([
+                    'id' => $parcelId,
+                    'rayon_id' => $assignResult['rayonId'],
+                    'date_arrivee' => $assignResult['dateArrivee'],
+                    'date_limite' => $assignResult['dateLimiteRetrait'],
+                ]);
+
+                if ($this->rayonRepository !== null && $assignResult['rayonId'] !== null) {
+                    $this->rayonRepository->recordMouvement($parcelId, $assignResult['rayonId'], 'ENTREE', null, 'Affectation automatique à la réception');
+                }
+            } catch (\Throwable $e) {}
+
+            if ($this->notificationService !== null) {
+                $colis = $this->getParcelDetails($parcelId);
+                if ($colis !== null) {
+                    $rayonNom = null;
+                    if (!empty($assignResult['rayonId']) && $this->rayonRepository !== null) {
+                        $rObj = $this->rayonRepository->findRayonById($assignResult['rayonId']);
+                        if ($rObj) {
+                            $rayonNom = $rObj->codeRayon;
+                        }
+                    }
+                    $this->notificationService->notifyParcelArrival($colis, $rayonNom);
+                }
+            }
+        }
+
         // Save marchandises details if present
         if (!empty($data['marchandises']) && is_array($data['marchandises'])) {
             foreach ($data['marchandises'] as $m) {
@@ -190,7 +252,27 @@ final class ColisageService
     /** @param array<string, mixed> $data */
     public function withdrawParcel(int $id, array $data): void
     {
+        $frais = 0.0;
+        $colis = $this->getParcelDetails($id);
+
+        if ($this->gardiennageService !== null && $colis !== null) {
+            $gardiennage = $this->gardiennageService->calculateGardiennage($colis);
+            $frais = $gardiennage['totalFraisGardiennage'];
+            $data['frais_gardiennage_appliques'] = $frais;
+        }
+
         $this->repository->recordWithdrawal($id, $data);
+
+        if ($colis !== null) {
+            $rayonId = isset($colis['rayon_id']) ? (int) $colis['rayon_id'] : null;
+            if ($this->rayonRepository !== null && $rayonId !== null) {
+                $this->rayonRepository->recordMouvement($id, $rayonId, 'SORTIE', null, 'Retrait effectué au comptoir');
+            }
+
+            if ($this->notificationService !== null) {
+                $this->notificationService->notifyParcelWithdrawal($colis, $data, $frais);
+            }
+        }
     }
 
 

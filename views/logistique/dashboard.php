@@ -10,7 +10,8 @@ use App\View\Pages\Logistique\DashboardPage;
 /**
  * @var array<string,mixed> $dashboardModule
  * @var DashboardPage $page
+ * @var array $rayons
  * @see Dashboard::kpis
  */
 
-echo Logistique::dashboardPage($page, $dashboardModule);
+echo Logistique::dashboardPage($page, $dashboardModule, $rayons ?? []);
