@@ -17,10 +17,10 @@ final class Logistique
     public static function dashboardPage(DashboardPage $page, array $dashboardModule, array $rayons = [], array $settings = []): string
     {
         $header = Dashboard::header(
-            $dashboardModule['label'],
+            $dashboardModule['label'] ?? 'Logistique',
             "Gestion intégrée de la logistique : affectation automatique dans les rayons, capacité des stocks et suivi des délais de gardiennage.",
             [
-                'eyebrow' => $dashboardModule['code'] . ' Dashboard',
+                'eyebrow' => ($dashboardModule['code'] ?? 'LOG') . ' Dashboard',
                 'class' => 'rh-hero-white'
             ]
         );
@@ -38,6 +38,7 @@ final class Logistique
         ]);
 
         $stockOverview = self::rayonsStockOverviewComponent($rayons);
+        $section = Ui::section('Aperçu des Rayons & Capacité de Stockage', $stockOverview, 'Taux d\'occupation et affectation automatique des colis.');
 
         return '<div class="finea-shell logistique-dashboard">'
             . '<div class="finea-container">'
@@ -46,14 +47,7 @@ final class Logistique
             . '<div class="rh-dashboard-main">'
             . $kpis
             . '<div style="margin-top: 2rem;">'
-            . '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 1rem;">'
-            . '<div>'
-            . '<h3 style="font-size: 1.15rem; font-weight: 700; color: #0f172a; margin: 0;">Aperçu des Rayons & Capacité de Stockage</h3>'
-            . '<p style="color: #64748b; font-size: 0.875rem; margin-top: 0.2rem;">Taux d\'occupation et affectation automatique des colis.</p>'
-            . '</div>'
-            . Ui::button('Gérer les rayons', ['href' => 'logistique/rayons', 'variant' => 'secondary'])
-            . '</div>'
-            . $stockOverview
+            . $section
             . '</div>'
             . '</div>'
             . '<div class="rh-dashboard-side">'
@@ -65,71 +59,51 @@ final class Logistique
     }
 
     /**
-     * Composant affichant les cartes des rayons de stock avec jauges de capacité.
+     * Composant des cartes de capacité par rayon avec Ui::badge et Ui::section.
      *
      * @param array<int, Rayon> $rayons
      */
     public static function rayonsStockOverviewComponent(array $rayons): string
     {
         if (empty($rayons)) {
-            return '<div class="finea-empty-state" style="padding: 2rem; text-align: center; background: #f8fafc; border-radius: 8px; border: 1px dashed #cbd5e1;">'
-                . '<p style="color: #64748b; margin: 0;">Aucun rayon configuré pour le moment.</p>'
-                . '<a href="' . View::url('logistique/rayons') . '" class="finea-btn finea-btn-accent" style="margin-top: 1rem; display: inline-block;">+ Créer un premier rayon</a>'
-                . '</div>';
+            return Ui::emptyState(
+                'Aucun rayon configuré',
+                'Créez les premiers rayons de votre entrepôt pour activer l\'affectation automatique.'
+            );
         }
 
-        $html = '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.25rem;">';
-
+        $itemsHtml = '';
         foreach ($rayons as $rayon) {
             $taux = $rayon->tauxOccupation();
-            $badgeColor = '#10b981'; // vert
-            $badgeText = 'Disponible';
+            $tone = 'success';
+            $statusText = 'Disponible';
 
             if ($taux >= 100 || $rayon->statut === 'PLEIN') {
-                $badgeColor = '#ef4444'; // rouge
-                $badgeText = 'Saturé';
+                $tone = 'danger';
+                $statusText = 'Saturé';
             } elseif ($taux >= 80) {
-                $badgeColor = '#f59e0b'; // orange
-                $badgeText = 'Quasi-Plein';
+                $tone = 'warning';
+                $statusText = 'Quasi-Plein';
             } elseif ($rayon->statut === 'MAINTENANCE') {
-                $badgeColor = '#64748b'; // gris
-                $badgeText = 'Maintenance';
+                $tone = 'neutral';
+                $statusText = 'Maintenance';
             }
 
-            $html .= '<div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">'
-                . '<div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.75rem;">'
-                . '<div>'
-                . '<span style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: #475569; letter-spacing: 0.05em;">' . htmlspecialchars($rayon->codeRayon) . '</span>'
-                . '<h4 style="font-size: 1rem; font-weight: 600; color: #0f172a; margin: 0.2rem 0 0 0;">' . htmlspecialchars($rayon->nomRayon) . '</h4>'
-                . '</div>'
-                . '<span style="background: ' . $badgeColor . '15; color: ' . $badgeColor . '; padding: 0.25rem 0.6rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600;">'
-                . $badgeText
-                . '</span>'
-                . '</div>'
+            $badge = Ui::badge($statusText, $tone);
+            $content = '<p class="rh-eyebrow">' . View::e($rayon->nomRayon) . '</p>'
+                . '<h3>' . View::e($rayon->codeRayon) . '</h3>'
+                . '<p>Capacité : <strong>' . $rayon->capaciteOccupee . ' / ' . $rayon->capaciteMax . ' colis</strong> (' . $taux . '%)</p>'
+                . '<p>Places libres : <strong>' . $rayon->placesDisponibles() . '</strong></p>'
+                . $badge;
 
-                . '<div style="margin: 1rem 0;">'
-                . '<div style="display: flex; justify-content: space-between; font-size: 0.85rem; color: #475569; margin-bottom: 0.4rem;">'
-                . '<span>Occupation</span>'
-                . '<strong>' . $rayon->capaciteOccupee . ' / ' . $rayon->capaciteMax . ' colis (' . $taux . '%)</strong>'
-                . '</div>'
-                . '<div style="width: 100%; background: #e2e8f0; height: 8px; border-radius: 4px; overflow: hidden;">'
-                . '<div style="width: ' . min(100, $taux) . '%; background: ' . $badgeColor . '; height: 100%; border-radius: 4px; transition: width 0.3s;"></div>'
-                . '</div>'
-                . '</div>'
-
-                . '<div style="display: flex; justify-content: space-between; align-items: center; pt: 0.5rem; border-top: 1px solid #f1f5f9; font-size: 0.8rem; color: #64748b;">'
-                . '<span>Agence: ' . htmlspecialchars($rayon->agenceNom ?? 'Principale') . '</span>'
-                . '<span style="font-weight: 500; color: #0f172a;">' . $rayon->placesDisponibles() . ' libres</span>'
-                . '</div>'
-                . '</div>';
+            $itemsHtml .= Ui::section($rayon->codeRayon, $content, $rayon->nomRayon, ['class' => 'rh-card-section']);
         }
 
-        $html .= '</div>';
-        return $html;
+        return '<div class="rh-dashboard-grid" style="grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem;">' . $itemsHtml . '</div>';
     }
 
     /**
-     * Page complète de gestion des rayons logistiques.
+     * Page de gestion des rayons avec tableau et modal de création via Ui & Form components.
      *
      * @param array<int, Rayon> $rayons
      * @param array<int, array<string, mixed>> $sites
@@ -137,184 +111,153 @@ final class Logistique
     public static function rayonsListPage(array $rayons, array $sites, ?string $successMsg = null, ?string $errorMsg = null): string
     {
         $header = Ui::pageHeader(
-            'Gestion des Rayons & Capacités',
-            'Définition des rayons d\'entrepôt par agence, capacité maximale et affectation dynamique des colis.',
+            'Gestion des Rayons & Emplacements',
+            'Définition des capacités par rayon et surveillance de l\'occupation des entrepôts.',
             [
-                'eyebrow' => 'Emplacements & Stockage Logistique',
+                'eyebrow' => 'Module Logistique',
                 'class' => 'rh-hero-white',
+                'actions' => [
+                    Ui::button('+ Nouveau Rayon', [
+                        'variant' => 'accent',
+                        'type' => 'button',
+                        'onclick' => "document.getElementById('modal-add-rayon').style.display='flex'",
+                    ]),
+                ],
             ]
         );
 
-        $alerts = '';
+        $alertsHtml = '';
         if ($successMsg) {
-            $alerts .= '<div style="background:#dcfce7; color:#15803d; padding:1rem; border-radius:8px; margin-bottom:1.5rem; border:1px solid #bbf7d0;">'
-                . htmlspecialchars($successMsg) . '</div>';
+            $alertsHtml .= Ui::badge($successMsg, 'success', ['class' => 'finea-alert-success']);
         }
         if ($errorMsg) {
-            $alerts .= '<div style="background:#fee2e2; color:#b91c1c; padding:1rem; border-radius:8px; margin-bottom:1.5rem; border:1px solid #fecaca;">'
-                . htmlspecialchars($errorMsg) . '</div>';
+            $alertsHtml .= Ui::badge($errorMsg, 'danger', ['class' => 'finea-alert-danger']);
         }
 
-        $overview = self::rayonsStockOverviewComponent($rayons);
-        $createForm = self::rayonFormModal($sites);
+        // Table Rows
+        $rowsHtml = '';
+        foreach ($rayons as $rayon) {
+            $taux = $rayon->tauxOccupation();
+            $tone = $taux >= 100 ? 'danger' : ($taux >= 80 ? 'warning' : 'success');
+            $badge = Ui::badge($rayon->statut, $tone);
+
+            $deleteBtn = Ui::button('Supprimer', [
+                'href' => 'logistique/rayons/' . $rayon->id . '/supprimer',
+                'variant' => 'danger',
+                'onclick' => "return confirm('Êtes-vous sûr de vouloir supprimer ce rayon ?')",
+            ]);
+
+            $rowsHtml .= '<tr>'
+                . '<td><strong>' . View::e($rayon->codeRayon) . '</strong></td>'
+                . '<td>' . View::e($rayon->nomRayon) . '</td>'
+                . '<td>' . View::e($rayon->agenceNom ?? 'Agence') . '</td>'
+                . '<td>' . $rayon->capaciteOccupee . ' / ' . $rayon->capaciteMax . ' colis (' . $taux . '%)</td>'
+                . '<td>' . $badge . '</td>'
+                . '<td>' . $deleteBtn . '</td>'
+                . '</tr>';
+        }
+
+        $tableHtml = '<table class="finea-table">'
+            . '<thead><tr><th>Code Rayon</th><th>Nom</th><th>Agence</th><th>Capacité</th><th>Statut</th><th>Actions</th></tr></thead>'
+            . '<tbody>' . ($rowsHtml !== '' ? $rowsHtml : '<tr><td colspan="6">' . Ui::emptyState('Aucun rayon répertorié') . '</td></tr>') . '</tbody>'
+            . '</table>';
+
+        $mainSection = Ui::section('Liste des Rayons configurés', $tableHtml);
+
+        // Modal Form using Form components
+        $siteOptions = array_map(fn($s) => ['value' => (string) $s['id'], 'label' => $s['name']], $sites);
+        $fieldsHtml = Form::selectSearch('agence_id', $siteOptions, '1', ['label' => 'Agence / Entrepôt', 'required' => true])
+            . Form::input('code_rayon', ['label' => 'Code du Rayon (Ex: RAY-A1)', 'placeholder' => 'RAY-A1', 'required' => true])
+            . Form::input('nom_rayon', ['label' => 'Nom descriptif', 'placeholder' => 'Rayon A1 - Colis Légers', 'required' => true])
+            . Form::input('capacite_max', ['label' => 'Capacité maximale (nombre de colis)', 'type' => 'number', 'value' => '50', 'required' => true])
+            . Form::selectSearch('statut', [
+                ['value' => 'ACTIF', 'label' => 'ACTIF'],
+                ['value' => 'PLEIN', 'label' => 'PLEIN'],
+                ['value' => 'MAINTENANCE', 'label' => 'MAINTENANCE'],
+            ], 'ACTIF', ['label' => 'Statut']);
+
+        $modalHtml = Ui::modal('modal-add-rayon', 'Ajouter un nouveau Rayon', $fieldsHtml, View::url('logistique/rayons'), [
+            'btnLabel' => 'Créer le rayon',
+            'btnVariant' => 'accent',
+        ]);
 
         return '<div class="finea-shell">'
             . '<div class="finea-container">'
             . $header
-            . $alerts
-            . '<div style="display: grid; grid-template-columns: 2fr 1fr; gap: 2rem; margin-top: 2rem;">'
-            . '<div>'
-            . '<h3 style="font-size: 1.1rem; font-weight: 700; color: #0f172a; margin-bottom: 1rem;">Rayons d\'Entrepôt & Taux d\'Occupation</h3>'
-            . $overview
+            . $alertsHtml
+            . '<div style="margin-top: 2rem;">'
+            . $mainSection
             . '</div>'
-            . '<div>'
-            . '<div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">'
-            . '<h3 style="font-size: 1.05rem; font-weight: 700; color: #0f172a; margin-top: 0; margin-bottom: 1rem;">+ Ajouter un Rayon</h3>'
-            . $createForm
-            . '</div>'
-            . '</div>'
-            . '</div>'
+            . $modalHtml
             . '</div>'
             . '</div>';
     }
 
     /**
-     * Formulaire d'ajout / édition d'un rayon.
-     */
-    public static function rayonFormModal(array $sites, ?Rayon $rayon = null): string
-    {
-        $actionUrl = View::url('logistique/rayons/enregistrer');
-        $siteOpts = [];
-        foreach ($sites as $s) {
-            $siteOpts[] = ['value' => (string) $s['id'], 'label' => $s['name'] ?? 'Agence #' . $s['id']];
-        }
-
-        return '<form method="post" action="' . $actionUrl . '">'
-            . '<input type="hidden" name="id" value="' . ($rayon ? $rayon->id : 0) . '">'
-
-            . Form::select('agence_id', 'Agence / Entrepôt', $siteOpts, (string) ($rayon ? $rayon->agenceId : ($sites[0]['id'] ?? 1)))
-            . Form::input('code_rayon', 'Code du Rayon', 'text', $rayon ? $rayon->codeRayon : '', ['placeholder' => 'ex: RAY-A1', 'required' => true])
-            . Form::input('nom_rayon', 'Nom / Description du Rayon', 'text', $rayon ? $rayon->nomRayon : '', ['placeholder' => 'ex: Etagère A1 - Petits paquets', 'required' => true])
-            . Form::input('capacite_max', 'Capacité Maximale (Nombre de colis)', 'number', (string) ($rayon ? $rayon->capaciteMax : 50), ['min' => 1, 'required' => true])
-
-            . Form::select('statut', 'Statut du Rayon', [
-                ['value' => 'ACTIF', 'label' => 'ACTIF (Recevoir automatiquement)'],
-                ['value' => 'PLEIN', 'label' => 'PLEIN (Saturé)'],
-                ['value' => 'MAINTENANCE', 'label' => 'MAINTENANCE (Inactif)'],
-            ], $rayon ? $rayon->statut : 'ACTIF')
-
-            . '<div style="margin-top: 1.5rem; text-align: right;">'
-            . Ui::button($rayon ? 'Enregistrer les modifications' : 'Créer le Rayon', ['type' => 'submit', 'variant' => 'accent'])
-            . '</div>'
-            . '</form>';
-    }
-
-    /**
-     * Page de paramétrage des délais de gardiennage et tarification des pénalités.
+     * Page de paramétrage des délais et gardiennage utilisant Form et Ui components.
+     *
+     * @param array<int, array<string, mixed>> $sites
      */
     public static function parametresPage(LogistiqueSettings $settings, array $sites, ?string $successMsg = null): string
     {
         $header = Ui::pageHeader(
             'Délais de Récupération & Gardiennage',
-            'Configuration du délai gratuit de retrait des colis et tarification des frais supplémentaires appliqués lors du dépassement.',
+            'Configuration de la période gratuite de stockage et calcul des pénalités financières après dépassement.',
             [
-                'eyebrow' => 'Règles de Stockage & Pénalités Logistiques',
+                'eyebrow' => 'Paramétrage Logistique',
                 'class' => 'rh-hero-white',
             ]
         );
 
-        $alerts = '';
-        if ($successMsg) {
-            $alerts .= '<div style="background:#dcfce7; color:#15803d; padding:1rem; border-radius:8px; margin-bottom:1.5rem; border:1px solid #bbf7d0;">'
-                . htmlspecialchars($successMsg) . '</div>';
-        }
+        $alertHtml = $successMsg ? Ui::badge($successMsg, 'success', ['class' => 'finea-alert-success']) : '';
 
-        $formContent = self::delaiFraisConfigComponent($settings);
+        $fieldsHtml = Form::input('delai_gratuit_jours', [
+            'label' => 'Délai gratuit de garde (en jours)',
+            'type' => 'number',
+            'value' => (string) $settings->delaiGratuitJours,
+            'hint' => 'Nombre de jours pendant lesquels le colis est stocké gratuitement.',
+            'required' => true,
+        ])
+        . Form::input('frais_gardiennage_par_jour', [
+            'label' => 'Frais de gardiennage par jour supplémentaire (XOF)',
+            'type' => 'number',
+            'step' => '50',
+            'value' => (string) $settings->fraisGardiennageParJour,
+            'hint' => 'Pénalité financière appliquée par jour de retard après le délai gratuit.',
+            'required' => true,
+        ])
+        . Form::field(
+            'Affectation automatique',
+            '<label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer;">'
+            . '<input type="checkbox" name="auto_assign_rayon" value="1" ' . ($settings->autoAssignRayon ? 'checked' : '') . '>'
+            . '<span>Activer l\'affectation automatique des colis dans le premier rayon disponible lors de la réception.</span>'
+            . '</label>'
+        )
+        . Ui::button('Enregistrer les paramètres', ['variant' => 'accent', 'type' => 'submit']);
+
+        $formHtml = '<form method="post" action="' . View::url('logistique/parametres') . '">' . $fieldsHtml . '</form>';
+        $section = Ui::section('Règles de Stockage & Gardiennage', $formHtml);
 
         return '<div class="finea-shell">'
             . '<div class="finea-container">'
             . $header
-            . $alerts
-            . '<div style="max-width: 700px; margin: 2rem auto; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; box-shadow: 0 2px 4px rgba(0,0,0,0.04);">'
-            . $formContent
+            . $alertHtml
+            . '<div style="margin-top: 2rem;">'
+            . $section
             . '</div>'
             . '</div>'
             . '</div>';
     }
 
     /**
-     * Composant de formulaire pour modifier les paramètres de gardiennage.
+     * Badge d'avertissement de frais de gardiennage.
      */
-    public static function delaiFraisConfigComponent(LogistiqueSettings $settings): string
+    public static function colisGardiennageBadge(float $montantFrais): string
     {
-        return '<form method="post" action="' . View::url('logistique/parametres/enregistrer') . '">'
-            . '<h3 style="font-size: 1.1rem; font-weight: 700; color: #0f172a; margin-top: 0; margin-bottom: 1.5rem; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.75rem;">'
-            . 'Paramètres Globaux de Stockage'
-            . '</h3>'
-
-            . '<div style="margin-bottom: 1.25rem;">'
-            . Form::input('delai_gratuit_jours', 'Délai de Récupération Gratuit (en jours)', 'number', (string) $settings->delaiGratuitJours, [
-                'min' => 0,
-                'required' => true,
-                'help' => 'Nombre de jours calendaires accordés au destinataire pour retirer son colis sans pénalité.'
-            ])
-            . '</div>'
-
-            . '<div style="margin-bottom: 1.25rem;">'
-            . Form::input('frais_gardiennage_par_jour', 'Tarif des Frais de Gardiennage (par jour de dépassement en XOF)', 'number', (string) $settings->fraisGardiennageParJour, [
-                'min' => 0,
-                'step' => '50',
-                'required' => true,
-                'help' => 'Montant ajouté automatiquement à la facture de retrait pour chaque jour de retard.'
-            ])
-            . '</div>'
-
-            . '<div style="margin-bottom: 1.5rem; background: #f8fafc; padding: 1rem; border-radius: 8px; border: 1px solid #e2e8f0;">'
-            . '<label style="display: flex; align-items: center; gap: 0.75rem; cursor: pointer; font-weight: 600; color: #0f172a;">'
-            . '<input type="checkbox" name="auto_assign_rayon" value="1" ' . ($settings->autoAssignRayon ? 'checked' : '') . ' style="width: 18px; height: 18px; accent-color: #2563eb;">'
-            . 'Activer l\'affectation automatique des colis dans les rayons lors de la réception'
-            . '</label>'
-            . '<p style="color: #64748b; font-size: 0.85rem; margin: 0.4rem 0 0 2rem;">'
-            . 'Le système placera automatiquement chaque nouveau colis dans le premier rayon actif disposant de places libres.'
-            . '</p>'
-            . '</div>'
-
-            . '<div style="text-align: right; margin-top: 2rem;">'
-            . Ui::button('Enregistrer les paramètres', ['type' => 'submit', 'variant' => 'accent'])
-            . '</div>'
-            . '</form>';
-    }
-
-    /**
-     * Badge d'affichage des pénalités / gardiennage pour une fiche colis.
-     *
-     * @param array{
-     *     delaiGratuitJours: int,
-     *     dateArrivee: ?string,
-     *     dateLimiteRetrait: string,
-     *     joursRetard: int,
-     *     fraisParJour: float,
-     *     totalFraisGardiennage: float,
-     *     estHorsDelai: bool
-     * } $gardiennageInfo
-     */
-    public static function colisGardiennageBadge(array $gardiennageInfo): string
-    {
-        if (!$gardiennageInfo['estHorsDelai']) {
-            return '<div style="display: inline-flex; align-items: center; gap: 0.5rem; background: #f0fdf4; color: #166534; padding: 0.4rem 0.75rem; border-radius: 6px; border: 1px solid #bbf7d0; font-size: 0.85rem;">'
-                . '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>'
-                . 'Dans le délai gratuit (Limite: ' . date('d/m/Y', strtotime($gardiennageInfo['dateLimiteRetrait'])) . ')'
-                . '</div>';
+        if ($montantFrais <= 0) {
+            return Ui::badge('Délai gratuit respecté', 'success');
         }
 
-        return '<div style="display: inline-flex; flex-direction: column; gap: 0.2rem; background: #fef2f2; color: #991b1b; padding: 0.6rem 0.85rem; border-radius: 8px; border: 1px solid #fecaca; font-size: 0.85rem;">'
-            . '<div style="display: flex; align-items: center; gap: 0.4rem; font-weight: 700;">'
-            . '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>'
-            . 'Délai de garde dépassé (+' . $gardiennageInfo['joursRetard'] . ' jour' . ($gardiennageInfo['joursRetard'] > 1 ? 's' : '') . ')'
-            . '</div>'
-            . '<div>'
-            . 'Frais de gardiennage à percevoir : <strong>' . number_format($gardiennageInfo['totalFraisGardiennage'], 0, ',', ' ') . ' XOF</strong>'
-            . '</div>'
-            . '</div>';
+        return Ui::badge('Frais de garde : +' . number_format($montantFrais, 0, ',', ' ') . ' XOF', 'danger');
     }
 }
