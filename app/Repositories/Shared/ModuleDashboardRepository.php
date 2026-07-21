@@ -16,7 +16,7 @@ class ModuleDashboardRepository
     /**
      * @return array<string,mixed>
      */
-    protected function dashboardFor(string $slug): array
+    public function dashboardFor(string $slug): array
     {
         return (new ModuleDashboardService())->dashboard($slug);
     }
