@@ -142,7 +142,7 @@ final class Ui
     }
 
     /**
-     * Generic modal dialog component.
+     * Generic modal dialog component using standard design system buttons and styles.
      *
      * @param array<string,mixed> $options  Optional: 'btnLabel', 'btnVariant', 'formId'
      */
@@ -153,14 +153,24 @@ final class Ui
         $formId = $options['formId'] ?? '';
         $formIdAttr = $formId !== '' ? ' id="' . View::e($formId) . '"' : '';
 
-        return '<div id="' . View::e($id) . '" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:999; justify-content:center; align-items:center; padding:1.5rem;">'
-            . '<div class="finea-section-card" style="max-width:550px; width:100%; margin:0; box-shadow:0 20px 25px -5px rgba(0,0,0,0.2);">'
-            . '<h3 class="rh-step-title" style="margin-bottom:1rem; padding-bottom:0.5rem;">' . View::e($title) . '</h3>'
+        $closeBtn = self::button('Fermer', [
+            'variant' => 'secondary',
+            'type' => 'button',
+            'onclick' => "document.getElementById('" . View::e($id) . "').style.display='none'",
+        ]);
+        $submitBtn = self::button($btnLabel, [
+            'variant' => $btnVariant,
+            'type' => 'submit',
+        ]);
+
+        return '<div id="' . View::e($id) . '" style="display:none; position:fixed; inset:0; background:rgba(15, 23, 42, 0.6); z-index:999; justify-content:center; align-items:center; padding:1.5rem; backdrop-filter:blur(4px);">'
+            . '<div class="finea-section-card" style="max-width:550px; width:100%; margin:0; box-shadow:0 25px 50px -12px rgba(0, 0, 0, 0.25); border-radius:12px; padding:1.75rem;">'
+            . '<h3 class="finea-section-title" style="margin-bottom:1.25rem; font-size:1.25rem; font-weight:700; border-bottom:1px solid #e2e8f0; padding-bottom:0.75rem;">' . View::e($title) . '</h3>'
             . '<form method="post" action="' . ($action !== '' ? $action : '') . '"' . $formIdAttr . '>'
-            . '<div class="rh-form-grid-3" style="grid-template-columns:1fr; gap:1rem;">' . $fieldsHtml . '</div>'
-            . '<div style="margin-top:1.5rem; display:flex; justify-content:flex-end; gap:0.5rem;">'
-            . '<button type="button" class="finea-button finea-button--secondary" onclick="document.getElementById(\'' . View::e($id) . '\').style.display=\'none\'">Fermer</button>'
-            . '<button type="submit" class="finea-button finea-button--' . View::e($btnVariant) . '">' . View::e($btnLabel) . '</button>'
-            . '</div></form></div></div>';
+            . '<div class="rh-form-grid" style="gap:1.25rem; margin-bottom:1.5rem;">' . $fieldsHtml . '</div>'
+            . '<div style="display:flex; justify-content:flex-end; gap:0.75rem; border-top:1px solid #e2e8f0; padding-top:1rem;">'
+            . $closeBtn
+            . $submitBtn
+            . '</div></form></div>div>';
     }
 }
