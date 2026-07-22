@@ -1,13 +1,13 @@
 <?php
 
-use App\View\Components\Dashboard;
+declare(strict_types=1);
 
-/** @var \App\Support\ViewBag $viewData */ $viewData ??= \App\Support\ViewBag::from(get_defined_vars());
-/** @var array<string, mixed> $dashboardModule */
-$module = $dashboardModule;
+use App\View\Components\Crm;
+use App\View\Pages\Crm\DashboardPage;
 
-ob_start();
-echo Dashboard::businessModuleDashboard($module);
-$content = ob_get_clean();
+/**
+ * @var array<string,mixed> $dashboardModule
+ * @var DashboardPage $page
+ */
 
-require BASE_PATH . '/views/layouts/module.php';
+echo Crm::dashboardPage($dashboardModule);

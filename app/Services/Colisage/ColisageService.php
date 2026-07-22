@@ -5,10 +5,32 @@ declare(strict_types=1);
 namespace App\Services\Colisage;
 
 use App\Repositories\Colisage\ColisageRepository;
+use App\Repositories\Logistique\RayonRepository;
+use App\Repositories\Logistique\LogistiqueSettingsRepository;
+use App\Repositories\Shared\NotificationRepository;
+use App\Services\Logistique\RayonService;
+use App\Services\Logistique\GardiennageService;
+use App\Services\Shared\NotificationService;
+use App\Models\Database;
 
 final class ColisageService
 {
-    public function __construct(private ColisageRepository $repository) {}
+    private ?RayonService $rayonService = null;
+    private ?GardiennageService $gardiennageService = null;
+    private ?RayonRepository $rayonRepository = null;
+    private ?NotificationService $notificationService = null;
+
+    public function __construct(private ColisageRepository $repository)
+    {
+        $pdo = Database::getConnection();
+        $settingsRepo = new LogistiqueSettingsRepository($pdo);
+        $this->rayonRepository = new RayonRepository($pdo);
+        $notificationRepo = new NotificationRepository($pdo);
+
+        $this->rayonService = new RayonService($this->rayonRepository, $settingsRepo);
+        $this->gardiennageService = new GardiennageService($settingsRepo);
+        $this->notificationService = new NotificationService($notificationRepo);
+    }
 
     // ==========================================
     // CLIENTS
@@ -62,13 +84,71 @@ final class ColisageService
     /** @param array<string, mixed> $data */
     public function registerParcel(array $data): int
     {
-        // Auto-generate unique tracking number: LB-CI-MMYY-NNN
+        // Determine tracking prefix code based on parcel type and route
+        $type = $data['type_expediteur'] ?? '';
+        $code = 'LB-CI'; // default fallback
+
+        // Determine countries based on departure and arrival agencies
+        $from = $this->getCountryFromAgencyId(!empty($data['agence_depart_id']) ? (int) $data['agence_depart_id'] : null);
+        $to = $this->getCountryFromAgencyId(!empty($data['agence_arrivee_id']) ? (int) $data['agence_arrivee_id'] : null);
+
+        // If trajet is explicitly passed in data
+        if (!empty($data['trajet'])) {
+            $parts = explode('_', $data['trajet']);
+            if (count($parts) === 2) {
+                $from = $parts[0] === 'CIV' ? 'CIV' : ($parts[0] === 'FR' ? 'FR' : ($parts[0] === 'SEN' ? 'SEN' : ($parts[0] === 'CAN' ? 'CAN' : $from)));
+                $to = $parts[1] === 'CIV' ? 'CIV' : ($parts[1] === 'FR' ? 'FR' : ($parts[1] === 'SEN' ? 'SEN' : ($parts[1] === 'CAN' ? 'CAN' : $to)));
+            }
+        }
+
+        if ($type === 'export_maritime') {
+            $code = 'MP-CI';
+        } elseif ($type === 'import_maritime') {
+            $code = 'MP-FR';
+        } elseif ($type === 'dhl') {
+            $code = 'DL-CI';
+        } else {
+            // Air Cargo and Express (Colis Rapide) routing rules
+            if ($type === 'colis_rapide_export' || $type === 'colis_rapide_import') {
+                if ($from === 'FR' && $to === 'SEN') {
+                    $code = 'F-SN';
+                } elseif ($from === 'CIV' && $to === 'FR') {
+                    $code = 'CA-CI';
+                } elseif ($from === 'FR' && $to === 'CIV') {
+                    $code = 'CA-FR';
+                } elseif ($from === 'SEN' && $to === 'CIV') {
+                    $code = 'CA-SN';
+                } elseif ($from === 'CIV' && $to === 'SEN') {
+                    $code = 'CA-IS';
+                } elseif ($from === 'CIV' && $to === 'CAN') {
+                    $code = 'CA-IC';
+                } elseif ($from === 'CAN' && $to === 'CIV') {
+                    $code = 'CA-CC';
+                } else {
+                    $code = ($from === 'FR' || $to === 'CIV') ? 'CA-FR' : 'CA-CI';
+                }
+            } elseif ($type === 'export_aerien' || $type === 'import_aerien') {
+                if ($from === 'CIV' && $to === 'FR') {
+                    $code = 'LB-CI';
+                } elseif ($from === 'FR' && $to === 'CIV') {
+                    $code = 'LB-FR';
+                } elseif ($from === 'SEN' && $to === 'FR') {
+                    $code = 'S-FR';
+                } elseif ($from === 'CIV' && $to === 'CAN') {
+                    $code = 'LB-CA';
+                } else {
+                    if ($from === 'FR' || $to === 'CIV') {
+                        $code = 'LB-FR';
+                    } else {
+                        $code = 'LB-CI';
+                    }
+                }
+            }
+        }
+
         $mmyy = date('my'); // e.g. 0726 for July 2026
-        $prefix = 'LB-CI-' . $mmyy;
-        $pdo = \App\Models\Database::getConnection();
-        $stmt = $pdo->prepare("SELECT COUNT(*) FROM lbp_colis WHERE numero_tracking LIKE :prefix");
-        $stmt->execute(['prefix' => $prefix . '%']);
-        $seq = ((int) $stmt->fetchColumn()) + 1;
+        $prefix = $code . '-' . $mmyy;
+        $seq = $this->repository->countParcelsWithTrackingPrefix($prefix) + 1;
         $data['numero_tracking'] = $prefix . '-' . str_pad((string) $seq, 3, '0', STR_PAD_LEFT);
 
         // Determine trafic label from type_expediteur
@@ -78,20 +158,65 @@ final class ColisageService
             'import_aerien' => 'Import Aérien',
             'import_maritime' => 'Import Maritime',
         ];
-        $data['trafic'] = $traficMap[$data['type_expediteur'] ?? ''] ?? 'Groupage Aérien';
+        $data['trafic'] = $data['trafic'] ?? $traficMap[$data['type_expediteur'] ?? ''] ?? 'Groupage Aérien';
 
         $parcelId = $this->repository->createParcel($data);
+
+        // Affectation automatique du rayon et calcul de la date limite de retrait
+        $agenceArriveeId = !empty($data['agence_arrivee_id']) ? (int) $data['agence_arrivee_id'] : 1;
+        if ($this->rayonService !== null) {
+            $assignResult = $this->rayonService->autoAssignRayonForColis($agenceArriveeId, $data);
+            try {
+                $pdo = Database::getConnection();
+                $stmt = $pdo->prepare("
+                    UPDATE lbp_colis
+                    SET rayon_id = :rayon_id,
+                        date_arrivee_agence = :date_arrivee,
+                        date_limite_retrait = :date_limite
+                    WHERE id = :id
+                ");
+                $stmt->execute([
+                    'id' => $parcelId,
+                    'rayon_id' => $assignResult['rayonId'],
+                    'date_arrivee' => $assignResult['dateArrivee'],
+                    'date_limite' => $assignResult['dateLimiteRetrait'],
+                ]);
+
+                if ($this->rayonRepository !== null && $assignResult['rayonId'] !== null) {
+                    $this->rayonRepository->recordMouvement($parcelId, $assignResult['rayonId'], 'ENTREE', null, 'Affectation automatique à la réception');
+                }
+            } catch (\Throwable $e) {}
+
+            if ($this->notificationService !== null) {
+                $colis = $this->getParcelDetails($parcelId);
+                if ($colis !== null) {
+                    $rayonNom = null;
+                    if (!empty($assignResult['rayonId']) && $this->rayonRepository !== null) {
+                        $rObj = $this->rayonRepository->findRayonById($assignResult['rayonId']);
+                        if ($rObj) {
+                            $rayonNom = $rObj->codeRayon;
+                        }
+                    }
+                    $this->notificationService->notifyParcelArrival($colis, $rayonNom);
+                }
+            }
+        }
 
         // Save marchandises details if present
         if (!empty($data['marchandises']) && is_array($data['marchandises'])) {
             foreach ($data['marchandises'] as $m) {
                 $description = '';
 
-                if (!empty($m['product_id'])) {
-                    // Get name from selected product
-                    $stmt = \App\Models\Database::getConnection()->prepare("SELECT nom FROM lbp_produits WHERE id = :id");
-                    $stmt->execute(['id' => (int) $m['product_id']]);
-                    $description = (string) $stmt->fetchColumn() ?: 'Produit Inconnu';
+                $prodIds = !empty($m['product_ids']) ? (array) $m['product_ids'] : (!empty($m['product_id']) ? [$m['product_id']] : []);
+                if (!empty($prodIds)) {
+                    $names = [];
+                    foreach ($prodIds as $pid) {
+                        $name = $this->repository->getProductNameById((int) $pid);
+                        if ($name) {
+                            $names[] = $name;
+                        }
+                    }
+                    $description = implode(' + ', $names) ?: 'Produit Inconnu';
                 } elseif (!empty($m['custom_name'])) {
                     $customName = trim((string) $m['custom_name']);
                     // Check if it already exists
@@ -127,7 +252,27 @@ final class ColisageService
     /** @param array<string, mixed> $data */
     public function withdrawParcel(int $id, array $data): void
     {
+        $frais = 0.0;
+        $colis = $this->getParcelDetails($id);
+
+        if ($this->gardiennageService !== null && $colis !== null) {
+            $gardiennage = $this->gardiennageService->calculateGardiennage($colis);
+            $frais = $gardiennage['totalFraisGardiennage'];
+            $data['frais_gardiennage_appliques'] = $frais;
+        }
+
         $this->repository->recordWithdrawal($id, $data);
+
+        if ($colis !== null) {
+            $rayonId = isset($colis['rayon_id']) ? (int) $colis['rayon_id'] : null;
+            if ($this->rayonRepository !== null && $rayonId !== null) {
+                $this->rayonRepository->recordMouvement($id, $rayonId, 'SORTIE', null, 'Retrait effectué au comptoir');
+            }
+
+            if ($this->notificationService !== null) {
+                $this->notificationService->notifyParcelWithdrawal($colis, $data, $frais);
+            }
+        }
     }
 
 
@@ -280,5 +425,30 @@ final class ColisageService
     public function getParcelsAvailableForGroupage(int $agencyId): array
     {
         return $this->repository->getParcelsAvailableForGroupage($agencyId);
+    }
+
+    private function getCountryFromAgencyId(?int $id): string
+    {
+        if ($id === null) {
+            return '';
+        }
+        $name = $this->repository->getAgencyNameById($id);
+        if (!$name) {
+            return '';
+        }
+        $name = mb_strtolower($name);
+        if (str_contains($name, 'abidjan') || str_contains($name, 'san pedro') || str_contains($name, 'dokui') || str_contains($name, 'adjamé') || str_contains($name, 'bouët') || str_contains($name, 'siege') || str_contains($name, 'côte d\'ivoire') || str_contains($name, 'civ') || str_contains($name, 'abj')) {
+            return 'CIV';
+        }
+        if (str_contains($name, 'france') || str_contains($name, 'paris') || str_contains($name, 'bobigny') || str_contains($name, 'fr')) {
+            return 'FR';
+        }
+        if (str_contains($name, 'sénégal') || str_contains($name, 'senegal') || str_contains($name, 'dakar') || str_contains($name, 'sen')) {
+            return 'SEN';
+        }
+        if (str_contains($name, 'canada') || str_contains($name, 'montreal') || str_contains($name, 'toronto') || str_contains($name, 'can')) {
+            return 'CAN';
+        }
+        return '';
     }
 }

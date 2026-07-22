@@ -140,4 +140,37 @@ final class Ui
     {
         return '<div class="finea-empty-state"><strong>' . View::e($title) . '</strong>' . ($message !== '' ? '<p>' . View::e($message) . '</p>' : '') . '</div>';
     }
+
+    /**
+     * Generic modal dialog component using standard design system buttons and styles.
+     *
+     * @param array<string,mixed> $options  Optional: 'btnLabel', 'btnVariant', 'formId'
+     */
+    public static function modal(string $id, string $title, string $fieldsHtml, string $action = '', array $options = []): string
+    {
+        $btnLabel = $options['btnLabel'] ?? 'Enregistrer';
+        $btnVariant = $options['btnVariant'] ?? 'accent';
+        $formId = $options['formId'] ?? '';
+        $formIdAttr = $formId !== '' ? ' id="' . View::e($formId) . '"' : '';
+
+        $closeBtn = self::button('Fermer', [
+            'variant' => 'secondary',
+            'type' => 'button',
+            'onclick' => "document.getElementById('" . View::e($id) . "').style.display='none'",
+        ]);
+        $submitBtn = self::button($btnLabel, [
+            'variant' => $btnVariant,
+            'type' => 'submit',
+        ]);
+
+        return '<div id="' . View::e($id) . '" style="display:none; position:fixed; inset:0; background:rgba(15, 23, 42, 0.6); z-index:999; justify-content:center; align-items:center; padding:1.5rem; backdrop-filter:blur(4px);">'
+            . '<div class="finea-section-card" style="max-width:550px; width:100%; margin:0; box-shadow:0 25px 50px -12px rgba(0, 0, 0, 0.25); border-radius:12px; padding:1.75rem;">'
+            . '<h3 class="finea-section-title" style="margin-bottom:1.25rem; font-size:1.25rem; font-weight:700; border-bottom:1px solid #e2e8f0; padding-bottom:0.75rem;">' . View::e($title) . '</h3>'
+            . '<form method="post" action="' . ($action !== '' ? $action : '') . '"' . $formIdAttr . '>'
+            . '<div class="rh-form-grid" style="gap:1.25rem; margin-bottom:1.5rem;">' . $fieldsHtml . '</div>'
+            . '<div style="display:flex; justify-content:flex-end; gap:0.75rem; border-top:1px solid #e2e8f0; padding-top:1rem;">'
+            . $closeBtn
+            . $submitBtn
+            . '</div></form></div>div>';
+    }
 }

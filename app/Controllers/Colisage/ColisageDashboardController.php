@@ -25,8 +25,11 @@ final class ColisageDashboardController extends ColisageBaseController
 
         $module = $this->service->dashboard();
 
+        $page = new \App\View\Pages\Colisage\DashboardPage($module);
+
         $this->colisageView('colisage/dashboard', 'Tableau de bord ' . (string) $module['label'], 'dashboard', [
             'dashboardModule' => $module,
+            'page' => $page,
         ]);
     }
 }

@@ -8,15 +8,19 @@ use App\Controllers\BaseController;
 use App\Middleware\AuthMiddleware;
 use App\Models\Database;
 use App\Repositories\Logistique\LogistiqueDashboardRepository;
+use App\Repositories\Logistique\RayonRepository;
 use App\Services\Logistique\LogistiqueDashboardService;
 
-final class LogistiqueDashboardController extends BaseController
+final class LogistiqueDashboardController extends LogistiqueBaseController
 {
     private LogistiqueDashboardService $service;
+    private RayonRepository $rayonRepository;
 
     public function __construct()
     {
-        $this->service = new LogistiqueDashboardService(new LogistiqueDashboardRepository(Database::getConnection()));
+        $pdo = Database::getConnection();
+        $this->service = new LogistiqueDashboardService(new LogistiqueDashboardRepository($pdo));
+        $this->rayonRepository = new RayonRepository($pdo);
     }
 
     public function index(): void
@@ -24,26 +28,13 @@ final class LogistiqueDashboardController extends BaseController
         AuthMiddleware::check();
 
         $module = $this->service->dashboard();
+        $page = new \App\View\Pages\Logistique\DashboardPage($module);
+        $rayons = $this->rayonRepository->getAllRayons();
 
-        $this->view('logistique/dashboard', $this->viewData($module) + [
+        $this->logistiqueView('logistique/dashboard', 'Tableau de bord ' . (string) $module['label'], 'dashboard', $module, [
             'dashboardModule' => $module,
+            'page' => $page,
+            'rayons' => $rayons,
         ]);
-    }
-
-    /**
-     * @param array<string,mixed> $module
-     * @return array<string,mixed>
-     */
-    private function viewData(array $module): array
-    {
-        return [
-            'pageTitle' => 'Tableau de bord ' . (string) $module['label'],
-            'moduleName' => (string) $module['label'],
-            'moduleCode' => (string) $module['code'],
-            'moduleTheme' => $module,
-            'activeModule' => 'dashboard',
-            'moduleNavigation' => (array) $module['navigation'],
-            'additionalStyles' => ['css/finea-ui.css'],
-        ];
     }
 }

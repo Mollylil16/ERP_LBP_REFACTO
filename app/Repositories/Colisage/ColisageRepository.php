@@ -5,9 +5,8 @@ declare(strict_types=1);
 namespace App\Repositories\Colisage;
 
 use PDO;
-use App\Helpers\Accounting;
 
-final class ColisageRepository
+class ColisageRepository
 {
     public function __construct(private PDO $pdo) {}
 
@@ -201,12 +200,11 @@ final class ColisageRepository
                 :numero_tracking, :expediteur_id, :destinataire_id, :poids_total, :nombre_colis,
                 :valeur_declaree, :montant_total, :montant_total_eur, :devise,
                 :agence_depart_id, :agence_arrivee_id,
-                'RÉCEPTIONNÉ', :type_expediteur, :trafic, :created_at
+                'RÉCEPTIONNÉ', :type_expediteur, :trafic, NOW()
             )
         ");
         $stmt->execute([
             'numero_tracking' => trim((string) $data['numero_tracking']),
-            'created_at' => Accounting::getAccountingDateTime(),
             'expediteur_id' => (int) $data['expediteur_id'],
             'destinataire_id' => (int) $data['destinataire_id'],
             'poids_total' => (float) ($data['poids_total'] ?? 0.0),
@@ -238,6 +236,7 @@ final class ColisageRepository
                 recup_nom = :recup_nom,
                 recup_cni = :recup_cni,
                 recup_telephone = :recup_telephone,
+                frais_gardiennage_appliques = :frais_gardiennage,
                 recup_date_heure = NOW(),
                 updated_at = NOW()
             WHERE id = :id
@@ -247,6 +246,7 @@ final class ColisageRepository
             'recup_nom' => trim((string) ($data['recup_nom'] ?? '')),
             'recup_cni' => trim((string) ($data['recup_cni'] ?? '')),
             'recup_telephone' => trim((string) ($data['recup_telephone'] ?? '')),
+            'frais_gardiennage' => (float) ($data['frais_gardiennage_appliques'] ?? 0.0),
         ]);
     }
 
@@ -515,5 +515,28 @@ final class ColisageRepository
             'id' => $parcelId,
             'expedition_id' => $expeditionId,
         ]);
+    }
+
+    public function countParcelsWithTrackingPrefix(string $prefix): int
+    {
+        $stmt = $this->pdo->prepare("SELECT COUNT(*) FROM lbp_colis WHERE numero_tracking LIKE :prefix");
+        $stmt->execute(['prefix' => $prefix . '%']);
+        return (int) $stmt->fetchColumn();
+    }
+
+    public function getProductNameById(int $id): ?string
+    {
+        $stmt = $this->pdo->prepare("SELECT nom FROM lbp_produits WHERE id = :id");
+        $stmt->execute(['id' => $id]);
+        $name = $stmt->fetchColumn();
+        return $name ? (string) $name : null;
+    }
+
+    public function getAgencyNameById(int $id): ?string
+    {
+        $stmt = $this->pdo->prepare("SELECT name FROM company_sites WHERE id = :id");
+        $stmt->execute(['id' => $id]);
+        $name = $stmt->fetchColumn();
+        return $name ? (string) $name : null;
     }
 }
