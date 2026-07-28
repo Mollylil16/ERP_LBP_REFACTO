@@ -94,12 +94,21 @@ final class WebsiteController extends BaseController
     private function siteView(string $view, string $title, string $activePage, string $reference = ''): void
     {
         $content = $this->website->content();
+        $shipments = $this->demoShipments();
+
+        if ($reference !== '') {
+            $realData = $this->website->getRealTrackingData($reference);
+            if ($realData !== null) {
+                $shipments[$realData['reference']] = $realData;
+            }
+        }
+
         $this->view($view, [
             'pageTitle' => $title,
             'page' => new SitePage(
                 $title,
                 $activePage,
-                $this->demoShipments(),
+                $shipments,
                 $this->demoAgencies(),
                 $content['services'] !== [] ? $content['services'] : $this->demoServices(),
                 $this->demoNews(),

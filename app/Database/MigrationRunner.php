@@ -36,6 +36,7 @@ class MigrationRunner
         $this->createColisageTables();
         $this->createLbpUnifiedFlowTables();
         $this->createLogistiqueRayonsAndSettingsTables();
+        $this->createCallCenterTables();
     }
 
 
@@ -1718,6 +1719,9 @@ class MigrationRunner
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         ");
 
+        $this->addColumnIfMissing('lbp_colis', 'assurance_souscrite', "TINYINT(1) NOT NULL DEFAULT 0");
+        $this->addColumnIfMissing('lbp_colis', 'montant_assurance', "DECIMAL(15,2) NOT NULL DEFAULT 0.00");
+
         $this->pdo->exec("
             CREATE TABLE IF NOT EXISTS lbp_marchandises (
                 id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -1968,6 +1972,70 @@ class MigrationRunner
         }
     }
 
+    /**
+     * Crée les tables pour le module Call Center (appels et litiges).
+     */
+    private function createCallCenterTables(): void
+    {
+        if (!$this->schema->tableExists('lbp_call_center_appels')) {
+            $this->pdo->exec("
+                CREATE TABLE IF NOT EXISTS lbp_call_center_appels (
+                    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                    client_id INT UNSIGNED NOT NULL,
+                    agent_id INT UNSIGNED NOT NULL,
+                    type_appel ENUM('information', 'reclamation', 'suivi_colis', 'autre') NOT NULL DEFAULT 'information',
+                    description TEXT NOT NULL,
+                    statut ENUM('en_cours', 'traite', 'a_rappeler') NOT NULL DEFAULT 'traite',
+                    satisfaction_score TINYINT UNSIGNED NULL COMMENT '1 a 5',
+                    numero_tracking VARCHAR(60) NULL,
+                    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    KEY idx_cc_appels_client (client_id),
+                    KEY idx_cc_appels_agent (agent_id),
+                    KEY idx_cc_appels_date (created_at)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            ");
+
+            $this->pdo->exec("
+                CREATE TABLE IF NOT EXISTS lbp_call_center_litiges (
+                    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                    client_id INT UNSIGNED NOT NULL,
+                    colis_id INT UNSIGNED NULL,
+                    agent_id INT UNSIGNED NOT NULL,
+                    type_litige ENUM('colis_perdu', 'colis_endommage', 'retard', 'facturation', 'autre') NOT NULL DEFAULT 'autre',
+                    description TEXT NOT NULL,
+                    gravite ENUM('faible', 'moyenne', 'elevee', 'critique') NOT NULL DEFAULT 'moyenne',
+                    statut ENUM('nouveau', 'en_cours', 'resolu', 'annule') NOT NULL DEFAULT 'nouveau',
+                    solution_apportee TEXT NULL,
+                    date_ouverture DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    date_resolution DATETIME NULL,
+                    KEY idx_cc_litiges_client (client_id),
+                    KEY idx_cc_litiges_colis (colis_id),
+                    KEY idx_cc_litiges_statut (statut)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            ");
+        }
+
+        // Seed permissions Call Center si non existantes
+        $existing = $this->pdo->query("SELECT code FROM permission_entities WHERE code IN ('call_center_view', 'call_center_manage', 'rapports_agence')");
+        $existingCodes = $existing ? $existing->fetchAll(PDO::FETCH_COLUMN) : [];
+
+        $toInsert = [
+            ['call_center_view', 'Call Center', 'Call Center - Consulter', 'Consulter le tableau de bord Call Center, les appels, les litiges et la vue des rayons en temps réel.', 240],
+            ['call_center_manage', 'Call Center', 'Call Center - Gérer', 'Enregistrer des appels, ouvrir et résoudre des litiges.', 250],
+            ['rapports_agence', 'Colisage', 'Rapports journaliers par agence', 'Accéder aux rapports journaliers et mensuels par agence avec export CSV.', 235],
+        ];
+
+        $stmt = $this->pdo->prepare("
+            INSERT IGNORE INTO permission_entities (code, module, name, description, sort_order, is_active)
+            VALUES (:code, :module, :name, :description, :sort_order, 1)
+        ");
+        foreach ($toInsert as [$code, $module, $name, $desc, $sort]) {
+            if (!in_array($code, $existingCodes, true)) {
+                $stmt->execute(['code' => $code, 'module' => $module, 'name' => $name, 'description' => $desc, 'sort_order' => $sort]);
+            }
+        }
+    }
+
     private function addForeignKeyIfMissing(
         string $table,
         string $constraint,
@@ -2047,6 +2115,9 @@ class MigrationRunner
             VALUES (NULL, 7, 500.00, 1)
         ");
 
+        $this->addColumnIfMissing('logistique_rayons', 'type_rayon', "ENUM('STANDARD', 'EXPRESS', 'CARGO_LOURD', 'FRAGILE', 'SECU_VALEUR') NOT NULL DEFAULT 'STANDARD'");
+        $this->addColumnIfMissing('logistique_rayons', 'poids_max_autorise', "DECIMAL(10,2) NULL");
+
         $this->pdo->exec("
             CREATE TABLE IF NOT EXISTS logistique_mouvements_rayon (
                 id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -2082,6 +2153,16 @@ class MigrationRunner
             $this->addColumnIfMissing('lbp_colis', 'frais_gardiennage_appliques', "DECIMAL(10, 2) NOT NULL DEFAULT 0.00");
 
             $this->addIndexIfMissing('lbp_colis', 'idx_lbp_colis_rayon', 'rayon_id');
+        }
+
+        if ($this->schema->tableExists('lbp_etats_journaliers')) {
+            $this->addColumnIfMissing('lbp_etats_journaliers', 'solde_physique_declare', "DECIMAL(15,2) NULL");
+            $this->addColumnIfMissing('lbp_etats_journaliers', 'ecart_caisse', "DECIMAL(15,2) NOT NULL DEFAULT 0.00");
+            $this->addColumnIfMissing('lbp_etats_journaliers', 'explication_ecart', "TEXT NULL");
+        }
+
+        if ($this->schema->tableExists('lbp_paiements')) {
+            $this->addColumnIfMissing('lbp_paiements', 'mode_paiement', "ENUM('ESPECES', 'WAVE', 'ORANGE_MONEY', 'MTN_MOMO', 'CARTE', 'VIREMENT') NOT NULL DEFAULT 'ESPECES'");
         }
     }
 }

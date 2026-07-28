@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace App\Controllers\Colisage;
 
 use App\Middleware\AuthMiddleware;
+use App\Middleware\RoleMiddleware;
+use App\Helpers\Csrf;
+use App\Helpers\Session;
 use App\Models\Database;
 use App\Repositories\Colisage\ColisageRepository;
 use App\Services\Colisage\ColisageService;
@@ -81,6 +84,12 @@ final class ColisageController extends ColisageBaseController
     {
         AuthMiddleware::check();
 
+        if (!Csrf::verify($_POST['_csrf_token'] ?? null)) {
+            Session::flash('error', 'Session expirée ou requête invalide (CSRF). Veuillez réessayer.');
+            header('Location: ' . View::url('colisage/parcels/nouveau'));
+            exit;
+        }
+
         // Check if quick creating shipper or consignee
         $expediteurId = (int) ($_POST['expediteur_id'] ?? 0);
         if ($expediteurId === 0 && !empty($_POST['expediteur_name'])) {
@@ -143,11 +152,29 @@ final class ColisageController extends ColisageBaseController
             'agence_depart_id' => !empty($_POST['agence_depart_id']) ? (int) $_POST['agence_depart_id'] : null,
             'agence_arrivee_id' => !empty($_POST['agence_arrivee_id']) ? (int) $_POST['agence_arrivee_id'] : null,
             'type_expediteur' => $_POST['type_expediteur'] ?? 'export_aerien',
+            'assurance_souscrite' => !empty($_POST['assurance_souscrite']) ? 1 : 0,
             'marchandises' => $marchandises,
         ]);
 
         header('Location: ' . View::url('colisage/parcels/' . $newId));
         exit;
+    }
+
+    public function autoFacturer(int $id): void
+    {
+        AuthMiddleware::check();
+        $db = Database::getConnection();
+        $factureRepo = new \App\Repositories\Finance\FactureRepository($db);
+        try {
+            $invoiceId = $factureRepo->createAutoInvoiceFromParcel($id, (int) Auth::id());
+            Session::flash('success', 'Facture générée avec succès en 1 Clic !');
+            header('Location: ' . View::url('finance/factures/' . $invoiceId));
+            exit;
+        } catch (\Exception $e) {
+            Session::flash('error', 'Erreur lors de la génération de la facture : ' . $e->getMessage());
+            header('Location: ' . View::url('colisage/parcels/' . $id));
+            exit;
+        }
     }
 
     public function show(int $id): void
@@ -179,15 +206,68 @@ final class ColisageController extends ColisageBaseController
         require BASE_PATH . '/views/colisage/parcels/facture.php';
     }
 
+    public function printLabel(int $id): void
+    {
+        AuthMiddleware::check();
+
+        $colis = $this->service->getParcelDetails($id);
+        if ($colis === null) {
+            header('Location: ' . View::url('colisage/parcels'));
+            exit;
+        }
+
+        // Retrieve assigned Rayon code if present
+        if (!empty($colis['rayon_id'])) {
+            $pdo = \App\Models\Database::getConnection();
+            $stmt = $pdo->prepare("SELECT code_rayon, nom_rayon FROM logistique_rayons WHERE id = :id LIMIT 1");
+            $stmt->execute(['id' => $colis['rayon_id']]);
+            $r = $stmt->fetch(\PDO::FETCH_ASSOC);
+            if ($r) {
+                $colis['code_rayon'] = $r['code_rayon'];
+                $colis['nom_rayon'] = $r['nom_rayon'];
+            }
+        }
+
+        require BASE_PATH . '/views/colisage/parcels/etiquette.php';
+    }
+
     public function withdraw(int $id): void
     {
         AuthMiddleware::check();
+
+        if (!Csrf::verify($_POST['_csrf_token'] ?? null)) {
+            Session::flash('error', 'Session expirée ou requête invalide (CSRF). Veuillez réessayer.');
+            header('Location: ' . View::url('colisage/parcels/' . $id));
+            exit;
+        }
 
         $this->service->withdrawParcel($id, [
             'recup_nom' => $_POST['recup_nom'] ?? '',
             'recup_cni' => $_POST['recup_cni'] ?? '',
             'recup_telephone' => $_POST['recup_telephone'] ?? '',
         ]);
+
+        header('Location: ' . View::url('colisage/parcels/' . $id));
+        exit;
+    }
+
+    public function transfer(int $id): void
+    {
+        AuthMiddleware::check();
+
+        if (!Csrf::verify($_POST['_csrf_token'] ?? null)) {
+            Session::flash('error', 'Session expirée ou requête invalide (CSRF). Veuillez réessayer.');
+            header('Location: ' . View::url('colisage/parcels/' . $id));
+            exit;
+        }
+
+        $newRayonId = (int) ($_POST['rayon_id'] ?? 0);
+        $commentaires = trim((string) ($_POST['commentaires'] ?? ''));
+
+        if ($newRayonId > 0) {
+            $this->service->transferParcelToRayon($id, $newRayonId, $commentaires);
+            Session::flash('success', 'Le colis a été réaffecté / transféré dans le nouveau rayon avec succès.');
+        }
 
         header('Location: ' . View::url('colisage/parcels/' . $id));
         exit;
@@ -224,6 +304,12 @@ final class ColisageController extends ColisageBaseController
     {
         AuthMiddleware::check();
 
+        if (!Csrf::verify($_POST['_csrf_token'] ?? null)) {
+            Session::flash('error', 'Session expirée ou requête invalide (CSRF). Veuillez réessayer.');
+            header('Location: ' . View::url('colisage/groupage/nouveau'));
+            exit;
+        }
+
         $id = $this->service->createExpedition([
             'type_transport' => $_POST['type_transport'] ?? 'AÉRIEN',
             'agence_depart_id' => (int) ($_POST['agence_depart_id'] ?? 0),
@@ -254,9 +340,36 @@ final class ColisageController extends ColisageBaseController
         ]);
     }
 
+    public function groupagePrintManifest(int $id): void
+    {
+        AuthMiddleware::check();
+
+        $exp = $this->service->getExpeditionDetails($id);
+        if ($exp === null) {
+            header('Location: ' . View::url('colisage/groupage'));
+            exit;
+        }
+
+        // Fetch merchandise details for each parcel in the expedition
+        if (!empty($exp['parcels']) && is_array($exp['parcels'])) {
+            foreach ($exp['parcels'] as &$p) {
+                $p['marchandises'] = $this->service->getParcelDetails((int) $p['id'])['marchandises'] ?? [];
+            }
+            unset($p);
+        }
+
+        require BASE_PATH . '/views/colisage/groupage/manifeste.php';
+    }
+
     public function groupageAddParcel(int $id): void
     {
         AuthMiddleware::check();
+
+        if (!Csrf::verify($_POST['_csrf_token'] ?? null)) {
+            Session::flash('error', 'Session expirée ou requête invalide (CSRF). Veuillez réessayer.');
+            header('Location: ' . View::url('colisage/groupage/' . $id));
+            exit;
+        }
 
         $parcelId = (int) ($_POST['colis_id'] ?? 0);
         if ($parcelId > 0) {
@@ -271,6 +384,12 @@ final class ColisageController extends ColisageBaseController
     {
         AuthMiddleware::check();
 
+        if (!Csrf::verify($_POST['_csrf_token'] ?? null)) {
+            Session::flash('error', 'Session expirée ou requête invalide (CSRF). Veuillez réessayer.');
+            header('Location: ' . View::url('colisage/groupage/' . $id));
+            exit;
+        }
+
         $this->service->startExpedition($id);
 
         header('Location: ' . View::url('colisage/groupage/' . $id));
@@ -280,6 +399,12 @@ final class ColisageController extends ColisageBaseController
     public function groupageArrive(int $id): void
     {
         AuthMiddleware::check();
+
+        if (!Csrf::verify($_POST['_csrf_token'] ?? null)) {
+            Session::flash('error', 'Session expirée ou requête invalide (CSRF). Veuillez réessayer.');
+            header('Location: ' . View::url('colisage/groupage/' . $id));
+            exit;
+        }
 
         $this->service->arriveExpedition($id);
 
@@ -431,6 +556,14 @@ final class ColisageController extends ColisageBaseController
     public function saveSettings(): void
     {
         AuthMiddleware::check();
+        RoleMiddleware::check(['admin', 'chef_agence']);
+
+        if (!Csrf::verify($_POST['_csrf_token'] ?? null)) {
+            Session::flash('error', 'Session expirée ou requête invalide (CSRF). Veuillez réessayer.');
+            header('Location: ' . View::url('colisage/settings'));
+            exit;
+        }
+
         $pdo = Database::getConnection();
 
         $section = $_POST['section'] ?? '';

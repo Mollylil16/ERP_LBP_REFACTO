@@ -143,6 +143,7 @@ final class Colisage
         );
 
         $formContent = '<form method="post" action="' . View::url('colisage/autres/enregistrer') . '">'
+            . Form::hidden('_csrf_token', \App\Helpers\Csrf::token())
             . '<div class="rh-form-step-card">'
             . '<div class="rh-step-badge">ÉTAPE 1</div>'
             . '<h3 class="rh-step-title">Expéditeur & Destinataire</h3>'
@@ -199,7 +200,9 @@ final class Colisage
                 ['value' => 'USD', 'label' => 'US Dollar (USD)'],
             ], 'XOF', ['label' => 'Devise'])
             . Form::input('valeur_declaree', ['label' => 'Valeur déclarée (assurance/douane)', 'type' => 'number', 'step' => '1'])
-            . '</div></div>'
+            . '<div style="grid-column: span 3; background: #f0fdf4; border: 1px solid #bbf7d0; padding: 0.8rem 1.2rem; border-radius: 8px; margin-top: 0.5rem;">'
+            . Form::checkbox('assurance_souscrite', '1', false, ['label' => '🛡️ Souscrire à l\'Assurance Colis (+2% de la valeur déclarée — Couverture jusqu\'à 100% de la valeur)'])
+            . '</div></div></div>'
             . '<div class="rh-form-step-card">'
             . '<div class="rh-step-badge">ÉTAPE 3</div>'
             . '<h3 class="rh-step-title">Détail des marchandises</h3>'
@@ -424,6 +427,7 @@ final class Colisage
         );
 
         $formContent = '<form method="post" action="' . View::url('colisage/groupage/enregistrer') . '" class="finea-section-card" style="max-width: 800px; margin-top: 1.5rem;">'
+            . Form::hidden('_csrf_token', \App\Helpers\Csrf::token())
             . '<div style="display:grid; grid-template-columns:1fr 1fr; gap:1.5rem;">'
             . Form::select('type_transport', [
                 ['value' => 'AÉRIEN', 'label' => '✈️ AÉRIEN (Fret aérien rapide)'],
@@ -486,6 +490,11 @@ final class Colisage
                 'class' => 'rh-hero-white',
                 'actions' => [
                     Ui::badge($exp['statut'], $badgeTone, ['class' => 'finea-badge--large']),
+                    Ui::button('📄 Manifeste de Douane (MAWB)', [
+                        'href' => 'colisage/groupage/' . $exp['id'] . '/manifeste',
+                        'variant' => 'accent',
+                        'target' => '_blank'
+                    ]),
                     Ui::button('Retour à la liste', [
                         'href' => 'colisage/groupage',
                         'variant' => 'secondary'
@@ -501,6 +510,7 @@ final class Colisage
                 $addForm = '<p style="color: #64748b; font-size: 0.95rem;">Aucun colis en agence n\'est actuellement en attente d\'expédition pour ce trajet.</p>';
             } else {
                 $addForm = '<form method="post" action="' . View::url('colisage/groupage/' . $exp['id'] . '/colis') . '" style="display:flex; align-items:flex-end; gap:1rem;" class="js-protect-form">'
+                    . Form::hidden('_csrf_token', \App\Helpers\Csrf::token())
                     . '<div style="flex-grow:1;">'
                     . Form::selectSearch('colis_id', $parcelOpts, '', ['label' => 'Colis disponible à l\'agence de départ (' . View::e($exp['agence_depart_name']) . ')'])
                     . '</div>'
@@ -764,6 +774,7 @@ final class Colisage
         $ratesTable = self::settingsRatesTable($devisesRates);
 
         $section1Content = '<form method="post" action="' . View::url('colisage/settings/enregistrer') . '" class="js-protect-form">'
+            . Form::hidden('_csrf_token', \App\Helpers\Csrf::token())
             . '<input type="hidden" name="section" value="taux_change">'
             . '<div style="background: rgba(30,58,95,0.03); border-radius: 10px; padding: 1.5rem; margin-bottom: 1.5rem;">'
             . '<div style="display:flex; align-items:center; gap:1rem; margin-bottom:1rem;">'
@@ -792,6 +803,7 @@ final class Colisage
             . '</div></form>';
 
         $section2Content = '<form method="post" action="' . View::url('colisage/settings/enregistrer') . '" class="js-protect-form">'
+            . Form::hidden('_csrf_token', \App\Helpers\Csrf::token())
             . '<input type="hidden" name="section" value="preferences">'
             . '<div style="background: rgba(30,58,95,0.03); border-radius: 10px; padding: 1.5rem; margin-bottom: 1.5rem;">'
             . '<h4 style="margin-bottom: 1rem; color: #1e3a5f;">Règles Logistiques & Sécurité</h4>'
@@ -1183,6 +1195,7 @@ final class Colisage
             . '</div>';
 
         $formContent = '<form method="post" action="' . View::url('colisage/parcels/enregistrer') . '">'
+            . Form::hidden('_csrf_token', \App\Helpers\Csrf::token())
             . '<div style="display:grid; grid-template-columns: 1fr 1fr; gap:2rem;">'
             . Ui::section('Informations Expéditeur', $expChoice . $expQuick)
             . Ui::section('Informations Destinataire', $destChoice . $destQuick)
@@ -1387,7 +1400,11 @@ final class Colisage
                 'eyebrow' => 'Suivi de Colis',
                 'class' => 'rh-hero-white',
                 'actions' => [
+                    Ui::qrCodeBadge((string) $colis['numero_tracking'], 60),
                     Ui::badge($colis['statut'], $badgeTone),
+                    '<form method="post" action="' . View::url('colisage/parcels/' . $colis['id'] . '/facturer') . '" style="display:inline;">' . Ui::button('⚡ Facturer (1-Clic)', ['type' => 'submit', 'variant' => 'accent']) . '</form>',
+                    Ui::button('🧾 Facture', ['href' => 'colisage/parcels/' . $colis['id'] . '/facture', 'variant' => 'secondary', 'target' => '_blank']),
+                    Ui::button('🏷️ Étiquette Thermique', ['href' => 'colisage/parcels/' . $colis['id'] . '/etiquette', 'variant' => 'secondary', 'target' => '_blank']),
                     Ui::button('Retour à la liste', ['href' => 'colisage/parcels', 'variant' => 'secondary'])
                 ]
             ]
@@ -1398,6 +1415,7 @@ final class Colisage
             . '<p><strong>N° Tracking :</strong> ' . View::e($colis['numero_tracking']) . '</p>'
             . '<p><strong>Poids total :</strong> ' . View::e((string) $colis['poids_total']) . ' kg</p>'
             . '<p><strong>Valeur déclarée :</strong> ' . View::e(number_format((float) $colis['valeur_declaree'], 0, ',', ' ')) . ' ' . View::e($colis['devise']) . '</p>'
+            . '<p><strong>Statut Assurance :</strong> ' . (!empty($colis['assurance_souscrite']) ? '<span style="background:#dcfce7; color:#15803d; font-weight:700; padding:2px 8px; border-radius:4px;">🛡️ ASSURÉ (Prime: ' . number_format((float)($colis['montant_assurance'] ?? 0), 0, ',', ' ') . ' FCFA - Couverture: ' . number_format((float)$colis['valeur_declaree'], 0, ',', ' ') . ' FCFA)</span>' : '<span style="background:#f1f5f9; color:#64748b; font-weight:600; padding:2px 8px; border-radius:4px;">Non souscrite</span>') . '</p>'
             . '<p><strong>Catégorie Fret :</strong> ' . View::e(str_replace('_', ' ', $colis['type_expediteur'])) . '</p>'
             . '</div>'
             . '<div>'
@@ -1438,6 +1456,7 @@ final class Colisage
         $withdrawForm = '';
         if ($colis['statut'] !== 'RETIRÉ' && $colis['statut'] !== 'LIVRÉ') {
             $withdrawForm = '<form method="post" action="' . View::url('colisage/parcels/' . $colis['id'] . '/retirer') . '" style="margin-top:2rem;">'
+                . Form::hidden('_csrf_token', \App\Helpers\Csrf::token())
                 . '<h3>Signaler le retrait du colis</h3>'
                 . '<div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:1rem; margin-top:0.5rem;">'
                 . Form::input('recup_nom', ['label' => 'Nom du récupérateur', 'required' => true])
@@ -2411,5 +2430,197 @@ final class Colisage
             . '<div class="finea-table-wrapper"><table class="finea-table" style="font-size:0.85rem;">'
             . '<thead><tr style="background:#f1f5f9;"><th>Source</th><th>Cible</th><th style="text-align:right;">Taux</th><th>Mis à jour</th></tr></thead>'
             . '<tbody>' . $tbody . '</tbody></table></div></div>';
+    }
+
+    public static function thermalLabelPage(array $colis): string
+    {
+        $trackingNum = (string) ($colis['numero_tracking'] ?? '');
+        $depAgency = (string) ($colis['agence_depart_name'] ?? 'Siège Abidjan');
+        $arrAgency = (string) ($colis['agence_arrivee_name'] ?? 'Agence Arrivée');
+        $destName = (string) ($colis['destinataire_name'] ?? 'Client Destinataire');
+        $destPhone = (string) ($colis['destinataire_phone'] ?? '—');
+        $destAddress = (string) ($colis['destinataire_address'] ?? '—');
+        $expName = (string) ($colis['expediteur_name'] ?? 'Expéditeur');
+        $expPhone = (string) ($colis['expediteur_phone'] ?? '—');
+        $weight = number_format((float) ($colis['poids_total'] ?? 0.0), 2, '.', '');
+        $pkgCount = (int) ($colis['nombre_colis'] ?? 1);
+        $trafic = (string) ($colis['trafic'] ?? $colis['type_expediteur'] ?? 'Groupage Aérien');
+        $rayonCode = (string) ($colis['code_rayon'] ?? '');
+        $createdAt = !empty($colis['created_at']) ? date('d/m/Y H:i', strtotime((string) $colis['created_at'])) : date('d/m/Y H:i');
+
+        $trackingUrl = View::url('site/tracking?ref=' . urlencode($trackingNum));
+        $qrCodeUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=' . urlencode($trackingUrl);
+
+        $barcodePattern = '';
+        for ($i = 0; $i < strlen($trackingNum); $i++) {
+            $charVal = ord($trackingNum[$i]);
+            $w1 = ($charVal % 3) + 1;
+            $w2 = (($charVal + 1) % 2) + 1;
+            $barcodePattern .= "<rect x='" . ($i * 11) . "' y='0' width='{$w1}' height='50' fill='#000'/>";
+            $barcodePattern .= "<rect x='" . ($i * 11 + $w1 + 1) . "' y='0' width='{$w2}' height='50' fill='#000'/>";
+        }
+
+        $rayonBanner = !empty($rayonCode)
+            ? '📍 RAYON : ' . View::e($rayonCode)
+            : '📍 EN TRANSIT / EN ATTENTE RAYON';
+
+        return '<!DOCTYPE html>'
+            . '<html lang="fr">'
+            . '<head><meta charset="UTF-8"><title>Etiquette_' . View::e($trackingNum) . '</title>'
+            . '<style>'
+            . '@page { size: 100mm 150mm; margin: 0; }'
+            . '* { box-sizing: border-box; margin: 0; padding: 0; }'
+            . 'body { font-family: "Inter", Arial, sans-serif; color: #000000; background-color: #f1f5f9; padding: 10px; display: flex; justify-content: center; }'
+            . '.etiquette-card { width: 100mm; height: 150mm; background: #ffffff; border: 2px solid #000; padding: 8px; display: flex; flex-direction: column; justify-content: space-between; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }'
+            . '.etiquette-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #000; padding-bottom: 4px; }'
+            . '.logo-title { font-size: 16px; font-weight: 900; letter-spacing: 0.5px; }'
+            . '.logo-subtitle { font-size: 8px; font-weight: 700; text-transform: uppercase; }'
+            . '.trafic-badge { background: #000; color: #fff; padding: 3px 6px; font-size: 9px; font-weight: 800; border-radius: 3px; text-transform: uppercase; }'
+            . '.dest-banner { background: #f1f5f9; border: 2px solid #000; padding: 6px; text-align: center; margin-top: 4px; }'
+            . '.dest-label { font-size: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }'
+            . '.dest-city { font-size: 18px; font-weight: 900; text-transform: uppercase; line-height: 1.1; }'
+            . '.tracking-block { text-align: center; border: 2px solid #000; padding: 6px 4px; margin-top: 4px; background: #fff; }'
+            . '.tracking-code { font-size: 20px; font-weight: 900; letter-spacing: 1px; font-family: "Courier New", Courier, monospace; }'
+            . '.barcode-container { display: flex; justify-content: center; margin: 4px 0; overflow: hidden; height: 42px; }'
+            . '.middle-grid { display: flex; gap: 6px; margin-top: 4px; border: 2px solid #000; padding: 6px; }'
+            . '.qr-box { width: 70px; text-align: center; }'
+            . '.qr-img { width: 65px; height: 65px; display: block; }'
+            . '.qr-sub { font-size: 6px; font-weight: 700; margin-top: 2px; }'
+            . '.address-box { flex: 1; font-size: 9px; line-height: 1.25; }'
+            . '.person-title { font-size: 7px; font-weight: 800; text-transform: uppercase; background: #000; color: #fff; padding: 1px 3px; display: inline-block; margin-bottom: 2px; }'
+            . '.person-name { font-size: 11px; font-weight: 800; }'
+            . '.person-phone { font-weight: 700; font-size: 10px; }'
+            . '.rayon-banner { background: #ffcc00; border: 2px solid #000; padding: 4px; text-align: center; font-weight: 900; font-size: 13px; margin-top: 4px; text-transform: uppercase; }'
+            . '.metrics-row { display: flex; border: 2px solid #000; margin-top: 4px; text-align: center; font-size: 9px; font-weight: 700; }'
+            . '.metric-cell { flex: 1; padding: 4px; border-right: 1px solid #000; }'
+            . '.metric-cell:last-child { border-right: none; }'
+            . '.metric-value { font-size: 13px; font-weight: 900; }'
+            . '.print-btn-bar { position: fixed; top: 15px; right: 15px; display: flex; gap: 10px; }'
+            . '.print-btn { background: #0f172a; color: #fff; border: none; padding: 10px 18px; font-size: 13px; font-weight: 700; border-radius: 6px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.15); }'
+            . '.print-btn:hover { background: #1e293b; }'
+            . '@media print { body { background: #ffffff; padding: 0; } .etiquette-card { border: 1px solid #000; box-shadow: none; width: 100mm; height: 150mm; } .print-btn-bar { display: none; } }'
+            . '</style></head>'
+            . '<body>'
+            . '<div class="print-btn-bar"><button class="print-btn" onclick="window.print()">🖨️ Imprimer l\'Étiquette (4x6")</button></div>'
+            . '<div class="etiquette-card">'
+            . '<div class="etiquette-header"><div><div class="logo-title">LBP LOGISTICS</div><div class="logo-subtitle">Fret & Colisage International</div></div><div class="trafic-badge">' . View::e($trafic) . '</div></div>'
+            . '<div class="dest-banner"><div class="dest-label">DESTINATION :</div><div class="dest-city">' . View::e($arrAgency) . '</div></div>'
+            . '<div class="tracking-block"><div class="tracking-code">' . View::e($trackingNum) . '</div><div class="barcode-container"><svg width="220" height="45" viewBox="0 0 220 45">' . $barcodePattern . '</svg></div><div style="font-size: 7px; font-weight:700;">CODE-BARRES OFFICIEL LBP</div></div>'
+            . '<div class="rayon-banner">' . $rayonBanner . '</div>'
+            . '<div class="middle-grid"><div class="qr-box"><img src="' . $qrCodeUrl . '" class="qr-img" alt="QR Code Tracking"><div class="qr-sub">SCAN SUIVI CLIENT</div></div>'
+            . '<div class="address-box"><span class="person-title">DESTINATAIRE</span><div class="person-name">' . View::e($destName) . '</div><div class="person-phone">📞 ' . View::e($destPhone) . '</div><div style="font-size: 8px; color: #334155; margin-top:2px;">📍 ' . View::e($destAddress) . '</div>'
+            . '<hr style="margin: 4px 0; border: none; border-top: 1px dashed #000;"><span class="person-title" style="background:#475569;">EXPÉDITEUR</span><div style="font-size: 9px; font-weight: 700;">' . View::e($expName) . ' (' . View::e($expPhone) . ')</div></div></div>'
+            . '<div class="metrics-row"><div class="metric-cell"><div>POIDS TOTAL</div><div class="metric-value">' . $weight . ' kg</div></div>'
+            . '<div class="metric-cell"><div>SÉQUENCE</div><div class="metric-value">1 / ' . $pkgCount . '</div></div>'
+            . '<div class="metric-cell"><div>DATE SAISIE</div><div style="font-size:9.5px; margin-top:2px;">' . $createdAt . '</div></div></div>'
+            . '</div>'
+            . '<script>if (window.location.search.indexOf("autoprint") !== -1) { window.addEventListener("load", function() { window.print(); }); }</script>'
+            . '</body></html>';
+    }
+
+    public static function groupageManifestPage(array $exp): string
+    {
+        $ref = (string) ($exp['reference'] ?? '');
+        $typeTransport = strtoupper((string) ($exp['type_transport'] ?? 'AÉRIEN'));
+        $depAgency = (string) ($exp['agence_depart_name'] ?? 'Agence Départ');
+        $arrAgency = (string) ($exp['agence_arrivee_name'] ?? 'Agence Destination');
+        $dateDepart = !empty($exp['date_depart_prevue']) ? date('d/m/Y H:i', strtotime((string) $exp['date_depart_prevue'])) : 'Prévue sous peu';
+        $dateArrivee = !empty($exp['date_arrivee_estimee']) ? date('d/m/Y H:i', strtotime((string) $exp['date_arrivee_estimee'])) : 'En cours';
+        $parcels = $exp['parcels'] ?? [];
+        $createdAt = !empty($exp['created_at']) ? date('d/m/Y à H:i', strtotime((string) $exp['created_at'])) : date('d/m/Y H:i');
+
+        $totalColisCount = 0;
+        $totalPoids = 0.0;
+        $totalValeurXof = 0.0;
+        $totalValeurEur = 0.0;
+
+        foreach ($parcels as $p) {
+            $totalColisCount += (int) ($p['nombre_colis'] ?? 1);
+            $totalPoids += (float) ($p['poids_total'] ?? 0.0);
+            $val = (float) ($p['montant_total'] ?? $p['valeur_declaree'] ?? 0.0);
+            $valEur = (float) ($p['montant_total_eur'] ?? 0.0);
+            $totalValeurXof += $val;
+            $totalValeurEur += $valEur;
+        }
+
+        $verificationUrl = View::url('site/tracking?ref=' . urlencode($ref));
+        $qrCodeUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=' . urlencode($verificationUrl);
+
+        $tableRows = '';
+        if (empty($parcels)) {
+            $tableRows = '<tr><td colspan="7" style="text-align:center; padding: 20px; color:#64748b;">Aucun colis dans cette expédition.</td></tr>';
+        } else {
+            $i = 1;
+            foreach ($parcels as $p) {
+                $pWeight = (float) ($p['poids_total'] ?? 0.0);
+                $pValXof = (float) ($p['montant_total'] ?? $p['valeur_declaree'] ?? 0.0);
+                $pValEur = (float) ($p['montant_total_eur'] ?? 0.0);
+
+                $tableRows .= '<tr>'
+                    . '<td>' . $i++ . '</td>'
+                    . '<td><strong>' . View::e($p['numero_tracking']) . '</strong></td>'
+                    . '<td>' . View::e($p['expediteur_name'] ?? 'Expéditeur') . '</td>'
+                    . '<td>' . View::e($p['destinataire_name'] ?? 'Destinataire') . ' (' . View::e($p['destinataire_phone'] ?? '') . ')</td>'
+                    . '<td style="text-align:center;">' . ((int) ($p['nombre_colis'] ?? 1)) . '</td>'
+                    . '<td style="text-align:right;"><strong>' . number_format($pWeight, 2, ',', ' ') . ' kg</strong></td>'
+                    . '<td style="text-align:right;">' . number_format($pValXof, 0, ',', ' ') . ' XOF' . ($pValEur > 0 ? '<br><small>(' . number_format($pValEur, 2, ',', ' ') . ' €)</small>' : '') . '</td>'
+                    . '</tr>';
+            }
+        }
+
+        return '<!DOCTYPE html>'
+            . '<html lang="fr">'
+            . '<head><meta charset="UTF-8"><title>Manifeste_Douane_' . View::e($ref) . '</title>'
+            . '<style>'
+            . '@page { size: A4 portrait; margin: 12mm; }'
+            . '* { box-sizing: border-box; margin: 0; padding: 0; }'
+            . 'body { font-family: "Helvetica Neue", Arial, sans-serif; color: #1e293b; background: #f8fafc; padding: 20px; font-size: 11px; }'
+            . '.manifest-card { background: #ffffff; border: 2px solid #0f172a; padding: 20px; width: 100%; max-width: 210mm; margin: 0 auto; min-height: 270mm; display: flex; flex-direction: column; justify-content: space-between; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); }'
+            . '.header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px double #0f172a; padding-bottom: 12px; }'
+            . '.brand-title { font-size: 20px; font-weight: 900; color: #0f172a; letter-spacing: 0.5px; }'
+            . '.brand-sub { font-size: 9px; font-weight: 700; color: #475569; text-transform: uppercase; }'
+            . '.doc-title-box { text-align: right; }'
+            . '.doc-title { font-size: 16px; font-weight: 900; color: #b91c1c; text-transform: uppercase; letter-spacing: 0.5px; }'
+            . '.doc-ref { font-size: 12px; font-weight: 800; font-family: monospace; color: #0f172a; margin-top: 2px; }'
+            . '.grid-info { display: grid; grid-template-columns: 2fr 1fr; gap: 15px; margin-top: 15px; background: #f1f5f9; border: 1px solid #cbd5e1; padding: 12px; border-radius: 6px; }'
+            . '.info-item { margin-bottom: 4px; }'
+            . '.info-label { font-weight: 800; color: #475569; text-transform: uppercase; font-size: 9px; }'
+            . '.info-val { font-weight: 700; color: #0f172a; font-size: 11px; }'
+            . '.transport-badge { display: inline-block; background: #0f172a; color: #fff; padding: 4px 8px; font-size: 10px; font-weight: 900; border-radius: 4px; text-transform: uppercase; margin-top: 4px; }'
+            . '.table-section { margin-top: 15px; flex: 1; }'
+            . '.manifest-table { width: 100%; border-collapse: collapse; margin-top: 8px; }'
+            . '.manifest-table th { background: #0f172a; color: #ffffff; padding: 6px 8px; text-align: left; font-size: 9px; font-weight: 800; text-transform: uppercase; border: 1px solid #0f172a; }'
+            . '.manifest-table td { padding: 6px 8px; border: 1px solid #cbd5e1; font-size: 10px; vertical-align: middle; }'
+            . '.manifest-table tr:nth-child(even) { background: #f8fafc; }'
+            . '.summary-box { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; background: #0f172a; color: #fff; padding: 10px; border-radius: 6px; margin-top: 15px; text-align: center; }'
+            . '.summary-item { font-size: 10px; }'
+            . '.summary-val { font-size: 14px; font-weight: 900; color: #facc15; margin-top: 2px; }'
+            . '.signatures-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-top: 20px; border-top: 2px solid #0f172a; padding-top: 12px; }'
+            . '.sig-box { border: 1px dashed #94a3b8; height: 75px; padding: 6px; border-radius: 4px; text-align: center; position: relative; }'
+            . '.sig-title { font-size: 8px; font-weight: 800; text-transform: uppercase; color: #475569; }'
+            . '.qr-container { display: flex; align-items: center; justify-content: center; height: 50px; margin-top: 4px; }'
+            . '.print-btn-bar { position: fixed; top: 15px; right: 15px; display: flex; gap: 10px; }'
+            . '.print-btn { background: #0f172a; color: #fff; border: none; padding: 10px 18px; font-size: 13px; font-weight: 700; border-radius: 6px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.15); }'
+            . '@media print { body { background: #fff; padding: 0; } .manifest-card { border: none; box-shadow: none; padding: 0; width: 100%; max-width: none; } .print-btn-bar { display: none; } }'
+            . '</style></head>'
+            . '<body>'
+            . '<div class="print-btn-bar"><button class="print-btn" onclick="window.print()">🖨️ Imprimer le Manifeste Douane (A4)</button></div>'
+            . '<div class="manifest-card">'
+            . '<div class="header"><div><div class="brand-title">LA BELLE PORTE LOGISTICS</div><div class="brand-sub">Compagnie de Transit & Fret International — MAWB / LTA</div></div><div class="doc-title-box"><div class="doc-title">MANIFESTE DE CHARGE</div><div class="doc-ref">N° REF : ' . View::e($ref) . '</div></div></div>'
+            . '<div class="grid-info"><div><div class="info-item"><span class="info-label">ITINÉRAIRE D\'EXPÉDITION :</span> <span class="info-val">' . View::e($depAgency) . ' ➔ ' . View::e($arrAgency) . '</span></div>'
+            . '<div class="info-item"><span class="info-label">DATES :</span> <span class="info-val">Départ : ' . $dateDepart . ' | Arrivée estimée : ' . $dateArrivee . '</span></div></div>'
+            . '<div><div class="info-label">MODE DE TRANSPORT :</div><div class="transport-badge">✈️ FRET ' . View::e($typeTransport) . '</div></div></div>'
+            . '<div class="table-section"><div style="font-size:11px; font-weight:800; text-transform:uppercase; margin-bottom:4px;">RELEVÉ CONSOLIDÉ DES COLIS & MARCHANDISES (' . count($parcels) . ' EXPÉDITIONS)</div>'
+            . '<table class="manifest-table"><thead><tr><th style="width:30px;">N°</th><th>N° TRACKING</th><th>EXPÉDITEUR</th><th>DESTINATAIRE & CONTACT</th><th style="text-align:center;">NBRE COLIS</th><th style="text-align:right;">POIDS (KG)</th><th style="text-align:right;">VALEUR DÉCLARÉE</th></tr></thead>'
+            . '<tbody>' . $tableRows . '</tbody></table></div>'
+            . '<div class="summary-box"><div class="summary-item">TOTAL EXPÉDITIONS<div class="summary-val">' . count($parcels) . '</div></div>'
+            . '<div class="summary-item">TOTAL COLIS (UNIS)<div class="summary-val">' . $totalColisCount . '</div></div>'
+            . '<div class="summary-item">POIDS BRUT CONSOLIDÉ<div class="summary-val">' . number_format($totalPoids, 2, ',', ' ') . ' kg</div></div>'
+            . '<div class="summary-item">VALEUR TOTALE DÉCLARÉE<div class="summary-val">' . number_format($totalValeurXof, 0, ',', ' ') . ' XOF</div></div></div>'
+            . '<div class="signatures-grid"><div class="sig-box"><div class="sig-title">RÉCEPTION & SCEAU COMPAGNIE LBP</div></div>'
+            . '<div class="sig-box"><div class="sig-title">INSPECTION & VISATEUR DOUANE</div></div>'
+            . '<div class="sig-box"><div class="sig-title">AUTHENTIFICATION NUMÉRIQUE</div><div class="qr-container"><img src="' . $qrCodeUrl . '" style="height:45px; width:45px;" alt="QR Code Verification"></div></div></div>'
+            . '<div style="margin-top:10px; font-size:8px; color:#64748b; text-align:center;">Document officiel de charge généré le ' . $createdAt . ' — ERP La Belle Porte Logistics</div>'
+            . '</div></body></html>';
     }
 }

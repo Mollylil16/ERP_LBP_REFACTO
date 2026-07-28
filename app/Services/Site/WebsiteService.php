@@ -161,6 +161,177 @@ final class WebsiteService
         ]);
     }
 
+    /** @return array<string,mixed>|null */
+    public function getRealTrackingData(string $reference): ?array
+    {
+        $reference = trim($reference);
+        if ($reference === '') {
+            return null;
+        }
+
+        $pdo = \App\Models\Database::getConnection();
+
+        // 1. Search in lbp_colis
+        $stmt = $pdo->prepare("
+            SELECT c.*,
+                   exp.name AS expediteur_name,
+                   dest.name AS destinataire_name,
+                   s_dep.name AS agence_depart_name,
+                   s_arr.name AS agence_arrivee_name,
+                   r.code_rayon, r.nom_rayon
+            FROM lbp_colis c
+            LEFT JOIN lbp_clients exp ON c.expediteur_id = exp.id
+            LEFT JOIN lbp_clients dest ON c.destinataire_id = dest.id
+            LEFT JOIN company_sites s_dep ON c.agence_depart_id = s_dep.id
+            LEFT JOIN company_sites s_arr ON c.agence_arrivee_id = s_arr.id
+            LEFT JOIN logistique_rayons r ON c.rayon_id = r.id
+            WHERE c.numero_tracking = :ref OR c.id = :id_ref
+            LIMIT 1
+        ");
+        $stmt->execute(['ref' => $reference, 'id_ref' => is_numeric($reference) ? (int) $reference : 0]);
+        $colis = $stmt->fetch(\PDO::FETCH_ASSOC);
+
+        if ($colis) {
+            $progressMap = [
+                'RÉCEPTIONNÉ' => 20,
+                'EN_PRÉPARATION' => 40,
+                'EN_TRANSIT' => 70,
+                'ARRIVÉ' => 90,
+                'RETIRÉ' => 100,
+                'LIVRÉ' => 100,
+            ];
+            $progress = $progressMap[strtoupper($colis['statut'])] ?? 30;
+
+            // Fetch steps from lbp_tracking_gps & logistique_mouvements_rayon
+            $steps = [];
+            $steps[] = [
+                'date' => date('d/m/Y H:i', strtotime($colis['created_at'])),
+                'title' => 'Colis enregistré',
+                'detail' => 'Réceptionné à l\'agence ' . ($colis['agence_depart_name'] ?? 'de départ'),
+            ];
+
+            // Rayon assignment / movement steps
+            $mvtStmt = $pdo->prepare("
+                SELECT m.*, r.code_rayon
+                FROM logistique_mouvements_rayon m
+                LEFT JOIN logistique_rayons r ON m.rayon_id = r.id
+                WHERE m.colis_id = :colis_id
+                ORDER BY m.created_at ASC
+            ");
+            $mvtStmt->execute(['colis_id' => $colis['id']]);
+            $mouvements = $mvtStmt->fetchAll(\PDO::FETCH_ASSOC) ?: [];
+            foreach ($mouvements as $mvt) {
+                $typeLabel = $mvt['type_mouvement'] === 'ENTREE' ? 'Affectation Rayon ' . ($mvt['code_rayon'] ?? '') : ($mvt['type_mouvement'] === 'SORTIE' ? 'Sortie de rayon' : 'Déplacement rayon');
+                $steps[] = [
+                    'date' => date('d/m/Y H:i', strtotime($mvt['created_at'])),
+                    'title' => $typeLabel,
+                    'detail' => $mvt['commentaires'] ?? ('Action ' . $mvt['type_mouvement']),
+                ];
+            }
+
+            // GPS steps if expedition associated
+            if (!empty($colis['expedition_id'])) {
+                $gpsStmt = $pdo->prepare("
+                    SELECT * FROM lbp_tracking_gps
+                    WHERE expedition_id = :exp_id OR colis_id = :colis_id
+                    ORDER BY date_etape ASC
+                ");
+                $gpsStmt->execute(['exp_id' => $colis['expedition_id'], 'colis_id' => $colis['id']]);
+                $gpsSteps = $gpsStmt->fetchAll(\PDO::FETCH_ASSOC) ?: [];
+                foreach ($gpsSteps as $g) {
+                    $steps[] = [
+                        'date' => date('d/m/Y H:i', strtotime($g['date_etape'])),
+                        'title' => 'Étape logistique',
+                        'detail' => $g['etape'] . ($g['latitude'] ? " (GPS: {$g['latitude']}, {$g['longitude']})" : ''),
+                    ];
+                }
+            }
+
+            if (!empty($colis['recup_date_heure'])) {
+                $steps[] = [
+                    'date' => date('d/m/Y H:i', strtotime($colis['recup_date_heure'])),
+                    'title' => 'Retrait effectué',
+                    'detail' => 'Retiré au comptoir par ' . ($colis['recup_nom'] ?? 'le client'),
+                ];
+            }
+
+            $lastLocation = $colis['agence_arrivee_name'] ?? $colis['agence_depart_name'] ?? 'Hub LBP';
+            if (!empty($colis['code_rayon'])) {
+                $lastLocation .= ' (Rayon ' . $colis['code_rayon'] . ')';
+            }
+
+            $destName = $colis['destinataire_name'] ?? 'Client Destinataire';
+            $maskedClient = mb_substr($destName, 0, 3) . '*** ' . mb_substr($destName, -2);
+
+            return [
+                'reference' => $colis['numero_tracking'],
+                'client' => $maskedClient,
+                'origin' => $colis['agence_depart_name'] ?? 'Agence de départ',
+                'destination' => $colis['agence_arrivee_name'] ?? 'Agence d\'arrivée',
+                'status' => $colis['statut'],
+                'progress' => $progress,
+                'eta' => !empty($colis['date_limite_retrait']) ? date('d/m/Y', strtotime($colis['date_limite_retrait'])) : 'Non spécifiée',
+                'lastLocation' => $lastLocation,
+                'steps' => $steps,
+            ];
+        }
+
+        // 2. Search in lbp_expeditions
+        $expStmt = $pdo->prepare("
+            SELECT e.*, s_dep.name AS agence_depart_name, s_arr.name AS agence_arrivee_name
+            FROM lbp_expeditions e
+            JOIN company_sites s_dep ON e.agence_depart_id = s_dep.id
+            JOIN company_sites s_arr ON e.agence_arrivee_id = s_arr.id
+            WHERE e.reference = :ref
+            LIMIT 1
+        ");
+        $expStmt->execute(['ref' => $reference]);
+        $exp = $expStmt->fetch(\PDO::FETCH_ASSOC);
+
+        if ($exp) {
+            $progressMap = [
+                'BROUILLON' => 15,
+                'EN_PRÉPARATION' => 35,
+                'EN_TRANSIT' => 70,
+                'ARRIVÉ' => 100,
+            ];
+            $progress = $progressMap[strtoupper($exp['statut'])] ?? 50;
+
+            $gpsStmt = $pdo->prepare("SELECT * FROM lbp_tracking_gps WHERE expedition_id = :exp_id ORDER BY date_etape ASC");
+            $gpsStmt->execute(['exp_id' => $exp['id']]);
+            $gpsSteps = $gpsStmt->fetchAll(\PDO::FETCH_ASSOC) ?: [];
+
+            $steps = [
+                [
+                    'date' => date('d/m/Y H:i', strtotime($exp['created_at'])),
+                    'title' => 'Expédition créée',
+                    'detail' => 'Transport ' . $exp['type_transport'] . ' de ' . $exp['agence_depart_name'] . ' à ' . $exp['agence_arrivee_name'],
+                ]
+            ];
+            foreach ($gpsSteps as $g) {
+                $steps[] = [
+                    'date' => date('d/m/Y H:i', strtotime($g['date_etape'])),
+                    'title' => 'Étape de transit',
+                    'detail' => $g['etape'],
+                ];
+            }
+
+            return [
+                'reference' => $exp['reference'],
+                'client' => 'Groupage ' . $exp['type_transport'],
+                'origin' => $exp['agence_depart_name'],
+                'destination' => $exp['agence_arrivee_name'],
+                'status' => $exp['statut'],
+                'progress' => $progress,
+                'eta' => !empty($exp['date_arrivee_estimee']) ? date('d/m/Y', strtotime($exp['date_arrivee_estimee'])) : 'En cours',
+                'lastLocation' => $exp['statut'] === 'ARRIVÉ' ? $exp['agence_arrivee_name'] : 'En transit international',
+                'steps' => $steps,
+            ];
+        }
+
+        return null;
+    }
+
     private function color(mixed $value, string $fallback): string
     {
         $value = trim((string) $value);

@@ -20,6 +20,10 @@ final class PermissionEntityRegistry
     public const EXPLOITATION_CREDITS = 'exploitation_credits';
     public const EXPLOITATION_FOURNITURES = 'exploitation_fournitures';
 
+    public const CALL_CENTER_VIEW = 'call_center_view';
+    public const CALL_CENTER_MANAGE = 'call_center_manage';
+    public const RAPPORTS_AGENCE = 'rapports_agence';
+
     public static function all(): array
     {
         return [
@@ -106,6 +110,24 @@ final class PermissionEntityRegistry
                 'name' => 'Fournitures de bureau',
                 'description' => 'Validation et circuit des fournitures de bureau.',
                 'sort_order' => 230,
+            ],
+            self::RAPPORTS_AGENCE => [
+                'module' => 'Colisage',
+                'name' => 'Rapports journaliers par agence',
+                'description' => 'Accéder aux rapports journaliers et mensuels par agence avec export CSV.',
+                'sort_order' => 235,
+            ],
+            self::CALL_CENTER_VIEW => [
+                'module' => 'Call Center',
+                'name' => 'Call Center - Consulter',
+                'description' => 'Consulter le tableau de bord, les appels, les litiges et la vue des rayons en temps réel.',
+                'sort_order' => 240,
+            ],
+            self::CALL_CENTER_MANAGE => [
+                'module' => 'Call Center',
+                'name' => 'Call Center - Gérer',
+                'description' => 'Enregistrer des appels, ouvrir et résoudre des litiges.',
+                'sort_order' => 250,
             ],
         ];
     }

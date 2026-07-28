@@ -35,6 +35,9 @@ class NotificationService
             'statut' => 'ENVOYÉ',
             'message' => $msg,
         ]);
+
+        $this->dispatchSmsOrWhatsapp((string) $destPhone, $msg, 'SMS');
+        $this->dispatchSmsOrWhatsapp((string) $destPhone, $msg, 'WHATSAPP');
     }
 
     /**
@@ -64,5 +67,104 @@ class NotificationService
             'statut' => 'ENVOYÉ',
             'message' => $msg,
         ]);
+
+        // Simuler l'expédition vers la passerelle SMS / WhatsApp
+        $this->dispatchSmsOrWhatsapp((string) $destPhone, $msg, 'SMS');
+        $this->dispatchSmsOrWhatsapp((string) $destPhone, $msg, 'WHATSAPP');
+        $this->dispatchPushOrWebhook($colis, 'RETRAIT_CONFIRME', ['recup_nom' => $recupNom, 'frais' => $fraisGardiennage]);
+    }
+
+    /**
+     * Envoie et enregistre la notification lors d'un changement de statut en transit ou étape GPS.
+     *
+     * @param array<string, mixed> $colis
+     */
+    public function notifyParcelStatusChange(array $colis, string $newStatut, ?string $etapeOrDetails = null): void
+    {
+        $tracking = $colis['numero_tracking'] ?? '';
+        $destPhone = $colis['destinataire_phone'] ?? $colis['recup_telephone'] ?? null;
+        $expPhone = $colis['expediteur_phone'] ?? null;
+        $destEmail = $colis['destinataire_email'] ?? null;
+
+        $statusLabels = [
+            'EN_PRÉPARATION' => 'en cours de préparation pour expédition',
+            'EN_TRANSIT' => 'en transit / en cours d\'acheminement',
+            'ARRIVÉ' => 'arrivé à l\'agence de destination',
+            'LIVRÉ' => 'livré au destinataire',
+            'RETIRÉ' => 'retiré au comptoir',
+        ];
+
+        $statusLabel = $statusLabels[strtoupper($newStatut)] ?? $newStatut;
+        $msg = "Suivi Colis N° " . $tracking . " : Votre colis est actuellement " . $statusLabel . ".";
+        if ($etapeOrDetails) {
+            $msg .= " Info jalon : " . $etapeOrDetails . ".";
+        }
+        $msg .= " Suivez votre colis en temps réel sur notre portail.";
+
+        $this->repository->createNotification([
+            'colis_id' => (int) ($colis['id'] ?? 0),
+            'destinataire_telephone' => $destPhone,
+            'destinataire_email' => $destEmail,
+            'type_notification' => 'CHANGEMENT_STATUT_' . strtoupper($newStatut),
+            'statut' => 'ENVOYÉ',
+            'message' => $msg,
+        ]);
+
+        if ($destPhone) {
+            $this->dispatchSmsOrWhatsapp((string) $destPhone, $msg, 'SMS');
+            $this->dispatchSmsOrWhatsapp((string) $destPhone, $msg, 'WHATSAPP');
+        }
+        if ($expPhone && $expPhone !== $destPhone) {
+            $this->dispatchSmsOrWhatsapp((string) $expPhone, $msg, 'SMS');
+        }
+
+        $this->dispatchPushOrWebhook($colis, 'CHANGEMENT_STATUT', [
+            'statut' => $newStatut,
+            'etape' => $etapeOrDetails,
+        ]);
+    }
+
+    /**
+     * Simulation / Dispatch de notifications Push / Webhook client.
+     *
+     * @param array<string, mixed> $colis
+     * @param array<string, mixed> $extraData
+     */
+    public function dispatchPushOrWebhook(array $colis, string $event, array $extraData = []): bool
+    {
+        $payload = [
+            'event' => $event,
+            'tracking_number' => $colis['numero_tracking'] ?? '',
+            'colis_id' => $colis['id'] ?? 0,
+            'statut' => $colis['statut'] ?? '',
+            'timestamp' => date('c'),
+            'details' => $extraData,
+        ];
+
+        error_log('[NOTIF_PUSH_WEBHOOK] Event ' . $event . ' pour ' . ($colis['numero_tracking'] ?? '') . ' : ' . json_encode($payload));
+        return true;
+    }
+
+    /**
+     * Passerelle d'expédition externe SMS / WhatsApp.
+     */
+    public function dispatchSmsOrWhatsapp(string $phone, string $message, string $channel = 'SMS'): bool
+    {
+        if (empty($phone)) {
+            return false;
+        }
+
+        // Préparation du payload API SMS/WhatsApp (ex: Orange SMS / Twilio / WhatsApp Business API)
+        $payload = [
+            'to' => $phone,
+            'body' => $message,
+            'channel' => strtoupper($channel),
+            'sent_at' => date('Y-m-d H:i:s'),
+        ];
+
+        // Pour la démonstration / staging, on journalise dans l'environnement système
+        error_log('[NOTIF_' . strtoupper($channel) . '] Expédié à ' . $phone . ' : ' . $message);
+
+        return true;
     }
 }

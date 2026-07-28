@@ -158,16 +158,27 @@ final class ColisageService
             'import_aerien' => 'Import Aérien',
             'import_maritime' => 'Import Maritime',
         ];
-        $data['trafic'] = $data['trafic'] ?? $traficMap[$data['type_expediteur'] ?? ''] ?? 'Groupage Aérien';
+        // Determine insurance premium if subscribed
+        if (!empty($data['assurance_souscrite'])) {
+            $valeurDeclaree = (float) ($data['valeur_declaree'] ?? 0.0);
+            $tauxAssurance = 2.0; // 2% default rate
+            $montantAssurance = round($valeurDeclaree * ($tauxAssurance / 100.0), 2);
+            $data['montant_assurance'] = $montantAssurance;
+            $data['assurance_souscrite'] = 1;
+            // Add insurance premium to montant_total
+            $data['montant_total'] = ((float) ($data['montant_total'] ?? $valeurDeclaree)) + $montantAssurance;
+        }
 
-        $parcelId = $this->repository->createParcel($data);
+        $pdo = Database::getConnection();
+        $pdo->beginTransaction();
 
-        // Affectation automatique du rayon et calcul de la date limite de retrait
-        $agenceArriveeId = !empty($data['agence_arrivee_id']) ? (int) $data['agence_arrivee_id'] : 1;
-        if ($this->rayonService !== null) {
-            $assignResult = $this->rayonService->autoAssignRayonForColis($agenceArriveeId, $data);
-            try {
-                $pdo = Database::getConnection();
+        try {
+            $parcelId = $this->repository->createParcel($data);
+
+            // Affectation automatique du rayon et calcul de la date limite de retrait
+            $agenceArriveeId = !empty($data['agence_arrivee_id']) ? (int) $data['agence_arrivee_id'] : 1;
+            if ($this->rayonService !== null) {
+                $assignResult = $this->rayonService->autoAssignRayonForColis($agenceArriveeId, $data);
                 $stmt = $pdo->prepare("
                     UPDATE lbp_colis
                     SET rayon_id = :rayon_id,
@@ -185,68 +196,74 @@ final class ColisageService
                 if ($this->rayonRepository !== null && $assignResult['rayonId'] !== null) {
                     $this->rayonRepository->recordMouvement($parcelId, $assignResult['rayonId'], 'ENTREE', null, 'Affectation automatique à la réception');
                 }
-            } catch (\Throwable $e) {}
 
-            if ($this->notificationService !== null) {
-                $colis = $this->getParcelDetails($parcelId);
-                if ($colis !== null) {
-                    $rayonNom = null;
-                    if (!empty($assignResult['rayonId']) && $this->rayonRepository !== null) {
-                        $rObj = $this->rayonRepository->findRayonById($assignResult['rayonId']);
-                        if ($rObj) {
-                            $rayonNom = $rObj->codeRayon;
+                if ($this->notificationService !== null) {
+                    $colis = $this->getParcelDetails($parcelId);
+                    if ($colis !== null) {
+                        $rayonNom = null;
+                        if (!empty($assignResult['rayonId']) && $this->rayonRepository !== null) {
+                            $rObj = $this->rayonRepository->findRayonById($assignResult['rayonId']);
+                            if ($rObj) {
+                                $rayonNom = $rObj->codeRayon;
+                            }
                         }
+                        $this->notificationService->notifyParcelArrival($colis, $rayonNom);
                     }
-                    $this->notificationService->notifyParcelArrival($colis, $rayonNom);
                 }
             }
-        }
 
-        // Save marchandises details if present
-        if (!empty($data['marchandises']) && is_array($data['marchandises'])) {
-            foreach ($data['marchandises'] as $m) {
-                $description = '';
+            // Save marchandises details if present
+            if (!empty($data['marchandises']) && is_array($data['marchandises'])) {
+                foreach ($data['marchandises'] as $m) {
+                    $description = '';
 
-                $prodIds = !empty($m['product_ids']) ? (array) $m['product_ids'] : (!empty($m['product_id']) ? [$m['product_id']] : []);
-                if (!empty($prodIds)) {
-                    $names = [];
-                    foreach ($prodIds as $pid) {
-                        $name = $this->repository->getProductNameById((int) $pid);
-                        if ($name) {
-                            $names[] = $name;
+                    $prodIds = !empty($m['product_ids']) ? (array) $m['product_ids'] : (!empty($m['product_id']) ? [$m['product_id']] : []);
+                    if (!empty($prodIds)) {
+                        $names = [];
+                        foreach ($prodIds as $pid) {
+                            $name = $this->repository->getProductNameById((int) $pid);
+                            if ($name) {
+                                $names[] = $name;
+                            }
                         }
+                        $description = implode(' + ', $names) ?: 'Produit Inconnu';
+                    } elseif (!empty($m['custom_name'])) {
+                        $customName = trim((string) $m['custom_name']);
+                        // Check if it already exists
+                        $existing = $this->repository->findProductByName($customName);
+                        if ($existing === null) {
+                            $this->repository->createProduct([
+                                'nom' => $customName,
+                                'prix_unitaire' => (float) ($m['custom_price'] ?? 0.0),
+                                'description' => 'Créé à la volée depuis colisage',
+                            ]);
+                        }
+                        $description = strtoupper($customName);
                     }
-                    $description = implode(' + ', $names) ?: 'Produit Inconnu';
-                } elseif (!empty($m['custom_name'])) {
-                    $customName = trim((string) $m['custom_name']);
-                    // Check if it already exists
-                    $existing = $this->repository->findProductByName($customName);
-                    if ($existing === null) {
-                        $this->repository->createProduct([
-                            'nom' => $customName,
-                            'prix_unitaire' => (float) ($m['custom_price'] ?? 0.0),
-                            'description' => 'Créé à la volée depuis colisage',
+
+                    if ($description !== '') {
+                        $this->repository->createMarchandise([
+                            'colis_id' => $parcelId,
+                            'description' => $description,
+                            'emballage' => isset($m['emballage']) ? trim((string) $m['emballage']) : null,
+                            'quantite' => (int) ($m['quantite'] ?? 1),
+                            'nbre_colis' => (int) ($m['nbre_colis'] ?? 1),
+                            'qte_emballage' => (int) ($m['qte_emballage'] ?? 1),
+                            'poids_unitaire' => (float) ($m['poids_unitaire'] ?? 0.0),
+                            'prix_kg' => (float) ($m['prix_kg'] ?? 0.0),
                         ]);
                     }
-                    $description = strtoupper($customName);
-                }
-
-                if ($description !== '') {
-                    $this->repository->createMarchandise([
-                        'colis_id' => $parcelId,
-                        'description' => $description,
-                        'emballage' => isset($m['emballage']) ? trim((string) $m['emballage']) : null,
-                        'quantite' => (int) ($m['quantite'] ?? 1),
-                        'nbre_colis' => (int) ($m['nbre_colis'] ?? 1),
-                        'qte_emballage' => (int) ($m['qte_emballage'] ?? 1),
-                        'poids_unitaire' => (float) ($m['poids_unitaire'] ?? 0.0),
-                        'prix_kg' => (float) ($m['prix_kg'] ?? 0.0),
-                    ]);
                 }
             }
-        }
 
-        return $parcelId;
+            $pdo->commit();
+            return $parcelId;
+        } catch (\Throwable $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            throw $e;
+        }
     }
 
     /** @param array<string, mixed> $data */
@@ -255,23 +272,67 @@ final class ColisageService
         $frais = 0.0;
         $colis = $this->getParcelDetails($id);
 
-        if ($this->gardiennageService !== null && $colis !== null) {
-            $gardiennage = $this->gardiennageService->calculateGardiennage($colis);
-            $frais = $gardiennage['totalFraisGardiennage'];
-            $data['frais_gardiennage_appliques'] = $frais;
+        $pdo = Database::getConnection();
+        $pdo->beginTransaction();
+
+        try {
+            if ($this->gardiennageService !== null && $colis !== null) {
+                $gardiennage = $this->gardiennageService->calculateGardiennage($colis);
+                $frais = $gardiennage['totalFraisGardiennage'];
+                $data['frais_gardiennage_appliques'] = $frais;
+            }
+
+            $this->repository->recordWithdrawal($id, $data);
+
+            if ($colis !== null) {
+                $rayonId = isset($colis['rayon_id']) ? (int) $colis['rayon_id'] : null;
+                if ($this->rayonRepository !== null && $rayonId !== null) {
+                    $this->rayonRepository->recordMouvement($id, $rayonId, 'SORTIE', null, 'Retrait effectué au comptoir');
+                }
+
+                if ($this->notificationService !== null) {
+                    $this->notificationService->notifyParcelWithdrawal($colis, $data, $frais);
+                }
+            }
+
+            $pdo->commit();
+        } catch (\Throwable $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            throw $e;
+        }
+    }
+
+    /**
+     * Transfert un colis vers un autre rayon et consigne le mouvement DEPLACEMENT.
+     */
+    public function transferParcelToRayon(int $parcelId, int $newRayonId, ?string $commentaires = null): bool
+    {
+        $colis = $this->getParcelDetails($parcelId);
+        if ($colis === null) {
+            return false;
         }
 
-        $this->repository->recordWithdrawal($id, $data);
+        $pdo = Database::getConnection();
+        $pdo->beginTransaction();
 
-        if ($colis !== null) {
-            $rayonId = isset($colis['rayon_id']) ? (int) $colis['rayon_id'] : null;
-            if ($this->rayonRepository !== null && $rayonId !== null) {
-                $this->rayonRepository->recordMouvement($id, $rayonId, 'SORTIE', null, 'Retrait effectué au comptoir');
+        try {
+            $stmt = $pdo->prepare("UPDATE lbp_colis SET rayon_id = :rayon_id, updated_at = NOW() WHERE id = :id");
+            $stmt->execute(['rayon_id' => $newRayonId, 'id' => $parcelId]);
+
+            if ($this->rayonRepository !== null) {
+                $note = 'Transfert inter-rayons' . ($commentaires ? ' : ' . $commentaires : '');
+                $this->rayonRepository->recordMouvement($parcelId, $newRayonId, 'DEPLACEMENT', null, $note);
             }
 
-            if ($this->notificationService !== null) {
-                $this->notificationService->notifyParcelWithdrawal($colis, $data, $frais);
+            $pdo->commit();
+            return true;
+        } catch (\Throwable $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
             }
+            throw $e;
         }
     }
 
@@ -379,14 +440,22 @@ final class ColisageService
         if ($exp !== null) {
             $parcels = $this->repository->getParcelsForExpedition($id);
             foreach ($parcels as $p) {
+                $etapeText = 'Départ de l\'expédition ' . $exp['reference'] . ' via transport ' . $exp['type_transport'];
                 $stmt = $pdo->prepare("
                     INSERT INTO lbp_tracking_gps (colis_id, etape, date_etape)
                     VALUES (:colis_id, :etape, NOW())
                 ");
                 $stmt->execute([
                     'colis_id' => $p['id'],
-                    'etape' => 'Départ de l\'expédition ' . $exp['reference'] . ' via transport ' . $exp['type_transport'],
+                    'etape' => $etapeText,
                 ]);
+
+                if ($this->notificationService !== null) {
+                    $pFull = $this->getParcelDetails((int) $p['id']);
+                    if ($pFull !== null) {
+                        $this->notificationService->notifyParcelStatusChange($pFull, 'EN_TRANSIT', $etapeText);
+                    }
+                }
             }
         }
     }
@@ -409,14 +478,22 @@ final class ColisageService
         if ($exp !== null) {
             $parcels = $this->repository->getParcelsForExpedition($id);
             foreach ($parcels as $p) {
+                $etapeText = 'Arrivée à l\'agence de destination ' . ($exp['agence_arrivee_name'] ?? '');
                 $stmt = $pdo->prepare("
                     INSERT INTO lbp_tracking_gps (colis_id, etape, date_etape)
                     VALUES (:colis_id, :etape, NOW())
                 ");
                 $stmt->execute([
                     'colis_id' => $p['id'],
-                    'etape' => 'Arrivée à l\'agence de destination ' . $exp['agence_arrivee_name'],
+                    'etape' => $etapeText,
                 ]);
+
+                if ($this->notificationService !== null) {
+                    $pFull = $this->getParcelDetails((int) $p['id']);
+                    if ($pFull !== null) {
+                        $this->notificationService->notifyParcelStatusChange($pFull, 'ARRIVÉ', $etapeText);
+                    }
+                }
             }
         }
     }

@@ -24,7 +24,18 @@ $current = $page->currentShipment;
         <h2><?= View::e($current['reference']) ?></h2>
         <p><?= View::e($current['origin']) ?> → <?= View::e($current['destination']) ?></p>
         <div class="site-progress"><span style="width:<?= (int)$current['progress'] ?>%"></span></div>
-        <div class="site-result-meta"><span>Client<br><strong><?= View::e($current['client']) ?></strong></span><span>Position<br><strong><?= View::e($current['lastLocation'] ?? '-') ?></strong></span><span>ETA<br><strong><?= View::e($current['eta']) ?></strong></span><span>Progression<br><strong><?= (int)$current['progress'] ?>%</strong></span></div>
+        <div class="site-result-meta">
+            <span>Client<br><strong><?= View::e($current['client']) ?></strong></span>
+            <span>Position<br><strong><?= View::e($current['lastLocation'] ?? '-') ?></strong></span>
+            <span>ETA<br><strong><?= View::e($current['eta']) ?></strong></span>
+            <span>Progression<br><strong><?= (int)$current['progress'] ?>%</strong></span>
+        </div>
+        <?php if (!empty($current['reference'])): ?>
+            <div style="margin-top:15px; padding-top:10px; border-top:1px dashed #e2e8f0; font-size:12px; color:#64748b; display:flex; gap:15px; flex-wrap:wrap; align-items:center;">
+                <span>🔗 Lien direct : <code><?= View::url('site/tracking') ?>?ref=<?= urlencode($current['reference']) ?></code></span>
+                <span>⚡ API Webhook : <code>/api/v1/tracking/<?= urlencode($current['reference']) ?></code></span>
+            </div>
+        <?php endif; ?>
     </article>
     <article class="site-timeline">
         <?php foreach (($current['steps'] ?? []) as $step): ?>

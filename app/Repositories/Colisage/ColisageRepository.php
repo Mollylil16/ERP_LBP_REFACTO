@@ -190,17 +190,20 @@ class ColisageRepository
             $montantEur = $montantTotal;
         }
 
+        $assuranceSouscrite = !empty($data['assurance_souscrite']) ? 1 : 0;
+        $montantAssurance = (float) ($data['montant_assurance'] ?? 0.0);
+
         $stmt = $this->pdo->prepare("
             INSERT INTO lbp_colis (
                 numero_tracking, expediteur_id, destinataire_id, poids_total, nombre_colis,
                 valeur_declaree, montant_total, montant_total_eur, devise,
                 agence_depart_id, agence_arrivee_id,
-                statut, type_expediteur, trafic, created_at
+                statut, type_expediteur, trafic, assurance_souscrite, montant_assurance, created_at
             ) VALUES (
                 :numero_tracking, :expediteur_id, :destinataire_id, :poids_total, :nombre_colis,
                 :valeur_declaree, :montant_total, :montant_total_eur, :devise,
                 :agence_depart_id, :agence_arrivee_id,
-                'RÉCEPTIONNÉ', :type_expediteur, :trafic, NOW()
+                'RÉCEPTIONNÉ', :type_expediteur, :trafic, :assurance_souscrite, :montant_assurance, NOW()
             )
         ");
         $stmt->execute([
@@ -217,6 +220,8 @@ class ColisageRepository
             'agence_arrivee_id' => isset($data['agence_arrivee_id']) ? (int) $data['agence_arrivee_id'] : null,
             'type_expediteur' => trim((string) $data['type_expediteur']),
             'trafic' => trim((string) ($data['trafic'] ?? '')),
+            'assurance_souscrite' => $assuranceSouscrite,
+            'montant_assurance' => $montantAssurance,
         ]);
         return (int) $this->pdo->lastInsertId();
     }

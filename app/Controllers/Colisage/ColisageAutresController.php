@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Controllers\Colisage;
 
 use App\Middleware\AuthMiddleware;
+use App\Helpers\Csrf;
+use App\Helpers\Session;
 use App\Models\Database;
 use App\Repositories\Colisage\ColisageRepository;
 use App\Services\Colisage\ColisageService;
@@ -133,6 +135,12 @@ final class ColisageAutresController extends ColisageBaseController
     public function store(): void
     {
         AuthMiddleware::check();
+
+        if (!Csrf::verify($_POST['_csrf_token'] ?? null)) {
+            Session::flash('error', 'Session expirée ou requête invalide (CSRF). Veuillez réessayer.');
+            header('Location: ' . View::url('colisage/autres/nouveau'));
+            exit;
+        }
 
         // Check if quick creating shipper or consignee
         $expediteurId = (int) ($_POST['expediteur_id'] ?? 0);

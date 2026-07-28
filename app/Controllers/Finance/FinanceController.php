@@ -457,6 +457,47 @@ final class FinanceController extends FinanceBaseController
     }
 
     /**
+     * Relance groupée par SMS/WhatsApp de toutes les factures impayées.
+     */
+    public function factureRelancerTout(): void
+    {
+        RoleMiddleware::check(['caissiere', 'caissiere_principale', 'chef_agence', 'dg', 'comptable']);
+
+        $unpaid = $this->factureRepo->getUnpaidFacturesForRelance();
+        if (empty($unpaid)) {
+            Session::flash('info', 'Aucune facture impayée à relancer pour le moment.');
+            header('Location: ' . View::url('finance/factures'));
+            exit;
+        }
+
+        $count = 0;
+        $totalMontant = 0.0;
+        $notifService = new \App\Services\Shared\NotificationService();
+
+        foreach ($unpaid as $f) {
+            $paymentUrl = View::url('api/paiements/pay/' . $f['id']);
+            $msg = "Bonjour " . ($f['client_name'] ?? 'Client') . ", votre facture LBP N°" . $f['numero_facture'] . " présente un solde impayé de " . number_format((float)$f['montant_restant'], 0, ',', ' ') . " " . $f['devise'] . ". Réglez votre solde directement en ligne : " . $paymentUrl;
+
+            $sent = $notifService->dispatchPushOrWebhook('PAIEMENT_RAPPEL', [
+                'telephone' => $f['client_phone'] ?? '',
+                'facture_id' => $f['id'],
+                'message' => $msg
+            ]);
+
+            if ($sent) {
+                $count++;
+                $totalMontant += (float) $f['montant_restant'];
+            }
+        }
+
+        AuditLogService::log('batch_payment_reminders', 'lbp_factures', 0, null, ['count' => $count, 'total' => $totalMontant]);
+
+        Session::flash('success', "📲 Relance automatique envoyée avec succès à {$count} client(s) pour un solde total de " . number_format($totalMontant, 0, ',', ' ') . " XOF.");
+        header('Location: ' . View::url('finance/factures'));
+        exit;
+    }
+
+    /**
      * Dépenses et règlements prestataires.
      */
     public function depensesIndex(): void
@@ -678,6 +719,20 @@ final class FinanceController extends FinanceBaseController
         // Calculer les totaux en temps réel
         $live = $this->etatRepo->computeTotalsForDay((int) $agenceId, $dateJour);
 
+        // Récupérer le comptage physique et l'explication éventuelle d'écart
+        $soldePhysique = isset($_POST['solde_physique_declare']) && $_POST['solde_physique_declare'] !== '' ? (float) $_POST['solde_physique_declare'] : null;
+        $explication = trim((string) ($_POST['explication_ecart'] ?? ''));
+
+        $soldeTheorique = $live['solde_caisse_agence_xof'];
+        $ecart = ($soldePhysique !== null) ? round($soldePhysique - $soldeTheorique, 2) : 0.0;
+
+        // Contrôle d'écart obligatoire
+        if (abs($ecart) > 0.01 && $explication === '') {
+            Session::flash('error', '🚨 Écart de caisse détecté (' . ($ecart > 0 ? '+' : '') . number_format($ecart, 0, ',', ' ') . ' XOF). Une explication détaillée est obligatoirement requise avant de pouvoir soumettre.');
+            header('Location: ' . View::url('finance/clotures'));
+            exit;
+        }
+
         if ($existing) {
             $existing->nbColisEnregistres = $live['nb_colis'];
             $existing->nbFacturesEmises = $live['nb_factures'];
@@ -689,6 +744,9 @@ final class FinanceController extends FinanceBaseController
             $existing->totalRestantDuEur = $live['total_restant_du_eur'];
             $existing->soldeCaisseAgenceXof = $live['solde_caisse_agence_xof'];
             $existing->soldeCaisseAgenceEur = $live['solde_caisse_agence_eur'];
+            $existing->soldePhysiqueDeclare = $soldePhysique;
+            $existing->ecartCaisse = $ecart;
+            $existing->explicationEcart = $explication !== '' ? $explication : null;
             $existing->statut = 'soumis';
             $existing->dateSoumission = date('Y-m-d H:i:s');
             $existing->chefAgenceId = Auth::id();
@@ -712,14 +770,17 @@ final class FinanceController extends FinanceBaseController
                 soldeCaisseAgenceXof: $live['solde_caisse_agence_xof'],
                 soldeCaisseAgenceEur: $live['solde_caisse_agence_eur'],
                 statut: 'soumis',
-                dateSoumission: date('Y-m-d H:i:s')
+                dateSoumission: date('Y-m-d H:i:s'),
+                soldePhysiqueDeclare: $soldePhysique,
+                ecartCaisse: $ecart,
+                explicationEcart: $explication !== '' ? $explication : null
             );
             $reportId = $this->etatRepo->create($etat);
         }
 
-        AuditLogService::log('submit_cash_report', 'lbp_etats_journaliers', $reportId, null, $live);
+        AuditLogService::log('submit_cash_report', 'lbp_etats_journaliers', $reportId, null, $live + ['ecart' => $ecart]);
 
-        Session::flash('success', 'Le point de caisse a été soumis et verrouillé avec succès.');
+        Session::flash('success', 'Le point de caisse avec rapprochement a été soumis et verrouillé avec succès.');
         header('Location: ' . View::url('finance/clotures'));
         exit;
     }

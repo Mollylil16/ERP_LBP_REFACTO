@@ -16,6 +16,7 @@ $router->group('/finance', function (Router $router): void {
     $router->get('/factures', [FinanceController::class, 'facturesIndex']);
     $router->get('/factures/nouveau', [FinanceController::class, 'factureCreate']);
     $router->post('/factures/enregistrer', [FinanceController::class, 'factureStore']);
+    $router->post('/factures/relancer-tout', [FinanceController::class, 'factureRelancerTout']);
     $router->get('/factures/{id}', [FinanceController::class, 'factureShow']);
     $router->post('/factures/{id}/encaisser', [FinanceController::class, 'factureEncaisser']);
     $router->post('/factures/{id}/relancer', [FinanceController::class, 'factureRelancer']);

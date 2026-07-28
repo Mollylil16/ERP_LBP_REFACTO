@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\View\Components\Dashboard;
 use App\View\Components\Crm;
 use App\View\Pages\Crm\DashboardPage;
 
@@ -10,4 +11,5 @@ use App\View\Pages\Crm\DashboardPage;
  * @var DashboardPage $page
  */
 
+// Dashboard module CRM with clickable KPI links ('href') Dashboard::kpis
 echo Crm::dashboardPage($dashboardModule);

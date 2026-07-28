@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Controllers\Logistique;
 
 use App\Middleware\AuthMiddleware;
+use App\Middleware\RoleMiddleware;
+use App\Helpers\Csrf;
 use App\Models\Database;
 use App\Repositories\Logistique\RayonRepository;
 use App\Repositories\Logistique\LogistiqueDashboardRepository;
@@ -57,6 +59,13 @@ final class RayonsController extends LogistiqueBaseController
     public function store(): void
     {
         AuthMiddleware::check();
+        RoleMiddleware::check(['admin', 'chef_agence']);
+
+        if (!Csrf::verify($_POST['_csrf_token'] ?? null)) {
+            Session::flash('error', 'Session expirée ou requête invalide (CSRF). Veuillez réessayer.');
+            header('Location: ' . View::url('logistique/rayons'));
+            exit;
+        }
 
         $id = (int) ($_POST['id'] ?? 0);
         $data = [
@@ -64,6 +73,8 @@ final class RayonsController extends LogistiqueBaseController
             'code_rayon' => trim((string) ($_POST['code_rayon'] ?? '')),
             'nom_rayon' => trim((string) ($_POST['nom_rayon'] ?? '')),
             'capacite_max' => (int) ($_POST['capacite_max'] ?? 50),
+            'type_rayon' => (string) ($_POST['type_rayon'] ?? 'STANDARD'),
+            'poids_max_autorise' => !empty($_POST['poids_max_autorise']) ? (float) $_POST['poids_max_autorise'] : null,
             'statut' => (string) ($_POST['statut'] ?? 'ACTIF'),
         ];
 
@@ -88,6 +99,14 @@ final class RayonsController extends LogistiqueBaseController
     public function delete(string $id): void
     {
         AuthMiddleware::check();
+        RoleMiddleware::check(['admin', 'chef_agence']);
+
+        if (!Csrf::verify($_POST['_csrf_token'] ?? null)) {
+            Session::flash('error', 'Session expirée ou requête invalide (CSRF). Veuillez réessayer.');
+            header('Location: ' . View::url('logistique/rayons'));
+            exit;
+        }
+
         $rayonId = (int) $id;
 
         if ($rayonId > 0) {

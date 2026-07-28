@@ -34,7 +34,11 @@ class RayonService
         $autoAssigne = false;
 
         if ($settings->autoAssignRayon) {
-            $rayon = $this->rayonRepository->findAvailableRayon($agenceId);
+            $typeColis = (string) ($colisData['type_expediteur'] ?? $colisData['trafic'] ?? '');
+            $poidsTotal = (float) ($colisData['poids_total'] ?? 0.0);
+            $estAssure = !empty($colisData['assurance_souscrite']);
+
+            $rayon = $this->rayonRepository->findAvailableRayon($agenceId, $typeColis, $poidsTotal, $estAssure);
             if ($rayon !== null) {
                 $assignedRayonId = $rayon->id;
                 $autoAssigne = true;

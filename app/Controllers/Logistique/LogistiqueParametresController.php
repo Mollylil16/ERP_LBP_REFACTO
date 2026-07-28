@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Controllers\Logistique;
 
 use App\Middleware\AuthMiddleware;
+use App\Middleware\RoleMiddleware;
+use App\Helpers\Csrf;
 use App\Models\Database;
 use App\Repositories\Logistique\LogistiqueSettingsRepository;
 use App\Repositories\Logistique\LogistiqueDashboardRepository;
@@ -55,6 +57,13 @@ final class LogistiqueParametresController extends LogistiqueBaseController
     public function store(): void
     {
         AuthMiddleware::check();
+        RoleMiddleware::check(['admin', 'chef_agence']);
+
+        if (!Csrf::verify($_POST['_csrf_token'] ?? null)) {
+            Session::flash('error', 'Session expirée ou requête invalide (CSRF). Veuillez réessayer.');
+            header('Location: ' . View::url('logistique/parametres'));
+            exit;
+        }
 
         $agenceId = isset($_POST['agence_id']) && (int) $_POST['agence_id'] > 0 ? (int) $_POST['agence_id'] : null;
 

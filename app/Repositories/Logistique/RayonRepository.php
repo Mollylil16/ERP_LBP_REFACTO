@@ -60,11 +60,42 @@ class RayonRepository
     }
 
     /**
-     * Recherche le premier rayon disponible dans l'agence donnée ayant de la capacité libre.
+     * Recherche le premier rayon disponible dans l'agence donnée ayant de la capacité libre,
+     * en utilisant l'algorithme d'affectation intelligente selon le type/poids du colis.
      */
-    public function findAvailableRayon(int $agenceId): ?Rayon
+    public function findAvailableRayon(int $agenceId, ?string $typeColis = null, float $poidsTotal = 0.0, bool $estAssure = false): ?Rayon
     {
+        // Algorithme de sélection de la typologie ciblée
+        $targetType = 'STANDARD';
+        if ($estAssure) {
+            $targetType = 'SECU_VALEUR';
+        } elseif ($poidsTotal > 30.0 || str_contains(strtolower((string) $typeColis), 'maritime')) {
+            $targetType = 'CARGO_LOURD';
+        } elseif (str_contains(strtolower((string) $typeColis), 'dhl') || str_contains(strtolower((string) $typeColis), 'colis_rapide')) {
+            $targetType = 'EXPRESS';
+        }
+
+        // 1. Chercher d'abord dans la typologie ciblée
         $stmt = $this->pdo->prepare("
+            SELECT r.*,
+                   s.name as agence_nom,
+                   (SELECT COUNT(*) FROM lbp_colis c WHERE c.rayon_id = r.id AND c.statut NOT IN ('LIVRÉ', 'ANNULÉ', 'RETIRÉ')) as capacite_occupee
+            FROM logistique_rayons r
+            LEFT JOIN company_sites s ON r.agence_id = s.id
+            WHERE r.agence_id = :agence_id AND r.statut = 'ACTIF' AND r.type_rayon = :target_type
+            HAVING capacite_occupee < r.capacite_max
+            ORDER BY r.code_rayon ASC
+            LIMIT 1
+        ");
+        $stmt->execute(['agence_id' => $agenceId, 'target_type' => $targetType]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($row) {
+            return Rayon::fromArray($row);
+        }
+
+        // 2. Fallback : si la catégorie idéale est pleine ou absente, chercher n'importe quel rayon disponible
+        $stmtFallback = $this->pdo->prepare("
             SELECT r.*,
                    s.name as agence_nom,
                    (SELECT COUNT(*) FROM lbp_colis c WHERE c.rayon_id = r.id AND c.statut NOT IN ('LIVRÉ', 'ANNULÉ', 'RETIRÉ')) as capacite_occupee
@@ -75,10 +106,10 @@ class RayonRepository
             ORDER BY r.code_rayon ASC
             LIMIT 1
         ");
-        $stmt->execute(['agence_id' => $agenceId]);
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        $stmtFallback->execute(['agence_id' => $agenceId]);
+        $fallbackRow = $stmtFallback->fetch(PDO::FETCH_ASSOC);
 
-        return $row ? Rayon::fromArray($row) : null;
+        return $fallbackRow ? Rayon::fromArray($fallbackRow) : null;
     }
 
     /**
@@ -87,14 +118,16 @@ class RayonRepository
     public function createRayon(array $data): int
     {
         $stmt = $this->pdo->prepare("
-            INSERT INTO logistique_rayons (agence_id, code_rayon, nom_rayon, capacite_max, statut, created_at)
-            VALUES (:agence_id, :code_rayon, :nom_rayon, :capacite_max, :statut, NOW())
+            INSERT INTO logistique_rayons (agence_id, code_rayon, nom_rayon, capacite_max, type_rayon, poids_max_autorise, statut, created_at)
+            VALUES (:agence_id, :code_rayon, :nom_rayon, :capacite_max, :type_rayon, :poids_max_autorise, :statut, NOW())
         ");
         $stmt->execute([
             'agence_id' => (int) ($data['agence_id'] ?? 1),
             'code_rayon' => strtoupper(trim((string) ($data['code_rayon'] ?? ''))),
             'nom_rayon' => trim((string) ($data['nom_rayon'] ?? '')),
             'capacite_max' => max(1, (int) ($data['capacite_max'] ?? 50)),
+            'type_rayon' => (string) ($data['type_rayon'] ?? 'STANDARD'),
+            'poids_max_autorise' => !empty($data['poids_max_autorise']) ? (float) $data['poids_max_autorise'] : null,
             'statut' => (string) ($data['statut'] ?? 'ACTIF'),
         ]);
 
@@ -111,6 +144,8 @@ class RayonRepository
             SET code_rayon = :code_rayon,
                 nom_rayon = :nom_rayon,
                 capacite_max = :capacite_max,
+                type_rayon = :type_rayon,
+                poids_max_autorise = :poids_max_autorise,
                 statut = :statut,
                 updated_at = NOW()
             WHERE id = :id
@@ -120,6 +155,8 @@ class RayonRepository
             'code_rayon' => strtoupper(trim((string) ($data['code_rayon'] ?? ''))),
             'nom_rayon' => trim((string) ($data['nom_rayon'] ?? '')),
             'capacite_max' => max(1, (int) ($data['capacite_max'] ?? 50)),
+            'type_rayon' => (string) ($data['type_rayon'] ?? 'STANDARD'),
+            'poids_max_autorise' => !empty($data['poids_max_autorise']) ? (float) $data['poids_max_autorise'] : null,
             'statut' => (string) ($data['statut'] ?? 'ACTIF'),
         ]);
     }

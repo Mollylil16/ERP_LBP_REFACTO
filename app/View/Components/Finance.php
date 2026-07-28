@@ -165,6 +165,7 @@ final class Finance
                 'eyebrow' => 'Invoicing & Receivables',
                 'class' => 'rh-hero-white',
                 'actions' => [
+                    '<form method="post" action="' . View::url('finance/factures/relancer-tout') . '" style="display:inline;" onsubmit="return confirm(\'Lancer la relance SMS / WhatsApp automatique pour toutes les factures impayées ?\');">' . Ui::button('📲 Relancer tous les impayés', ['type' => 'submit', 'variant' => 'secondary']) . '</form>',
                     Ui::button('Créer une Facture', [
                         'href' => 'finance/factures/nouveau',
                         'variant' => 'accent',
@@ -707,8 +708,21 @@ final class Finance
                     . '</div>';
 
                 if ($statut === 'brouillon') {
-                    $submissionForm .= '<form method="post" action="' . View::url('finance/clotures/soumettre') . '" class="js-protect-form">'
-                        . Ui::button('Soumettre le point (Verrouillage à 15h)', ['type' => 'submit', 'variant' => 'accent'])
+                    $submissionForm .= '<form method="post" action="' . View::url('finance/clotures/soumettre') . '" class="js-protect-form" style="background:#fff; border:1px solid #cbd5e1; padding:1.25rem; border-radius:8px; margin-top:1rem;">'
+                        . '<h4 style="margin-bottom:0.75rem;">⚖️ Rapprochement Financier & Comptage Physique</h4>'
+                        . '<div style="display:grid; grid-template-columns: 1fr 1fr; gap:1.25rem;">'
+                        . Form::input('solde_physique_declare', ['label' => 'Solde Physique Compté (Billets + Pièces - XOF)', 'type' => 'number', 'step' => '1', 'placeholder' => 'Saisir le montant exact compté en caisse', 'required' => true, 'id' => 'solde_physique_input'])
+                        . '<div style="background:#f1f5f9; padding:0.8rem; border-radius:8px; display:flex; flex-direction:column; justify-content:center;">'
+                        . '<small style="color:#64748b; font-weight:600;">Solde Théorique attendu :</small>'
+                        . '<strong style="font-size:1.1rem; color:#1e293b;">' . number_format($totalEncaisseXof, 0, ',', ' ') . ' XOF</strong>'
+                        . '</div>'
+                        . '</div>'
+                        . '<div style="margin-top:1rem;">'
+                        . Form::input('explication_ecart', ['label' => 'Explication obligatoire si écart de caisse (manquant ou surplus)', 'placeholder' => 'Préciser les motifs de l\'écart éventuel (ex: erreur de rendu de monnaie, justificatif en attente)', 'id' => 'explication_ecart_input'])
+                        . '</div>'
+                        . '<div style="margin-top:1.25rem; display:flex; justify-content:flex-end;">'
+                        . Ui::button('🔒 Soumettre le point & Verrouiller la caisse', ['type' => 'submit', 'variant' => 'accent'])
+                        . '</div>'
                         . '</form>';
                 } else {
                     $submissionForm .= '<p style="color:#16a34a; font-weight:600;"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" style="display:inline; margin-right:0.25rem;"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg> Point soumis et verrouillé.</p>';
@@ -754,12 +768,19 @@ final class Finance
                     }
                 }
 
+                $ecartTone = abs($r->ecartCaisse) < 0.01 ? 'success' : 'danger';
+                $ecartBadge = Ui::badge(
+                    ($r->ecartCaisse > 0 ? '+' : '') . number_format($r->ecartCaisse, 0, ',', ' ') . ' XOF',
+                    $ecartTone
+                );
+
                 $rows .= '<tr>'
                     . '<td>' . View::e($r->dateJour) . '</td>'
                     . '<td><strong>' . View::e($agenceName) . '</strong></td>'
                     . '<td>' . View::e($r->nbColisEnregistres) . ' / ' . View::e($r->nbFacturesEmises) . '</td>'
                     . '<td style="text-align:right;">' . View::e(number_format($r->totalFactureXof, 2, ',', ' ')) . ' XOF<br><span style="color:#64748b; font-size:0.8rem;">' . View::e(number_format($r->totalFactureEur, 2, ',', ' ')) . ' EUR</span></td>'
-                    . '<td style="text-align:right; font-weight:600; color:#16a34a;">' . View::e(number_format($r->totalEncaisseXof, 2, ',', ' ')) . ' XOF<br><span style="font-size:0.8rem;">' . View::e(number_format($r->totalEncaisseEur, 2, ',', ' ')) . ' EUR</span></td>'
+                    . '<td style="text-align:right; font-weight:600; color:#16a34a;">' . View::e(number_format($r->totalEncaisseXof, 2, ',', ' ')) . ' XOF</td>'
+                    . '<td style="text-align:center;">' . $ecartBadge . ($r->explicationEcart ? '<br><small style="color:#64748b;" title="' . View::e($r->explicationEcart) . '">📝 ' . View::e(mb_strimwidth($r->explicationEcart, 0, 25, '...')) . '</small>' : '') . '</td>'
                     . '<td>' . ($r->dateSoumission ? date('d/m/Y à H:i', strtotime($r->dateSoumission)) : '—') . '</td>'
                     . '<td>' . $badge . '</td>'
                     . '<td>' . $actionsHtml . '</td>'
@@ -774,7 +795,8 @@ final class Finance
                 . '<th>Agence</th>'
                 . '<th>Colis / Factures</th>'
                 . '<th style="text-align:right;">Total Facturé</th>'
-                . '<th style="text-align:right;">Solde Caisse (Encaissé)</th>'
+                . '<th style="text-align:right;">Solde Théorique</th>'
+                . '<th style="text-align:center;">Écart de Caisse</th>'
                 . '<th>Heure Soumission</th>'
                 . '<th>Statut</th>'
                 . '<th>Actions</th>'
@@ -915,5 +937,88 @@ final class Finance
             . $tableHtml
             . '</div>'
             . '</div></div>';
+    }
+
+    public static function publicPayPage(Facture $facture, array $colis = [], array $client = []): string
+    {
+        $numFacture = View::e($facture->numeroFacture);
+        $clientName = View::e($client['name'] ?? '—');
+        $clientPhone = View::e($client['phone'] ?? '');
+        $montantFormat = number_format($facture->montantRestant, 0, ',', ' ');
+        $devise = View::e($facture->devise);
+        $callbackUrl = View::url('api/paiements/callback');
+        $factureId = (int) $facture->id;
+        $montantRestant = (float) $facture->montantRestant;
+
+        return '<!DOCTYPE html>'
+            . '<html lang="fr">'
+            . '<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">'
+            . '<title>Portail de Paiement Sécurisé - La Belle Porte (LBP)</title>'
+            . '<link rel="preconnect" href="https://fonts.googleapis.com">'
+            . '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>'
+            . '<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">'
+            . '<style>'
+            . ':root { --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #311042 100%); --glass-bg: rgba(255, 255, 255, 0.03); --glass-border: rgba(255, 255, 255, 0.08); --text-primary: #f8fafc; --text-secondary: #94a3b8; --accent-success: #10b981; }'
+            . '* { margin: 0; padding: 0; box-sizing: border-box; }'
+            . 'body { font-family: "Plus Jakarta Sans", sans-serif; background: var(--bg-gradient); color: var(--text-primary); min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 1.5rem; overflow-x: hidden; }'
+            . '.payment-container { background: var(--glass-bg); border: 1px solid var(--glass-border); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-radius: 24px; width: 100%; max-width: 520px; padding: 2.5rem; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); position: relative; }'
+            . '.header { text-align: center; margin-bottom: 2rem; }'
+            . '.logo { font-family: "Outfit", sans-serif; font-size: 1.75rem; font-weight: 700; background: linear-gradient(to right, #a78bfa, #818cf8, #60a5fa); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 0.5rem; }'
+            . '.subtitle { color: var(--text-secondary); font-size: 0.875rem; letter-spacing: 0.5px; text-transform: uppercase; }'
+            . '.invoice-card { background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 16px; padding: 1.5rem; margin-bottom: 2rem; }'
+            . '.invoice-row { display: flex; justify-content: space-between; margin-bottom: 0.75rem; font-size: 0.9rem; }'
+            . '.invoice-row:last-child { margin-bottom: 0; padding-top: 0.75rem; border-top: 1px dashed rgba(255, 255, 255, 0.1); }'
+            . '.label { color: var(--text-secondary); } .val { font-weight: 500; } .total-amount { font-size: 1.5rem; font-weight: 700; color: #60a5fa; }'
+            . '.section-title { font-size: 1rem; font-weight: 600; margin-bottom: 1rem; color: var(--text-primary); }'
+            . '.providers-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 2rem; }'
+            . '.provider-card { background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 16px; padding: 1rem; text-align: center; cursor: pointer; transition: all 0.3s; }'
+            . '.provider-card:hover { transform: translateY(-4px); background: rgba(255, 255, 255, 0.04); }'
+            . '.provider-card.selected { background: rgba(99, 102, 241, 0.1); border-color: #6366f1; box-shadow: 0 0 15px rgba(99, 102, 241, 0.2); }'
+            . '.provider-logo { font-size: 1.75rem; margin-bottom: 0.5rem; display: block; } .provider-name { font-size: 0.8rem; font-weight: 600; }'
+            . '.form-group { margin-bottom: 1.5rem; } .form-label { display: block; font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.5rem; }'
+            . '.form-input { width: 100%; background: rgba(0, 0, 0, 0.2); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 0.875rem 1rem; color: var(--text-primary); font-family: inherit; font-size: 0.95rem; }'
+            . '.btn-pay { width: 100%; background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); border: none; border-radius: 14px; color: white; padding: 1rem; font-size: 1rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.5rem; box-shadow: 0 10px 20px -10px rgba(99, 102, 241, 0.5); }'
+            . '.state-screen { display: none; text-align: center; padding: 2rem 0; }'
+            . '.state-icon { width: 80px; height: 80px; border-radius: 50%; background: rgba(16, 185, 129, 0.1); border: 2px solid var(--accent-success); color: var(--accent-success); display: flex; align-items: center; justify-content: center; font-size: 2.5rem; margin: 0 auto 1.5rem auto; }'
+            . '.spinner { border: 4px solid rgba(255, 255, 255, 0.1); width: 80px; height: 80px; border-radius: 50%; border-left-color: #6366f1; animation: spin 1s linear infinite; margin: 0 auto 1.5rem auto; }'
+            . '@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }'
+            . '.success-title { font-size: 1.5rem; font-weight: 700; margin-bottom: 0.5rem; } .success-desc { color: var(--text-secondary); font-size: 0.9rem; line-height: 1.5; margin-bottom: 2rem; }'
+            . '</style></head>'
+            . '<body><div class="payment-container">'
+            . '<div id="form-screen"><div class="header"><div class="logo">LA BELLE PORTE</div><div class="subtitle">Portail de Paiement Sécurisé</div></div>'
+            . '<div class="invoice-card">'
+            . '<div class="invoice-row"><span class="label">N° Facture</span><span class="val">' . $numFacture . '</span></div>'
+            . '<div class="invoice-row"><span class="label">Client</span><span class="val">' . $clientName . '</span></div>'
+            . '<div class="invoice-row"><span class="label">Téléphone</span><span class="val">' . $clientPhone . '</span></div>'
+            . '<div class="invoice-row"><span class="label">Reste à payer</span><span class="val total-amount">' . $montantFormat . ' ' . $devise . '</span></div>'
+            . '</div>'
+            . '<div class="section-title">Sélectionnez votre moyen de paiement</div>'
+            . '<div class="providers-grid">'
+            . '<div class="provider-card selected" data-provider="wave"><span class="provider-logo">🌊</span><span class="provider-name">Wave</span></div>'
+            . '<div class="provider-card" data-provider="orange"><span class="provider-logo">🍊</span><span class="provider-name">Orange Money</span></div>'
+            . '<div class="provider-card" data-provider="mtn"><span class="provider-logo">🟡</span><span class="provider-name">MTN MoMo</span></div>'
+            . '</div>'
+            . '<div class="form-group"><label class="form-label" for="phone-input">Numéro de téléphone mobile money</label><input type="tel" id="phone-input" class="form-input" value="' . $clientPhone . '" placeholder="Ex: 0707070707"></div>'
+            . '<button class="btn-pay" id="btn-pay">Payer ' . $montantFormat . ' ' . $devise . '</button>'
+            . '</div>'
+            . '<div id="processing-screen" class="state-screen"><div class="spinner"></div><h3 class="success-title">Paiement en cours</h3><p class="success-desc">Veuillez valider la notification de paiement sur votre téléphone mobile.</p></div>'
+            . '<div id="success-screen" class="state-screen"><div class="state-icon">✓</div><h3 class="success-title" style="color: var(--accent-success)">Paiement Réussi !</h3><p class="success-desc">Votre paiement a été traité avec succès et votre solde a été mis à jour dans notre système.<br><br>Vous pouvez fermer cet onglet.</p><button class="btn-pay" onclick="window.close()" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: var(--text-primary); box-shadow: none;">Fermer le portail</button></div>'
+            . '</div>'
+            . '<script>'
+            . 'document.addEventListener("DOMContentLoaded", function() {'
+            . 'var providerCards = document.querySelectorAll(".provider-card"); var selectedProvider = "wave";'
+            . 'providerCards.forEach(function(card) { card.addEventListener("click", function() { providerCards.forEach(function(c) { c.classList.remove("selected"); }); card.classList.add("selected"); selectedProvider = card.dataset.provider; }); });'
+            . 'var btnPay = document.getElementById("btn-pay"); var formScreen = document.getElementById("form-screen"); var processingScreen = document.getElementById("processing-screen"); var successScreen = document.getElementById("success-screen"); var phoneInput = document.getElementById("phone-input");'
+            . 'btnPay.addEventListener("click", function() { if (!phoneInput.value.trim()) { alert("Veuillez saisir votre numéro de téléphone."); return; }'
+            . 'formScreen.style.display = "none"; processingScreen.style.display = "block";'
+            . 'setTimeout(function() {'
+            . 'var transRef = "TX-" + Math.random().toString(36).substr(2, 9).toUpperCase();'
+            . 'var payload = { facture_id: ' . $factureId . ', transaction_reference: transRef, montant: ' . $montantRestant . ', devise: "' . $devise . '", statut: "success", provider: selectedProvider };'
+            . 'fetch("' . $callbackUrl . '", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) })'
+            . '.then(function(r) { return r.json(); })'
+            . '.then(function(data) { processingScreen.style.display = "none"; if (data.ok) { successScreen.style.display = "block"; } else { alert("Erreur lors du paiement: " + data.message); formScreen.style.display = "block"; } })'
+            . '.catch(function(e) { console.error(e); processingScreen.style.display = "none"; alert("Erreur réseau."); formScreen.style.display = "block"; });'
+            . '}, 3000); }); });'
+            . '</script></body></html>';
     }
 }

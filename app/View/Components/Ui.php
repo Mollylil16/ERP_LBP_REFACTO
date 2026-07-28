@@ -171,6 +171,23 @@ final class Ui
             . '<div style="display:flex; justify-content:flex-end; gap:0.75rem; border-top:1px solid #e2e8f0; padding-top:1rem;">'
             . $closeBtn
             . $submitBtn
-            . '</div></form></div>div>';
+            . '</div></form></div></div>';
+    }
+
+    /**
+     * Génère un badge QR Code scannable réutilisable pour les bordereaux, factures et fiches colis.
+     */
+    public static function qrCodeBadge(string $code, int $size = 80): string
+    {
+        $encoded = urlencode($code);
+        $qrUrl = "https://api.qrserver.com/v1/create-qr-code/?size={$size}x{$size}&data={$encoded}";
+
+        return '<div class="finea-qr-badge" style="display:inline-flex; align-items:center; gap:0.75rem; padding:0.5rem 0.75rem; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px;">'
+            . '<img src="' . View::e($qrUrl) . '" alt="QR Code ' . View::e($code) . '" width="' . $size . '" height="' . $size . '" style="border-radius:4px; display:block;">'
+            . '<div>'
+            . '<span style="font-size:0.75rem; color:#64748b; font-weight:600; text-transform:uppercase; display:block;">SCAN LOGISTIQUE</span>'
+            . '<strong style="font-family:monospace; font-size:0.9rem; color:#1e293b;">' . View::e($code) . '</strong>'
+            . '</div>'
+            . '</div>';
     }
 }

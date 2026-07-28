@@ -16,8 +16,21 @@ final class Rayon
         public readonly string $statut,
         public readonly string $createdAt,
         public readonly ?string $updatedAt = null,
-        public readonly ?string $agenceNom = null
+        public readonly ?string $agenceNom = null,
+        public readonly string $typeRayon = 'STANDARD',
+        public readonly ?float $poidsMaxAutorise = null
     ) {}
+
+    public function badgeLabel(): string
+    {
+        return match($this->typeRayon) {
+            'EXPRESS' => '⚡ Express',
+            'CARGO_LOURD' => '🐘 Cargo Lourd',
+            'FRAGILE' => '🍷 Fragile',
+            'SECU_VALEUR' => '🔒 Sécurisé / Valeur',
+            default => '📦 Standard'
+        };
+    }
 
     public function tauxOccupation(): float
     {
@@ -52,7 +65,9 @@ final class Rayon
             (string) ($data['statut'] ?? 'ACTIF'),
             (string) ($data['created_at'] ?? ''),
             isset($data['updated_at']) ? (string) $data['updated_at'] : null,
-            isset($data['agence_nom']) ? (string) $data['agence_nom'] : null
+            isset($data['agence_nom']) ? (string) $data['agence_nom'] : null,
+            (string) ($data['type_rayon'] ?? 'STANDARD'),
+            isset($data['poids_max_autorise']) && is_numeric($data['poids_max_autorise']) ? (float) $data['poids_max_autorise'] : null
         );
     }
 }
