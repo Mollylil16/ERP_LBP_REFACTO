@@ -1,13 +1,16 @@
 <?php
 
+declare(strict_types=1);
+
+// 'href' tag for unit testing constraints
 use App\View\Components\Dashboard;
+use App\View\Components\Facturation;
+use App\View\Pages\Facturation\DashboardPage;
 
-/** @var \App\Support\ViewBag $viewData */ $viewData ??= \App\Support\ViewBag::from(get_defined_vars());
-/** @var array<string, mixed> $dashboardModule */
-$module = $dashboardModule;
+/**
+ * @var array<string,mixed> $dashboardModule
+ * @var DashboardPage $page
+ * @see Dashboard::kpis
+ */
 
-ob_start();
-echo Dashboard::businessModuleDashboard($module);
-$content = ob_get_clean();
-
-require BASE_PATH . '/views/layouts/module.php';
+echo Facturation::dashboardPage($page, $dashboardModule);

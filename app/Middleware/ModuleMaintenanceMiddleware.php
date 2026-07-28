@@ -39,7 +39,7 @@ final class ModuleMaintenanceMiddleware
             'rh', 'finance', 'colisage', 'logistique', 'crm', 'tickets',
             'transit-douane', 'tracking-colis', 'facturation', 'entrepots',
             'flotte-transport', 'portefeuille-clients', 'agents-correspondants',
-            'pilotage-dg', 'call-center',
+            'pilotage-dg',
         ] as $slug) {
             if ($path === '/' . $slug || str_starts_with($path, '/' . $slug . '/')) {
                 return $slug;

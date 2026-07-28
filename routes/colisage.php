@@ -7,6 +7,7 @@ use App\Controllers\Colisage\ColisageDashboardController;
 use App\Controllers\Colisage\ColisageController;
 use App\Controllers\Colisage\ColisageAutresController;
 use App\Controllers\Colisage\ExploitationController;
+use App\Controllers\Colisage\RapportsController;
 
 /** @var Router $router */
 
@@ -19,12 +20,16 @@ $router->group('/colisage', function (Router $router): void {
     $router->post('/parcels/enregistrer', [ColisageController::class, 'store']);
     $router->get('/parcels/{id}', [ColisageController::class, 'show']);
     $router->get('/parcels/{id}/facture', [ColisageController::class, 'printInvoice']);
+    $router->post('/parcels/{id}/facturer', [ColisageController::class, 'autoFacturer']);
+    $router->get('/parcels/{id}/etiquette', [ColisageController::class, 'printLabel']);
     $router->post('/parcels/{id}/retirer', [ColisageController::class, 'withdraw']);
+    $router->post('/parcels/{id}/transferer', [ColisageController::class, 'transfer']);
 
     $router->get('/groupage', [ColisageController::class, 'groupageIndex']);
     $router->get('/groupage/nouveau', [ColisageController::class, 'groupageCreate']);
     $router->post('/groupage/enregistrer', [ColisageController::class, 'groupageStore']);
     $router->get('/groupage/{id}', [ColisageController::class, 'groupageShow']);
+    $router->get('/groupage/{id}/manifeste', [ColisageController::class, 'groupagePrintManifest']);
     $router->post('/groupage/{id}/colis', [ColisageController::class, 'groupageAddParcel']);
     $router->post('/groupage/{id}/demarrer', [ColisageController::class, 'groupageStart']);
     $router->post('/groupage/{id}/arriver', [ColisageController::class, 'groupageArrive']);
@@ -35,6 +40,11 @@ $router->group('/colisage', function (Router $router): void {
 
     $router->get('/documents', [ColisageController::class, 'documents']);
     $router->get('/reporting', [ColisageController::class, 'reporting']);
+
+    // Rapports journaliers / mensuels par agence
+    $router->get('/rapports', [RapportsController::class, 'journalier']);
+    $router->get('/rapports/mensuel', [RapportsController::class, 'mensuel']);
+    $router->get('/rapports/export-csv', [RapportsController::class, 'exportCsv']);
 
     $router->get('/settings', [ColisageController::class, 'settings']);
     $router->post('/settings/enregistrer', [ColisageController::class, 'saveSettings']);

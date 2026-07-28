@@ -4,7 +4,6 @@ namespace App\Repositories\Finance;
 
 use App\Models\Finance\Facture;
 use PDO;
-use App\Helpers\Accounting;
 
 class FactureRepository
 {
@@ -44,13 +43,12 @@ class FactureRepository
             ) VALUES (
                 :numero_facture, :colis_id, :client_id, :caissiere_id, :agence_id,
                 :montant_total, :montant_encaisse, :montant_restant, :devise, :taux_change,
-                :statut, :qr_code_paiement, :date_expiration_qr, :date_echeance_solde, :date_emission
+                :statut, :qr_code_paiement, :date_expiration_qr, :date_echeance_solde, NOW()
             )
         ");
 
         $stmt->execute([
             'numero_facture' => $facture->numeroFacture,
-            'date_emission' => Accounting::getAccountingDateTime(),
             'colis_id' => $facture->colisId,
             'client_id' => $facture->clientId,
             'caissiere_id' => $facture->caissiereId,
@@ -157,6 +155,58 @@ class FactureRepository
         $stmt->execute(['agence_id' => $agenceId, 'year' => $year]);
         $count = (int) $stmt->fetchColumn() + 1;
         return sprintf("FA-%02d-%s-%06d", $agenceId, $year, $count);
+    }
+
+    public function createAutoInvoiceFromParcel(int $parcelId, int $caissiereId = 1): int
+    {
+        $existing = $this->findByColisId($parcelId);
+        if ($existing) {
+            return $existing->id;
+        }
+
+        $stmt = $this->pdo->prepare("SELECT * FROM lbp_colis WHERE id = :id LIMIT 1");
+        $stmt->execute(['id' => $parcelId]);
+        $colis = $stmt->fetch();
+
+        if (!$colis) {
+            throw new \InvalidArgumentException("Colis introuvable ID: {$parcelId}");
+        }
+
+        $agenceId = !empty($colis['agence_depart_id']) ? (int) $colis['agence_depart_id'] : 1;
+        $numFacture = $this->generateNextInvoiceNumber($agenceId);
+
+        $facture = new Facture(
+            id: null,
+            numeroFacture: $numFacture,
+            colisId: $parcelId,
+            clientId: (int) $colis['expediteur_id'],
+            caissiereId: $caissiereId,
+            agenceId: $agenceId,
+            montantTotal: (float) $colis['montant_total'],
+            montantEncaisse: 0.0,
+            montantRestant: (float) $colis['montant_total'],
+            devise: (string) ($colis['devise'] ?? 'XOF'),
+            tauxChange: null,
+            statut: 'emise',
+            qrCodePaiement: null,
+            dateExpirationQr: date('Y-m-d H:i:s', strtotime('+7 days')),
+            dateEcheanceSolde: date('Y-m-d H:i:s', strtotime('+7 days'))
+        );
+
+        return $this->create($facture);
+    }
+
+    public function getUnpaidFacturesForRelance(): array
+    {
+        $stmt = $this->pdo->prepare("
+            SELECT f.*, c.name AS client_name, c.phone AS client_phone
+            FROM lbp_factures f
+            JOIN lbp_clients c ON f.client_id = c.id
+            WHERE f.statut IN ('emise', 'partiellement_payee') AND f.montant_restant > 0
+            ORDER BY f.id DESC
+        ");
+        $stmt->execute();
+        return $stmt->fetchAll(\PDO::FETCH_ASSOC) ?: [];
     }
 
     private function mapToFacture(array $row): Facture

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Controllers\Finance;
 
-use App\Controllers\BaseController;
 use App\Helpers\Auth;
 use App\Helpers\Session;
 use App\Helpers\Response;
@@ -27,7 +26,7 @@ use App\Services\Shared\AuditLogService;
 use App\Services\Shared\NotificationService;
 use PDO;
 
-final class FinanceController extends BaseController
+final class FinanceController extends FinanceBaseController
 {
     private PDO $db;
     private FactureRepository $factureRepo;
@@ -106,10 +105,7 @@ final class FinanceController extends BaseController
 
         $agences = $this->db->query("SELECT id, name FROM company_sites WHERE is_active = 1")->fetchAll() ?: [];
 
-        $nav = $this->viewData();
-        $nav['activeModule'] = 'factures';
-
-        $this->view('finance/factures/index', $nav + [
+        $this->financeView('finance/factures/index', 'Gestion de la Facturation', 'factures', [
             'factures' => $factures,
             'filters' => $filters,
             'agences' => $agences,
@@ -150,10 +146,7 @@ final class FinanceController extends BaseController
             $colisSansFacture = $stmt->fetchAll() ?: [];
         }
 
-        $nav = $this->viewData();
-        $nav['activeModule'] = 'factures';
-
-        $this->view('finance/factures/create', $nav + [
+        $this->financeView('finance/factures/create', 'Créer une Facture', 'factures', [
             'colisSansFacture' => $colisSansFacture,
         ]);
     }
@@ -276,10 +269,7 @@ final class FinanceController extends BaseController
         $paiements = $this->paiementRepo->findByFactureId($facture->id);
         $callbacks = $this->paiementRepo->findCallbacksByFactureId($facture->id);
 
-        $nav = $this->viewData();
-        $nav['activeModule'] = 'factures';
-
-        $this->view('finance/factures/show', $nav + [
+        $this->financeView('finance/factures/show', 'Facture ' . $facture->numeroFacture, 'factures', [
             'facture' => $facture,
             'paiements' => $paiements,
             'callbacks' => $callbacks,
@@ -467,6 +457,47 @@ final class FinanceController extends BaseController
     }
 
     /**
+     * Relance groupée par SMS/WhatsApp de toutes les factures impayées.
+     */
+    public function factureRelancerTout(): void
+    {
+        RoleMiddleware::check(['caissiere', 'caissiere_principale', 'chef_agence', 'dg', 'comptable']);
+
+        $unpaid = $this->factureRepo->getUnpaidFacturesForRelance();
+        if (empty($unpaid)) {
+            Session::flash('info', 'Aucune facture impayée à relancer pour le moment.');
+            header('Location: ' . View::url('finance/factures'));
+            exit;
+        }
+
+        $count = 0;
+        $totalMontant = 0.0;
+        $notifService = new \App\Services\Shared\NotificationService();
+
+        foreach ($unpaid as $f) {
+            $paymentUrl = View::url('api/paiements/pay/' . $f['id']);
+            $msg = "Bonjour " . ($f['client_name'] ?? 'Client') . ", votre facture LBP N°" . $f['numero_facture'] . " présente un solde impayé de " . number_format((float)$f['montant_restant'], 0, ',', ' ') . " " . $f['devise'] . ". Réglez votre solde directement en ligne : " . $paymentUrl;
+
+            $sent = $notifService->dispatchPushOrWebhook('PAIEMENT_RAPPEL', [
+                'telephone' => $f['client_phone'] ?? '',
+                'facture_id' => $f['id'],
+                'message' => $msg
+            ]);
+
+            if ($sent) {
+                $count++;
+                $totalMontant += (float) $f['montant_restant'];
+            }
+        }
+
+        AuditLogService::log('batch_payment_reminders', 'lbp_factures', 0, null, ['count' => $count, 'total' => $totalMontant]);
+
+        Session::flash('success', "📲 Relance automatique envoyée avec succès à {$count} client(s) pour un solde total de " . number_format($totalMontant, 0, ',', ' ') . " XOF.");
+        header('Location: ' . View::url('finance/factures'));
+        exit;
+    }
+
+    /**
      * Dépenses et règlements prestataires.
      */
     public function depensesIndex(): void
@@ -490,10 +521,7 @@ final class FinanceController extends BaseController
         // Charger prestataires
         $prestataires = $this->demandeRepo->getPrestataires(Auth::zoneRegionaleId());
 
-        $nav = $this->viewData();
-        $nav['activeModule'] = 'depenses';
-
-        $this->view('finance/depenses/index', $nav + [
+        $this->financeView('finance/depenses/index', 'Dépenses Prestataires', 'depenses', [
             'demandes' => $demandes,
             'prestataires' => $prestataires,
         ]);
@@ -657,10 +685,7 @@ final class FinanceController extends BaseController
 
         $agences = $this->db->query("SELECT id, name FROM company_sites WHERE is_active = 1")->fetchAll() ?: [];
 
-        $nav = $this->viewData();
-        $nav['activeModule'] = 'clotures';
-
-        $this->view('finance/clotures/index', $nav + [
+        $this->financeView('finance/clotures/index', 'Points de Caisse', 'clotures', [
             'reports' => $reports,
             'agences' => $agences,
             'activeReport' => $activeReport,
@@ -694,6 +719,20 @@ final class FinanceController extends BaseController
         // Calculer les totaux en temps réel
         $live = $this->etatRepo->computeTotalsForDay((int) $agenceId, $dateJour);
 
+        // Récupérer le comptage physique et l'explication éventuelle d'écart
+        $soldePhysique = isset($_POST['solde_physique_declare']) && $_POST['solde_physique_declare'] !== '' ? (float) $_POST['solde_physique_declare'] : null;
+        $explication = trim((string) ($_POST['explication_ecart'] ?? ''));
+
+        $soldeTheorique = $live['solde_caisse_agence_xof'];
+        $ecart = ($soldePhysique !== null) ? round($soldePhysique - $soldeTheorique, 2) : 0.0;
+
+        // Contrôle d'écart obligatoire
+        if (abs($ecart) > 0.01 && $explication === '') {
+            Session::flash('error', '🚨 Écart de caisse détecté (' . ($ecart > 0 ? '+' : '') . number_format($ecart, 0, ',', ' ') . ' XOF). Une explication détaillée est obligatoirement requise avant de pouvoir soumettre.');
+            header('Location: ' . View::url('finance/clotures'));
+            exit;
+        }
+
         if ($existing) {
             $existing->nbColisEnregistres = $live['nb_colis'];
             $existing->nbFacturesEmises = $live['nb_factures'];
@@ -705,6 +744,9 @@ final class FinanceController extends BaseController
             $existing->totalRestantDuEur = $live['total_restant_du_eur'];
             $existing->soldeCaisseAgenceXof = $live['solde_caisse_agence_xof'];
             $existing->soldeCaisseAgenceEur = $live['solde_caisse_agence_eur'];
+            $existing->soldePhysiqueDeclare = $soldePhysique;
+            $existing->ecartCaisse = $ecart;
+            $existing->explicationEcart = $explication !== '' ? $explication : null;
             $existing->statut = 'soumis';
             $existing->dateSoumission = date('Y-m-d H:i:s');
             $existing->chefAgenceId = Auth::id();
@@ -728,14 +770,17 @@ final class FinanceController extends BaseController
                 soldeCaisseAgenceXof: $live['solde_caisse_agence_xof'],
                 soldeCaisseAgenceEur: $live['solde_caisse_agence_eur'],
                 statut: 'soumis',
-                dateSoumission: date('Y-m-d H:i:s')
+                dateSoumission: date('Y-m-d H:i:s'),
+                soldePhysiqueDeclare: $soldePhysique,
+                ecartCaisse: $ecart,
+                explicationEcart: $explication !== '' ? $explication : null
             );
             $reportId = $this->etatRepo->create($etat);
         }
 
-        AuditLogService::log('submit_cash_report', 'lbp_etats_journaliers', $reportId, null, $live);
+        AuditLogService::log('submit_cash_report', 'lbp_etats_journaliers', $reportId, null, $live + ['ecart' => $ecart]);
 
-        Session::flash('success', 'Le point de caisse a été soumis et verrouillé avec succès.');
+        Session::flash('success', 'Le point de caisse avec rapprochement a été soumis et verrouillé avec succès.');
         header('Location: ' . View::url('finance/clotures'));
         exit;
     }
@@ -833,116 +878,10 @@ final class FinanceController extends BaseController
         $ecritures = $this->comptabiliteRepo->getEcritures($filters);
         $accounts = $this->comptabiliteRepo->getPlanComptable();
 
-        $nav = $this->viewData();
-        $nav['activeModule'] = 'comptabilite';
-
-        $this->view('finance/comptabilite/index', $nav + [
+        $this->financeView('finance/comptabilite/index', 'Comptabilité', 'comptabilite', [
             'ecritures' => $ecritures,
             'accounts' => $accounts,
             'filters' => $filters,
         ]);
-    }
-
-    /**
-     * Point Mensuel de toutes les agences.
-     */
-    public function reportingMensuel(): void
-    {
-        RoleMiddleware::check(['superviseur_regional', 'superviseur_general', 'caissiere_principale', 'dg', 'comptable']);
-
-        $month = $_GET['month'] ?? date('Y-m');
-        if (!preg_match('/^\d{4}-\d{2}$/', $month)) {
-            $month = date('Y-m');
-        }
-
-        // 1. Agréger les états journaliers consolidés/soumis pour ce mois
-        $stmt = $this->db->prepare("
-            SELECT 
-                agence_id,
-                SUM(nb_colis_enregistres) as monthly_colis,
-                SUM(nb_factures_emises) as monthly_factures,
-                SUM(total_facture_xof) as total_facture_xof,
-                SUM(total_facture_eur) as total_facture_eur,
-                SUM(total_encaisse_xof) as total_encaisse_xof,
-                SUM(total_encaisse_eur) as total_encaisse_eur,
-                SUM(total_restant_du_xof) as total_restant_du_xof,
-                SUM(total_restant_du_eur) as total_restant_du_eur
-            FROM lbp_etats_journaliers
-            WHERE DATE_FORMAT(date_jour, '%Y-%m') = :month
-            GROUP BY agence_id
-        ");
-        $stmt->execute(['month' => $month]);
-        $agencePoints = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
-
-        // 2. Agréger les dépenses prestataires payées ce mois
-        $stmt = $this->db->prepare("
-            SELECT 
-                prestataire_id,
-                SUM(CASE WHEN devise = 'XOF' THEN montant ELSE 0 END) as total_xof,
-                SUM(CASE WHEN devise = 'EUR' THEN montant ELSE 0 END) as total_eur
-            FROM lbp_demandes_paiement_prestataires
-            WHERE statut = 'payee' AND DATE_FORMAT(date_demande, '%Y-%m') = :month
-            GROUP BY prestataire_id
-        ");
-        $stmt->execute(['month' => $month]);
-        $payoutsRaw = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
-
-        $payoutsSummary = [];
-        foreach ($payoutsRaw as $row) {
-            $pId = (int)$row['prestataire_id'];
-            $st = $this->db->prepare("SELECT name, type FROM lbp_prestataires WHERE id = :id LIMIT 1");
-            $st->execute(['id' => $pId]);
-            $pData = $st->fetch(PDO::FETCH_ASSOC);
-            $payoutsSummary[] = [
-                'name' => $pData['name'] ?? ('Prestataire ID: ' . $pId),
-                'type' => $pData['type'] ?? '',
-                'total_xof' => (float)$row['total_xof'],
-                'total_eur' => (float)$row['total_eur']
-            ];
-        }
-
-        // 3. Charger les noms des agences
-        $sitesStmt = $this->db->query("SELECT id, name FROM company_sites");
-        $sites = $sitesStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
-        $siteNames = [];
-        foreach ($sites as $s) {
-            $siteNames[(int)$s['id']] = $s['name'];
-        }
-
-        $nav = $this->viewData();
-        $nav['activeModule'] = 'reporting_mensuel';
-
-        $this->view('finance/reporting/mensuel', $nav + [
-            'month' => $month,
-            'agencePoints' => $agencePoints,
-            'payoutsSummary' => $payoutsSummary,
-            'siteNames' => $siteNames,
-        ]);
-    }
-
-    /**
-     * Prépare le menu de navigation et les styles pour les pages Finance.
-     */
-    private function viewData(): array
-    {
-        return [
-            'pageTitle' => 'Gestion Financière',
-            'moduleName' => 'Finance',
-            'moduleCode' => 'FIN',
-            'moduleTheme' => [
-                'accent' => '#2563eb',
-                'accent2' => '#1d2b57',
-                'gradient' => 'linear-gradient(135deg, #1d2b57, #2563eb)',
-            ],
-            'moduleNavigation' => [
-                ['key' => 'dashboard', 'label' => 'Tableau de bord', 'icon' => 'DB', 'url' => '/finance/dashboard', 'available' => true],
-                ['key' => 'factures', 'label' => 'Factures Clients', 'icon' => 'FAC', 'url' => '/finance/factures', 'available' => true],
-                ['key' => 'clotures', 'label' => 'Points de Caisse', 'icon' => 'CLT', 'url' => '/finance/clotures', 'available' => true],
-                ['key' => 'depenses', 'label' => 'Dépenses Prestataires', 'icon' => 'DEP', 'url' => '/finance/depenses', 'available' => true],
-                ['key' => 'comptabilite', 'label' => 'Comptabilité', 'icon' => 'CPT', 'url' => '/finance/comptabilite', 'available' => Auth::hasAnyRole(['comptable', 'dg'])],
-                ['key' => 'reporting_mensuel', 'label' => 'Point Mensuel', 'icon' => 'RPM', 'url' => '/finance/reporting/mensuel', 'available' => true],
-            ],
-            'additionalStyles' => ['css/finea-ui.css', 'css/finance.css'],
-        ];
     }
 }

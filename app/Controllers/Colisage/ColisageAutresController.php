@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Controllers\Colisage;
 
 use App\Middleware\AuthMiddleware;
+use App\Helpers\Csrf;
+use App\Helpers\Session;
 use App\Models\Database;
 use App\Repositories\Colisage\ColisageRepository;
 use App\Services\Colisage\ColisageService;
@@ -134,6 +136,12 @@ final class ColisageAutresController extends ColisageBaseController
     {
         AuthMiddleware::check();
 
+        if (!Csrf::verify($_POST['_csrf_token'] ?? null)) {
+            Session::flash('error', 'Session expirée ou requête invalide (CSRF). Veuillez réessayer.');
+            header('Location: ' . View::url('colisage/autres/nouveau'));
+            exit;
+        }
+
         // Check if quick creating shipper or consignee
         $expediteurId = (int) ($_POST['expediteur_id'] ?? 0);
         if ($expediteurId === 0 && !empty($_POST['expediteur_name'])) {
@@ -158,22 +166,30 @@ final class ColisageAutresController extends ColisageBaseController
         }
 
         $marchandises = [];
-        if (isset($_POST['m_product_id']) && is_array($_POST['m_product_id'])) {
-            foreach ($_POST['m_product_id'] as $idx => $prodId) {
-                $customName = $_POST['m_custom_name'][$idx] ?? '';
-                if (!empty($prodId) || !empty($customName)) {
-                    $marchandises[] = [
-                        'product_id' => !empty($prodId) ? (int) $prodId : null,
-                        'custom_name' => $customName,
-                        'custom_price' => !empty($_POST['m_custom_price'][$idx]) ? (float) $_POST['m_custom_price'][$idx] : 0.0,
-                        'quantite' => (int) ($_POST['m_qty'][$idx] ?? 1),
-                        'nbre_colis' => (int) ($_POST['m_nbre_colis'][$idx] ?? 1),
-                        'emballage' => $_POST['m_emballage'][$idx] ?? null,
-                        'qte_emballage' => (int) ($_POST['m_qte_emballage'][$idx] ?? 1),
-                        'poids_unitaire' => (float) ($_POST['m_weight'][$idx] ?? 0.0),
-                        'prix_kg' => (float) ($_POST['m_prix_kg'][$idx] ?? 0.0),
-                    ];
-                }
+        for ($idx = 0; $idx < 100; $idx++) {
+            $prodIds = $_POST['m_product_id_' . $idx] ?? [];
+            if (!is_array($prodIds)) {
+                $prodIds = [$prodIds];
+            }
+            if (empty($prodIds) && !empty($_POST['m_product_id'][$idx])) {
+                $prodIds = [$_POST['m_product_id'][$idx]];
+            }
+            $prodIds = array_filter($prodIds);
+            
+            $customName = $_POST['m_custom_name'][$idx] ?? '';
+            if (!empty($prodIds) || !empty($customName)) {
+                $marchandises[] = [
+                    'product_id' => !empty($prodIds) ? (int) reset($prodIds) : null,
+                    'product_ids' => $prodIds,
+                    'custom_name' => $customName,
+                    'custom_price' => !empty($_POST['m_custom_price'][$idx]) ? (float) $_POST['m_custom_price'][$idx] : 0.0,
+                    'quantite' => (int) ($_POST['m_qty'][$idx] ?? 1),
+                    'nbre_colis' => (int) ($_POST['m_nbre_colis'][$idx] ?? 1),
+                    'emballage' => $_POST['m_emballage'][$idx] ?? null,
+                    'qte_emballage' => (int) ($_POST['m_qte_emballage'][$idx] ?? 1),
+                    'poids_unitaire' => (float) ($_POST['m_weight'][$idx] ?? 0.0),
+                    'prix_kg' => (float) ($_POST['m_prix_kg'][$idx] ?? 0.0),
+                ];
             }
         }
 

@@ -24,6 +24,9 @@ class EtatJournalier
         public ?int $consolideParId = null,
         public ?string $dateConsolidation = null,
         public ?string $createdAt = null,
-        public ?string $updatedAt = null
+        public ?string $updatedAt = null,
+        public ?float $soldePhysiqueDeclare = null,
+        public float $ecartCaisse = 0.0,
+        public ?string $explicationEcart = null
     ) {}
 }

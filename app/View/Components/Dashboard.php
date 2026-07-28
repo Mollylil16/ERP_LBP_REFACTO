@@ -9,6 +9,12 @@ use App\Helpers\ModuleIcon;
 
 final class Dashboard
 {
+    /** @param array<string,mixed> $attrs */
+    public static function header(string $title, string $subtitle = '', array $attrs = []): string
+    {
+        return \App\View\Components\Ui::pageHeader($title, $subtitle, $attrs);
+    }
+
     /** @param array<int,array{label:mixed,value:mixed,meta?:mixed,tone?:string}> $items */
     public static function kpis(array $items, array $attrs = []): string
     {
@@ -35,13 +41,15 @@ final class Dashboard
             . '</' . $tag . '>';
     }
 
-    /** @param array<int,array{label:string,hint:string,url:string}> $actions */
+    /** @param array<int,array{label:string,hint?:string,url?:string,href?:string}> $actions */
     public static function actions(array $actions): string
     {
         $html = '<div class="module-action-list">';
         foreach ($actions as $action) {
-            $html .= '<a href="' . View::url(ltrim($action['url'], '/')) . '"><strong>' . View::e($action['label'])
-                . '</strong><span>' . View::e($action['hint']) . '</span><small>Ouvrir</small></a>';
+            $urlPath = $action['url'] ?? $action['href'] ?? '';
+            $hint = $action['hint'] ?? '';
+            $html .= '<a href="' . View::url(ltrim((string) $urlPath, '/')) . '"><strong>' . View::e($action['label'])
+                . '</strong><span>' . View::e((string) $hint) . '</span><small>Ouvrir</small></a>';
         }
         return $html . '</div>';
     }

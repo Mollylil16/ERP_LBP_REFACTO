@@ -1,13 +1,15 @@
 <?php
 
+declare(strict_types=1);
+
 use App\View\Components\Dashboard;
+use App\View\Components\Crm;
+use App\View\Pages\Crm\DashboardPage;
 
-/** @var \App\Support\ViewBag $viewData */ $viewData ??= \App\Support\ViewBag::from(get_defined_vars());
-/** @var array<string, mixed> $dashboardModule */
-$module = $dashboardModule;
+/**
+ * @var array<string,mixed> $dashboardModule
+ * @var DashboardPage $page
+ */
 
-ob_start();
-echo Dashboard::businessModuleDashboard($module);
-$content = ob_get_clean();
-
-require BASE_PATH . '/views/layouts/module.php';
+// Dashboard module CRM with clickable KPI links ('href') Dashboard::kpis
+echo Crm::dashboardPage($dashboardModule);
