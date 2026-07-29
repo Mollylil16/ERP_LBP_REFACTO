@@ -34,6 +34,8 @@ $nav = [
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Manrope:wght@400;500;600;700;800&family=Montserrat:wght@400;500;600;700;800&family=Poppins:wght@400;500;600;700;800&family=Roboto:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/png" href="<?= View::asset('images/logo-lbp.png') ?>">
+    <link rel="shortcut icon" href="<?= View::asset('images/logo-lbp.png') ?>">
     <link href="<?= View::asset('css/app.css') ?>" rel="stylesheet">
     <link href="<?= View::asset('css/components.css') ?>" rel="stylesheet">
     <link href="<?= View::asset('css/finea-ui.css') ?>" rel="stylesheet">

@@ -21,6 +21,8 @@ $user = Auth::user();
     <title><?= View::e($title) ?> - <?= View::e($appConfig['name']) ?></title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
+    <link rel="icon" type="image/png" href="<?= View::asset('images/logo-lbp.png') ?>">
+    <link rel="shortcut icon" href="<?= View::asset('images/logo-lbp.png') ?>">
     <link href="<?= View::asset('css/app.css') ?>" rel="stylesheet">
     <link href="<?= View::asset('css/components.css') ?>" rel="stylesheet">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -40,10 +42,13 @@ $user = Auth::user();
     <div class="app-shell app-shell--portal">
         <div class="app-main app-main--portal">
             <header class="app-topbar app-topbar--portal">
-                <div>
-                    <span class="app-topbar-kicker">Portail ERP</span>
-                    <h1>Modules de gestion • ERP de transit</h1>
-                    <p class="app-topbar-subtitle">Accédez directement aux modules depuis une interface de type Odoo / Finea.</p>
+                <div class="app-topbar-brand">
+                    <img src="<?= View::asset('images/logo-lbp.png') ?>" alt="LBP CI" class="app-topbar-logo">
+                    <div>
+                        <span class="app-topbar-kicker">La Belle Porte CI</span>
+                        <h1>Modules de gestion • ERP de transit</h1>
+                        <p class="app-topbar-subtitle">Accédez directement aux modules depuis une interface de type Odoo / Finea.</p>
+                    </div>
                 </div>
 
                 <div class="app-profile">

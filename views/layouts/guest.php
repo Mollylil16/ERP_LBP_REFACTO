@@ -19,6 +19,8 @@ $errorMessage = Session::getFlash('error');
     <title><?= View::e($title) ?> - <?= View::e($appConfig['name']) ?></title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
+    <link rel="icon" type="image/png" href="<?= View::asset('images/logo-lbp.png') ?>">
+    <link rel="shortcut icon" href="<?= View::asset('images/logo-lbp.png') ?>">
     <link href="<?= View::asset('css/app.css') ?>" rel="stylesheet">
     <link href="<?= View::asset('css/components.css') ?>" rel="stylesheet">
     <link rel="preconnect" href="https://fonts.googleapis.com">

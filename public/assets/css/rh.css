@@ -247,23 +247,25 @@
 .rh-quick-list>span,
 .rh-quick-list>a {
 	display: flex;
-	justify-content: space-between;
-	gap: 12px;
-	padding: 12px;
-	border: 1px solid rgba(255, 255, 255, .1);
-	border-radius: 9px;
+	flex-direction: column;
+	gap: 6px;
+	padding: 14px 16px;
+	border: 1px solid rgba(255, 255, 255, .08);
+	border-radius: 12px;
 	color: #fff;
-	background: rgba(255, 255, 255, .05);
+	background: rgba(255, 255, 255, .04);
 	font-size: .84rem;
+	height: auto;
+	overflow: visible;
 }
 
 .rh-quick-list>a:hover {
-	background: rgba(255, 255, 255, .1);
+	background: rgba(255, 255, 255, .08);
 }
 
 .rh-quick-list small {
-	color: #aebbd8;
-	white-space: nowrap;
+	color: #94a3b8;
+	display: block;
 }
 
 .rh-recent-section {
@@ -2758,6 +2760,10 @@
 	border-radius: 12px !important;
 	text-decoration: none !important;
 	transition: all 0.2s ease !important;
+	height: auto !important;
+	min-height: 0 !important;
+	overflow: visible !important;
+	position: relative !important;
 }
 
 .quick-item:hover {

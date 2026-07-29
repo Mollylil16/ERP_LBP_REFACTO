@@ -11,18 +11,31 @@ ob_start();
 
 <section class="auth-page">
     <div class="auth-visual-panel">
+        <div class="auth-visual-logo">
+            <img src="<?= View::asset('images/logo-lbp.png') ?>" alt="La Belle Porte - LBP CI" class="auth-logo-img">
+        </div>
         <div class="auth-badge">ERP LBP Transit</div>
-        <h1>Centralisez vos opérations de transit.</h1>
-        <p>Suivez les activités, les documents et les équipes en temps réel depuis une interface moderne et sécurisée.</p>
+        <h1>La Belle Porte<br><span class="auth-hero-accent">Côte d'Ivoire</span></h1>
+        <p>Votre plateforme de gestion intégrée pour le transit, la logistique et les opérations douanières.</p>
 
         <ul class="auth-highlights">
-            <li>Tableau de bord temps réel</li>
-            <li>Alertes et suivi quotidien</li>
-            <li>Accès sécurisé</li>
+            <li>Gestion complète du transit et douane</li>
+            <li>Suivi des colis et expéditions en temps réel</li>
+            <li>Pilotage financier et ressources humaines</li>
+            <li>Tableau de bord multi-modules</li>
         </ul>
+
+        <div class="auth-visual-decoration" aria-hidden="true">
+            <div class="auth-decoration-ring"></div>
+            <div class="auth-decoration-ring auth-decoration-ring--2"></div>
+        </div>
     </div>
 
     <div class="auth-card">
+        <div class="auth-card-logo">
+            <img src="<?= View::asset('images/logo-lbp.png') ?>" alt="LBP" class="auth-card-logo-img">
+        </div>
+
         <div class="auth-header">
             <span class="auth-kicker">Connexion</span>
             <h2>Bienvenue sur votre espace ERP</h2>
@@ -35,7 +48,7 @@ ob_start();
             <?= Form::input('email', [
                 'label' => 'Identifiant ou email',
                 'type' => 'text',
-                'placeholder' => 'admin ou admin@erp-lbp.local',
+                'placeholder' => 'votre.email@labelleporte.ci',
                 'required' => true,
                 'autocomplete' => 'username',
             ]) ?>
@@ -51,12 +64,12 @@ ob_start();
             <?= Ui::button('Se connecter', [
                 'variant' => 'primary',
                 'type' => 'submit',
-                'class' => 'btn btn-primary',
+                'class' => 'btn btn-primary btn-login',
             ]) ?>
         </form>
 
         <div class="auth-footer">
-            <span>Accès sécurisé • ERP de transit • Version 1.0</span>
+            <span>© <?= date('Y') ?> La Belle Porte CI • ERP de transit • Version 1.0</span>
         </div>
     </div>
 </section>

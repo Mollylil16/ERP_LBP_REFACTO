@@ -31,6 +31,8 @@ $moduleIconKey = $moduleTheme['iconKey'] ?? strtolower((string) ($moduleCode ?? 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/png" href="<?= View::asset('images/logo-lbp.png') ?>">
+    <link rel="shortcut icon" href="<?= View::asset('images/logo-lbp.png') ?>">
     <link href="<?= View::asset('css/app.css') ?>" rel="stylesheet">
     <link href="<?= View::asset('css/components.css') ?>" rel="stylesheet">
     <?php foreach ($styles as $style): ?>
@@ -49,7 +51,7 @@ $moduleIconKey = $moduleTheme['iconKey'] ?? strtolower((string) ($moduleCode ?? 
     <div class="module-layout">
         <aside class="module-sidebar" id="moduleSidebar">
             <a class="module-brand" href="<?= View::url('selection_portail') ?>">
-                <span class="module-brand-mark module-brand-mark--icon"><?= ModuleIcon::svg((string) $moduleIconKey) ?></span>
+                <span class="module-brand-mark module-brand-mark--logo"><img src="<?= View::asset('images/logo-lbp.png') ?>" alt="LBP" class="module-brand-logo"></span>
                 <span>
                     <strong><?= View::e($moduleName ?? 'Module') ?></strong>
                     <small>ERP LBP Transit</small>
