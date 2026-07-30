@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+// Build cache key: 20260730_220500
 require_once __DIR__ . '/../bootstrap/app.php';
 
 use App\Controllers\Error\ErrorController;
