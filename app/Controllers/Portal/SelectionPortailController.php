@@ -60,6 +60,9 @@ final class SelectionPortailController extends BaseController
                 );
                 return Auth::canAny($requirements);
             }
+            if ($module['key'] === 'call-center') {
+                return Auth::can('call_center_view') || Auth::can('call_center_dg_view');
+            }
             return true;
         }));
 

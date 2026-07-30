@@ -255,6 +255,22 @@ final class ModuleDashboardService
                     ['label' => 'Performance sites', 'hint' => 'Comparer les agences et pays', 'url' => '/pilotage-dg/dashboard'],
                 ],
             ],
+            'call-center' => [
+                'slug' => 'call-center', 'label' => 'Call Center', 'code' => 'CAL', 'iconKey' => 'callcenter',
+                'accent' => '#0ea5e9', 'accent2' => '#0369a1', 'gradient' => 'linear-gradient(135deg, #0369a1, #0ea5e9)',
+                'description' => 'Suivi des appels clients, réclamations, assistance en temps réel et relances colis (WhatsApp/SMS/Appels).',
+                'kpis' => [
+                    ['label' => 'Total Appels', 'value' => '0', 'meta' => 'Appels passés et suivis'],
+                    ['label' => 'Litiges ouverts', 'value' => '0', 'meta' => 'Réclamations en cours de traitement'],
+                    ['label' => 'Satisfaction Moy.', 'value' => '0/5', 'meta' => 'Score de satisfaction client'],
+                    ['label' => 'Relances faites', 'value' => '0', 'meta' => 'Nombre total de relances colis'],
+                ],
+                'actions' => [
+                    ['label' => 'Tableau de bord', 'hint' => 'Consulter les KPIs et réclamations', 'url' => '/call-center/dashboard'],
+                    ['label' => 'Suivi & Relances', 'hint' => 'Notifier les clients par WhatsApp, SMS ou Appel', 'url' => '/call-center/suivi'],
+                    ['label' => 'Journal des appels', 'hint' => 'Historique des communications téléphoniques', 'url' => '/call-center/appels'],
+                ],
+            ],
         ];
 
     }
