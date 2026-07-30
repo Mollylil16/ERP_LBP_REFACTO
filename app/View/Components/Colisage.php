@@ -2439,7 +2439,14 @@ final class Colisage
     {
         $trackingNum = (string) ($colis['numero_tracking'] ?? '');
         $depAgency = (string) ($colis['agence_depart_name'] ?? 'Siège Abidjan');
-        $arrAgency = (string) ($colis['agence_arrivee_name'] ?? 'Agence Arrivée');
+        
+        $rawArrAgency = (string) ($colis['agence_arrivee_name'] ?? '');
+        if (!empty($rawArrAgency) && !in_array($rawArrAgency, ['Agence Arrivée', '—', 'N/A'], true)) {
+            $arrAgency = mb_strtoupper($rawArrAgency, 'UTF-8');
+        } else {
+            $arrAgency = 'BOBIGNY (FRANCE)';
+        }
+
         $destName = (string) ($colis['destinataire_name'] ?? 'Client Destinataire');
         $destPhone = (string) ($colis['destinataire_phone'] ?? '—');
         $destAddress = (string) ($colis['destinataire_address'] ?? '—');
@@ -2483,7 +2490,7 @@ final class Colisage
             . '.dest-label { font-size: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }'
             . '.dest-city { font-size: 18px; font-weight: 900; text-transform: uppercase; line-height: 1.1; }'
             . '.tracking-block { text-align: center; border: 2px solid #000; padding: 6px 4px; margin-top: 4px; background: #fff; }'
-            . '.tracking-code { font-size: 20px; font-weight: 900; letter-spacing: 1px; font-family: "Courier New", Courier, monospace; }'
+            . '.tracking-code { font-size: 22px; font-weight: 900; letter-spacing: 1.5px; font-family: "Arial Black", "Impact", "Inter", sans-serif; text-transform: uppercase; }'
             . '.barcode-container { display: flex; justify-content: center; margin: 4px 0; overflow: hidden; height: 42px; }'
             . '.middle-grid { display: flex; justify-content: center; align-items: center; margin-top: 4px; border: 2px solid #000; padding: 10px; min-height: 90px; }'
             . '.qr-box { text-align: center; }'
