@@ -24,6 +24,7 @@ use App\Repositories\Finance\DemandePaiementRepository;
 use App\Repositories\Finance\ComptabiliteRepository;
 use App\Services\Shared\AuditLogService;
 use App\Services\Shared\NotificationService;
+use App\Repositories\Shared\NotificationRepository;
 use PDO;
 
 final class FinanceController extends FinanceBaseController
@@ -44,7 +45,7 @@ final class FinanceController extends FinanceBaseController
         $this->etatRepo = new EtatJournalierRepository($this->db);
         $this->demandeRepo = new DemandePaiementRepository($this->db);
         $this->comptabiliteRepo = new ComptabiliteRepository($this->db);
-        $this->notifService = new NotificationService();
+        $this->notifService = new NotificationService(new NotificationRepository($this->db));
 
         // S'assurer que le plan comptable de base est seedé
         try {

@@ -80,6 +80,7 @@ $router->group('/rh', function (Router $router): void {
 
     // Feries
     $router->get('/feries', [RhHolidayController::class, 'index']);
+    $router->get('/planning-conges', [RhHolidayController::class, 'index']);
     $router->post('/feries', [RhHolidayController::class, 'store']);
     $router->post('/feries/toggle', [RhHolidayController::class, 'toggle']);
 
