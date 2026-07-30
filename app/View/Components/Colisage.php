@@ -871,10 +871,16 @@ final class Colisage
             $html .= '<tr><td colspan="3" style="text-align:center; padding:1.5rem; color:#64748b;">Aucun colis enregistré récemment.</td></tr>';
         } else {
             foreach ($rows as $p) {
+                $id = (int) ($p['id'] ?? 0);
+                $tracking = (string) ($p['numero_tracking'] ?? '—');
+                $expName = (string) ($p['expediteur_name'] ?? 'Client');
+                $statut = (string) ($p['statut'] ?? 'N/A');
+                $tone = (string) ($p['status_tone'] ?? 'neutral');
+
                 $html .= '<tr>'
-                    . '<td><strong><a href="' . View::url('colisage/parcels/' . $p['id']) . '">' . View::e($p['numero_tracking']) . '</a></strong></td>'
-                    . '<td>' . View::e($p['expediteur_name']) . '</td>'
-                    . '<td>' . Ui::badge($p['statut'], $p['status_tone']) . '</td>'
+                    . '<td><strong><a href="' . View::url('colisage/parcels/' . $id) . '">' . View::e($tracking) . '</a></strong></td>'
+                    . '<td>' . View::e($expName) . '</td>'
+                    . '<td>' . Ui::badge($statut, $tone) . '</td>'
                     . '</tr>';
             }
         }
@@ -892,10 +898,16 @@ final class Colisage
             $html .= '<tr><td colspan="3" style="text-align:center; padding:1.5rem; color:#64748b;">Aucun manifeste planifié.</td></tr>';
         } else {
             foreach ($rows as $e) {
+                $id = (int) ($e['id'] ?? 0);
+                $ref = (string) ($e['reference'] ?? '—');
+                $arrName = (string) ($e['agence_arrivee_name'] ?? 'Bobigny (France)');
+                $statut = (string) ($e['statut'] ?? 'N/A');
+                $tone = (string) ($e['status_tone'] ?? 'neutral');
+
                 $html .= '<tr>'
-                    . '<td><strong><a href="' . View::url('colisage/groupage/' . $e['id']) . '">' . View::e($e['reference']) . '</a></strong></td>'
-                    . '<td>' . View::e($e['agence_arrivee_name']) . '</td>'
-                    . '<td>' . Ui::badge($e['statut'], $e['status_tone']) . '</td>'
+                    . '<td><strong><a href="' . View::url('colisage/groupage/' . $id) . '">' . View::e($ref) . '</a></strong></td>'
+                    . '<td>' . View::e($arrName) . '</td>'
+                    . '<td>' . Ui::badge($statut, $tone) . '</td>'
                     . '</tr>';
             }
         }
