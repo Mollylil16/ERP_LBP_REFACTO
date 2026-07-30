@@ -16,7 +16,9 @@ $csrfToken = Csrf::token();
     <!-- Header -->
     <div class="rh-hero rh-hero-white" style="background: linear-gradient(135deg,#0284c7,#0369a1); color:#fff; border-radius:1rem; padding:2rem; margin-bottom:2rem;">
       <div style="display:flex;align-items:center;gap:1rem;">
-        <div style="width:56px;height:56px;border-radius:50%;background:rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;font-size:1.6rem;">📱</div>
+        <div style="width:56px;height:56px;border-radius:50%;background:rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;">
+          <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+        </div>
         <div>
           <div style="font-size:0.8rem;opacity:0.8;letter-spacing:0.08em;text-transform:uppercase;">CAL Suivi</div>
           <h1 style="font-size:1.6rem;font-weight:700;margin:0;">Suivi & Relances Clients</h1>
@@ -72,14 +74,14 @@ $csrfToken = Csrf::token();
                     
                     <div class="notif-tooltip" style="display:none;position:absolute;bottom:100%;left:50%;transform:translateX(-50%);margin-bottom:8px;background:#1e293b;color:#fff;padding:8px 12px;border-radius:.4rem;width:240px;box-shadow:0 4px 6px rgba(0,0,0,.15);z-index:100;font-weight:normal;line-height:1.4;">
                       <strong>Détails relance :</strong><br>
-                      📅 Le : <?= date('d/m/Y H:i', strtotime($c['notification_date'])) ?><br>
-                      👤 Agent : <?= htmlspecialchars((string)$c['agent_name']) ?><br>
+                      Le : <?= date('d/m/Y H:i', strtotime($c['notification_date'])) ?><br>
+                      Agent : <?= htmlspecialchars((string)$c['agent_name']) ?><br>
                       <?php if ($c['type_notification'] === 'appel'): ?>
-                        ⏱️ Durée : <?= $c['duree_appel'] ? sprintf("%02d:%02d", floor($c['duree_appel']/60), $c['duree_appel']%60) : '00:00' ?><br>
-                        ⭐ Score : <?= $c['satisfaction_score'] ? str_repeat('★', (int)$c['satisfaction_score']) : '—' ?><br>
+                        Durée : <?= $c['duree_appel'] ? sprintf("%02d:%02d", floor($c['duree_appel']/60), $c['duree_appel']%60) : '00:00' ?><br>
+                        Score : <?= $c['satisfaction_score'] ? $c['satisfaction_score'] . '/5' : '—' ?><br>
                       <?php endif; ?>
                       <?php if ($c['notification_desc']): ?>
-                        📝 Note : <?= htmlspecialchars((string)$c['notification_desc']) ?>
+                        Note : <?= htmlspecialchars((string)$c['notification_desc']) ?>
                       <?php endif; ?>
                     </div>
                   </div>
@@ -123,7 +125,9 @@ $csrfToken = Csrf::token();
 <!-- Modal Appel Interactif -->
 <div id="modal-timer-call" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;align-items:center;justify-content:center;">
   <div style="background:#fff;border-radius:1rem;padding:2rem;max-width:460px;width:90%;box-shadow:0 10px 25px rgba(0,0,0,.15);text-align:center;">
-    <div style="font-size:3rem;margin-bottom:1rem;">📞</div>
+    <div style="width:60px;height:60px;border-radius:50%;background:#e0f2fe;color:#0284c7;display:inline-flex;align-items:center;justify-content:center;margin-bottom:1rem;">
+      <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+    </div>
     <h3 style="margin:0;font-size:1.3rem;color:#1e293b;" id="call-client-name">Appel avec Client</h3>
     <p style="color:#64748b;font-size:.9rem;margin:.3rem 0 1.5rem;" id="call-client-phone">00 00 00 00</p>
     
@@ -147,7 +151,7 @@ $csrfToken = Csrf::token();
             <?php for ($i = 1; $i <= 5; $i++): ?>
               <label style="display:flex;flex-direction:column;align-items:center;gap:.2rem;cursor:pointer;">
                 <input type="radio" name="call_satisfaction" value="<?= $i ?>" style="accent-color:#0ea5e9;">
-                <span style="font-size:1.1rem;"><?= str_repeat('⭐', $i) ?></span>
+                <span style="font-size:.85rem;font-weight:600;"><?= $i ?>/5</span>
               </label>
             <?php endfor; ?>
           </div>

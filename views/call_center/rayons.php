@@ -16,17 +16,20 @@
     <!-- Header -->
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;flex-wrap:wrap;gap:1rem;">
       <div>
-        <h2 style="margin:0;font-size:1.3rem;">🏪 Vue Rayons — Temps Réel</h2>
+        <h2 style="margin:0;font-size:1.3rem;display:flex;align-items:center;gap:.5rem;">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#0ea5e9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          Vue Rayons — Temps Réel
+        </h2>
         <p style="color:#64748b;font-size:.85rem;margin:.3rem 0 0;">
           Dernière mise à jour : <strong><?= htmlspecialchars($dernierRefresh) ?></strong>
-          <span style="margin-left:.5rem;background:#fef9c3;color:#b45309;padding:.15rem .5rem;border-radius:999px;font-size:.75rem;">⟳ Auto-refresh 60s</span>
+          <span style="margin-left:.5rem;background:#fef9c3;color:#b45309;padding:.15rem .5rem;border-radius:999px;font-size:.75rem;">Auto-refresh 60s</span>
           <?php if ($colisHorsDelai > 0): ?>
-            <span style="margin-left:.5rem;background:#fef2f2;color:#ef4444;padding:.15rem .5rem;border-radius:999px;font-size:.75rem;font-weight:600;">⚠️ <?= $colisHorsDelai ?> colis hors délai</span>
+            <span style="margin-left:.5rem;background:#fef2f2;color:#ef4444;padding:.15rem .5rem;border-radius:999px;font-size:.75rem;font-weight:600;"><?= $colisHorsDelai ?> colis hors délai</span>
           <?php endif; ?>
         </p>
       </div>
       <div style="display:flex;gap:.75rem;align-items:center;">
-        <button onclick="location.reload()" style="background:#0ea5e9;color:#fff;border:none;border-radius:.5rem;padding:.5rem 1rem;cursor:pointer;font-weight:600;font-size:.85rem;">⟳ Rafraîchir</button>
+        <button onclick="location.reload()" style="background:#0ea5e9;color:#fff;border:none;border-radius:.5rem;padding:.5rem 1rem;cursor:pointer;font-weight:600;font-size:.85rem;">Rafraîchir</button>
       </div>
     </div>
 
@@ -45,7 +48,9 @@
 
     <?php if (empty($rayons)): ?>
       <div style="background:#fff;border-radius:.75rem;padding:3rem;text-align:center;color:#94a3b8;box-shadow:0 1px 4px rgba(0,0,0,.07);">
-        <div style="font-size:3rem;margin-bottom:1rem;">🏪</div>
+        <div style="margin-bottom:1rem;display:flex;justify-content:center;">
+          <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="#94a3b8" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        </div>
         <p>Aucun rayon configuré<?= $agenceId ? ' pour cette agence' : '' ?>.</p>
         <a href="/logistique/rayons" style="color:#0ea5e9;font-size:.9rem;">Configurer les rayons →</a>
       </div>

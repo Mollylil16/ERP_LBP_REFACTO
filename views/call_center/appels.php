@@ -30,7 +30,10 @@ $statutLabels = [
 <div id="modal-appel" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center;">
   <div style="background:#fff;border-radius:1rem;padding:2rem;max-width:520px;width:90%;max-height:90vh;overflow-y:auto;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;">
-      <h2 style="margin:0;font-size:1.2rem;">📞 Enregistrer un Appel</h2>
+      <h2 style="margin:0;font-size:1.2rem;display:flex;align-items:center;gap:.5rem;">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#0ea5e9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+        Enregistrer un Appel
+      </h2>
       <button onclick="document.getElementById('modal-appel').style.display='none'" style="background:none;border:none;font-size:1.5rem;cursor:pointer;color:#64748b;">×</button>
     </div>
     <form method="POST" action="/call-center/appels/enregistrer">
@@ -59,11 +62,11 @@ $statutLabels = [
             </select>
           </div>
           <div>
-            <label style="display:block;font-size:.85rem;font-weight:600;margin-bottom:.4rem;color:#374151;">Statut</label>
-            <select name="statut" style="width:100%;padding:.6rem .8rem;border:1px solid #d1d5db;border-radius:.5rem;font-size:.9rem;">
-              <option value="traite">Traité</option>
-              <option value="en_cours">En cours</option>
-              <option value="a_rappeler">À rappeler</option>
+            <label style="display:block;font-size:.85rem;font-weight:600;margin-bottom:.4rem;color:#374151;">Statut *</label>
+            <select name="statut" required style="width:100%;padding:.6rem .8rem;border:1px solid #d1d5db;border-radius:.5rem;font-size:.9rem;">
+              <?php foreach ($statutLabels as $k => $v): ?>
+                <option value="<?= $k ?>"><?= $v['label'] ?></option>
+              <?php endforeach; ?>
             </select>
           </div>
         </div>
@@ -73,7 +76,7 @@ $statutLabels = [
             <?php for ($i = 1; $i <= 5; $i++): ?>
               <label style="display:flex;flex-direction:column;align-items:center;gap:.2rem;cursor:pointer;">
                 <input type="radio" name="satisfaction_score" value="<?= $i ?>" style="accent-color:#f97316;">
-                <span style="font-size:1.2rem;"><?= str_repeat('⭐', $i) ?></span>
+                <span style="font-size:.85rem;font-weight:600;"><?= $i ?>/5</span>
               </label>
             <?php endfor; ?>
           </div>
@@ -97,11 +100,17 @@ $statutLabels = [
 
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;flex-wrap:wrap;gap:1rem;">
       <div>
-        <h2 style="margin:0;font-size:1.3rem;">📞 Journal des Appels</h2>
+        <h2 style="margin:0;font-size:1.3rem;display:flex;align-items:center;gap:.5rem;">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#0ea5e9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+          Journal des Appels
+        </h2>
         <p style="color:#64748b;font-size:.9rem;margin:.3rem 0 0;"><?= count($appels) ?> appel(s) sur la période sélectionnée</p>
       </div>
       <?php if ($canManage): ?>
-        <button onclick="document.getElementById('modal-appel').style.display='flex'" style="background:#0ea5e9;color:#fff;padding:.65rem 1.3rem;border:none;border-radius:.5rem;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:.4rem;">+ Enregistrer un Appel</button>
+        <button onclick="document.getElementById('modal-appel').style.display='flex'" style="background:#0ea5e9;color:#fff;padding:.65rem 1.3rem;border:none;border-radius:.5rem;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:.4rem;">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Enregistrer un Appel
+        </button>
       <?php endif; ?>
     </div>
 
