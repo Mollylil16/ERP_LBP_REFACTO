@@ -11,27 +11,31 @@ class View
 
     public static function asset(string $path): string
     {
-        $config = require BASE_PATH . '/config/app.php';
         $scriptName = $_SERVER['SCRIPT_NAME'] ?? '';
-
-        // When accessed via a VirtualHost whose DocumentRoot is public/,
-        // SCRIPT_NAME is /index.php → assets live at /assets/.
-        // When accessed via localhost/ERP_LBP_REFACTO (DocumentRoot = www/),
-        // SCRIPT_NAME is /ERP_LBP_REFACTO/index.php → assets live at
-        // /ERP_LBP_REFACTO/public/assets/.
         $docRoot = $_SERVER['DOCUMENT_ROOT'] ?? '';
+
         $servesFromPublic = str_contains($scriptName, '/public/')
-            || realpath($docRoot) === realpath(BASE_PATH . '/public');
+            || (realpath($docRoot) && realpath(BASE_PATH . '/public') && realpath($docRoot) === realpath(BASE_PATH . '/public'));
 
-        $prefix = $servesFromPublic ? '/assets/' : '/public/assets/';
+        $baseDir = rtrim(dirname($scriptName), '/\\');
+        if (str_ends_with($baseDir, '/public') || str_ends_with($baseDir, '\\public')) {
+            $baseDir = substr($baseDir, 0, -7);
+        }
 
-        return rtrim($config['url'], '/') . $prefix . ltrim($path, '/');
+        $prefix = $servesFromPublic ? ($baseDir . '/assets/') : ($baseDir . '/public/assets/');
+
+        return '/' . ltrim($prefix . ltrim($path, '/'), '/');
     }
 
     public static function url(string $path = ''): string
     {
-        $config = require BASE_PATH . '/config/app.php';
+        $scriptName = $_SERVER['SCRIPT_NAME'] ?? '';
+        $baseDir = rtrim(dirname($scriptName), '/\\');
+        if (str_ends_with($baseDir, '/public') || str_ends_with($baseDir, '\\public')) {
+            $baseDir = substr($baseDir, 0, -7);
+        }
 
-        return rtrim($config['url'], '/') . '/' . ltrim($path, '/');
+        $target = '/' . ltrim($baseDir . '/' . ltrim($path, '/'), '/');
+        return $target === '//' ? '/' : $target;
     }
 }
