@@ -414,6 +414,112 @@ final class CallCenterController extends BaseController
     }
 
     // ==========================================
+    // SUIVI ET RELANCES
+    // ==========================================
+
+    public function suivi(): void
+    {
+        AuthMiddleware::check();
+        if (!Auth::can('call_center_view') && !Auth::can('call_center_dg_view')) {
+            Session::flash('error', 'Accès refusé au module Call Center.');
+            $this->redirect('portal');
+        }
+
+        $search = trim((string) ($_GET['q'] ?? ''));
+        $params = [];
+
+        $sql = "
+            SELECT c.*, 
+                   exp.name as expediteur_nom, exp.phone as expediteur_tel,
+                   dest.name as destinataire_nom, dest.phone as destinataire_tel,
+                   n.type_notification, n.duree_appel, n.created_at as notification_date,
+                   n.description as notification_desc, n.satisfaction_score,
+                   u.full_name as agent_name
+            FROM lbp_colis c
+            LEFT JOIN lbp_clients exp ON c.expediteur_id = exp.id
+            LEFT JOIN lbp_clients dest ON c.destinataire_id = dest.id
+            LEFT JOIN (
+                SELECT n1.*
+                FROM lbp_call_center_notifications n1
+                INNER JOIN (
+                    SELECT colis_id, MAX(id) as max_id
+                    FROM lbp_call_center_notifications
+                    GROUP BY colis_id
+                ) n2 ON n1.id = n2.max_id
+            ) n ON c.id = n.colis_id
+            LEFT JOIN users u ON n.agent_id = u.id
+        ";
+
+        if ($search !== '') {
+            $sql .= " WHERE c.numero_tracking LIKE :search 
+                       OR dest.name LIKE :search 
+                       OR dest.phone LIKE :search 
+                       OR exp.name LIKE :search 
+                       OR exp.phone LIKE :search";
+            $params['search'] = '%' . $search . '%';
+        }
+
+        $sql .= " ORDER BY c.id DESC LIMIT 100";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        $colisList = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+        $this->callCenterView('call_center/suivi', 'Suivi & Relances Colis', 'suivi', [
+            'colisList' => $colisList,
+            'search'    => $search,
+            'canManage' => Auth::can('call_center_manage'),
+        ]);
+    }
+
+    public function notifier(): void
+    {
+        AuthMiddleware::check();
+        if (!Auth::can('call_center_manage')) {
+            header('Content-Type: application/json');
+            echo json_encode(['ok' => false, 'message' => 'Accès refusé.']);
+            return;
+        }
+
+        if (!Csrf::verify($_POST['_csrf_token'] ?? '')) {
+            header('Content-Type: application/json');
+            echo json_encode(['ok' => false, 'message' => 'Jeton CSRF invalide.']);
+            return;
+        }
+
+        $colisId = (int) ($_POST['colis_id'] ?? 0);
+        $clientId = (int) ($_POST['client_id'] ?? 0);
+        $typeNotif = trim((string) ($_POST['type_notification'] ?? ''));
+        $duree = isset($_POST['duree_appel']) && $_POST['duree_appel'] !== '' ? (int)$_POST['duree_appel'] : null;
+        $desc = isset($_POST['description']) && $_POST['description'] !== '' ? trim((string)$_POST['description']) : null;
+        $satisfaction = isset($_POST['satisfaction_score']) && $_POST['satisfaction_score'] !== '' ? (int)$_POST['satisfaction_score'] : null;
+        $agentId = Auth::user()['id'] ?? 0;
+
+        if ($colisId <= 0 || $clientId <= 0 || !in_array($typeNotif, ['whatsapp', 'sms', 'appel'], true)) {
+            header('Content-Type: application/json');
+            echo json_encode(['ok' => false, 'message' => 'Données invalides.']);
+            return;
+        }
+
+        $stmt = $this->db->prepare("
+            INSERT INTO lbp_call_center_notifications (colis_id, client_id, type_notification, duree_appel, description, satisfaction_score, agent_id, created_at)
+            VALUES (:colis_id, :client_id, :type_notification, :duree_appel, :description, :satisfaction_score, :agent_id, NOW())
+        ");
+        $ok = $stmt->execute([
+            'colis_id' => $colisId,
+            'client_id' => $clientId,
+            'type_notification' => $typeNotif,
+            'duree_appel' => $duree,
+            'description' => $desc,
+            'satisfaction_score' => $satisfaction,
+            'agent_id' => $agentId,
+        ]);
+
+        header('Content-Type: application/json');
+        echo json_encode(['ok' => $ok]);
+    }
+
+    // ==========================================
     // HELPER — Layout
     // ==========================================
 
@@ -422,6 +528,7 @@ final class CallCenterController extends BaseController
     {
         $navigation = [
             ['key' => 'dashboard', 'label' => 'Tableau de bord',       'icon' => 'DB',  'url' => '/call-center/dashboard',  'available' => true],
+            ['key' => 'suivi',     'label' => 'Suivi & Relances',      'icon' => 'SV',  'url' => '/call-center/suivi',      'available' => true],
             ['key' => 'appels',    'label' => 'Journal des Appels',     'icon' => 'APL', 'url' => '/call-center/appels',     'available' => true],
             ['key' => 'litiges',   'label' => 'Réclamations & Litiges', 'icon' => 'LTG', 'url' => '/call-center/litiges',    'available' => true],
             ['key' => 'rayons',    'label' => 'Vue Rayons Temps Réel',  'icon' => 'RYN', 'url' => '/call-center/rayons',     'available' => true],

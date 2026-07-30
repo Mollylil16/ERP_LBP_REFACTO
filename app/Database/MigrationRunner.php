@@ -2015,13 +2015,34 @@ class MigrationRunner
             ");
         }
 
+        // Table des notifications/suivis du call center
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS lbp_call_center_notifications (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                colis_id INT UNSIGNED NOT NULL,
+                client_id INT UNSIGNED NOT NULL,
+                type_notification ENUM('whatsapp', 'sms', 'appel') NOT NULL,
+                duree_appel INT UNSIGNED NULL COMMENT 'en secondes',
+                description TEXT NULL,
+                satisfaction_score TINYINT UNSIGNED NULL,
+                agent_id INT UNSIGNED NOT NULL,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                KEY idx_cc_notif_colis (colis_id),
+                KEY idx_cc_notif_client (client_id),
+                KEY idx_cc_notif_agent (agent_id),
+                CONSTRAINT fk_cc_notif_colis FOREIGN KEY (colis_id) REFERENCES lbp_colis(id) ON DELETE CASCADE,
+                CONSTRAINT fk_cc_notif_client FOREIGN KEY (client_id) REFERENCES lbp_clients(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+
         // Seed permissions Call Center si non existantes
-        $existing = $this->pdo->query("SELECT code FROM permission_entities WHERE code IN ('call_center_view', 'call_center_manage', 'rapports_agence')");
+        $existing = $this->pdo->query("SELECT code FROM permission_entities WHERE code IN ('call_center_view', 'call_center_manage', 'call_center_dg_view', 'rapports_agence')");
         $existingCodes = $existing ? $existing->fetchAll(PDO::FETCH_COLUMN) : [];
 
         $toInsert = [
             ['call_center_view', 'Call Center', 'Call Center - Consulter', 'Consulter le tableau de bord Call Center, les appels, les litiges et la vue des rayons en temps réel.', 240],
-            ['call_center_manage', 'Call Center', 'Call Center - Gérer', 'Enregistrer des appels, ouvrir et résoudre des litiges.', 250],
+            ['call_center_manage', 'Call Center', 'Call Center - Gérer', 'Enregistrer des appels, ouvrir et résoudre des litiges, envoyer des notifications.', 250],
+            ['call_center_dg_view', 'Call Center', 'Call Center - Vue DG / Superviseur', 'Accéder à l\'historique des notifications avec indicateurs rouge/vert pour le DG.', 260],
             ['rapports_agence', 'Colisage', 'Rapports journaliers par agence', 'Accéder aux rapports journaliers et mensuels par agence avec export CSV.', 235],
         ];
 

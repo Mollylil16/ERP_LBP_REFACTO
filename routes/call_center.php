@@ -22,4 +22,9 @@ $router->group('/call-center', function (Router $router): void {
 
     // Vue Rayons Temps Réel
     $router->get('/rayons', [CallCenterController::class, 'rayons']);
+
+    // Suivi et Relances (WhatsApp/SMS/Appels)
+    $router->get('/suivi', [CallCenterController::class, 'suivi']);
+    $router->post('/suivi/notifier', [CallCenterController::class, 'notifier']);
 });
+
