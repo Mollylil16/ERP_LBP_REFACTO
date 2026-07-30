@@ -1100,8 +1100,15 @@ a { text-decoration: none; }
 .module-logistique .finea-module-icon { background: linear-gradient(135deg, #047857, #22c55e); }
 .module-logistique .finea-module-glow { color: #10b981; }
 
-.module-employee .finea-module-icon { background: linear-gradient(135deg, #0369a1, #38bdf8); }
-.module-employee .finea-module-glow { color: #0ea5e9; }
+.module-employee .finea-module-icon,
+.module-espace-employe .finea-module-icon { background: linear-gradient(135deg, #0369a1, #38bdf8); }
+.module-employee .finea-module-glow,
+.module-espace-employe .finea-module-glow { color: #0ea5e9; }
+
+.module-call-center .finea-module-icon,
+.module-callcenter .finea-module-icon { background: linear-gradient(135deg, #0284c7, #0ea5e9); }
+.module-call-center .finea-module-glow,
+.module-callcenter .finea-module-glow { color: #0ea5e9; }
 
 .module-crm .finea-module-icon { background: linear-gradient(135deg, #9d174d, #ec4899); }
 .module-crm .finea-module-glow { color: #ec4899; }

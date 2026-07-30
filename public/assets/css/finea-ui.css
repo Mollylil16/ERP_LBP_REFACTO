@@ -796,11 +796,23 @@ textarea.finea-input {
   line-height: 1.55;
 }
 
-.module-employee .finea-module-icon {
+.module-employee .finea-module-icon,
+.module-espace-employe .finea-module-icon {
   background: linear-gradient(135deg, #0284c7, #0ea5e9);
 }
 
-.module-employee .finea-module-glow {
+.module-employee .finea-module-glow,
+.module-espace-employe .finea-module-glow {
+  color: #0ea5e9;
+}
+
+.module-call-center .finea-module-icon,
+.module-callcenter .finea-module-icon {
+  background: linear-gradient(135deg, #0284c7, #0ea5e9);
+}
+
+.module-call-center .finea-module-glow,
+.module-callcenter .finea-module-glow {
   color: #0ea5e9;
 }
 
