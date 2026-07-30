@@ -2165,10 +2165,7 @@ final class Colisage
             . '</div></div>';
 
         return '<div class="finea-section-card" style="background:rgba(34,197,94,0.06); border:1px solid rgba(34,197,94,0.15);">' . $deliveredHtml . '</div>';
-            return Ui::section('Retrait du Colis', $form);
-        }
 
-        return Ui::section('Statut du Colis', '<p style="color:#16a34a; font-weight:700;">Colis déjà livré/retiré.</p>');
     }
 
     public static function parcelFooter(array $colis): string

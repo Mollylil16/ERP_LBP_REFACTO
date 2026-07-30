@@ -30,6 +30,9 @@ Thumbs.db
 # WAMP
 wamp64.conf
 
+# Scratch & temporary artifacts
+scratch/
+
 # Uploads futurs
 /public/uploads/*
 !/public/uploads/.gitkeep
