@@ -113,7 +113,7 @@ final class Crm
                 $gardiennageBadge = Logistique::colisGardiennageBadge($fraisGardiennage);
 
                 $detailsHtml = '<div class="rh-dashboard-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">'
-                    . '<div><p class="rh-eyebrow">Position en Rayon</p><h4>📍 ' . $rayonText . '</h4></div>'
+                    . '<div><p class="rh-eyebrow">Position en Rayon</p><h4>' . $rayonText . '</h4></div>'
                     . '<div><p class="rh-eyebrow">Destinataire</p><h4>' . View::e($colis['destinataire_nom'] ?? 'Client') . '</h4><small>' . View::e($colis['destinataire_phone'] ?? '') . '</small></div>'
                     . '<div><p class="rh-eyebrow">Arrivée en agence</p><h4>' . ($colis['date_arrivee_agence'] ? date('d/m/Y H:i', strtotime($colis['date_arrivee_agence'])) : 'Non renseignée') . '</h4></div>'
                     . '<div><p class="rh-eyebrow">Gardiennage</p><h4>' . $gardiennageBadge . '</h4></div>'

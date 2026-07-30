@@ -201,7 +201,7 @@ final class Colisage
             ], 'XOF', ['label' => 'Devise'])
             . Form::input('valeur_declaree', ['label' => 'Valeur déclarée (assurance/douane)', 'type' => 'number', 'step' => '1'])
             . '<div style="grid-column: span 3; background: #f0fdf4; border: 1px solid #bbf7d0; padding: 0.8rem 1.2rem; border-radius: 8px; margin-top: 0.5rem;">'
-            . Form::checkbox('assurance_souscrite', '1', false, ['label' => '🛡️ Souscrire à l\'Assurance Colis (+2% de la valeur déclarée — Couverture jusqu\'à 100% de la valeur)'])
+            . Form::checkbox('assurance_souscrite', '1', false, ['label' => 'Souscrire à l\'Assurance Colis (+2% de la valeur déclarée — Couverture jusqu\'à 100% de la valeur)'])
             . '</div></div></div>'
             . '<div class="rh-form-step-card">'
             . '<div class="rh-step-badge">ÉTAPE 3</div>'
@@ -430,8 +430,8 @@ final class Colisage
             . Form::hidden('_csrf_token', \App\Helpers\Csrf::token())
             . '<div style="display:grid; grid-template-columns:1fr 1fr; gap:1.5rem;">'
             . Form::select('type_transport', [
-                ['value' => 'AÉRIEN', 'label' => '✈️ AÉRIEN (Fret aérien rapide)'],
-                ['value' => 'MARITIME', 'label' => '🚢 MARITIME (Fret maritime conteneur)'],
+                ['value' => 'AÉRIEN', 'label' => 'AÉRIEN (Fret aérien rapide)'],
+                ['value' => 'MARITIME', 'label' => 'MARITIME (Fret maritime conteneur)'],
                 ['value' => 'TERRESTRE', 'label' => 'Terrestre (Route / Flotte livreurs)'],
             ], 'AÉRIEN', ['label' => 'Type de transport', 'required' => true])
             . '<div></div>'
@@ -490,7 +490,7 @@ final class Colisage
                 'class' => 'rh-hero-white',
                 'actions' => [
                     Ui::badge($exp['statut'], $badgeTone, ['class' => 'finea-badge--large']),
-                    Ui::button('📄 Manifeste de Douane (MAWB)', [
+                    Ui::button('Manifeste de Douane (MAWB)', [
                         'href' => 'colisage/groupage/' . $exp['id'] . '/manifeste',
                         'variant' => 'accent',
                         'target' => '_blank'
@@ -988,10 +988,10 @@ final class Colisage
             $rows = '';
             foreach ($page->parcels as $p) {
                 $typeLabel = match($p['type_expediteur']) {
-                    'export_aerien' => '✈️ Export Aérien',
-                    'export_maritime' => '🚢 Export Maritime',
-                    'import_aerien' => '✈️ Import Aérien',
-                    'import_maritime' => '🚢 Import Maritime',
+                    'export_aerien' => 'Export Aérien',
+                    'export_maritime' => 'Export Maritime',
+                    'import_aerien' => 'Import Aérien',
+                    'import_maritime' => 'Import Maritime',
                     default => $p['type_expediteur']
                 };
 
@@ -1106,10 +1106,10 @@ final class Colisage
 
         // Details du Colis
         $fretOpts = [
-            ['value' => 'export_aerien', 'label' => '✈️ Export Aérien'],
-            ['value' => 'export_maritime', 'label' => '🚢 Export Maritime'],
-            ['value' => 'import_aerien', 'label' => '✈️ Import Aérien'],
-            ['value' => 'import_maritime', 'label' => '🚢 Import Maritime'],
+            ['value' => 'export_aerien', 'label' => 'Export Aérien'],
+            ['value' => 'export_maritime', 'label' => 'Export Maritime'],
+            ['value' => 'import_aerien', 'label' => 'Import Aérien'],
+            ['value' => 'import_maritime', 'label' => 'Import Maritime'],
         ];
         $typeExp = Form::select('type_expediteur', $fretOpts, 'export_aerien', ['label' => 'Catégorie de Fret']);
         $weight = Form::input('poids_total', ['label' => 'Poids total (kg)', 'type' => 'number', 'step' => '0.01']);
@@ -1402,9 +1402,9 @@ final class Colisage
                 'actions' => [
                     Ui::qrCodeBadge((string) $colis['numero_tracking'], 60),
                     Ui::badge($colis['statut'], $badgeTone),
-                    '<form method="post" action="' . View::url('colisage/parcels/' . $colis['id'] . '/facturer') . '" style="display:inline;">' . Ui::button('⚡ Facturer (1-Clic)', ['type' => 'submit', 'variant' => 'accent']) . '</form>',
-                    Ui::button('🧾 Facture', ['href' => 'colisage/parcels/' . $colis['id'] . '/facture', 'variant' => 'secondary', 'target' => '_blank']),
-                    Ui::button('🏷️ Étiquette Thermique', ['href' => 'colisage/parcels/' . $colis['id'] . '/etiquette', 'variant' => 'secondary', 'target' => '_blank']),
+                    '<form method="post" action="' . View::url('colisage/parcels/' . $colis['id'] . '/facturer') . '" style="display:inline;">' . Ui::button('Facturer (1-Clic)', ['type' => 'submit', 'variant' => 'accent']) . '</form>',
+                    Ui::button('Facture', ['href' => 'colisage/parcels/' . $colis['id'] . '/facture', 'variant' => 'secondary', 'target' => '_blank']),
+                    Ui::button('Étiquette Thermique', ['href' => 'colisage/parcels/' . $colis['id'] . '/etiquette', 'variant' => 'secondary', 'target' => '_blank']),
                     Ui::button('Retour à la liste', ['href' => 'colisage/parcels', 'variant' => 'secondary'])
                 ]
             ]
@@ -1415,7 +1415,7 @@ final class Colisage
             . '<p><strong>N° Tracking :</strong> ' . View::e($colis['numero_tracking']) . '</p>'
             . '<p><strong>Poids total :</strong> ' . View::e((string) $colis['poids_total']) . ' kg</p>'
             . '<p><strong>Valeur déclarée :</strong> ' . View::e(number_format((float) $colis['valeur_declaree'], 0, ',', ' ')) . ' ' . View::e($colis['devise']) . '</p>'
-            . '<p><strong>Statut Assurance :</strong> ' . (!empty($colis['assurance_souscrite']) ? '<span style="background:#dcfce7; color:#15803d; font-weight:700; padding:2px 8px; border-radius:4px;">🛡️ ASSURÉ (Prime: ' . number_format((float)($colis['montant_assurance'] ?? 0), 0, ',', ' ') . ' FCFA - Couverture: ' . number_format((float)$colis['valeur_declaree'], 0, ',', ' ') . ' FCFA)</span>' : '<span style="background:#f1f5f9; color:#64748b; font-weight:600; padding:2px 8px; border-radius:4px;">Non souscrite</span>') . '</p>'
+            . '<p><strong>Statut Assurance :</strong> ' . (!empty($colis['assurance_souscrite']) ? '<span style="background:#dcfce7; color:#15803d; font-weight:700; padding:2px 8px; border-radius:4px;">ASSURÉ (Prime: ' . number_format((float)($colis['montant_assurance'] ?? 0), 0, ',', ' ') . ' FCFA - Couverture: ' . number_format((float)$colis['valeur_declaree'], 0, ',', ' ') . ' FCFA)</span>' : '<span style="background:#f1f5f9; color:#64748b; font-weight:600; padding:2px 8px; border-radius:4px;">Non souscrite</span>') . '</p>'
             . '<p><strong>Catégorie Fret :</strong> ' . View::e(str_replace('_', ' ', $colis['type_expediteur'])) . '</p>'
             . '</div>'
             . '<div>'
@@ -1612,13 +1612,13 @@ final class Colisage
         } else {
             foreach ($data as $c) {
                 $channel = match ($c['type_expediteur']) {
-                    'export_aerien' => '✈️ Export Aérien',
-                    'export_maritime' => '🚢 Export Maritime',
-                    'import_aerien' => '✈️ Import Aérien',
-                    'import_maritime' => '🚢 Import Maritime',
-                    'colis_rapide_export' => '⚡ Colis Rapide Export',
-                    'colis_rapide_import' => '⚡ Colis Rapide Import',
-                    'dhl' => '📦 DHL Express',
+                    'export_aerien' => 'Export Aérien',
+                    'export_maritime' => 'Export Maritime',
+                    'import_aerien' => 'Import Aérien',
+                    'import_maritime' => 'Import Maritime',
+                    'colis_rapide_export' => 'Colis Rapide Export',
+                    'colis_rapide_import' => 'Colis Rapide Import',
+                    'dhl' => 'DHL Express',
                     default => $c['type_expediteur']
                 };
                 $rows .= '<tr>'
@@ -1721,7 +1721,7 @@ final class Colisage
         }
 
         return '<div class="finea-section-card">'
-            . '<h3 class="rh-step-title" style="margin-bottom:1rem; border:none; padding-bottom:0; color:#b45309;">⚠️ Factures Impayées / En cours</h3>'
+            . '<h3 class="rh-step-title" style="margin-bottom:1rem; border:none; padding-bottom:0; color:#b45309;">Factures Impayées / En cours</h3>'
             . '<div class="finea-table-wrapper"><table class="finea-table"><thead>'
             . '<tr style="background:#f8fafc;"><th>Agence</th><th style="text-align:right;">Montant Dû</th></tr>'
             . '</thead><tbody>' . $rows . '</tbody></table></div></div>';
@@ -1735,9 +1735,9 @@ final class Colisage
         } else {
             foreach ($expeditions as $e) {
                 $mode = match ($e['type_transport']) {
-                    'AÉRIEN' => '✈️ Aérien',
-                    'MARITIME' => '🚢 Maritime',
-                    'TERRESTRE' => '🚛 Route',
+                    'AÉRIEN' => 'Aérien',
+                    'MARITIME' => 'Maritime',
+                    'TERRESTRE' => 'Route',
                     default => $e['type_transport']
                 };
                 $rows .= '<tr>'
@@ -1957,7 +1957,7 @@ final class Colisage
         }
 
         return '<section class="finea-section-card" style="margin-top:2rem;">'
-            . '<div class="finea-section-heading"><h2 class="finea-section-title">📋 Informations du module</h2></div>'
+            . '<div class="finea-section-heading"><h2 class="finea-section-title">Informations du module</h2></div>'
             . '<div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:1.5rem;">' . $cards . '</div></section>';
     }
 
@@ -1966,7 +1966,7 @@ final class Colisage
     public static function groupageDetail(array $exp): string
     {
         $icon = match ($exp['type_transport']) {
-            'AÉRIEN' => '✈️ AÉRIEN', 'MARITIME' => '🚢 MARITIME', 'TERRESTRE' => '🚛 TERRESTRE', default => $exp['type_transport']
+            'AÉRIEN' => 'AÉRIEN', 'MARITIME' => 'MARITIME', 'TERRESTRE' => 'TERRESTRE', default => $exp['type_transport']
         };
         $assignedParcels = $exp['parcels'] ?? [];
 
@@ -1987,10 +1987,10 @@ final class Colisage
         if ($exp['statut'] === 'BROUILLON') {
             $disabled = empty($assignedParcels) ? 'disabled' : '';
             $workflowBtn = '<form method="post" action="' . View::url('colisage/groupage/' . $exp['id'] . '/demarrer') . '" class="js-protect-form">'
-                . '<button type="submit" class="finea-button finea-button--accent" ' . $disabled . ' data-label="✈️ Démarrer l\'expédition (Départ du voyage)">✈️ Démarrer l\'expédition (Départ du voyage)</button></form>';
+                . '<button type="submit" class="finea-button finea-button--accent" ' . $disabled . ' data-label="Démarrer l\'expédition (Départ du voyage)">Démarrer l\'expédition (Départ du voyage)</button></form>';
         } elseif ($exp['statut'] === 'EN_TRANSIT') {
             $workflowBtn = '<form method="post" action="' . View::url('colisage/groupage/' . $exp['id'] . '/arriver') . '" class="js-protect-form">'
-                . '<button type="submit" class="finea-button finea-button--success" data-label="🏁 Marquer comme Arrivé à Destination (Dégroupage)">🏁 Marquer comme Arrivé à Destination (Dégroupage)</button></form>';
+                . '<button type="submit" class="finea-button finea-button--success" data-label="Marquer comme Arrivé à Destination (Dégroupage)">Marquer comme Arrivé à Destination (Dégroupage)</button></form>';
         } else {
             $workflowBtn = '<div style="color:#16a34a; font-weight:600; display:flex; align-items:center; gap:0.5rem;">'
                 . '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>'
@@ -2153,6 +2153,10 @@ final class Colisage
             . '</div></div>';
 
         return '<div class="finea-section-card" style="background:rgba(34,197,94,0.06); border:1px solid rgba(34,197,94,0.15);">' . $deliveredHtml . '</div>';
+            return Ui::section('Retrait du Colis', $form);
+        }
+
+        return Ui::section('Statut du Colis', '<p style="color:#16a34a; font-weight:700;">Colis déjà livré/retiré.</p>');
     }
 
     public static function parcelFooter(array $colis): string
@@ -2187,21 +2191,20 @@ final class Colisage
                 'value' => (string) ($filters['q'] ?? ''),
                 'placeholder' => 'N° Tracking, expéditeur, destinataire'
             ])
-            . Form::selectSearch('statut', 'Statut', [
+            . Form::selectSearch('statut', 'Statut du Colis', [
                 ['value' => '', 'label' => 'Tous les statuts'],
-                ['value' => 'RÉCEPTIONNÉ', 'label' => 'Réceptionné'],
                 ['value' => 'EN_PRÉPARATION', 'label' => 'En préparation'],
+                ['value' => 'RÉCEPTIONNÉ', 'label' => 'Réceptionné'],
                 ['value' => 'EN_TRANSIT', 'label' => 'En transit'],
-                ['value' => 'ARRIVÉ', 'label' => 'Arrivé'],
-                ['value' => 'LIVRÉ', 'label' => 'Livré'],
-                ['value' => 'RETIRÉ', 'label' => 'Retiré']
+                ['value' => 'ARRIVÉ', 'label' => 'Arrivé en agence'],
+                ['value' => 'RETIRÉ', 'label' => 'Retiré par le client']
             ], $filters['statut'] ?? '')
             . Form::selectSearch('type_expediteur', 'Catégorie Fret', [
                 ['value' => '', 'label' => 'Toutes les catégories'],
-                ['value' => 'export_aerien', 'label' => '✈️ Export Aérien'],
-                ['value' => 'export_maritime', 'label' => '🚢 Export Maritime'],
-                ['value' => 'import_aerien', 'label' => '✈️ Import Aérien'],
-                ['value' => 'import_maritime', 'label' => '🚢 Import Maritime']
+                ['value' => 'export_aerien', 'label' => 'Export Aérien'],
+                ['value' => 'export_maritime', 'label' => 'Export Maritime'],
+                ['value' => 'import_aerien', 'label' => 'Import Aérien'],
+                ['value' => 'import_maritime', 'label' => 'Import Maritime']
             ], $filters['type_expediteur'] ?? '')
             . '</div>'
             . '<div class="rh-personnel-filter-actions">'
@@ -2461,8 +2464,8 @@ final class Colisage
         }
 
         $rayonBanner = !empty($rayonCode)
-            ? '📍 RAYON : ' . View::e($rayonCode)
-            : '📍 EN TRANSIT / EN ATTENTE RAYON';
+            ? 'RAYON : ' . View::e($rayonCode)
+            : 'EN TRANSIT / EN ATTENTE RAYON';
 
         return '<!DOCTYPE html>'
             . '<html lang="fr">'
@@ -2497,7 +2500,7 @@ final class Colisage
             . '@media print { body { background: #ffffff; padding: 0; } .etiquette-card { border: 1px solid #000; box-shadow: none; width: 100mm; height: 150mm; } .print-btn-bar { display: none; } }'
             . '</style></head>'
             . '<body>'
-            . '<div class="print-btn-bar"><button class="print-btn" onclick="window.print()">🖨️ Imprimer l\'Étiquette (4x6")</button></div>'
+            . '<div class="print-btn-bar"><button class="print-btn" onclick="window.print()">Imprimer l\'Étiquette (4x6")</button></div>'
             . '<div class="etiquette-card">'
             . '<div class="etiquette-header"><div><div class="logo-title">LBP LOGISTICS</div><div class="logo-subtitle">Fret & Colisage International</div></div><div class="trafic-badge">' . View::e($trafic) . '</div></div>'
             . '<div class="dest-banner"><div class="dest-label">DESTINATION :</div><div class="dest-city">' . View::e($arrAgency) . '</div></div>'

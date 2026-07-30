@@ -204,11 +204,11 @@ final class Logistique
             . Form::input('code_rayon', ['label' => 'Code du Rayon (Ex: RAY-A1)', 'placeholder' => 'RAY-A1', 'required' => true])
             . Form::input('nom_rayon', ['label' => 'Nom descriptif', 'placeholder' => 'Rayon A1 - Colis Légers', 'required' => true])
             . Form::selectSearch('type_rayon', [
-                ['value' => 'STANDARD', 'label' => '📦 STANDARD (Colis standards)'],
-                ['value' => 'EXPRESS', 'label' => '⚡ EXPRESS (DHL / Colis Rapides)'],
-                ['value' => 'CARGO_LOURD', 'label' => '🐘 CARGO LOURD (>30kg / Maritime)'],
-                ['value' => 'FRAGILE', 'label' => '🍷 FRAGILE (Manipulation délicate)'],
-                ['value' => 'SECU_VALEUR', 'label' => '🔒 SÉCURISÉ / VALEUR (Colis Assurés / Haute Valeur)'],
+                ['value' => 'STANDARD', 'label' => 'STANDARD (Colis standards)'],
+                ['value' => 'EXPRESS', 'label' => 'EXPRESS (DHL / Colis Rapides)'],
+                ['value' => 'CARGO_LOURD', 'label' => 'CARGO LOURD (>30kg / Maritime)'],
+                ['value' => 'FRAGILE', 'label' => 'FRAGILE (Manipulation délicate)'],
+                ['value' => 'SECU_VALEUR', 'label' => 'SÉCURISÉ / VALEUR (Colis Assurés / Haute Valeur)'],
             ], 'STANDARD', ['label' => 'Typologie du Rayon (Affectation Intelligente)', 'required' => true])
             . Form::input('poids_max_autorise', ['label' => 'Poids max. autorisé par colis (kg - optionnel)', 'type' => 'number', 'step' => '0.1', 'placeholder' => 'Ex: 50.0'])
             . Form::input('capacite_max', ['label' => 'Capacité maximale (nombre de colis)', 'type' => 'number', 'value' => '50', 'required' => true])

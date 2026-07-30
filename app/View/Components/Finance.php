@@ -523,7 +523,7 @@ final class Finance
                 . Form::select('canal', [
                     ['value' => 'sms', 'label' => '💬 SMS Pro'],
                     ['value' => 'whatsapp', 'label' => '🟢 WhatsApp Business'],
-                    ['value' => 'email', 'label' => '📧 Courriel (Email)'],
+                    ['value' => 'email', 'label' => 'Courriel (Email)'],
                 ], 'whatsapp', ['required' => true])
                 . Ui::button('Envoyer le Rappel de Solde', ['type' => 'submit', 'variant' => 'primary'])
                 . '</div>'
@@ -709,7 +709,7 @@ final class Finance
 
                 if ($statut === 'brouillon') {
                     $submissionForm .= '<form method="post" action="' . View::url('finance/clotures/soumettre') . '" class="js-protect-form" style="background:#fff; border:1px solid #cbd5e1; padding:1.25rem; border-radius:8px; margin-top:1rem;">'
-                        . '<h4 style="margin-bottom:0.75rem;">⚖️ Rapprochement Financier & Comptage Physique</h4>'
+                        . '<h4 style="margin-bottom:0.75rem;">Rapprochement Financier & Comptage Physique</h4>'
                         . '<div style="display:grid; grid-template-columns: 1fr 1fr; gap:1.25rem;">'
                         . Form::input('solde_physique_declare', ['label' => 'Solde Physique Compté (Billets + Pièces - XOF)', 'type' => 'number', 'step' => '1', 'placeholder' => 'Saisir le montant exact compté en caisse', 'required' => true, 'id' => 'solde_physique_input'])
                         . '<div style="background:#f1f5f9; padding:0.8rem; border-radius:8px; display:flex; flex-direction:column; justify-content:center;">'

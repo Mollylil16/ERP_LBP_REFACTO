@@ -394,7 +394,7 @@ $operatorName = \App\Helpers\Auth::user() ? \App\Helpers\Auth::user()->fullName 
 <body>
 
     <div class="btn-print-container">
-        <button class="btn-print" onclick="window.print()">🖨️ Imprimer la Facture</button>
+        <button class="btn-print" onclick="window.print()">Imprimer la Facture</button>
     </div>
 
     <div class="facture-container">

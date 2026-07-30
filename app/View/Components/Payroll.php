@@ -1032,7 +1032,7 @@ document.addEventListener("DOMContentLoaded", function() {
         $closedBanner = '';
         if ($isClosed) {
             $closedBanner = '<div style="margin: 15px 0; padding: 12px; background: rgba(0,0,0,0.03); border-radius: 4px; font-size: 14px; color: var(--finea-text-muted);">'
-                . '🔒 Cette periode de paie est cloturee. Les saisies et les recalculs sont verrouilles.'
+                . 'Cette periode de paie est cloturee. Les saisies et les recalculs sont verrouilles.'
                 . '</div>';
         }
 

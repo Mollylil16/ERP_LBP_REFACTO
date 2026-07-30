@@ -66,8 +66,9 @@
 
       <?php foreach ($rayonsParAgence as $agenceNom => $agenceRayons): ?>
         <div style="margin-bottom:2rem;">
-          <h3 style="font-size:1rem;font-weight:700;color:#1e293b;margin:0 0 1rem;padding-bottom:.5rem;border-bottom:2px solid #e2e8f0;">
-            🏢 <?= htmlspecialchars($agenceNom) ?>
+          <h3 style="font-size:1rem;font-weight:700;color:#1e293b;margin:0 0 1rem;padding-bottom:.5rem;border-bottom:2px solid #e2e8f0;display:flex;align-items:center;gap:.5rem;">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#0ea5e9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M9 8h1"/><path d="M9 12h1"/><path d="M9 16h1"/><path d="M14 8h1"/><path d="M14 12h1"/><path d="M14 16h1"/><path d="M5 21V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16"/></svg>
+            <?= htmlspecialchars($agenceNom) ?>
             <span style="font-weight:400;color:#64748b;font-size:.85rem;">(<?= count($agenceRayons) ?> rayon<?= count($agenceRayons) > 1 ? 's' : '' ?>)</span>
           </h3>
 
@@ -106,7 +107,7 @@
                   <div style="width:<?= $pct ?>%;height:100%;background:<?= $barColor ?>;border-radius:999px;transition:width .3s;"></div>
                 </div>
                 <?php if ($colisEnRetard > 0): ?>
-                  <div style="margin-top:.4rem;font-size:.75rem;color:#ef4444;font-weight:600;">⚠️ <?= $colisEnRetard ?> colis hors délai</div>
+                  <div style="margin-top:.4rem;font-size:.75rem;color:#ef4444;font-weight:600;"><?= $colisEnRetard ?> colis hors délai</div>
                 <?php endif; ?>
               </div>
 
