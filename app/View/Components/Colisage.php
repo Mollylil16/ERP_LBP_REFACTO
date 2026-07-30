@@ -2448,8 +2448,8 @@ final class Colisage
         $rayonCode = (string) ($colis['code_rayon'] ?? '');
         $createdAt = !empty($colis['created_at']) ? date('d/m/Y H:i', strtotime((string) $colis['created_at'])) : date('d/m/Y H:i');
 
-        $trackingUrl = View::url('site/tracking?ref=' . urlencode($trackingNum));
-        $qrCodeUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=' . urlencode($trackingUrl);
+        $siteUrl = 'https://labelleporte.net';
+        $qrCodeUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=' . urlencode($siteUrl);
 
         $barcodePattern = '';
         for ($i = 0; $i < strlen($trackingNum); $i++) {
@@ -2482,14 +2482,10 @@ final class Colisage
             . '.tracking-block { text-align: center; border: 2px solid #000; padding: 6px 4px; margin-top: 4px; background: #fff; }'
             . '.tracking-code { font-size: 20px; font-weight: 900; letter-spacing: 1px; font-family: "Courier New", Courier, monospace; }'
             . '.barcode-container { display: flex; justify-content: center; margin: 4px 0; overflow: hidden; height: 42px; }'
-            . '.middle-grid { display: flex; gap: 6px; margin-top: 4px; border: 2px solid #000; padding: 6px; }'
-            . '.qr-box { width: 70px; text-align: center; }'
-            . '.qr-img { width: 65px; height: 65px; display: block; }'
-            . '.qr-sub { font-size: 6px; font-weight: 700; margin-top: 2px; }'
-            . '.address-box { flex: 1; font-size: 9px; line-height: 1.25; }'
-            . '.person-title { font-size: 7px; font-weight: 800; text-transform: uppercase; background: #000; color: #fff; padding: 1px 3px; display: inline-block; margin-bottom: 2px; }'
-            . '.person-name { font-size: 11px; font-weight: 800; }'
-            . '.person-phone { font-weight: 700; font-size: 10px; }'
+            . '.middle-grid { display: flex; justify-content: center; align-items: center; margin-top: 4px; border: 2px solid #000; padding: 10px; min-height: 90px; }'
+            . '.qr-box { text-align: center; }'
+            . '.qr-img { width: 75px; height: 75px; display: block; margin: 0 auto; }'
+            . '.qr-sub { font-size: 8px; font-weight: 800; margin-top: 4px; letter-spacing: 0.5px; }'
             . '.rayon-banner { background: #ffcc00; border: 2px solid #000; padding: 4px; text-align: center; font-weight: 900; font-size: 13px; margin-top: 4px; text-transform: uppercase; }'
             . '.metrics-row { display: flex; border: 2px solid #000; margin-top: 4px; text-align: center; font-size: 9px; font-weight: 700; }'
             . '.metric-cell { flex: 1; padding: 4px; border-right: 1px solid #000; }'
@@ -2507,9 +2503,7 @@ final class Colisage
             . '<div class="dest-banner"><div class="dest-label">DESTINATION :</div><div class="dest-city">' . View::e($arrAgency) . '</div></div>'
             . '<div class="tracking-block"><div class="tracking-code">' . View::e($trackingNum) . '</div><div class="barcode-container"><svg width="220" height="45" viewBox="0 0 220 45">' . $barcodePattern . '</svg></div><div style="font-size: 7px; font-weight:700;">CODE-BARRES OFFICIEL LBP</div></div>'
             . '<div class="rayon-banner">' . $rayonBanner . '</div>'
-            . '<div class="middle-grid"><div class="qr-box"><img src="' . $qrCodeUrl . '" class="qr-img" alt="QR Code Tracking"><div class="qr-sub">SCAN SUIVI CLIENT</div></div>'
-            . '<div class="address-box"><span class="person-title">DESTINATAIRE</span><div class="person-name">' . View::e($destName) . '</div><div class="person-phone">📞 ' . View::e($destPhone) . '</div><div style="font-size: 8px; color: #334155; margin-top:2px;">📍 ' . View::e($destAddress) . '</div>'
-            . '<hr style="margin: 4px 0; border: none; border-top: 1px dashed #000;"><span class="person-title" style="background:#475569;">EXPÉDITEUR</span><div style="font-size: 9px; font-weight: 700;">' . View::e($expName) . ' (' . View::e($expPhone) . ')</div></div></div>'
+            . '<div class="middle-grid"><div class="qr-box"><img src="' . $qrCodeUrl . '" class="qr-img" alt="QR Code Web"><div class="qr-sub">LABELLEPORTE.NET</div></div></div>'
             . '<div class="metrics-row"><div class="metric-cell"><div>POIDS TOTAL</div><div class="metric-value">' . $weight . ' kg</div></div>'
             . '<div class="metric-cell"><div>SÉQUENCE</div><div class="metric-value">1 / ' . $pkgCount . '</div></div>'
             . '<div class="metric-cell"><div>DATE SAISIE</div><div style="font-size:9.5px; margin-top:2px;">' . $createdAt . '</div></div></div>'
