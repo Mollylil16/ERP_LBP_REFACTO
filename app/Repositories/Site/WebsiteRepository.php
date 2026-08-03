@@ -184,4 +184,24 @@ final class WebsiteRepository
         $stmt = $this->pdo->prepare("INSERT INTO website_articles (slug,title,excerpt,content,image_url,author_name,is_published,published_at) VALUES (:slug,:title,:excerpt,:content,:image_url,:author_name,:is_published,:published_at)");
         $stmt->execute($article);
     }
+
+    public function deleteSlide(int $id): void
+    {
+        $this->pdo->prepare("DELETE FROM website_slides WHERE id = :id")->execute(['id' => $id]);
+    }
+
+    public function deleteProduct(int $id): void
+    {
+        $this->pdo->prepare("DELETE FROM website_products WHERE id = :id")->execute(['id' => $id]);
+    }
+
+    public function deleteAnnouncement(int $id): void
+    {
+        $this->pdo->prepare("DELETE FROM website_announcements WHERE id = :id")->execute(['id' => $id]);
+    }
+
+    public function deleteArticle(int $id): void
+    {
+        $this->pdo->prepare("DELETE FROM website_articles WHERE id = :id")->execute(['id' => $id]);
+    }
 }

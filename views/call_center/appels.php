@@ -10,6 +10,7 @@ use App\Helpers\Auth;
 use App\Helpers\Csrf;
 
 $canManage = Auth::can('call_center_manage');
+$canDelete = Auth::isAdmin() || Auth::hasRole('dg');
 $csrfToken = Csrf::token();
 
 $typeLabels = [
@@ -152,6 +153,9 @@ $statutLabels = [
               <th style="text-align:left;padding:.8rem 1rem;color:#374151;font-weight:600;">Satisfaction</th>
               <th style="text-align:left;padding:.8rem 1rem;color:#374151;font-weight:600;">Statut</th>
               <th style="text-align:left;padding:.8rem 1rem;color:#374151;font-weight:600;">Date</th>
+              <?php if ($canDelete): ?>
+              <th style="text-align:left;padding:.8rem 1rem;color:#374151;font-weight:600;">Actions</th>
+              <?php endif; ?>
             </tr>
           </thead>
           <tbody>
@@ -174,6 +178,11 @@ $statutLabels = [
                 <span style="background:<?= $si['color'] ?>22;color:<?= $si['color'] ?>;padding:.2rem .6rem;border-radius:999px;font-size:.75rem;font-weight:600;"><?= $si['label'] ?></span>
               </td>
               <td style="padding:.7rem 1rem;color:#64748b;font-size:.8rem;"><?= date('d/m/Y H:i', strtotime($a['created_at'])) ?></td>
+              <?php if ($canDelete): ?>
+              <td style="padding:.7rem 1rem;">
+                <?= \App\View\Components\Ui::deleteForm('call-center/appels/' . (int) $a['id'] . '/supprimer', 'Supprimer définitivement cet appel ? Cette action est irréversible.') ?>
+              </td>
+              <?php endif; ?>
             </tr>
           <?php endforeach; ?>
           </tbody>

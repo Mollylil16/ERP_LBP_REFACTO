@@ -83,4 +83,10 @@ final class RhHolidayRepository
         ");
         $stmt->execute(['id' => $id]);
     }
+
+    public function delete(int $id): void
+    {
+        $stmt = $this->pdo->prepare("DELETE FROM rh_holidays WHERE id = :id");
+        $stmt->execute(['id' => $id]);
+    }
 }

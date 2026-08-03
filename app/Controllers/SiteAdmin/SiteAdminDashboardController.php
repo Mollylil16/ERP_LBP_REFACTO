@@ -7,6 +7,7 @@ namespace App\Controllers\SiteAdmin;
 use App\Helpers\Csrf;
 use App\Helpers\Session;
 use App\Middleware\AuthMiddleware;
+use App\Middleware\RoleMiddleware;
 use App\Models\Database;
 use App\Repositories\Site\WebsiteRepository;
 use App\Repositories\SiteAdmin\SiteAdminDashboardRepository;
@@ -133,6 +134,30 @@ final class SiteAdminDashboardController extends SiteAdminBaseController
             Session::flash('error', $exception->getMessage());
         }
         $this->redirect('/site-admin/configuration#articles');
+    }
+
+    /** Suppressions physiques du contenu site vitrine — réservées Admin/DG. */
+    public function deleteSlide(string $id): void { $this->deleteContent(fn() => $this->website->deleteSlide((int) $id), 'Le slide a été supprimé définitivement.', '#carousel'); }
+    public function deleteProduct(string $id): void { $this->deleteContent(fn() => $this->website->deleteProduct((int) $id), 'Le produit a été supprimé définitivement.', '#marketplace'); }
+    public function deleteAnnouncement(string $id): void { $this->deleteContent(fn() => $this->website->deleteAnnouncement((int) $id), 'L’annonce a été supprimée définitivement.', '#announcements'); }
+    public function deleteArticle(string $id): void { $this->deleteContent(fn() => $this->website->deleteArticle((int) $id), 'L’article a été supprimé définitivement.', '#articles'); }
+
+    private function deleteContent(callable $action, string $success, string $anchor): void
+    {
+        RoleMiddleware::check(['dg']);
+        if (!Csrf::verify($_POST['_csrf_token'] ?? null)) {
+            Session::flash('error', 'La session du formulaire a expiré.');
+            $this->redirect('/site-admin/configuration' . $anchor);
+        }
+        try {
+            $action();
+            Session::flash('success', $success);
+        } catch (\PDOException $e) {
+            Session::flash('error', $e->getCode() === '23000'
+                ? 'Suppression impossible : cet élément est référencé par un autre enregistrement.'
+                : 'Erreur lors de la suppression.');
+        }
+        $this->redirect('/site-admin/configuration' . $anchor);
     }
 
     public function analytics(): void

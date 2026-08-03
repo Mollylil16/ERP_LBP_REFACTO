@@ -8,17 +8,15 @@ use App\Controllers\Colisage\ColisageController;
 use App\Controllers\Colisage\ColisageAutresController;
 use App\Controllers\Colisage\ExploitationController;
 use App\Controllers\Colisage\RapportsController;
-use App\Controllers\Colisage\OperationSaisieController;
 
 /** @var Router $router */
 
-$router->get('/operation/{code}/saisir', [OperationSaisieController::class, 'create']);
-$router->post('/operation/enregistrer', [OperationSaisieController::class, 'store']);
+// Sous-menus Opération à trajet verrouillé (Groupage Cargo, Colis Rapide, DHL) :
+// exactement le même formulaire/flux que la saisie générique de colis, avec le
+// trajet imposé par le sous-menu emprunté et non modifiable par l'agent (Règle 3.4).
+$router->get('/operation/{code}/saisir', [ColisageController::class, 'create']);
 
 $router->group('/colisage', function (Router $router): void {
-    // Saisie par trajet dans le groupe /colisage
-    $router->get('/operation/{code}/saisir', [OperationSaisieController::class, 'create']);
-    $router->post('/operation/enregistrer', [OperationSaisieController::class, 'store']);
     $router->get('/', [ColisageDashboardController::class, 'index']);
     $router->get('/dashboard', [ColisageDashboardController::class, 'index']);
 
@@ -31,6 +29,7 @@ $router->group('/colisage', function (Router $router): void {
     $router->get('/parcels/{id}/etiquette', [ColisageController::class, 'printLabel']);
     $router->post('/parcels/{id}/retirer', [ColisageController::class, 'withdraw']);
     $router->post('/parcels/{id}/transferer', [ColisageController::class, 'transfer']);
+    $router->post('/parcels/{id}/supprimer', [ColisageController::class, 'deleteParcel']);
 
     $router->get('/groupage', [ColisageController::class, 'groupageIndex']);
     $router->get('/groupage/nouveau', [ColisageController::class, 'groupageCreate']);

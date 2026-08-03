@@ -997,6 +997,7 @@ final class Colisage
                 'Aucune fiche ne correspond aux critères sélectionnés.'
             );
         } else {
+            $canDelete = \App\Helpers\Auth::isAdmin() || \App\Helpers\Auth::hasRole('dg');
             $rows = '';
             foreach ($page->parcels as $p) {
                 $typeLabel = match($p['type_expediteur']) {
@@ -1024,6 +1025,12 @@ final class Colisage
                         'variant' => $act['variant'] ?? 'secondary',
                         'class' => 'finea-button-sm'
                     ]);
+                }
+                if ($canDelete) {
+                    $actionsStr .= ' ' . Ui::deleteForm(
+                        'colisage/parcels/' . $p['id'] . '/supprimer',
+                        'Supprimer définitivement le colis ' . $p['numero_tracking'] . ' ? Cette action est irréversible.'
+                    );
                 }
 
                 $rows .= '<tr>'
@@ -1070,16 +1077,42 @@ final class Colisage
             . '</div></div>';
     }
 
-    public static function createPage(array $sites, array $clients, array $products = [], float $tauxChangeEur = 655.957): string
+    /**
+     * @param array<string,mixed>|null $trajet Trajet verrouillé (sous-menu Opération à trajet fixe).
+     *        Quand fourni, le formulaire est identique en tout point à la saisie générique,
+     *        à la seule différence que le trajet est imposé et non modifiable (Règle 3.4).
+     */
+    public static function createPage(array $sites, array $clients, array $products = [], float $tauxChangeEur = 655.957, ?array $trajet = null): string
     {
         $header = Ui::pageHeader(
-            'Enregistrer un Colis',
-            'Saisie de la fiche de colisage et des marchandises.',
+            $trajet !== null ? 'Enregistrer un Colis — ' . $trajet['code'] : 'Enregistrer un Colis',
+            $trajet !== null
+                ? 'Le trajet est déterminé par le sous-menu Opération emprunté et reste fixe pour cette saisie.'
+                : 'Saisie de la fiche de colisage et des marchandises.',
             [
-                'eyebrow' => 'Nouveau Colis',
+                'eyebrow' => $trajet !== null ? 'Opération — Trajet verrouillé' : 'Nouveau Colis',
                 'class' => 'rh-hero-white',
             ]
         );
+
+        $trajetLockNotice = '';
+        if ($trajet !== null) {
+            $typeTone = match ($trajet['type_transport'] ?? '') {
+                'maritime', 'cargo' => 'primary',
+                'rapide' => 'warning',
+                'aerien' => 'accent',
+                default => 'neutral',
+            };
+            $lockIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>';
+            $trajetLockNotice = '<div class="finea-section-card" style="border-left: 6px solid #2563eb; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:1rem; margin-bottom:1.5rem;">'
+                . '<div style="display:flex; align-items:center; gap:0.85rem;">'
+                . '<span style="width:38px; height:38px; border-radius:50%; background:#dbeafe; color:#1d4ed8; display:inline-flex; align-items:center; justify-content:center;">' . $lockIcon . '</span>'
+                . '<div><p class="rh-eyebrow" style="margin-bottom:0.25rem;">Trajet imposé par le sous-menu — non modifiable</p>'
+                . '<h3 style="margin:0;">' . View::e($trajet['code']) . ' — ' . View::e($trajet['libelle']) . '</h3></div>'
+                . '</div>'
+                . Ui::badge(strtoupper((string) $trajet['type_transport']), $typeTone)
+                . '</div>';
+        }
 
         // Prep options for clients
         $clientOpts = [['value' => '', 'label' => '-- Choisir un client existant --']];
@@ -1117,13 +1150,23 @@ final class Colisage
             . '</div>';
 
         // Details du Colis
-        $fretOpts = [
-            ['value' => 'export_aerien', 'label' => 'Export Aérien'],
-            ['value' => 'export_maritime', 'label' => 'Export Maritime'],
-            ['value' => 'import_aerien', 'label' => 'Import Aérien'],
-            ['value' => 'import_maritime', 'label' => 'Import Maritime'],
-        ];
-        $typeExp = Form::select('type_expediteur', $fretOpts, 'export_aerien', ['label' => 'Catégorie de Fret']);
+        if ($trajet !== null) {
+            // Trajet verrouillé : pas de dropdown de catégorie de fret, valeur imposée par le trajet.
+            $typeExp = Form::field(
+                'Catégorie de Fret',
+                '<div class="finea-input" style="display:flex; align-items:center; gap:0.5rem; background:#f8fafc; color:#334155; font-weight:600;">'
+                . View::e(strtoupper((string) $trajet['type_transport'])) . '<small style="font-weight:500; color:#64748b;">(verrouillé par le trajet ' . View::e($trajet['code']) . ')</small>'
+                . '</div>'
+            );
+        } else {
+            $fretOpts = [
+                ['value' => 'export_aerien', 'label' => 'Export Aérien'],
+                ['value' => 'export_maritime', 'label' => 'Export Maritime'],
+                ['value' => 'import_aerien', 'label' => 'Import Aérien'],
+                ['value' => 'import_maritime', 'label' => 'Import Maritime'],
+            ];
+            $typeExp = Form::select('type_expediteur', $fretOpts, 'export_aerien', ['label' => 'Catégorie de Fret']);
+        }
         $weight = Form::input('poids_total', ['label' => 'Poids total (kg)', 'type' => 'number', 'step' => '0.01']);
         $valeur = Form::input('valeur_declaree', ['label' => 'Valeur déclarée', 'type' => 'number', 'step' => '1']);
         $devise = Form::select('devise', [
@@ -1208,6 +1251,7 @@ final class Colisage
 
         $formContent = '<form method="post" action="' . View::url('colisage/parcels/enregistrer') . '">'
             . Form::hidden('_csrf_token', \App\Helpers\Csrf::token())
+            . ($trajet !== null ? Form::hidden('trajet_code', $trajet['code']) : '')
             . '<div style="display:grid; grid-template-columns: 1fr 1fr; gap:2rem;">'
             . Ui::section('Informations Expéditeur', $expChoice . $expQuick)
             . Ui::section('Informations Destinataire', $destChoice . $destQuick)
@@ -1217,7 +1261,9 @@ final class Colisage
             . '</div>'
             . '<div style="margin-top: 2rem; display:flex; gap:1rem; justify-content:flex-end;">'
             . Ui::button('Annuler', ['href' => 'colisage/parcels', 'variant' => 'secondary'])
-            . '<button type="submit" class="finea-button finea-button--accent">Enregistrer le colis</button>'
+            . '<button type="submit" class="finea-button finea-button--accent">'
+            . ($trajet !== null ? 'Enregistrer le colis sur ' . View::e($trajet['code']) : 'Enregistrer le colis')
+            . '</button>'
             . '</div>'
             . '</form>';
 
@@ -1390,6 +1436,7 @@ final class Colisage
         return '<div class="finea-shell">'
             . '<div class="finea-container">'
             . $header
+            . $trajetLockNotice
             . $formContent
             . $script
             . '</div></div>';
@@ -1405,20 +1452,29 @@ final class Colisage
             default => 'secondary'
         };
 
+        $headerActions = [
+            Ui::qrCodeBadge((string) $colis['numero_tracking'], 60),
+            Ui::badge($colis['statut'], $badgeTone),
+            '<form method="post" action="' . View::url('colisage/parcels/' . $colis['id'] . '/facturer') . '" style="display:inline;">' . Ui::button('Facturer (1-Clic)', ['type' => 'submit', 'variant' => 'accent']) . '</form>',
+            Ui::button('Facture', ['href' => 'colisage/parcels/' . $colis['id'] . '/facture', 'variant' => 'secondary', 'target' => '_blank']),
+            Ui::button('Étiquette Thermique', ['href' => 'colisage/parcels/' . $colis['id'] . '/etiquette', 'variant' => 'secondary', 'target' => '_blank']),
+            Ui::button('Retour à la liste', ['href' => 'colisage/parcels', 'variant' => 'secondary']),
+        ];
+        if (\App\Helpers\Auth::isAdmin() || \App\Helpers\Auth::hasRole('dg')) {
+            $headerActions[] = Ui::deleteForm(
+                'colisage/parcels/' . $colis['id'] . '/supprimer',
+                'Supprimer définitivement le colis ' . $colis['numero_tracking'] . ' ? Cette action est irréversible.',
+                ['label' => 'Supprimer', 'class' => '']
+            );
+        }
+
         $header = Ui::pageHeader(
             'Colis ' . $colis['numero_tracking'],
             'Visualisation et suivi opérationnel du colis.',
             [
                 'eyebrow' => 'Suivi de Colis',
                 'class' => 'rh-hero-white',
-                'actions' => [
-                    Ui::qrCodeBadge((string) $colis['numero_tracking'], 60),
-                    Ui::badge($colis['statut'], $badgeTone),
-                    '<form method="post" action="' . View::url('colisage/parcels/' . $colis['id'] . '/facturer') . '" style="display:inline;">' . Ui::button('Facturer (1-Clic)', ['type' => 'submit', 'variant' => 'accent']) . '</form>',
-                    Ui::button('Facture', ['href' => 'colisage/parcels/' . $colis['id'] . '/facture', 'variant' => 'secondary', 'target' => '_blank']),
-                    Ui::button('Étiquette Thermique', ['href' => 'colisage/parcels/' . $colis['id'] . '/etiquette', 'variant' => 'secondary', 'target' => '_blank']),
-                    Ui::button('Retour à la liste', ['href' => 'colisage/parcels', 'variant' => 'secondary'])
-                ]
+                'actions' => $headerActions,
             ]
         );
 
@@ -2635,118 +2691,5 @@ final class Colisage
             . '<div class="sig-box"><div class="sig-title">AUTHENTIFICATION NUMÉRIQUE</div><div class="qr-container"><img src="' . $qrCodeUrl . '" style="height:45px; width:45px;" alt="QR Code Verification"></div></div></div>'
             . '<div style="margin-top:10px; font-size:8px; color:#64748b; text-align:center;">Document officiel de charge généré le ' . $createdAt . ' — ERP La Belle Porte Logistics</div>'
             . '</div></body></html>';
-    }
-
-    /**
-     * Formulaire de saisie "Opération" à trajet imposé (Règle 3.4 du cahier des charges) :
-     * le trajet est déterminé par le sous-menu emprunté, non modifiable par l'agent.
-     *
-     * @param array<string,mixed> $trajet
-     * @param array<int, array<string, mixed>> $sites
-     * @param array<int, array<string, mixed>> $clients
-     * @param array<int, array<string, mixed>> $products
-     */
-    public static function operationSaisiePage(array $trajet, array $sites, array $clients, array $products, float $tauxChangeEur): string
-    {
-        $typeTone = match ($trajet['type_transport'] ?? '') {
-            'maritime', 'cargo' => 'primary',
-            'rapide' => 'warning',
-            'aerien' => 'accent',
-            default => 'neutral',
-        };
-
-        $header = Ui::pageHeader(
-            'Nouveau Colis — ' . $trajet['code'] . ' (' . $trajet['libelle'] . ')',
-            'Le trajet est déterminé automatiquement par la sous-rubrique sélectionnée et reste fixe.',
-            [
-                'eyebrow' => 'Opération • Formulaire de saisie',
-                'class' => 'rh-hero-white',
-                'actions' => [
-                    Ui::button('Retour à la liste', ['href' => 'colisage/parcels', 'variant' => 'secondary']),
-                ],
-            ]
-        );
-
-        $lockNotice = '<div class="finea-section-card" style="border-left: 6px solid #2563eb; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:1rem;">'
-            . '<div><p class="rh-eyebrow" style="margin-bottom:0.25rem;">Règle de restriction active — Trajet fixe</p>'
-            . '<h3 style="margin:0;">Trajet imposé : ' . View::e($trajet['code']) . ' — ' . View::e($trajet['libelle']) . '</h3></div>'
-            . Ui::badge(strtoupper((string) $trajet['type_transport']), $typeTone)
-            . '</div>';
-
-        $siteOpts = [];
-        foreach ($sites as $s) {
-            $siteOpts[] = ['value' => (string) $s['id'], 'label' => $s['name']];
-        }
-
-        $expediteurOpts = [['value' => '0', 'label' => '+ Créer un nouvel expéditeur']];
-        $destinataireOpts = [['value' => '0', 'label' => '+ Créer un nouveau destinataire']];
-        foreach ($clients as $c) {
-            $opt = ['value' => (string) $c['id'], 'label' => $c['name'] . ' (' . ($c['phone'] ?? 'Pas de tel') . ')'];
-            $expediteurOpts[] = $opt;
-            $destinataireOpts[] = $opt;
-        }
-
-        $expediteurCard = '<h3 class="rh-step-title">1. Expéditeur (Client Départ)</h3>'
-            . Form::select('expediteur_id', $expediteurOpts, '0', ['label' => 'Sélectionner un client existant', 'onchange' => "toggleClientFields('expediteur')"])
-            . '<div id="expediteur_new_fields">'
-            . Form::input('expediteur_name', ['label' => 'Nom complet / Raison sociale', 'placeholder' => 'Ex: Koffi Emmanuel'])
-            . '<div class="rh-form-grid-3">'
-            . Form::input('expediteur_phone', ['label' => 'Téléphone', 'placeholder' => '+225 07...'])
-            . Form::input('expediteur_email', ['label' => 'Email (optionnel)', 'type' => 'email', 'placeholder' => 'client@email.com'])
-            . '</div></div>';
-
-        $destinataireCard = '<h3 class="rh-step-title">2. Destinataire (Client Arrivée)</h3>'
-            . Form::select('destinataire_id', $destinataireOpts, '0', ['label' => 'Sélectionner un destinataire existant', 'onchange' => "toggleClientFields('destinataire')"])
-            . '<div id="destinataire_new_fields">'
-            . Form::input('destinataire_name', ['label' => 'Nom complet / Raison sociale', 'placeholder' => 'Ex: Jean Dupont'])
-            . '<div class="rh-form-grid-3">'
-            . Form::input('destinataire_phone', ['label' => 'Téléphone', 'placeholder' => '+33 6...'])
-            . Form::input('destinataire_address', ['label' => 'Adresse / Ville', 'placeholder' => 'Ville ou destination'])
-            . '</div></div>';
-
-        $userAgenceId = $_SESSION['user']['agence_id'] ?? null;
-        $shipmentCard = '<h3 class="rh-step-title">3. Caractéristiques & Agences d\'Expédition</h3>'
-            . '<div class="rh-form-grid-3">'
-            . Form::selectSearch('agence_depart_id', $siteOpts, $userAgenceId !== null ? (string) $userAgenceId : '', ['label' => 'Agence de départ'])
-            . Form::selectSearch('agence_arrivee_id', $siteOpts, '', ['label' => 'Agence d\'arrivée / Bureau récepteur'])
-            . Form::input('nombre_colis', ['label' => 'Nombre de colis', 'type' => 'number', 'min' => 1, 'value' => '1', 'required' => true])
-            . Form::input('poids_total', ['label' => 'Poids total (kg)', 'type' => 'number', 'step' => '0.01', 'placeholder' => '0.00', 'required' => true])
-            . Form::input('valeur_declaree', ['label' => 'Valeur déclarée / Montant total', 'type' => 'number', 'step' => '0.01', 'placeholder' => '0.00'])
-            . '</div>';
-
-        $formContent = '<form method="post" action="' . View::url('operation/enregistrer') . '" id="form-saisie-trajet">'
-            . \App\Helpers\Csrf::input()
-            . Form::hidden('trajet_code', $trajet['code'])
-            . Form::hidden('trajet_id', (string) $trajet['id'])
-            . '<div class="rh-form-step-card">' . $expediteurCard . '</div>'
-            . '<div class="rh-form-step-card">' . $destinataireCard . '</div>'
-            . '<div class="rh-form-step-card">' . $shipmentCard . '</div>'
-            . '<div style="display:flex; justify-content:flex-end; gap:1rem; margin-top:1.5rem;">'
-            . Ui::button('Annuler', ['href' => 'colisage/parcels', 'variant' => 'secondary'])
-            . Ui::button('Enregistrer et Facturer sur ' . $trajet['code'], ['type' => 'submit', 'variant' => 'accent'])
-            . '</div></form>';
-
-        $script = '<script>'
-            . 'function toggleClientFields(type) {'
-            . '    const select = document.getElementById("field_" + type + "_id");'
-            . '    const fields = document.getElementById(type + "_new_fields");'
-            . '    if (select && fields) {'
-            . '        fields.style.display = (select.value === "0") ? "block" : "none";'
-            . '    }'
-            . '}'
-            . 'document.addEventListener("DOMContentLoaded", function() {'
-            . '    toggleClientFields("expediteur");'
-            . '    toggleClientFields("destinataire");'
-            . '});'
-            . '</script>';
-
-        return '<div class="finea-shell">'
-            . '<div class="finea-container">'
-            . $header
-            . '<div style="margin-bottom: 1.5rem;">' . $lockNotice . '</div>'
-            . $formContent
-            . '</div>'
-            . '</div>'
-            . $script;
     }
 }

@@ -2016,6 +2016,8 @@ class MigrationRunner
             ");
         }
 
+        $this->fixCallCenterLitigesGraviteEnum();
+
         // Table des notifications/suivis du call center
         $this->pdo->exec("
             CREATE TABLE IF NOT EXISTS lbp_call_center_notifications (
@@ -2056,6 +2058,33 @@ class MigrationRunner
                 $stmt->execute(['code' => $code, 'module' => $module, 'name' => $name, 'description' => $desc, 'sort_order' => $sort]);
             }
         }
+    }
+
+    /**
+     * Corrige une dérive de schéma : certaines bases (copies plus anciennes de la production)
+     * ont été créées avec un enum gravite('basse','moyenne','haute','critique') alors que le
+     * code applicatif (formulaire, filtres, tri, badges) attend l'enum canonique ci-dessous.
+     * La colonne CREATE TABLE ci-dessus est correcte mais ne s'applique jamais telle quelle sur
+     * une base où lbp_call_center_appels existe déjà (garde d'existence sur toute la méthode) ;
+     * cet ALTER idempotent aligne donc le schéma existant sans toucher aux données historiques
+     * (aucune ligne n'utilise 'basse'/'haute' sur les bases où le problème a été constaté).
+     */
+    private function fixCallCenterLitigesGraviteEnum(): void
+    {
+        if (!$this->schema->tableExists('lbp_call_center_litiges')) {
+            return;
+        }
+
+        $stmt = $this->pdo->query("SHOW COLUMNS FROM lbp_call_center_litiges WHERE Field = 'gravite'");
+        $column = $stmt ? $stmt->fetch(PDO::FETCH_ASSOC) : null;
+        if ($column === null || $column['Type'] === "enum('faible','moyenne','elevee','critique')") {
+            return;
+        }
+
+        $this->pdo->exec("
+            ALTER TABLE lbp_call_center_litiges
+            MODIFY COLUMN gravite ENUM('faible', 'moyenne', 'elevee', 'critique') NOT NULL DEFAULT 'moyenne'
+        ");
     }
 
     private function addForeignKeyIfMissing(

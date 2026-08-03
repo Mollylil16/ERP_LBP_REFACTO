@@ -7,6 +7,7 @@ namespace App\Controllers\Rh;
 use App\Helpers\Csrf;
 use App\Helpers\Session;
 use App\Middleware\AuthMiddleware;
+use App\Middleware\RoleMiddleware;
 use App\Models\Database;
 use App\Repositories\Rh\RhContractRulesRepository;
 use App\View\Pages\Rh\ContractRulesPage;
@@ -60,6 +61,28 @@ final class RhContractRulesController extends RhBaseController
         } catch (RuntimeException $e) {
             Session::flash('error', $e->getMessage());
         }
+        $this->redirect('/rh/regles-contrats');
+    }
+
+    /** Suppression physique d'une règle de contrat — réservée Admin/DG. */
+    public function delete(string $id): void
+    {
+        RoleMiddleware::check(['dg']);
+
+        if (!Csrf::verify($_POST['_csrf_token'] ?? null)) {
+            Session::flash('error', 'Session expiree. Veuillez recommencer.');
+            $this->redirect('/rh/regles-contrats');
+        }
+
+        try {
+            $this->repository->delete((int) $id);
+            Session::flash('success', 'La règle de contrat a été supprimée définitivement.');
+        } catch (\PDOException $e) {
+            Session::flash('error', $e->getCode() === '23000'
+                ? 'Cette règle ne peut pas être supprimée : elle est référencée par un autre enregistrement.'
+                : 'Erreur lors de la suppression.');
+        }
+
         $this->redirect('/rh/regles-contrats');
     }
 }

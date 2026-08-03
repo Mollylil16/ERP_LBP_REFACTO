@@ -17,6 +17,10 @@ $router->group('/site-admin', function (Router $router): void {
     $router->post('/configuration/products', [SiteAdminDashboardController::class, 'saveProduct']);
     $router->post('/configuration/announcements', [SiteAdminDashboardController::class, 'saveAnnouncement']);
     $router->post('/configuration/articles', [SiteAdminDashboardController::class, 'saveArticle']);
+    $router->post('/configuration/slides/{id}/supprimer', [SiteAdminDashboardController::class, 'deleteSlide']);
+    $router->post('/configuration/products/{id}/supprimer', [SiteAdminDashboardController::class, 'deleteProduct']);
+    $router->post('/configuration/announcements/{id}/supprimer', [SiteAdminDashboardController::class, 'deleteAnnouncement']);
+    $router->post('/configuration/articles/{id}/supprimer', [SiteAdminDashboardController::class, 'deleteArticle']);
     $router->get('/messages', [SiteAdminConversationController::class, 'index']);
     $router->post('/messages/{conversationId}', [SiteAdminConversationController::class, 'send']);
     $router->get('/messages/{conversationId}/feed', [SiteAdminConversationController::class, 'feed']);

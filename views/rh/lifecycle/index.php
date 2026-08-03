@@ -156,7 +156,7 @@ use App\View\Pages\Rh\LifecyclePage;
                 </form>
                 <?php $evaluationForm = (string) ob_get_clean(); ?>
                 <?= Modal::render('rh-evaluation-form', 'Planifier une évaluation', $evaluationForm, 'Planifier une évaluation', ['eyebrow' => 'Performances']) ?>
-                <?= Rh::lifecycleRecords('Évaluations planifiées', $page->evaluations, ['full_name' => 'Collaborateur', 'period_label' => 'Période', 'evaluation_type' => 'Type', 'due_date' => 'Échéance', 'status' => 'Statut'], [$page, 'date']) ?>
+                <?= Rh::lifecycleRecords('Évaluations planifiées', $page->evaluations, ['full_name' => 'Collaborateur', 'period_label' => 'Période', 'evaluation_type' => 'Type', 'due_date' => 'Échéance', 'status' => 'Statut'], [$page, 'date'], (\App\Helpers\Auth::isAdmin() || \App\Helpers\Auth::hasRole('dg')) ? fn(array $row): string => Ui::deleteForm('rh/cycle-vie/evaluations/' . (int) $row['id'] . '/supprimer', 'Supprimer définitivement cette évaluation ? Cette action est irréversible.') : null) ?>
             </section>
         <?php elseif ($page->section === 'trainings'): ?>
             <section class="rh-lifecycle-layout">
@@ -186,7 +186,7 @@ use App\View\Pages\Rh\LifecyclePage;
                 </form>
                 <?php $trainingForm = (string) ob_get_clean(); ?>
                 <?= Modal::render('rh-training-form', 'Nouvelle session de formation', $trainingForm, 'Créer une session', ['eyebrow' => 'Formation']) ?>
-                <?= Rh::lifecycleRecords('Catalogue et sessions', $page->trainings, ['title' => 'Formation', 'training_type' => 'Type', 'start_date' => 'Début', 'budget' => 'Budget', 'status' => 'Statut'], [$page, 'date']) ?>
+                <?= Rh::lifecycleRecords('Catalogue et sessions', $page->trainings, ['title' => 'Formation', 'training_type' => 'Type', 'start_date' => 'Début', 'budget' => 'Budget', 'status' => 'Statut'], [$page, 'date'], (\App\Helpers\Auth::isAdmin() || \App\Helpers\Auth::hasRole('dg')) ? fn(array $row): string => Ui::deleteForm('rh/cycle-vie/formations/' . (int) $row['id'] . '/supprimer', 'Supprimer définitivement cette session de formation ? Cette action est irréversible.') : null) ?>
             </section>
         <?php elseif ($page->section === 'workflows'): ?>
             <?= Rh::card(

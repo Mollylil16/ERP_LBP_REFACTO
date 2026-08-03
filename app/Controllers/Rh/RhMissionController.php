@@ -8,6 +8,7 @@ use App\Helpers\Auth;
 use App\Helpers\Csrf;
 use App\Helpers\Session;
 use App\Middleware\AuthMiddleware;
+use App\Middleware\RoleMiddleware;
 use App\Models\Database;
 use App\Repositories\Rh\RhMissionRepository;
 use App\View\Pages\Rh\MissionIndexPage;
@@ -120,6 +121,28 @@ final class RhMissionController extends RhBaseController
             Session::flash('success', 'Statut de la mission mis a jour.');
         } catch (RuntimeException $e) {
             Session::flash('error', $e->getMessage());
+        }
+
+        $this->redirect('/rh/missions');
+    }
+
+    /** Suppression physique d'un ordre de mission — réservée Admin/DG. */
+    public function delete(string $id): void
+    {
+        RoleMiddleware::check(['dg']);
+
+        if (!Csrf::verify($_POST['_csrf_token'] ?? null)) {
+            Session::flash('error', 'Session expiree. Veuillez recommencer.');
+            $this->redirect('/rh/missions');
+        }
+
+        try {
+            $this->repository->delete((int) $id);
+            Session::flash('success', "L'ordre de mission a été supprimé définitivement.");
+        } catch (\PDOException $e) {
+            Session::flash('error', $e->getCode() === '23000'
+                ? "Cet ordre de mission ne peut pas être supprimé : il est référencé par un autre enregistrement."
+                : 'Erreur lors de la suppression.');
         }
 
         $this->redirect('/rh/missions');

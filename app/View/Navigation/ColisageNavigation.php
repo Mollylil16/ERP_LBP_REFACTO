@@ -19,13 +19,128 @@ final class ColisageNavigation
                 'available' => true
             ],
             [
-                'group' => 'Activité',
+                'group' => 'Opération',
                 'key' => 'operations',
-                'label' => 'Opérations (Colis)',
+                'label' => 'Vue d\'ensemble (tous les colis)',
                 'icon' => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>',
                 'url' => 'colisage/parcels',
                 'available' => true
             ],
+
+            // Groupage Cargo (Maritime) — sous-menu du menu déroulant Opération
+            [
+                'group' => 'Opération',
+                'subgroup' => 'Groupage Cargo',
+                'key' => 'op_lb_ci',
+                'label' => 'LB-CI : Abidjan ➔ France',
+                'icon' => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="3"></circle><line x1="12" y1="22" x2="12" y2="8"></line><path d="M5 12H2a10 10 0 0 0 20 0h-3"></path></svg>',
+                'url' => 'operation/LB-CI/saisir',
+                'available' => true
+            ],
+            [
+                'group' => 'Opération',
+                'subgroup' => 'Groupage Cargo',
+                'key' => 'op_lb_fr',
+                'label' => 'LB-FR : France ➔ Abidjan',
+                'icon' => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="3"></circle><line x1="12" y1="22" x2="12" y2="8"></line><path d="M5 12H2a10 10 0 0 0 20 0h-3"></path></svg>',
+                'url' => 'operation/LB-FR/saisir',
+                'available' => true
+            ],
+            [
+                'group' => 'Opération',
+                'subgroup' => 'Groupage Cargo',
+                'key' => 'op_s_fr',
+                'label' => 'S-FR : Sénégal ➔ France',
+                'icon' => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="3"></circle><line x1="12" y1="22" x2="12" y2="8"></line><path d="M5 12H2a10 10 0 0 0 20 0h-3"></path></svg>',
+                'url' => 'operation/S-FR/saisir',
+                'available' => true
+            ],
+            [
+                'group' => 'Opération',
+                'subgroup' => 'Groupage Cargo',
+                'key' => 'op_lb_ca',
+                'label' => 'LB-CA : Abidjan ➔ Canada',
+                'icon' => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="3"></circle><line x1="12" y1="22" x2="12" y2="8"></line><path d="M5 12H2a10 10 0 0 0 20 0h-3"></path></svg>',
+                'url' => 'operation/LB-CA/saisir',
+                'available' => true
+            ],
+            [
+                'group' => 'Opération',
+                'subgroup' => 'Groupage Cargo',
+                'key' => 'op_f_sn',
+                'label' => 'F-SN : France ➔ Sénégal',
+                'icon' => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="3"></circle><line x1="12" y1="22" x2="12" y2="8"></line><path d="M5 12H2a10 10 0 0 0 20 0h-3"></path></svg>',
+                'url' => 'operation/F-SN/saisir',
+                'available' => true
+            ],
+
+            // Colis Rapide (Aérien/Voyageur) — sous-menu du menu déroulant Opération
+            [
+                'group' => 'Opération',
+                'subgroup' => 'Colis Rapide',
+                'key' => 'op_ca_ci',
+                'label' => 'CA-CI : Abidjan ➔ Paris',
+                'icon' => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>',
+                'url' => 'operation/CA-CI/saisir',
+                'available' => true
+            ],
+            [
+                'group' => 'Opération',
+                'subgroup' => 'Colis Rapide',
+                'key' => 'op_ca_fr',
+                'label' => 'CA-FR : Paris ➔ Abidjan',
+                'icon' => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>',
+                'url' => 'operation/CA-FR/saisir',
+                'available' => true
+            ],
+            [
+                'group' => 'Opération',
+                'subgroup' => 'Colis Rapide',
+                'key' => 'op_ca_sn',
+                'label' => 'CA-SN : Sénégal ➔ CI',
+                'icon' => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>',
+                'url' => 'operation/CA-SN/saisir',
+                'available' => true
+            ],
+            [
+                'group' => 'Opération',
+                'subgroup' => 'Colis Rapide',
+                'key' => 'op_ca_is',
+                'label' => 'CA-IS : CI ➔ Sénégal',
+                'icon' => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>',
+                'url' => 'operation/CA-IS/saisir',
+                'available' => true
+            ],
+            [
+                'group' => 'Opération',
+                'subgroup' => 'Colis Rapide',
+                'key' => 'op_ca_ic',
+                'label' => 'CA-IC : CI ➔ Canada',
+                'icon' => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>',
+                'url' => 'operation/CA-IC/saisir',
+                'available' => true
+            ],
+            [
+                'group' => 'Opération',
+                'subgroup' => 'Colis Rapide',
+                'key' => 'op_ca_cc',
+                'label' => 'CA-CC : Canada ➔ Abidjan',
+                'icon' => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>',
+                'url' => 'operation/CA-CC/saisir',
+                'available' => true
+            ],
+
+            // DHL — sous-menu du menu déroulant Opération
+            [
+                'group' => 'Opération',
+                'subgroup' => 'DHL',
+                'key' => 'op_dhl',
+                'label' => 'DHL Express International',
+                'icon' => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>',
+                'url' => 'operation/DHL/saisir',
+                'available' => true
+            ],
+
             [
                 'group' => 'Activité',
                 'key' => 'filtre_recherche',
@@ -51,107 +166,6 @@ final class ColisageNavigation
                 'available' => true
             ],
 
-            // Groupage Cargo (Maritime)
-            [
-                'group' => 'Groupage Cargo',
-                'key' => 'op_lb_ci',
-                'label' => 'LB-CI : Abidjan ➔ France',
-                'icon' => '⚓',
-                'url' => 'operation/LB-CI/saisir',
-                'available' => true
-            ],
-            [
-                'group' => 'Groupage Cargo',
-                'key' => 'op_lb_fr',
-                'label' => 'LB-FR : France ➔ Abidjan',
-                'icon' => '⚓',
-                'url' => 'operation/LB-FR/saisir',
-                'available' => true
-            ],
-            [
-                'group' => 'Groupage Cargo',
-                'key' => 'op_s_fr',
-                'label' => 'S-FR : Sénégal ➔ France',
-                'icon' => '⚓',
-                'url' => 'operation/S-FR/saisir',
-                'available' => true
-            ],
-            [
-                'group' => 'Groupage Cargo',
-                'key' => 'op_lb_ca',
-                'label' => 'LB-CA : Abidjan ➔ Canada',
-                'icon' => '⚓',
-                'url' => 'operation/LB-CA/saisir',
-                'available' => true
-            ],
-            [
-                'group' => 'Groupage Cargo',
-                'key' => 'op_f_sn',
-                'label' => 'F-SN : France ➔ Sénégal',
-                'icon' => '⚓',
-                'url' => 'operation/F-SN/saisir',
-                'available' => true
-            ],
-
-            // Colis Rapide (Aérien)
-            [
-                'group' => 'Colis Rapide',
-                'key' => 'op_ca_ci',
-                'label' => 'CA-CI : Abidjan ➔ Paris',
-                'icon' => '✈️',
-                'url' => 'operation/CA-CI/saisir',
-                'available' => true
-            ],
-            [
-                'group' => 'Colis Rapide',
-                'key' => 'op_ca_fr',
-                'label' => 'CA-FR : Paris ➔ Abidjan',
-                'icon' => '✈️',
-                'url' => 'operation/CA-FR/saisir',
-                'available' => true
-            ],
-            [
-                'group' => 'Colis Rapide',
-                'key' => 'op_ca_sn',
-                'label' => 'CA-SN : Sénégal ➔ CI',
-                'icon' => '✈️',
-                'url' => 'operation/CA-SN/saisir',
-                'available' => true
-            ],
-            [
-                'group' => 'Colis Rapide',
-                'key' => 'op_ca_is',
-                'label' => 'CA-IS : CI ➔ Sénégal',
-                'icon' => '✈️',
-                'url' => 'operation/CA-IS/saisir',
-                'available' => true
-            ],
-            [
-                'group' => 'Colis Rapide',
-                'key' => 'op_ca_ic',
-                'label' => 'CA-IC : CI ➔ Canada',
-                'icon' => '✈️',
-                'url' => 'operation/CA-IC/saisir',
-                'available' => true
-            ],
-            [
-                'group' => 'Colis Rapide',
-                'key' => 'op_ca_cc',
-                'label' => 'CA-CC : Canada ➔ Abidjan',
-                'icon' => '✈️',
-                'url' => 'operation/CA-CC/saisir',
-                'available' => true
-            ],
-
-            // DHL Express
-            [
-                'group' => 'DHL Express',
-                'key' => 'op_dhl',
-                'label' => 'DHL Express International',
-                'icon' => '🚀',
-                'url' => 'operation/DHL/saisir',
-                'available' => true
-            ],
             [
                 'group' => 'Activité',
                 'key' => 'documents',

@@ -14,11 +14,13 @@ $router->group('/call-center', function (Router $router): void {
     // Appels
     $router->get('/appels', [CallCenterController::class, 'appels']);
     $router->post('/appels/enregistrer', [CallCenterController::class, 'storeAppel']);
+    $router->post('/appels/{id}/supprimer', [CallCenterController::class, 'deleteAppel']);
 
     // Litiges
     $router->get('/litiges', [CallCenterController::class, 'litiges']);
     $router->post('/litiges/enregistrer', [CallCenterController::class, 'storeLitige']);
     $router->post('/litiges/{id}/resoudre', [CallCenterController::class, 'resolveLitige']);
+    $router->post('/litiges/{id}/supprimer', [CallCenterController::class, 'deleteLitige']);
 
     // Vue Rayons Temps Réel
     $router->get('/rayons', [CallCenterController::class, 'rayons']);

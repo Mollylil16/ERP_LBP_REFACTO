@@ -6,6 +6,7 @@ namespace App\Controllers\CallCenter;
 
 use App\Controllers\BaseController;
 use App\Middleware\AuthMiddleware;
+use App\Middleware\RoleMiddleware;
 use App\Helpers\Auth;
 use App\Helpers\Session;
 use App\Helpers\Csrf;
@@ -191,6 +192,29 @@ final class CallCenterController extends BaseController
         $this->redirect('call-center/appels');
     }
 
+    /** Suppression physique d'un appel — réservée Admin/DG. */
+    public function deleteAppel(int $id): void
+    {
+        RoleMiddleware::check(['dg']);
+
+        if (!Csrf::verify($_POST['_csrf_token'] ?? null)) {
+            Session::flash('error', 'Session expirée ou requête invalide (CSRF). Veuillez réessayer.');
+            $this->redirect('call-center/appels');
+        }
+
+        try {
+            $stmt = $this->db->prepare("DELETE FROM lbp_call_center_appels WHERE id = :id");
+            $stmt->execute(['id' => $id]);
+            Session::flash('success', "L'appel a été supprimé définitivement.");
+        } catch (\PDOException $e) {
+            Session::flash('error', $e->getCode() === '23000'
+                ? "Cet appel ne peut pas être supprimé : il est référencé par un autre enregistrement."
+                : "Erreur lors de la suppression de l'appel.");
+        }
+
+        $this->redirect('call-center/appels');
+    }
+
     // ==========================================
     // LITIGES
     // ==========================================
@@ -325,6 +349,29 @@ final class CallCenterController extends BaseController
         ]);
 
         Session::flash('success', 'Le litige #' . $id . ' a été mis à jour.');
+        $this->redirect('call-center/litiges');
+    }
+
+    /** Suppression physique d'un litige/réclamation — réservée Admin/DG. */
+    public function deleteLitige(int $id): void
+    {
+        RoleMiddleware::check(['dg']);
+
+        if (!Csrf::verify($_POST['_csrf_token'] ?? null)) {
+            Session::flash('error', 'Session expirée ou requête invalide (CSRF). Veuillez réessayer.');
+            $this->redirect('call-center/litiges');
+        }
+
+        try {
+            $stmt = $this->db->prepare("DELETE FROM lbp_call_center_litiges WHERE id = :id");
+            $stmt->execute(['id' => $id]);
+            Session::flash('success', 'Le litige a été supprimé définitivement.');
+        } catch (\PDOException $e) {
+            Session::flash('error', $e->getCode() === '23000'
+                ? "Ce litige ne peut pas être supprimé : il est référencé par un autre enregistrement."
+                : "Erreur lors de la suppression du litige.");
+        }
+
         $this->redirect('call-center/litiges');
     }
 

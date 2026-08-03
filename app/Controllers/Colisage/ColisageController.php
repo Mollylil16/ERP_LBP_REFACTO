@@ -47,9 +47,29 @@ final class ColisageController extends ColisageBaseController
         ]);
     }
 
-    public function create(): void
+    /**
+     * Formulaire de saisie d'un colis. Sans paramètre : flux générique historique
+     * "Opérations (Colis)". Avec un code de trajet (sous-menu Opération à trajet fixe,
+     * ex: LB-CI) : exactement le même formulaire, avec le trajet verrouillé et non
+     * modifiable par l'agent (Règle 3.4 du cahier des charges).
+     */
+    public function create(?string $code = null): void
     {
         AuthMiddleware::check();
+
+        $trajet = null;
+        if ($code !== null) {
+            $code = strtoupper(trim($code));
+            $stmt = Database::getConnection()->prepare("SELECT * FROM trajets WHERE code = :code AND actif = 1 LIMIT 1");
+            $stmt->execute(['code' => $code]);
+            $trajet = $stmt->fetch(\PDO::FETCH_ASSOC) ?: null;
+
+            if ($trajet === null) {
+                Session::flash('error', "Le trajet spécifié ('{$code}') n'existe pas ou est inactif.");
+                header('Location: ' . View::url('colisage/parcels'));
+                exit;
+            }
+        }
 
         // Get sites
         $sitesStmt = Database::getConnection()->query("SELECT id, name FROM company_sites WHERE is_active = 1");
@@ -73,11 +93,19 @@ final class ColisageController extends ColisageBaseController
             }
         } catch (\Exception $e) {}
 
-        $this->colisageView('colisage/parcels/create', 'Enregistrer un Colis', 'operations', [
+        $pageTitle = $trajet !== null
+            ? 'Enregistrer un Colis — ' . $trajet['code'] . ' (' . $trajet['libelle'] . ')'
+            : 'Enregistrer un Colis';
+        $activeModule = $trajet !== null
+            ? 'op_' . strtolower(str_replace('-', '_', $trajet['code']))
+            : 'operations';
+
+        $this->colisageView('colisage/parcels/create', $pageTitle, $activeModule, [
             'sites' => $sites,
             'clients' => $clients,
             'products' => $products,
             'tauxChangeEur' => $tauxChangeEur,
+            'trajet' => $trajet,
         ]);
     }
 
@@ -85,10 +113,28 @@ final class ColisageController extends ColisageBaseController
     {
         AuthMiddleware::check();
 
+        $trajetCodePosted = strtoupper(trim((string) ($_POST['trajet_code'] ?? '')));
+
         if (!Csrf::verify($_POST['_csrf_token'] ?? null)) {
             Session::flash('error', 'Session expirée ou requête invalide (CSRF). Veuillez réessayer.');
-            header('Location: ' . View::url('colisage/parcels/nouveau'));
+            header('Location: ' . View::url($trajetCodePosted !== '' ? 'operation/' . $trajetCodePosted . '/saisir' : 'colisage/parcels/nouveau'));
             exit;
+        }
+
+        // Trajet Opération verrouillé : re-validation serveur obligatoire, l'agent ne
+        // choisit jamais le trajet lui-même (Règle 3.4). On ne fait jamais confiance
+        // au seul champ caché du formulaire.
+        $trajet = null;
+        if ($trajetCodePosted !== '') {
+            $stmt = Database::getConnection()->prepare("SELECT * FROM trajets WHERE code = :code AND actif = 1 LIMIT 1");
+            $stmt->execute(['code' => $trajetCodePosted]);
+            $trajet = $stmt->fetch(\PDO::FETCH_ASSOC) ?: null;
+
+            if ($trajet === null) {
+                Session::flash('error', "Trajet invalide ou introuvable : {$trajetCodePosted}");
+                header('Location: ' . View::url('colisage/parcels'));
+                exit;
+            }
         }
 
         // Check if quick creating shipper or consignee
@@ -142,7 +188,7 @@ final class ColisageController extends ColisageBaseController
             }
         }
 
-        $newId = $this->service->registerParcel([
+        $registerData = [
             'expediteur_id' => $expediteurId,
             'destinataire_id' => $destinataireId,
             'poids_total' => (float) ($_POST['poids_total'] ?? 0.0),
@@ -155,7 +201,34 @@ final class ColisageController extends ColisageBaseController
             'type_expediteur' => $_POST['type_expediteur'] ?? 'export_aerien',
             'assurance_souscrite' => !empty($_POST['assurance_souscrite']) ? 1 : 0,
             'marchandises' => $marchandises,
-        ]);
+        ];
+
+        if ($trajet !== null) {
+            // Le trajet verrouillé impose son propre type de transport et son libellé de trafic ;
+            // l'agent ne peut ni le choisir ni le modifier depuis ce formulaire.
+            $registerData['type_expediteur'] = $trajet['type_transport'];
+            $registerData['trafic'] = $trajet['code'] . ' - ' . $trajet['libelle'];
+            $registerData['trajet_code_locked'] = $trajet['code'];
+        }
+
+        $newId = $this->service->registerParcel($registerData);
+
+        if ($trajet !== null) {
+            $userId = Auth::id();
+            $upStmt = Database::getConnection()->prepare("
+                UPDATE lbp_colis
+                SET trajet_id = :trajet_id,
+                    trajet = :trajet_code,
+                    agent_groupage_id = COALESCE(agent_groupage_id, :agent_id)
+                WHERE id = :id
+            ");
+            $upStmt->execute([
+                'trajet_id' => $trajet['id'],
+                'trajet_code' => $trajet['code'],
+                'agent_id' => $userId,
+                'id' => $newId,
+            ]);
+        }
 
         header('Location: ' . View::url('colisage/parcels/' . $newId));
         exit;
@@ -271,6 +344,36 @@ final class ColisageController extends ColisageBaseController
         }
 
         header('Location: ' . View::url('colisage/parcels/' . $id));
+        exit;
+    }
+
+    /**
+     * Suppression physique d'un colis — réservée Admin/DG. Un colis déjà facturé ne peut
+     * pas être supprimé (contrainte RESTRICT en base) : la facture doit d'abord être annulée
+     * via l'écran Facturation, le modèle de verrouillage/audit n'autorisant pas sa suppression.
+     */
+    public function deleteParcel(int $id): void
+    {
+        RoleMiddleware::check(['dg']);
+
+        if (!Csrf::verify($_POST['_csrf_token'] ?? null)) {
+            Session::flash('error', 'Session expirée ou requête invalide (CSRF). Veuillez réessayer.');
+            header('Location: ' . View::url('colisage/parcels'));
+            exit;
+        }
+
+        try {
+            $this->service->deleteParcel($id);
+            Session::flash('success', 'Le colis a été supprimé définitivement.');
+        } catch (\PDOException $e) {
+            if ($e->getCode() === '23000') {
+                Session::flash('error', "Ce colis ne peut pas être supprimé : il est référencé par une facture ou un autre enregistrement. Annulez d'abord la facture associée si nécessaire.");
+            } else {
+                Session::flash('error', 'Erreur lors de la suppression du colis.');
+            }
+        }
+
+        header('Location: ' . View::url('colisage/parcels'));
         exit;
     }
 

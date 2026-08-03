@@ -161,6 +161,26 @@ final class WebsiteService
         ]);
     }
 
+    public function deleteSlide(int $id): void
+    {
+        $this->repository->deleteSlide($id);
+    }
+
+    public function deleteProduct(int $id): void
+    {
+        $this->repository->deleteProduct($id);
+    }
+
+    public function deleteAnnouncement(int $id): void
+    {
+        $this->repository->deleteAnnouncement($id);
+    }
+
+    public function deleteArticle(int $id): void
+    {
+        $this->repository->deleteArticle($id);
+    }
+
     /** @return array<string,mixed>|null */
     public function getRealTrackingData(string $reference): ?array
     {

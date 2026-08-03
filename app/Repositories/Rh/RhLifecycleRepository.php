@@ -131,6 +131,20 @@ class RhLifecycleRepository
         return $id;
     }
 
+    /** Supprime une évaluation ainsi que sa demande de workflow associée (association polymorphique, sans FK). */
+    public function deleteEvaluation(int $id): void
+    {
+        $this->pdo->prepare("DELETE FROM rh_workflow_requests WHERE subject_type = 'evaluation' AND subject_id = :id")->execute(['id' => $id]);
+        $this->pdo->prepare("DELETE FROM rh_evaluations WHERE id = :id")->execute(['id' => $id]);
+    }
+
+    /** Supprime une session de formation ainsi que sa demande de workflow associée. */
+    public function deleteTraining(int $id): void
+    {
+        $this->pdo->prepare("DELETE FROM rh_workflow_requests WHERE subject_type = 'training' AND subject_id = :id")->execute(['id' => $id]);
+        $this->pdo->prepare("DELETE FROM rh_training_sessions WHERE id = :id")->execute(['id' => $id]);
+    }
+
     public function advanceWorkflow(int $id, string $decision, int $actorId): void
     {
         $workflow = $this->pdo->prepare("SELECT * FROM rh_workflow_requests WHERE id = :id LIMIT 1");

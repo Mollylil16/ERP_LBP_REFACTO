@@ -24,11 +24,13 @@ final class Rh
      * @param array<int,array<string,mixed>> $rows
      * @param array<string,string> $columns
      */
+    /** @param callable(array<string,mixed>):string|null $rowActions */
     public static function lifecycleRecords(
         string $title,
         array $rows,
         array $columns,
-        callable $date
+        callable $date,
+        ?callable $rowActions = null
     ): string {
         foreach ($rows as &$row) {
             foreach ($columns as $key => $_) {
@@ -43,6 +45,7 @@ final class Rh
             'title_key' => (string) array_key_first($columns),
             'status_key' => 'status',
             'empty' => 'Aucune donnée enregistrée.',
+            'row_actions' => $rowActions,
         ]), ['tag' => 'article', 'title' => $title]);
     }
 

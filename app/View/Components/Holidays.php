@@ -138,6 +138,14 @@ final class Holidays
                     . Ui::button($btnLabel, ['variant' => $btnVariant, 'type' => 'submit', 'class' => 'finea-action-btn--xs'])
                     . '</form>';
 
+                if (\App\Helpers\Auth::isAdmin() || \App\Helpers\Auth::hasRole('dg')) {
+                    $form .= ' ' . Ui::deleteForm(
+                        'rh/feries/' . $rowId . '/supprimer',
+                        'Supprimer définitivement le jour férié "' . $row['name'] . '" ? Cette action est irréversible.',
+                        ['class' => 'finea-action-btn--xs']
+                    );
+                }
+
                 $rowsHtml .= '<tr style="border-bottom: 1px solid #e2e8f0;">
                     <td style="padding: 12px 16px; font-weight: 600; ' . $activeClass . '">' . $page->formatDate($row['holiday_date']) . '</td>
                     <td style="padding: 12px 16px; font-weight: 500; ' . $activeClass . '">' . View::e((string)$row['name']) . $isRecurringStr . '</td>

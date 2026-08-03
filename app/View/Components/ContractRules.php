@@ -77,11 +77,18 @@ final class ContractRules
                 $btnLabel = $isActive ? 'Actif' : 'Inactif';
                 $btnVariant = $isActive ? 'success' : 'secondary';
 
-                $form = '<form method="post" action="' . View::url(ltrim($toggleAction, '/')) . '">'
+                $form = '<form method="post" action="' . View::url(ltrim($toggleAction, '/')) . '" style="display:inline-block;">'
                     . Form::hidden('_csrf_token', $csrfToken)
                     . Form::hidden('id', $rowId)
                     . Ui::button($btnLabel, ['variant' => $btnVariant, 'type' => 'submit'])
                     . '</form>';
+
+                if (\App\Helpers\Auth::isAdmin() || \App\Helpers\Auth::hasRole('dg')) {
+                    $form .= ' ' . Ui::deleteForm(
+                        'rh/regles-contrats/' . $rowId . '/supprimer',
+                        'Supprimer définitivement cette règle de contrat (' . $row['contract_type'] . ') ? Cette action est irréversible.'
+                    );
+                }
 
                 $listHtml .= '<article class="rh-settings-row ' . $activeClass . '" style="display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid var(--finea-border); gap: 15px;">'
                     . '<div style="flex: 1;">'

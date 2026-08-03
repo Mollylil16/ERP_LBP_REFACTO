@@ -18,6 +18,8 @@ final class RecordList
         $titleKey = (string) ($options['title_key'] ?? array_key_first($fields));
         $subtitleKey = (string) ($options['subtitle_key'] ?? '');
         $statusKey = (string) ($options['status_key'] ?? 'status');
+        /** @var callable(array<string,mixed>):string|null $rowActions */
+        $rowActions = $options['row_actions'] ?? null;
         $html = '<div class="finea-record-list">';
         foreach ($rows as $row) {
             $html .= '<article class="finea-record-item"><div class="finea-record-main"><strong>'
@@ -31,6 +33,7 @@ final class RecordList
                 $html .= '<span class="finea-data-badge"><small>' . View::e($label) . '</small><strong>' . View::e((string) $value) . '</strong></span>';
             }
             if (isset($row[$statusKey])) $html .= Ui::badge((string) $row[$statusKey], self::tone((string) $row[$statusKey]));
+            if ($rowActions !== null) $html .= $rowActions($row);
             $html .= '</div></article>';
         }
         return $html . '</div>';

@@ -356,6 +356,13 @@ final class Missions
                     . '</form>';
             }
 
+            if (\App\Helpers\Auth::isAdmin() || \App\Helpers\Auth::hasRole('dg')) {
+                $actionsHtml .= ' ' . Ui::deleteForm(
+                    'rh/missions/supprimer/' . $rowId,
+                    'Supprimer définitivement cet ordre de mission (OM-' . str_pad((string) $rowId, 4, '0', STR_PAD_LEFT) . ') ? Cette action est irréversible.'
+                );
+            }
+
             $approvedBy = '';
             if ($row['approved_by_name']) {
                 $approvedBy = '<div style="margin-top: 6px; font-size: 0.8rem; color: #059669;"><strong>Valide par :</strong> ' . View::e((string)$row['approved_by_name']) . '</div>';

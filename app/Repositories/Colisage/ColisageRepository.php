@@ -232,6 +232,18 @@ class ColisageRepository
         $stmt->execute(['id' => $id, 'status' => $status]);
     }
 
+    /**
+     * Supprime physiquement un colis (Admin/DG uniquement, cf. RoleMiddleware côté contrôleur).
+     * Les tables dépendantes (marchandises, tracking GPS, lignes d'inventaire, notifications)
+     * sont supprimées en cascade par la base ; les factures sont protégées par une contrainte
+     * RESTRICT — un colis déjà facturé ne peut pas être supprimé (annuler la facture d'abord).
+     */
+    public function deleteParcel(int $id): void
+    {
+        $stmt = $this->pdo->prepare("DELETE FROM lbp_colis WHERE id = :id");
+        $stmt->execute(['id' => $id]);
+    }
+
     /** @param array<string, mixed> $data */
     public function recordWithdrawal(int $id, array $data): void
     {
@@ -526,6 +538,18 @@ class ColisageRepository
     {
         $stmt = $this->pdo->prepare("SELECT COUNT(*) FROM lbp_colis WHERE numero_tracking LIKE :prefix");
         $stmt->execute(['prefix' => $prefix . '%']);
+        return (int) $stmt->fetchColumn();
+    }
+
+    /**
+     * Compte les colis déjà numérotés au nouveau format court "CODE-SEQ" (ex: LB-FR-001),
+     * sans tenir compte de l'historique en ancien format "CODE-MMAA-SEQ" (ex: LB-FR-0726-001) :
+     * chaque code de trajet repart proprement à 001 avec ce nouveau format.
+     */
+    public function countParcelsWithNewFormatCode(string $code): int
+    {
+        $stmt = $this->pdo->prepare("SELECT COUNT(*) FROM lbp_colis WHERE numero_tracking REGEXP CONCAT('^', :code, '-[0-9]{3}$')");
+        $stmt->execute(['code' => $code]);
         return (int) $stmt->fetchColumn();
     }
 

@@ -164,4 +164,10 @@ final class RhMissionRepository
             'id' => $id,
         ]);
     }
+
+    public function delete(int $id): void
+    {
+        $stmt = $this->pdo->prepare("DELETE FROM rh_missions WHERE id = :id");
+        $stmt->execute(['id' => $id]);
+    }
 }

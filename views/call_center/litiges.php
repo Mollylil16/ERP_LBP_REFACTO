@@ -10,6 +10,7 @@ use App\Helpers\Auth;
 use App\Helpers\Csrf;
 
 $canManage = Auth::can('call_center_manage');
+$canDelete = Auth::isAdmin() || Auth::hasRole('dg');
 $csrfToken = Csrf::token();
 
 $typeLabels = [
@@ -187,7 +188,7 @@ $statutLabels = [
               <th style="text-align:left;padding:.8rem 1rem;color:#374151;font-weight:600;">Gravité</th>
               <th style="text-align:left;padding:.8rem 1rem;color:#374151;font-weight:600;">Statut</th>
               <th style="text-align:left;padding:.8rem 1rem;color:#374151;font-weight:600;">Ouvert le</th>
-              <?php if ($canManage): ?><th style="text-align:left;padding:.8rem 1rem;color:#374151;font-weight:600;">Actions</th><?php endif; ?>
+              <?php if ($canManage || $canDelete): ?><th style="text-align:left;padding:.8rem 1rem;color:#374151;font-weight:600;">Actions</th><?php endif; ?>
             </tr>
           </thead>
           <tbody>
@@ -206,12 +207,17 @@ $statutLabels = [
                 <span style="background:<?= $sti['color'] ?>22;color:<?= $sti['color'] ?>;padding:.2rem .6rem;border-radius:999px;font-size:.75rem;font-weight:600;"><?= $sti['label'] ?></span>
               </td>
               <td style="padding:.7rem 1rem;color:#64748b;font-size:.8rem;"><?= date('d/m/Y', strtotime($l['date_ouverture'])) ?></td>
-              <?php if ($canManage): ?>
+              <?php if ($canManage || $canDelete): ?>
               <td style="padding:.7rem 1rem;">
-                <?php if (in_array($l['statut'], ['nouveau', 'en_cours'], true)): ?>
-                  <button onclick="document.getElementById('modal-resolve-<?= $l['id'] ?>').style.display='flex'" style="background:#22c55e;color:#fff;border:none;border-radius:.4rem;padding:.3rem .8rem;font-size:.8rem;cursor:pointer;font-weight:600;">✓ Traiter</button>
-                <?php else: ?>
-                  <span style="color:#94a3b8;font-size:.8rem;"><?= $l['date_resolution'] ? date('d/m/Y', strtotime($l['date_resolution'])) : '—' ?></span>
+                <?php if ($canManage): ?>
+                  <?php if (in_array($l['statut'], ['nouveau', 'en_cours'], true)): ?>
+                    <button onclick="document.getElementById('modal-resolve-<?= $l['id'] ?>').style.display='flex'" style="background:#22c55e;color:#fff;border:none;border-radius:.4rem;padding:.3rem .8rem;font-size:.8rem;cursor:pointer;font-weight:600;">✓ Traiter</button>
+                  <?php else: ?>
+                    <span style="color:#94a3b8;font-size:.8rem;"><?= $l['date_resolution'] ? date('d/m/Y', strtotime($l['date_resolution'])) : '—' ?></span>
+                  <?php endif; ?>
+                <?php endif; ?>
+                <?php if ($canDelete): ?>
+                  <?= \App\View\Components\Ui::deleteForm('call-center/litiges/' . (int) $l['id'] . '/supprimer', 'Supprimer définitivement ce litige ? Cette action est irréversible.') ?>
                 <?php endif; ?>
               </td>
               <?php endif; ?>

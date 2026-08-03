@@ -7,6 +7,7 @@ namespace App\Controllers\Rh;
 use App\Helpers\Csrf;
 use App\Helpers\Session;
 use App\Middleware\AuthMiddleware;
+use App\Middleware\RoleMiddleware;
 use App\Models\Database;
 use App\Repositories\Rh\RhHolidayRepository;
 use App\View\Pages\Rh\HolidayIndexPage;
@@ -73,6 +74,33 @@ final class RhHolidayController extends RhBaseController
         }
 
         $month = trim((string)($_POST['month'] ?? ''));
+        $redirectUrl = '/rh/feries';
+        if (preg_match('/^\d{4}-\d{2}$/', $month)) {
+            $redirectUrl .= '?month=' . urlencode($month);
+        }
+        $this->redirect($redirectUrl);
+    }
+
+    /** Suppression physique d'un jour férié — réservée Admin/DG. */
+    public function delete(string $id): void
+    {
+        RoleMiddleware::check(['dg']);
+
+        if (!Csrf::verify($_POST['_csrf_token'] ?? null)) {
+            Session::flash('error', 'Session expiree. Veuillez recommencer.');
+            $this->redirect('/rh/feries');
+        }
+
+        try {
+            $this->repository->delete((int) $id);
+            Session::flash('success', 'Le jour férié a été supprimé définitivement.');
+        } catch (\PDOException $e) {
+            Session::flash('error', $e->getCode() === '23000'
+                ? 'Ce jour férié ne peut pas être supprimé : il est référencé par un autre enregistrement.'
+                : 'Erreur lors de la suppression.');
+        }
+
+        $month = trim((string) ($_POST['month'] ?? ''));
         $redirectUrl = '/rh/feries';
         if (preg_match('/^\d{4}-\d{2}$/', $month)) {
             $redirectUrl .= '?month=' . urlencode($month);

@@ -40,6 +40,8 @@ $router->group('/rh', function (Router $router): void {
     $router->post('/cycle-vie/discipline', [RhLifecycleController::class, 'storeDiscipline']);
     $router->post('/cycle-vie/workflows/{id}', [RhLifecycleController::class, 'decideWorkflow']);
     $router->post('/cycle-vie/demandes-employes/{id}', [RhLifecycleController::class, 'decideEmployeeRequest']);
+    $router->post('/cycle-vie/evaluations/{id}/supprimer', [RhLifecycleController::class, 'deleteEvaluation']);
+    $router->post('/cycle-vie/formations/{id}/supprimer', [RhLifecycleController::class, 'deleteTraining']);
     
     // Paie
     $router->get('/paie', [RhPayrollController::class, 'index']);
@@ -62,6 +64,7 @@ $router->group('/rh', function (Router $router): void {
     $router->get('/missions/modifier/{id}', [RhMissionController::class, 'edit']);
     $router->post('/missions', [RhMissionController::class, 'store']);
     $router->post('/missions/decide/{id}', [RhMissionController::class, 'decide']);
+    $router->post('/missions/supprimer/{id}', [RhMissionController::class, 'delete']);
 
 
     // Explications
@@ -83,6 +86,7 @@ $router->group('/rh', function (Router $router): void {
     $router->get('/planning-conges', [RhHolidayController::class, 'index']);
     $router->post('/feries', [RhHolidayController::class, 'store']);
     $router->post('/feries/toggle', [RhHolidayController::class, 'toggle']);
+    $router->post('/feries/{id}/supprimer', [RhHolidayController::class, 'delete']);
 
     // Signataires RH
     $router->get('/signataires', [RhSignatoryController::class, 'index']);
@@ -93,6 +97,7 @@ $router->group('/rh', function (Router $router): void {
     $router->get('/regles-contrats', [RhContractRulesController::class, 'index']);
     $router->post('/regles-contrats', [RhContractRulesController::class, 'store']);
     $router->post('/regles-contrats/toggle', [RhContractRulesController::class, 'toggle']);
+    $router->post('/regles-contrats/{id}/supprimer', [RhContractRulesController::class, 'delete']);
 
 
     $router->group('/personnel', function (Router $router): void {

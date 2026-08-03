@@ -7,5 +7,6 @@ use App\View\Components\Colisage;
 /** @var array<int, array<string, mixed>> $sites */
 /** @var array<int, array<string, mixed>> $clients */
 /** @var array<int, array<string, mixed>> $products */
+/** @var array<string, mixed>|null $trajet */
 
-echo Colisage::createPage($sites, $clients, $products, $tauxChangeEur ?? 655.957);
+echo Colisage::createPage($sites, $clients, $products, $tauxChangeEur ?? 655.957, $trajet ?? null);

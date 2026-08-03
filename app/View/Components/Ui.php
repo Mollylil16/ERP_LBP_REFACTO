@@ -142,6 +142,27 @@ final class Ui
     }
 
     /**
+     * Formulaire de suppression réutilisable : jeton CSRF + confirmation navigateur + bouton "danger".
+     * La restriction de rôle (Admin/DG) se fait côté contrôleur via RoleMiddleware, pas ici.
+     *
+     * @param array<string,mixed> $options Optional: 'label', 'class'
+     */
+    public static function deleteForm(string $action, string $confirmMessage = 'Confirmer la suppression ? Cette action est irréversible.', array $options = []): string
+    {
+        $label = (string) ($options['label'] ?? 'Supprimer');
+        $class = (string) ($options['class'] ?? 'finea-button-sm');
+        // Neutralise l'apostrophe (délimiteur de la chaîne JS) puis échappe pour le contexte
+        // attribut HTML double-quoté (onsubmit="...") — nécessaire car le message peut contenir
+        // du texte libre (nom, description) fourni par un utilisateur.
+        $safeMessage = View::e(str_replace("'", '’', $confirmMessage));
+
+        return '<form method="post" action="' . View::url(ltrim($action, '/')) . '" style="display:inline;" onsubmit="return confirm(\'' . $safeMessage . '\');">'
+            . '<input type="hidden" name="_csrf_token" value="' . View::e(\App\Helpers\Csrf::token()) . '">'
+            . self::button($label, ['type' => 'submit', 'variant' => 'danger', 'class' => $class])
+            . '</form>';
+    }
+
+    /**
      * Generic modal dialog component using standard design system buttons and styles.
      *
      * @param array<string,mixed> $options  Optional: 'btnLabel', 'btnVariant', 'formId'

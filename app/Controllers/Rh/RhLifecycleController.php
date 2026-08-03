@@ -8,6 +8,7 @@ use App\Helpers\Auth;
 use App\Helpers\Csrf;
 use App\Helpers\Session;
 use App\Middleware\AuthMiddleware;
+use App\Middleware\RoleMiddleware;
 use App\Models\Database;
 use App\Repositories\Rh\RhLifecycleRepository;
 use App\Services\Rh\RhLifecycleService;
@@ -44,6 +45,10 @@ class RhLifecycleController extends RhBaseController
     public function decideWorkflow(string $id): void { $this->execute(fn() => $this->service->decideWorkflow((int) $id, (string) ($_POST['decision'] ?? ''), (int) Auth::id()), 'Workflow mis à jour.', 'workflows'); }
     public function decideEmployeeRequest(string $id): void { $this->execute(fn() => $this->service->decideEmployeeRequest((int) $id, (string) ($_POST['decision'] ?? ''), (int) Auth::id(), $_POST['comment'] ?? null), 'Demande employé mise à jour.', 'workflows'); }
 
+    /** Suppressions physiques — réservées Admin/DG. */
+    public function deleteEvaluation(string $id): void { $this->executeDelete(fn() => $this->service->deleteEvaluation((int) $id), 'Évaluation supprimée définitivement.', 'evaluations'); }
+    public function deleteTraining(string $id): void { $this->executeDelete(fn() => $this->service->deleteTraining((int) $id), 'Session de formation supprimée définitivement.', 'trainings'); }
+
     private function execute(callable $action, string $success, string $section): void
     {
         AuthMiddleware::check();
@@ -54,6 +59,26 @@ class RhLifecycleController extends RhBaseController
         try {
             $action();
             Session::flash('success', $success);
+        } catch (RuntimeException $e) {
+            Session::flash('error', $e->getMessage());
+        }
+        $this->redirect('/rh/cycle-vie?section=' . $section);
+    }
+
+    private function executeDelete(callable $action, string $success, string $section): void
+    {
+        RoleMiddleware::check(['dg']);
+        if (!Csrf::verify($_POST['_csrf_token'] ?? null)) {
+            Session::flash('error', 'Jeton CSRF invalide.');
+            $this->redirect('/rh/cycle-vie?section=' . $section);
+        }
+        try {
+            $action();
+            Session::flash('success', $success);
+        } catch (\PDOException $e) {
+            Session::flash('error', $e->getCode() === '23000'
+                ? 'Suppression impossible : cet élément est référencé par un autre enregistrement.'
+                : 'Erreur lors de la suppression.');
         } catch (RuntimeException $e) {
             Session::flash('error', $e->getMessage());
         }

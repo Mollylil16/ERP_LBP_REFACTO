@@ -48,6 +48,11 @@ final class ColisageService
         return $this->repository->createClient($data);
     }
 
+    public function deleteParcel(int $id): void
+    {
+        $this->repository->deleteParcel($id);
+    }
+
     // ==========================================
     // COLIS / PARCELS
     // ==========================================
@@ -146,10 +151,16 @@ final class ColisageService
             }
         }
 
-        $mmyy = date('my'); // e.g. 0726 for July 2026
-        $prefix = $code . '-' . $mmyy;
-        $seq = $this->repository->countParcelsWithTrackingPrefix($prefix) + 1;
-        $data['numero_tracking'] = $prefix . '-' . str_pad((string) $seq, 3, '0', STR_PAD_LEFT);
+        // Trajet Opération verrouillé (sous-menu à trajet fixe) : le code de trajet connu
+        // prime sur toute inférence type/agence, l'agent n'ayant jamais pu le modifier.
+        if (!empty($data['trajet_code_locked'])) {
+            $code = (string) $data['trajet_code_locked'];
+        }
+
+        // Format court "CODE-SEQ" (ex: LB-FR-001), sans le segment mois/année de l'ancien
+        // format ; la séquence repart à 001 pour chaque code sous ce nouveau format.
+        $seq = $this->repository->countParcelsWithNewFormatCode($code) + 1;
+        $data['numero_tracking'] = $code . '-' . str_pad((string) $seq, 3, '0', STR_PAD_LEFT);
 
         // Determine trafic label from type_expediteur
         $traficMap = [

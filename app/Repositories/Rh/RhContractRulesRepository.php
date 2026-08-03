@@ -68,4 +68,10 @@ final class RhContractRulesRepository
         ");
         $stmt->execute(['id' => $id]);
     }
+
+    public function delete(int $id): void
+    {
+        $stmt = $this->pdo->prepare("DELETE FROM rh_contract_rules WHERE id = :id");
+        $stmt->execute(['id' => $id]);
+    }
 }

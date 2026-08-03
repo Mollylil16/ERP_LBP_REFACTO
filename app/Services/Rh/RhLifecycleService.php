@@ -108,6 +108,16 @@ class RhLifecycleService
         ], $actorId);
     }
 
+    public function deleteEvaluation(int $id): void
+    {
+        $this->repository->deleteEvaluation($id);
+    }
+
+    public function deleteTraining(int $id): void
+    {
+        $this->repository->deleteTraining($id);
+    }
+
     public function decideWorkflow(int $id, string $decision, int $actorId): void
     {
         if (!in_array($decision, ['approve', 'reject'], true)) {

@@ -106,7 +106,9 @@ final class SiteAdmin
             . Form::input('sort_order', ['label' => 'Ordre', 'type' => 'number', 'value' => $slide['sort_order'] ?? 0])
             . Form::checkbox('is_active', ['label' => 'Afficher ce slide', 'checked' => !isset($slide['is_active']) || !empty($slide['is_active'])])
             . '</div>' . Form::colorPalette('overlay_color', 'Couleur du voile', (string) ($slide['overlay_color'] ?? '#111c44'))
-            . '<footer>' . Ui::button($isNew ? 'Ajouter au carrousel' : 'Enregistrer le slide', ['variant' => 'primary', 'type' => 'submit']) . '</footer></form>';
+            . '<footer>' . Ui::button($isNew ? 'Ajouter au carrousel' : 'Enregistrer le slide', ['variant' => 'primary', 'type' => 'submit'])
+            . (!$isNew && (\App\Helpers\Auth::isAdmin() || \App\Helpers\Auth::hasRole('dg')) ? ' ' . Ui::deleteForm('site-admin/configuration/slides/' . (int) $slide['id'] . '/supprimer', 'Supprimer définitivement ce slide ? Cette action est irréversible.') : '')
+            . '</footer></form>';
     }
 
     /** @param array<string,mixed> $product */
@@ -130,7 +132,9 @@ final class SiteAdmin
             . Form::input('image_url', ['label' => 'Image', 'value' => $product['image_url'] ?? ''])
             . Form::checkbox('is_featured', ['label' => 'Mettre en avant', 'checked' => !empty($product['is_featured'])])
             . Form::checkbox('is_active', ['label' => 'Publier cette offre', 'checked' => !isset($product['is_active']) || !empty($product['is_active'])])
-            . '</div><footer>' . Ui::button($isNew ? 'Ajouter à la marketplace' : 'Enregistrer l’offre', ['variant' => 'primary', 'type' => 'submit']) . '</footer></form>';
+            . '</div><footer>' . Ui::button($isNew ? 'Ajouter à la marketplace' : 'Enregistrer l’offre', ['variant' => 'primary', 'type' => 'submit'])
+            . (!$isNew && (\App\Helpers\Auth::isAdmin() || \App\Helpers\Auth::hasRole('dg')) ? ' ' . Ui::deleteForm('site-admin/configuration/products/' . (int) $product['id'] . '/supprimer', 'Supprimer définitivement cette offre ? Cette action est irréversible.') : '')
+            . '</footer></form>';
     }
 
     private static function announcementForm(array $item, string $csrfToken): string
@@ -147,7 +151,9 @@ final class SiteAdmin
             . Form::input('ends_at', ['label' => 'Fin', 'type' => 'datetime-local', 'value' => isset($item['ends_at']) ? str_replace(' ', 'T', (string) $item['ends_at']) : ''])
             . Form::input('sort_order', ['label' => 'Ordre', 'type' => 'number', 'value' => $item['sort_order'] ?? 0])
             . Form::checkbox('is_active', ['label' => 'Annonce active', 'checked' => !isset($item['is_active']) || !empty($item['is_active'])])
-            . '</div><footer>' . Ui::button('Enregistrer l’annonce', ['variant' => 'primary', 'type' => 'submit']) . '</footer></form>';
+            . '</div><footer>' . Ui::button('Enregistrer l’annonce', ['variant' => 'primary', 'type' => 'submit'])
+            . (!empty($item['id']) && (\App\Helpers\Auth::isAdmin() || \App\Helpers\Auth::hasRole('dg')) ? ' ' . Ui::deleteForm('site-admin/configuration/announcements/' . (int) $item['id'] . '/supprimer', 'Supprimer définitivement cette annonce ? Cette action est irréversible.') : '')
+            . '</footer></form>';
     }
 
     private static function articleForm(array $item, string $csrfToken): string
@@ -164,6 +170,8 @@ final class SiteAdmin
             . Form::textarea('content', ['label' => 'Contenu', 'value' => $item['content'] ?? '', 'rows' => 8])
             . Form::input('published_at', ['label' => 'Publication', 'type' => 'datetime-local', 'value' => isset($item['published_at']) ? str_replace(' ', 'T', (string) $item['published_at']) : ''])
             . Form::checkbox('is_published', ['label' => 'Publier cet article', 'checked' => !empty($item['is_published'])])
-            . '</div><footer>' . Ui::button('Enregistrer l’article', ['variant' => 'primary', 'type' => 'submit']) . '</footer></form>';
+            . '</div><footer>' . Ui::button('Enregistrer l’article', ['variant' => 'primary', 'type' => 'submit'])
+            . (!empty($item['id']) && (\App\Helpers\Auth::isAdmin() || \App\Helpers\Auth::hasRole('dg')) ? ' ' . Ui::deleteForm('site-admin/configuration/articles/' . (int) $item['id'] . '/supprimer', 'Supprimer définitivement cet article ? Cette action est irréversible.') : '')
+            . '</footer></form>';
     }
 }
