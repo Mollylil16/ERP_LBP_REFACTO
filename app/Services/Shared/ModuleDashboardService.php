@@ -32,7 +32,7 @@ final class ModuleDashboardService
                 ],
             ],
             'colisage' => [
-                'slug' => 'colisage', 'label' => 'Colisage', 'code' => 'COL', 'iconKey' => 'colisage',
+                'slug' => 'colisage', 'label' => 'Facturation', 'code' => 'COL', 'iconKey' => 'colisage',
                 'accent' => '#f97316', 'accent2' => '#ca8a04', 'gradient' => 'linear-gradient(135deg, #ca8a04, #f97316)',
                 'description' => 'Packing-list, colis, volumes, poids, conteneurs et contrôle documentaire des marchandises.',
                 'kpis' => [
@@ -160,9 +160,9 @@ final class ModuleDashboardService
                 ],
             ],
             'facturation' => [
-                'slug' => 'facturation', 'label' => 'Facturation', 'code' => 'FAC', 'iconKey' => 'billing',
+                'slug' => 'facturation', 'label' => 'Recherche & Audit', 'code' => 'FAC', 'iconKey' => 'billing',
                 'accent' => '#16a34a', 'accent2' => '#14532d', 'gradient' => 'linear-gradient(135deg, #14532d, #16a34a)',
-                'description' => 'Factures clients, proformas, avoirs, règlements, taxes, frais transit et rentabilité par dossier.',
+                'description' => 'Recherche de factures par période, agence et trajet, avec montants ; modification et audit des factures verrouillées, réservés au rôle Responsable.',
                 'kpis' => [
                     ['label' => 'Proformas', 'value' => '0', 'meta' => 'Devis à convertir'],
                     ['label' => 'Factures', 'value' => '0', 'meta' => 'Pièces émises'],
@@ -170,9 +170,8 @@ final class ModuleDashboardService
                     ['label' => 'CA estimé', 'value' => '0', 'meta' => 'Indicateur à brancher'],
                 ],
                 'actions' => [
-                    ['label' => 'Nouvelle facture', 'hint' => 'Créer une facture', 'url' => '/finance/factures/nouveau'],
-                    ['label' => 'Factures & Règlements', 'hint' => 'Suivre les règlements clients', 'url' => '/finance/factures'],
-                    ['label' => 'Points de caisse', 'hint' => 'Faire mon point de caisse', 'url' => '/finance/clotures'],
+                    ['label' => 'Filtre & Recherche', 'hint' => 'Rechercher les factures par période, agence, trajet', 'url' => '/facturation/filtre'],
+                    ['label' => 'Export PDF / Excel', 'hint' => 'Exporter le résultat filtré avec montants', 'url' => '/facturation/filtre'],
                 ],
             ],
             'entrepots' => [
@@ -349,6 +348,7 @@ final class ModuleDashboardService
         if ($module['slug'] === 'logistique') {
             return [
                 ['key' => 'dashboard', 'label' => 'Tableau de bord', 'icon' => 'DB', 'url' => '/logistique/dashboard', 'available' => true],
+                ['key' => 'colisage', 'label' => 'Suivi Colisage', 'icon' => 'SC', 'url' => '/logistique/colisage', 'available' => true],
                 ['key' => 'rayons', 'label' => 'Gestion des Rayons', 'icon' => 'RY', 'url' => '/logistique/rayons', 'available' => true],
                 ['key' => 'parametres', 'label' => 'Délais & Gardiennage', 'icon' => 'PR', 'url' => '/logistique/parametres', 'available' => true],
                 ['key' => 'parcels', 'label' => 'Gestion des Colis', 'icon' => 'CL', 'url' => '/colisage/parcels', 'available' => true],

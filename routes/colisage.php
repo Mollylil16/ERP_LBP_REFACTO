@@ -8,10 +8,17 @@ use App\Controllers\Colisage\ColisageController;
 use App\Controllers\Colisage\ColisageAutresController;
 use App\Controllers\Colisage\ExploitationController;
 use App\Controllers\Colisage\RapportsController;
+use App\Controllers\Colisage\OperationSaisieController;
 
 /** @var Router $router */
 
+$router->get('/operation/{code}/saisir', [OperationSaisieController::class, 'create']);
+$router->post('/operation/enregistrer', [OperationSaisieController::class, 'store']);
+
 $router->group('/colisage', function (Router $router): void {
+    // Saisie par trajet dans le groupe /colisage
+    $router->get('/operation/{code}/saisir', [OperationSaisieController::class, 'create']);
+    $router->post('/operation/enregistrer', [OperationSaisieController::class, 'store']);
     $router->get('/', [ColisageDashboardController::class, 'index']);
     $router->get('/dashboard', [ColisageDashboardController::class, 'index']);
 
@@ -48,6 +55,11 @@ $router->group('/colisage', function (Router $router): void {
 
     $router->get('/settings', [ColisageController::class, 'settings']);
     $router->post('/settings/enregistrer', [ColisageController::class, 'saveSettings']);
+
+    // Filtre & Recherche (Facturation)
+    $router->get('/filtre', [\App\Controllers\Facturation\FacturationFilterController::class, 'index']);
+    $router->get('/filtre/export-pdf', [\App\Controllers\Facturation\FacturationFilterController::class, 'exportPdf']);
+    $router->get('/filtre/export-excel', [\App\Controllers\Facturation\FacturationFilterController::class, 'exportExcel']);
 
     // Exploitation module routes (Web and API compatibility)
     $router->get('/exploitation/synthese', [ExploitationController::class, 'synthese']);

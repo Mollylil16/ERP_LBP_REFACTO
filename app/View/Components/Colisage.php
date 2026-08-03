@@ -2636,4 +2636,117 @@ final class Colisage
             . '<div style="margin-top:10px; font-size:8px; color:#64748b; text-align:center;">Document officiel de charge généré le ' . $createdAt . ' — ERP La Belle Porte Logistics</div>'
             . '</div></body></html>';
     }
+
+    /**
+     * Formulaire de saisie "Opération" à trajet imposé (Règle 3.4 du cahier des charges) :
+     * le trajet est déterminé par le sous-menu emprunté, non modifiable par l'agent.
+     *
+     * @param array<string,mixed> $trajet
+     * @param array<int, array<string, mixed>> $sites
+     * @param array<int, array<string, mixed>> $clients
+     * @param array<int, array<string, mixed>> $products
+     */
+    public static function operationSaisiePage(array $trajet, array $sites, array $clients, array $products, float $tauxChangeEur): string
+    {
+        $typeTone = match ($trajet['type_transport'] ?? '') {
+            'maritime', 'cargo' => 'primary',
+            'rapide' => 'warning',
+            'aerien' => 'accent',
+            default => 'neutral',
+        };
+
+        $header = Ui::pageHeader(
+            'Nouveau Colis — ' . $trajet['code'] . ' (' . $trajet['libelle'] . ')',
+            'Le trajet est déterminé automatiquement par la sous-rubrique sélectionnée et reste fixe.',
+            [
+                'eyebrow' => 'Opération • Formulaire de saisie',
+                'class' => 'rh-hero-white',
+                'actions' => [
+                    Ui::button('Retour à la liste', ['href' => 'colisage/parcels', 'variant' => 'secondary']),
+                ],
+            ]
+        );
+
+        $lockNotice = '<div class="finea-section-card" style="border-left: 6px solid #2563eb; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:1rem;">'
+            . '<div><p class="rh-eyebrow" style="margin-bottom:0.25rem;">Règle de restriction active — Trajet fixe</p>'
+            . '<h3 style="margin:0;">Trajet imposé : ' . View::e($trajet['code']) . ' — ' . View::e($trajet['libelle']) . '</h3></div>'
+            . Ui::badge(strtoupper((string) $trajet['type_transport']), $typeTone)
+            . '</div>';
+
+        $siteOpts = [];
+        foreach ($sites as $s) {
+            $siteOpts[] = ['value' => (string) $s['id'], 'label' => $s['name']];
+        }
+
+        $expediteurOpts = [['value' => '0', 'label' => '+ Créer un nouvel expéditeur']];
+        $destinataireOpts = [['value' => '0', 'label' => '+ Créer un nouveau destinataire']];
+        foreach ($clients as $c) {
+            $opt = ['value' => (string) $c['id'], 'label' => $c['name'] . ' (' . ($c['phone'] ?? 'Pas de tel') . ')'];
+            $expediteurOpts[] = $opt;
+            $destinataireOpts[] = $opt;
+        }
+
+        $expediteurCard = '<h3 class="rh-step-title">1. Expéditeur (Client Départ)</h3>'
+            . Form::select('expediteur_id', $expediteurOpts, '0', ['label' => 'Sélectionner un client existant', 'onchange' => "toggleClientFields('expediteur')"])
+            . '<div id="expediteur_new_fields">'
+            . Form::input('expediteur_name', ['label' => 'Nom complet / Raison sociale', 'placeholder' => 'Ex: Koffi Emmanuel'])
+            . '<div class="rh-form-grid-3">'
+            . Form::input('expediteur_phone', ['label' => 'Téléphone', 'placeholder' => '+225 07...'])
+            . Form::input('expediteur_email', ['label' => 'Email (optionnel)', 'type' => 'email', 'placeholder' => 'client@email.com'])
+            . '</div></div>';
+
+        $destinataireCard = '<h3 class="rh-step-title">2. Destinataire (Client Arrivée)</h3>'
+            . Form::select('destinataire_id', $destinataireOpts, '0', ['label' => 'Sélectionner un destinataire existant', 'onchange' => "toggleClientFields('destinataire')"])
+            . '<div id="destinataire_new_fields">'
+            . Form::input('destinataire_name', ['label' => 'Nom complet / Raison sociale', 'placeholder' => 'Ex: Jean Dupont'])
+            . '<div class="rh-form-grid-3">'
+            . Form::input('destinataire_phone', ['label' => 'Téléphone', 'placeholder' => '+33 6...'])
+            . Form::input('destinataire_address', ['label' => 'Adresse / Ville', 'placeholder' => 'Ville ou destination'])
+            . '</div></div>';
+
+        $userAgenceId = $_SESSION['user']['agence_id'] ?? null;
+        $shipmentCard = '<h3 class="rh-step-title">3. Caractéristiques & Agences d\'Expédition</h3>'
+            . '<div class="rh-form-grid-3">'
+            . Form::selectSearch('agence_depart_id', $siteOpts, $userAgenceId !== null ? (string) $userAgenceId : '', ['label' => 'Agence de départ'])
+            . Form::selectSearch('agence_arrivee_id', $siteOpts, '', ['label' => 'Agence d\'arrivée / Bureau récepteur'])
+            . Form::input('nombre_colis', ['label' => 'Nombre de colis', 'type' => 'number', 'min' => 1, 'value' => '1', 'required' => true])
+            . Form::input('poids_total', ['label' => 'Poids total (kg)', 'type' => 'number', 'step' => '0.01', 'placeholder' => '0.00', 'required' => true])
+            . Form::input('valeur_declaree', ['label' => 'Valeur déclarée / Montant total', 'type' => 'number', 'step' => '0.01', 'placeholder' => '0.00'])
+            . '</div>';
+
+        $formContent = '<form method="post" action="' . View::url('operation/enregistrer') . '" id="form-saisie-trajet">'
+            . \App\Helpers\Csrf::input()
+            . Form::hidden('trajet_code', $trajet['code'])
+            . Form::hidden('trajet_id', (string) $trajet['id'])
+            . '<div class="rh-form-step-card">' . $expediteurCard . '</div>'
+            . '<div class="rh-form-step-card">' . $destinataireCard . '</div>'
+            . '<div class="rh-form-step-card">' . $shipmentCard . '</div>'
+            . '<div style="display:flex; justify-content:flex-end; gap:1rem; margin-top:1.5rem;">'
+            . Ui::button('Annuler', ['href' => 'colisage/parcels', 'variant' => 'secondary'])
+            . Ui::button('Enregistrer et Facturer sur ' . $trajet['code'], ['type' => 'submit', 'variant' => 'accent'])
+            . '</div></form>';
+
+        $script = '<script>'
+            . 'function toggleClientFields(type) {'
+            . '    const select = document.getElementById("field_" + type + "_id");'
+            . '    const fields = document.getElementById(type + "_new_fields");'
+            . '    if (select && fields) {'
+            . '        fields.style.display = (select.value === "0") ? "block" : "none";'
+            . '    }'
+            . '}'
+            . 'document.addEventListener("DOMContentLoaded", function() {'
+            . '    toggleClientFields("expediteur");'
+            . '    toggleClientFields("destinataire");'
+            . '});'
+            . '</script>';
+
+        return '<div class="finea-shell">'
+            . '<div class="finea-container">'
+            . $header
+            . '<div style="margin-bottom: 1.5rem;">' . $lockNotice . '</div>'
+            . $formContent
+            . '</div>'
+            . '</div>'
+            . $script;
+    }
 }

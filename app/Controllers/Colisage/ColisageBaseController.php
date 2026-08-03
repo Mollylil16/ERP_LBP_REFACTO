@@ -41,7 +41,7 @@ abstract class ColisageBaseController extends BaseController
     {
         return [
             'pageTitle' => $pageTitle,
-            'moduleName' => 'Colisage',
+            'moduleName' => 'Facturation',
             'moduleCode' => 'COL',
             'activeModule' => $activeModule,
             'additionalStyles' => ['css/finea-ui.css', 'css/colisage.css'],

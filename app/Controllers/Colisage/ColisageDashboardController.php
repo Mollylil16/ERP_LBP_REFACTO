@@ -30,7 +30,7 @@ final class ColisageDashboardController extends ColisageBaseController
             $module = $this->getService()->dashboard();
         } catch (\Throwable $e) {
             $module = [
-                'label' => 'Colisage & Expéditions',
+                'label' => 'Facturation & Expéditions',
                 'code' => 'COL',
                 'slug' => 'colisage',
                 'kpis' => [
@@ -47,7 +47,7 @@ final class ColisageDashboardController extends ColisageBaseController
 
         $page = new \App\View\Pages\Colisage\DashboardPage($module);
 
-        $this->colisageView('colisage/dashboard', 'Tableau de bord ' . (string) ($module['label'] ?? 'Colisage'), 'dashboard', [
+        $this->colisageView('colisage/dashboard', 'Tableau de bord ' . (string) ($module['label'] ?? 'Facturation'), 'dashboard', [
             'dashboardModule' => $module,
             'page' => $page,
         ]);

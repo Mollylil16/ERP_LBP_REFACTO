@@ -24,7 +24,14 @@ class View
 
         $prefix = $servesFromPublic ? ($baseDir . '/assets/') : ($baseDir . '/public/assets/');
 
-        return '/' . ltrim($prefix . ltrim($path, '/'), '/');
+        $url = '/' . ltrim($prefix . ltrim($path, '/'), '/');
+
+        $filePath = BASE_PATH . '/public/assets/' . ltrim($path, '/');
+        if (is_file($filePath)) {
+            $url .= '?v=' . filemtime($filePath);
+        }
+
+        return $url;
     }
 
     public static function url(string $path = ''): string

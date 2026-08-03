@@ -6,6 +6,7 @@ namespace App\Controllers\Colisage;
 
 use App\Middleware\AuthMiddleware;
 use App\Middleware\RoleMiddleware;
+use App\Helpers\Auth;
 use App\Helpers\Csrf;
 use App\Helpers\Session;
 use App\Models\Database;

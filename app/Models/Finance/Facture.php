@@ -21,7 +21,12 @@ class Facture
         public ?string $dateExpirationQr = null,
         public ?string $dateEmission = null,
         public ?string $dateEcheanceSolde = null,
-        public ?string $updatedAt = null
+        public ?string $updatedAt = null,
+        public ?int $trajetId = null,
+        public ?int $agentId = null,
+        public ?int $createdBy = null,
+        public bool $locked = true,
+        public ?string $lockedAt = null
     ) {}
 
     public ?string $colis_tracking = null;

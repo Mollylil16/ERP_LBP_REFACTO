@@ -303,4 +303,100 @@ final class Logistique
 
         return Ui::badge('Frais de garde : +' . number_format($montantFrais, 0, ',', ' ') . ' XOF', 'danger');
     }
+
+    /**
+     * Vue transversale "Suivi Colisage" (Logistique) : agence + date, tous types d'envoi confondus,
+     * strictement sans montant (Règle point 2 du cahier des charges).
+     *
+     * @param array<int, array<string, mixed>> $sites
+     * @param array<int, array<string, mixed>> $parcels
+     * @param array<string, mixed> $kpis
+     */
+    public static function colisageSuiviPage(array $sites, string $selectedDate, int $selectedAgenceId, array $parcels, array $kpis): string
+    {
+        $exportQuery = http_build_query(['agence_id' => $selectedAgenceId, 'date' => $selectedDate]);
+
+        $header = Ui::pageHeader(
+            'Suivi Colisage Agences',
+            'Vue de consultation globale par agence et par date, tous types d\'envoi confondus. Les montants financiers sont volontairement masqués sur ce sous-module logistique.',
+            [
+                'eyebrow' => 'Logistique • Suivi transversal',
+                'class' => 'rh-hero-white',
+                'actions' => [
+                    Ui::button('Imprimer / PDF (sans montant)', ['href' => 'logistique/colisage/export-pdf?' . $exportQuery, 'variant' => 'secondary']),
+                    Ui::button('Exporter Excel (sans montant)', ['href' => 'logistique/colisage/export-excel?' . $exportQuery, 'variant' => 'accent']),
+                ],
+            ]
+        );
+
+        $siteOpts = [['value' => '0', 'label' => '-- Toutes les agences --']];
+        foreach ($sites as $s) {
+            $siteOpts[] = ['value' => (string) $s['id'], 'label' => $s['name'] . (!empty($s['code']) ? ' (' . $s['code'] . ')' : '')];
+        }
+
+        $filterForm = '<form method="get" action="' . View::url('logistique/colisage') . '" class="rh-form-grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)) auto; align-items:end;">'
+            . Form::select('agence_id', $siteOpts, (string) $selectedAgenceId, ['label' => 'Agence de saisie'])
+            . Form::input('date', ['label' => 'Date de saisie', 'type' => 'date', 'value' => $selectedDate])
+            . '<div>' . Ui::button('Filtrer', ['type' => 'submit', 'variant' => 'primary']) . '</div>'
+            . '</form>';
+
+        $kpisHtml = Dashboard::kpis([
+            ['label' => 'Nombre de dossiers', 'value' => number_format((int) ($kpis['totalSaisies'] ?? 0), 0, ',', ' ')],
+            ['label' => 'Nombre total de colis', 'value' => number_format((int) ($kpis['totalNombreColis'] ?? 0), 0, ',', ' '), 'tone' => 'primary'],
+            ['label' => 'Poids total (tonnage)', 'value' => number_format((float) ($kpis['totalPoids'] ?? 0), 2, ',', ' ') . ' kg', 'tone' => 'success'],
+        ]);
+
+        $tableHtml = self::colisageSuiviTable($parcels);
+        $tableSection = Ui::section(
+            'Liste des colis enregistrés le ' . date('d/m/Y', strtotime($selectedDate)),
+            $tableHtml,
+            count($parcels) . ' entrée(s)'
+        );
+
+        return '<div class="finea-shell">'
+            . '<div class="finea-container">'
+            . $header
+            . '<div style="margin: 1.5rem 0;">' . Ui::section('Filtres', $filterForm) . '</div>'
+            . $kpisHtml
+            . '<div style="margin-top: 1.5rem;">' . $tableSection . '</div>'
+            . '</div>'
+            . '</div>';
+    }
+
+    /** @param array<int, array<string, mixed>> $parcels */
+    private static function colisageSuiviTable(array $parcels): string
+    {
+        if (empty($parcels)) {
+            return Ui::emptyState(
+                'Aucun colis trouvé pour cette sélection',
+                'Aucune saisie n\'a été enregistrée pour l\'agence et la date sélectionnées.'
+            );
+        }
+
+        $rows = '';
+        foreach ($parcels as $p) {
+            $trajetDisplay = !empty($p['trajet_code'])
+                ? ($p['trajet_code'] . ' (' . $p['trajet_libelle'] . ')')
+                : ($p['col_trajet'] ?: ($p['type_expediteur'] ?? 'Non spécifié'));
+            $heure = date('H:i', strtotime((string) $p['created_at']));
+
+            $rows .= '<tr>'
+                . '<td><a href="' . View::url('colisage/parcels/' . $p['id']) . '"><strong>' . View::e($p['numero_tracking']) . '</strong></a></td>'
+                . '<td>' . $heure . '</td>'
+                . '<td>' . View::e($p['expediteur_name'] ?: 'Passager / Standard') . '</td>'
+                . '<td>' . View::e($p['destinataire_name'] ?: 'Non renseigné') . (!empty($p['destinataire_phone']) ? '<br><small>' . View::e($p['destinataire_phone']) . '</small>' : '') . '</td>'
+                . '<td style="text-align:center;"><strong>' . (int) $p['nombre_colis'] . '</strong></td>'
+                . '<td style="text-align:right;"><strong>' . number_format((float) $p['poids_total'], 2, ',', ' ') . '</strong></td>'
+                . '<td>' . Ui::badge(str_replace('_', ' ➔ ', (string) $trajetDisplay), 'primary') . '</td>'
+                . '<td><div>' . View::e($p['agence_depart_name'] ?: 'Départ non défini') . '</div><small>➔ ' . View::e($p['agence_arrivee_name'] ?: 'Destination non définie') . '</small></td>'
+                . '<td>' . View::e($p['agent_name']) . '</td>'
+                . '<td>' . Ui::badge((string) $p['statut'], 'neutral') . '</td>'
+                . '</tr>';
+        }
+
+        return '<div class="finea-table-wrapper"><table class="finea-table"><thead><tr>'
+            . '<th>N° Tracking</th><th>Heure</th><th>Expéditeur</th><th>Destinataire & Contact</th>'
+            . '<th>Colis</th><th>Poids (kg)</th><th>Trajet / Envoi</th><th>Agence Départ / Arrivée</th><th>Agent Saisisseur</th><th>Statut</th>'
+            . '</tr></thead><tbody>' . $rows . '</tbody></table></div>';
+    }
 }

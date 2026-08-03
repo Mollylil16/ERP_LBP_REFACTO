@@ -24,6 +24,12 @@ final class PermissionEntityRegistry
     public const CALL_CENTER_MANAGE = 'call_center_manage';
     public const RAPPORTS_AGENCE = 'rapports_agence';
 
+    public const SAISIR_FACTURE = 'saisir_facture';
+    public const MODIFIER_FACTURE_APRES_CREATION = 'modifier_facture_apres_creation';
+    public const CONSULTER_TOUTES_FACTURES_TOUTES_AGENCES = 'consulter_toutes_factures_toutes_agences';
+    public const EXPORTER_COLISAGE_SANS_MONTANT = 'exporter_colisage_sans_montant';
+    public const EXPORTER_FACTURATION_AVEC_MONTANT = 'exporter_facturation_avec_montant';
+
     public static function all(): array
     {
         return [
@@ -88,31 +94,31 @@ final class PermissionEntityRegistry
                 'sort_order' => 160,
             ],
             self::EXPLOITATION_SYNTHESE => [
-                'module' => 'Colisage',
+                'module' => 'Facturation',
                 'name' => 'Synthèse d\'exploitation',
                 'description' => 'Accès aux indicateurs et recettes consolidés.',
                 'sort_order' => 200,
             ],
             self::EXPLOITATION_TRACKING => [
-                'module' => 'Colisage',
+                'module' => 'Facturation',
                 'name' => 'Suivi logistique GPS',
                 'description' => 'Mise à jour des coordonnées des expéditions.',
                 'sort_order' => 210,
             ],
             self::EXPLOITATION_CREDITS => [
-                'module' => 'Colisage',
+                'module' => 'Facturation',
                 'name' => 'Compensation inter-agences',
                 'description' => 'Gestion et règlement des créances réciproques.',
                 'sort_order' => 220,
             ],
             self::EXPLOITATION_FOURNITURES => [
-                'module' => 'Colisage',
+                'module' => 'Facturation',
                 'name' => 'Fournitures de bureau',
                 'description' => 'Validation et circuit des fournitures de bureau.',
                 'sort_order' => 230,
             ],
             self::RAPPORTS_AGENCE => [
-                'module' => 'Colisage',
+                'module' => 'Facturation',
                 'name' => 'Rapports journaliers par agence',
                 'description' => 'Accéder aux rapports journaliers et mensuels par agence avec export CSV.',
                 'sort_order' => 235,
@@ -128,6 +134,36 @@ final class PermissionEntityRegistry
                 'name' => 'Call Center - Gérer',
                 'description' => 'Enregistrer des appels, ouvrir et résoudre des litiges.',
                 'sort_order' => 250,
+            ],
+            self::SAISIR_FACTURE => [
+                'module' => 'Facturation',
+                'name' => 'Saisir / Créer une facture',
+                'description' => 'Permet à l\'agent de créer une nouvelle facture client.',
+                'sort_order' => 300,
+            ],
+            self::MODIFIER_FACTURE_APRES_CREATION => [
+                'module' => 'Facturation',
+                'name' => 'Modifier une facture après création',
+                'description' => 'Privilège responsable pour modifier ou annuler une facture verrouillée.',
+                'sort_order' => 310,
+            ],
+            self::CONSULTER_TOUTES_FACTURES_TOUTES_AGENCES => [
+                'module' => 'Facturation',
+                'name' => 'Consulter toutes les factures (Toutes agences)',
+                'description' => 'Privilège responsable pour accéder aux factures de l\'ensemble des agences.',
+                'sort_order' => 320,
+            ],
+            self::EXPORTER_COLISAGE_SANS_MONTANT => [
+                'module' => 'Logistique',
+                'name' => 'Exporter le suivi colisage (sans montant)',
+                'description' => 'Exporter les données de suivi colisage en PDF et Excel sans afficher de montant.',
+                'sort_order' => 330,
+            ],
+            self::EXPORTER_FACTURATION_AVEC_MONTANT => [
+                'module' => 'Facturation',
+                'name' => 'Exporter la facturation (avec montant)',
+                'description' => 'Exporter la facturation et les états financiers filtrés avec montants.',
+                'sort_order' => 340,
             ],
         ];
     }

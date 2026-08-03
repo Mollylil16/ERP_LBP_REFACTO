@@ -72,6 +72,16 @@ class Auth
     }
 
     /**
+     * Vérifie si l'utilisateur connecté est administrateur.
+     */
+    public static function isAdmin(): bool
+    {
+        $user = self::user();
+
+        return $user !== null && $user->isAdmin;
+    }
+
+    /**
      * Vérifie si l'utilisateur connecté possède un rôle particulier.
      */
     public static function hasRole(string $role): bool

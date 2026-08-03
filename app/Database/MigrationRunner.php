@@ -37,6 +37,7 @@ class MigrationRunner
         $this->createLbpUnifiedFlowTables();
         $this->createLogistiqueRayonsAndSettingsTables();
         $this->createCallCenterTables();
+        $this->createColisageOperationRefactoTables();
     }
 
 
@@ -2043,7 +2044,7 @@ class MigrationRunner
             ['call_center_view', 'Call Center', 'Call Center - Consulter', 'Consulter le tableau de bord Call Center, les appels, les litiges et la vue des rayons en temps réel.', 240],
             ['call_center_manage', 'Call Center', 'Call Center - Gérer', 'Enregistrer des appels, ouvrir et résoudre des litiges, envoyer des notifications.', 250],
             ['call_center_dg_view', 'Call Center', 'Call Center - Vue DG / Superviseur', 'Accéder à l\'historique des notifications avec indicateurs rouge/vert pour le DG.', 260],
-            ['rapports_agence', 'Colisage', 'Rapports journaliers par agence', 'Accéder aux rapports journaliers et mensuels par agence avec export CSV.', 235],
+            ['rapports_agence', 'Facturation', 'Rapports journaliers par agence', 'Accéder aux rapports journaliers et mensuels par agence avec export CSV.', 235],
         ];
 
         $stmt = $this->pdo->prepare("
@@ -2184,6 +2185,99 @@ class MigrationRunner
 
         if ($this->schema->tableExists('lbp_paiements')) {
             $this->addColumnIfMissing('lbp_paiements', 'mode_paiement', "ENUM('ESPECES', 'WAVE', 'ORANGE_MONEY', 'MTN_MOMO', 'CARTE', 'VIREMENT') NOT NULL DEFAULT 'ESPECES'");
+        }
+    }
+
+    /**
+     * Migration additive pour la refonte du module Colisage & Opération.
+     */
+    private function createColisageOperationRefactoTables(): void
+    {
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS trajets (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                code VARCHAR(50) NOT NULL UNIQUE,
+                libelle VARCHAR(150) NOT NULL,
+                type_transport ENUM('cargo', 'maritime', 'aerien', 'rapide') NOT NULL,
+                agence_depart_id INT UNSIGNED NULL,
+                destination VARCHAR(150) NULL,
+                actif TINYINT(1) NOT NULL DEFAULT 1,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME NULL ON UPDATE CURRENT_TIMESTAMP,
+                CONSTRAINT fk_trajets_agence_depart FOREIGN KEY (agence_depart_id) REFERENCES company_sites(id) ON DELETE SET NULL
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS factures_audit_log (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                facture_id INT UNSIGNED NOT NULL,
+                modifie_par INT NOT NULL,
+                date_modification DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                champ_modifie VARCHAR(100) NOT NULL,
+                ancienne_valeur TEXT NULL,
+                nouvelle_valeur TEXT NULL,
+                CONSTRAINT fk_factures_audit_facture FOREIGN KEY (facture_id) REFERENCES lbp_factures(id) ON DELETE CASCADE,
+                CONSTRAINT fk_factures_audit_user FOREIGN KEY (modifie_par) REFERENCES users(id) ON DELETE RESTRICT
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS lbp_factures_audit_log (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                facture_id INT UNSIGNED NOT NULL,
+                modifie_par INT NOT NULL,
+                date_modification DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                champ_modifie VARCHAR(100) NOT NULL,
+                ancienne_valeur TEXT NULL,
+                nouvelle_valeur TEXT NULL,
+                CONSTRAINT fk_lbp_factures_audit_facture FOREIGN KEY (facture_id) REFERENCES lbp_factures(id) ON DELETE CASCADE,
+                CONSTRAINT fk_lbp_factures_audit_user FOREIGN KEY (modifie_par) REFERENCES users(id) ON DELETE RESTRICT
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+
+        $this->addColumnIfMissing('lbp_factures', 'trajet_id', 'INT UNSIGNED NULL');
+        $this->addColumnIfMissing('lbp_factures', 'agent_id', 'INT NULL');
+        $this->addColumnIfMissing('lbp_factures', 'created_by', 'INT NULL');
+        $this->addColumnIfMissing('lbp_factures', 'locked', 'TINYINT(1) NOT NULL DEFAULT 0');
+        $this->addColumnIfMissing('lbp_factures', 'locked_at', 'DATETIME NULL');
+
+        $this->addForeignKeyIfMissing('lbp_factures', 'fk_lbp_factures_trajet', 'trajet_id', 'trajets', 'id', 'SET NULL');
+        $this->addForeignKeyIfMissing('lbp_factures', 'fk_lbp_factures_agent', 'agent_id', 'users', 'id', 'SET NULL');
+        $this->addForeignKeyIfMissing('lbp_factures', 'fk_lbp_factures_created_by', 'created_by', 'users', 'id', 'SET NULL');
+
+        if ($this->schema->tableExists('lbp_colis')) {
+            $this->addColumnIfMissing('lbp_colis', 'trajet_id', 'INT UNSIGNED NULL');
+            $this->addForeignKeyIfMissing('lbp_colis', 'fk_lbp_colis_trajet', 'trajet_id', 'trajets', 'id', 'SET NULL');
+        }
+
+        $stmt = $this->pdo->prepare("
+            INSERT IGNORE INTO trajets (code, libelle, type_transport, destination, actif) VALUES
+            (:code, :libelle, :type_transport, :destination, 1)
+        ");
+
+        $trajetsSeed = [
+            ['LB-CI', 'Abidjan → France', 'maritime', 'France'],
+            ['LB-FR', 'France → Abidjan', 'maritime', 'Abidjan'],
+            ['S-FR', 'Sénégal → France', 'maritime', 'France'],
+            ['LB-CA', 'Abidjan → Canada', 'maritime', 'Canada'],
+            ['F-SN', 'France → Sénégal', 'maritime', 'Sénégal'],
+            ['CA-CI', 'Abidjan → Paris', 'rapide', 'Paris'],
+            ['CA-FR', 'Paris → Abidjan', 'rapide', 'Abidjan'],
+            ['CA-SN', 'Sénégal → Côte d\'Ivoire', 'rapide', 'Côte d\'Ivoire'],
+            ['CA-IS', 'Côte d\'Ivoire → Sénégal', 'rapide', 'Sénégal'],
+            ['CA-IC', 'Côte d\'Ivoire → Canada', 'rapide', 'Canada'],
+            ['CA-CC', 'Canada → Abidjan', 'rapide', 'Abidjan'],
+            ['DHL', 'Services DHL Express', 'rapide', 'International'],
+        ];
+
+        foreach ($trajetsSeed as [$code, $libelle, $type_transport, $destination]) {
+            $stmt->execute([
+                'code' => $code,
+                'libelle' => $libelle,
+                'type_transport' => $type_transport,
+                'destination' => $destination,
+            ]);
         }
     }
 }
