@@ -128,7 +128,7 @@ final class Logistique
                 . '</div>'
                 . $visualSlots;
 
-            $itemsHtml .= Ui::section($code, $content, null, ['class' => 'rh-card-section']);
+            $itemsHtml .= Ui::section($code, $content, '', ['class' => 'rh-card-section']);
         }
 
         return '<div class="rh-dashboard-grid" style="grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem;">' . $itemsHtml . '</div>';
