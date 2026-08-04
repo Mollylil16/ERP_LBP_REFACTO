@@ -8,6 +8,7 @@ use App\Helpers\View;
 use App\View\Components\Dashboard;
 use App\View\Components\Ui;
 use App\View\Components\Form;
+use App\View\Components\Rh;
 use App\View\Pages\Facturation\DashboardPage;
 
 final class Facturation
@@ -62,6 +63,7 @@ final class Facturation
      * @param array<int, array<string, mixed>> $trajets
      * @param array<int, array<string, mixed>> $results
      * @param array<string, mixed> $kpis
+     * @param array{currentPage: int, totalPages: int, itemsPerPage: int, totalItems: int} $pagination
      */
     public static function filtrePage(
         int $startMonth,
@@ -74,13 +76,10 @@ final class Facturation
         array $sites,
         array $trajets,
         array $results,
-        array $kpis
+        array $kpis,
+        array $pagination
     ): string {
-        $months = [
-            1 => 'Janvier', 2 => 'Février', 3 => 'Mars', 4 => 'Avril',
-            5 => 'Mai', 6 => 'Juin', 7 => 'Juillet', 8 => 'Août',
-            9 => 'Septembre', 10 => 'Octobre', 11 => 'Novembre', 12 => 'Décembre',
-        ];
+        $months = View::monthNames();
         $years = range((int) date('Y') - 2, (int) date('Y') + 1);
 
         $exportQuery = http_build_query([
@@ -155,12 +154,30 @@ final class Facturation
 
         $tableSection = Ui::section('Résultats de la recherche', self::filtreResultsTable($results));
 
+        $paginationHtml = '';
+        if (($pagination['totalPages'] ?? 1) > 1) {
+            $baseParams = [
+                'start_month' => $startMonth,
+                'start_year' => $startYear,
+                'end_month' => $endMonth,
+                'end_year' => $endYear,
+                'agence_id' => $selectedAgenceId,
+                'trajet' => $selectedTrajet,
+            ];
+            $paginationHtml = '<div style="margin-top: 1.5rem;">' . Rh::pagination(
+                (int) $pagination['currentPage'],
+                (int) $pagination['totalPages'],
+                static fn(int $page): string => View::url('facturation/filtre?' . http_build_query($baseParams + ['page' => $page]))
+            ) . '</div>';
+        }
+
         return '<div class="finea-shell">'
             . '<div class="finea-container">'
             . $header
             . '<div style="margin: 1.5rem 0;">' . Ui::section('Filtres', $filterForm) . '</div>'
             . $kpisHtml
             . '<div style="margin-top: 1.5rem;">' . $tableSection . '</div>'
+            . $paginationHtml
             . '</div>'
             . '</div>';
     }

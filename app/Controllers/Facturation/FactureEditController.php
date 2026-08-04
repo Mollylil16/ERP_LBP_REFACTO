@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Controllers\Facturation;
 
-use App\Controllers\BaseController;
 use App\Middleware\AuthMiddleware;
 use App\Models\Database;
 use App\Helpers\Auth;
@@ -20,7 +19,7 @@ use PDO;
  * un agent standard ne peut plus modifier une facture après création, seul un Responsable/Admin
  * le peut, et toute modification est tracée dans factures_audit_log.
  */
-final class FactureEditController extends BaseController
+final class FactureEditController extends FacturationBaseController
 {
     private PDO $pdo;
     private FactureRepository $repo;
@@ -122,7 +121,7 @@ final class FactureEditController extends BaseController
         if (Auth::can(PermissionEntityRegistry::CONSULTER_TOUTES_FACTURES_TOUTES_AGENCES)) {
             return true;
         }
-        if (Auth::hasAnyRole(['responsable', 'chef_agence', 'superviseur_general', 'dg', 'comptable'])) {
+        if (Auth::isFacturationPrivileged()) {
             return true;
         }
 

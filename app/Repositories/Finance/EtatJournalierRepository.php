@@ -36,13 +36,13 @@ class EtatJournalierRepository
                 agence_id, chef_agence_id, date_jour, nb_colis_enregistres, nb_factures_emises,
                 total_facture_xof, total_facture_eur, total_encaisse_xof, total_encaisse_eur,
                 total_restant_du_xof, total_restant_du_eur, solde_caisse_agence_xof, solde_caisse_agence_eur,
-                solde_physique_declare, ecart_caisse, explication_ecart,
+                solde_physique_declare, ecart_caisse, explication_ecart, decompte_coupures_json, blind_count, validation_superviseur_id,
                 statut, date_soumission, consolide_par_id, date_consolidation, created_at
             ) VALUES (
                 :agence_id, :chef_agence_id, :date_jour, :nb_colis_enregistres, :nb_factures_emises,
                 :total_facture_xof, :total_facture_eur, :total_encaisse_xof, :total_encaisse_eur,
                 :total_restant_du_xof, :total_restant_du_eur, :solde_caisse_agence_xof, :solde_caisse_agence_eur,
-                :solde_physique_declare, :ecart_caisse, :explication_ecart,
+                :solde_physique_declare, :ecart_caisse, :explication_ecart, :decompte_coupures_json, :blind_count, :validation_superviseur_id,
                 :statut, :date_soumission, :consolide_par_id, :date_consolidation, NOW()
             )
         ");
@@ -64,6 +64,9 @@ class EtatJournalierRepository
             'solde_physique_declare' => $etat->soldePhysiqueDeclare,
             'ecart_caisse' => $etat->ecartCaisse,
             'explication_ecart' => $etat->explicationEcart,
+            'decompte_coupures_json' => $etat->decompteCoupuresJson,
+            'blind_count' => $etat->blindCount ? 1 : 0,
+            'validation_superviseur_id' => $etat->validationSuperviseurId,
             'statut' => $etat->statut,
             'date_soumission' => $etat->dateSoumission,
             'consolide_par_id' => $etat->consolideParId,
@@ -225,7 +228,10 @@ class EtatJournalierRepository
             updatedAt: $row['updated_at'] ?? null,
             soldePhysiqueDeclare: isset($row['solde_physique_declare']) && is_numeric($row['solde_physique_declare']) ? (float) $row['solde_physique_declare'] : null,
             ecartCaisse: (float) ($row['ecart_caisse'] ?? 0.0),
-            explicationEcart: $row['explication_ecart'] ?? null
+            explicationEcart: $row['explication_ecart'] ?? null,
+            decompteCoupuresJson: $row['decompte_coupures_json'] ?? null,
+            blindCount: !empty($row['blind_count']),
+            validationSuperviseurId: isset($row['validation_superviseur_id']) && is_numeric($row['validation_superviseur_id']) ? (int) $row['validation_superviseur_id'] : null
         );
     }
 }

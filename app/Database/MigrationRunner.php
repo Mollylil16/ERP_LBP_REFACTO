@@ -1562,7 +1562,7 @@ class MigrationRunner
             ['Siege Abidjan','ABJ-HQ','Cote d Ivoire','Abidjan'],
             ['Agence San Pedro','SPY','Cote d Ivoire','San Pedro'],
             ['Bureau international','INTL','International', null],
-            ['Agence France','FRA','France','Paris'],
+            ['Paris 17 chemin des Vignes 93000 Bobigny','FRA','France','Bobigny'],
             ['Agence Sénégal','SEN','Sénégal','Dakar'],
             ['Aéroport Port Bouët Fret','ABJ-FRET','Cote d Ivoire','Abidjan'],
             ['Agence Abobo Dokui','ABO-DOK','Cote d Ivoire','Abidjan'],
@@ -1570,6 +1570,8 @@ class MigrationRunner
         ] as [$name,$code,$country,$city]) {
             $stmt->execute(['name'=>$name,'code'=>$code,'country'=>$country,'city'=>$city]);
         }
+
+        $this->pdo->exec("UPDATE company_sites SET name = 'Paris 17 chemin des Vignes 93000 Bobigny', city = 'Bobigny' WHERE code = 'FRA' OR name = 'Agence France' OR name LIKE '%Agence France%'");
     }
 
     private function seedWebsiteContent(): void
@@ -2210,6 +2212,13 @@ class MigrationRunner
             $this->addColumnIfMissing('lbp_etats_journaliers', 'solde_physique_declare', "DECIMAL(15,2) NULL");
             $this->addColumnIfMissing('lbp_etats_journaliers', 'ecart_caisse', "DECIMAL(15,2) NOT NULL DEFAULT 0.00");
             $this->addColumnIfMissing('lbp_etats_journaliers', 'explication_ecart', "TEXT NULL");
+            $this->addColumnIfMissing('lbp_etats_journaliers', 'decompte_coupures_json', "TEXT NULL");
+            $this->addColumnIfMissing('lbp_etats_journaliers', 'blind_count', "TINYINT(1) NOT NULL DEFAULT 1");
+            $this->addColumnIfMissing('lbp_etats_journaliers', 'validation_superviseur_id', "INT NULL");
+        }
+
+        if ($this->schema->tableExists('lbp_demandes_paiement_prestataires')) {
+            $this->addColumnIfMissing('lbp_demandes_paiement_prestataires', 'trajet_id', "INT UNSIGNED NULL");
         }
 
         if ($this->schema->tableExists('lbp_paiements')) {
@@ -2275,6 +2284,14 @@ class MigrationRunner
         $this->addForeignKeyIfMissing('lbp_factures', 'fk_lbp_factures_agent', 'agent_id', 'users', 'id', 'SET NULL');
         $this->addForeignKeyIfMissing('lbp_factures', 'fk_lbp_factures_created_by', 'created_by', 'users', 'id', 'SET NULL');
 
+        // Index manquants sur les colonnes de filtre du module Recherche & Audit (Facturation)
+        $this->addIndexIfMissing('lbp_factures', 'idx_lbp_factures_date_emission', 'date_emission');
+        $this->addIndexIfMissing('lbp_clients', 'idx_lbp_clients_name', 'name');
+        $this->addIndexIfMissing('factures_audit_log', 'idx_factures_audit_log_facture_id', 'facture_id');
+        $this->addIndexIfMissing('factures_audit_log', 'idx_factures_audit_log_date', 'date_modification');
+        $this->addIndexIfMissing('lbp_audit_logs', 'idx_lbp_audit_logs_entity', 'entity_type, entity_id');
+        $this->addIndexIfMissing('lbp_audit_logs', 'idx_lbp_audit_logs_created_at', 'created_at');
+
         if ($this->schema->tableExists('lbp_colis')) {
             $this->addColumnIfMissing('lbp_colis', 'trajet_id', 'INT UNSIGNED NULL');
             $this->addForeignKeyIfMissing('lbp_colis', 'fk_lbp_colis_trajet', 'trajet_id', 'trajets', 'id', 'SET NULL');
@@ -2286,11 +2303,11 @@ class MigrationRunner
         ");
 
         $trajetsSeed = [
-            ['LB-CI', 'Abidjan → France', 'maritime', 'France'],
-            ['LB-FR', 'France → Abidjan', 'maritime', 'Abidjan'],
-            ['S-FR', 'Sénégal → France', 'maritime', 'France'],
-            ['LB-CA', 'Abidjan → Canada', 'maritime', 'Canada'],
-            ['F-SN', 'France → Sénégal', 'maritime', 'Sénégal'],
+            ['LB-CI', 'Abidjan → France', 'AÉRIEN', 'France'],
+            ['LB-FR', 'France → Abidjan', 'AÉRIEN', 'Abidjan'],
+            ['S-FR', 'Sénégal → France', 'AÉRIEN', 'France'],
+            ['LB-CA', 'Abidjan → Canada', 'AÉRIEN', 'Canada'],
+            ['F-SN', 'France → Sénégal', 'AÉRIEN', 'Sénégal'],
             ['CA-CI', 'Abidjan → Paris', 'rapide', 'Paris'],
             ['CA-FR', 'Paris → Abidjan', 'rapide', 'Abidjan'],
             ['CA-SN', 'Sénégal → Côte d\'Ivoire', 'rapide', 'Côte d\'Ivoire'],
@@ -2308,5 +2325,7 @@ class MigrationRunner
                 'destination' => $destination,
             ]);
         }
+
+        $this->pdo->exec("UPDATE trajets SET type_transport = 'AÉRIEN' WHERE code IN ('LB-CI', 'LB-FR', 'S-FR', 'LB-CA', 'F-SN') OR LOWER(type_transport) = 'maritime'");
     }
 }

@@ -174,7 +174,7 @@ class FactureRepository
             return true;
         }
 
-        if (Auth::hasAnyRole(['responsable', 'chef_agence', 'superviseur_general', 'dg', 'comptable'])) {
+        if (Auth::isFacturationPrivileged()) {
             return true;
         }
 
@@ -195,7 +195,9 @@ class FactureRepository
      */
     public function updateWithAudit(int $factureId, array $newFields, int $modifiedByUserId): bool
     {
-        $oldRow = $this->pdo->query("SELECT * FROM lbp_factures WHERE id = {$factureId}")->fetch(PDO::FETCH_ASSOC);
+        $oldRowStmt = $this->pdo->prepare("SELECT * FROM lbp_factures WHERE id = :id");
+        $oldRowStmt->execute(['id' => $factureId]);
+        $oldRow = $oldRowStmt->fetch(PDO::FETCH_ASSOC);
         if (!$oldRow) {
             return false;
         }
@@ -228,19 +230,14 @@ class FactureRepository
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute($params);
 
-        // Record in factures_audit_log & lbp_factures_audit_log
-        $logStmt1 = $this->pdo->prepare("
+        // Record in factures_audit_log (seule table lue par getAuditLog())
+        $logStmt = $this->pdo->prepare("
             INSERT INTO factures_audit_log (facture_id, modifie_par, date_modification, champ_modifie, ancienne_valeur, nouvelle_valeur)
-            VALUES (:facture_id, :modifie_par, NOW(), :champ_modifie, :ancienne_valeur, :nouvelle_valeur)
-        ");
-        $logStmt2 = $this->pdo->prepare("
-            INSERT INTO lbp_factures_audit_log (facture_id, modifie_par, date_modification, champ_modifie, ancienne_valeur, nouvelle_valeur)
             VALUES (:facture_id, :modifie_par, NOW(), :champ_modifie, :ancienne_valeur, :nouvelle_valeur)
         ");
 
         foreach ($auditLogs as $log) {
-            $logStmt1->execute($log);
-            $logStmt2->execute($log);
+            $logStmt->execute($log);
         }
 
         AuditLogService::log('update_invoice_locked', 'lbp_factures', $factureId, $oldRow, $newFields);

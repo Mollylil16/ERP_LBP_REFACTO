@@ -863,6 +863,54 @@ final class FinanceController extends FinanceBaseController
     }
 
     /**
+     * Export PDF du Procès-Verbal de clôture de caisse d'une agence.
+     */
+    public function exportCloturePdf(string $id): void
+    {
+        AuthMiddleware::check();
+
+        $id = (int) $id;
+        $report = $this->etatRepo->findById($id);
+
+        if (!$report) {
+            Session::flash('error', 'Point de caisse introuvable.');
+            header('Location: ' . View::url('finance/clotures'));
+            exit;
+        }
+
+        // Seul le chef de cette agence, la caissière principale, le DG ou le comptable peuvent exporter
+        $userAgenceId = Auth::user()['agence_id'] ?? 0;
+        if (!Auth::hasRole(['caissiere_principale', 'dg', 'comptable', 'superviseur_general']) && (int) $userAgenceId !== $report->agenceId) {
+            Session::flash('error', 'Accès non autorisé au point de caisse d\'une autre agence.');
+            header('Location: ' . View::url('finance/clotures'));
+            exit;
+        }
+
+        // Nom de l'agence
+        $stmt = $this->db->prepare("SELECT name FROM company_sites WHERE id = :id LIMIT 1");
+        $stmt->execute(['id' => $report->agenceId]);
+        $agenceName = $stmt->fetchColumn() ?: 'Agence #' . $report->agenceId;
+
+        // Nom du Chef / Caissier
+        $chefName = 'Caissier';
+        if ($report->chefAgenceId) {
+            $stmt = $this->db->prepare("SELECT full_name FROM users WHERE id = :id LIMIT 1");
+            $stmt->execute(['id' => $report->chefAgenceId]);
+            $chefName = $stmt->fetchColumn() ?: 'Chef d\'Agence';
+        }
+
+        // Nom du Consolidateur
+        $consolideParName = 'En attente';
+        if ($report->consolideParId) {
+            $stmt = $this->db->prepare("SELECT full_name FROM users WHERE id = :id LIMIT 1");
+            $stmt->execute(['id' => $report->consolideParId]);
+            $consolideParName = $stmt->fetchColumn() ?: 'Caissière Principale';
+        }
+
+        require BASE_PATH . '/views/finance/cloture_pdf.php';
+    }
+
+    /**
      * Livre journal et balance comptable.
      */
     public function comptabilite(): void
@@ -884,5 +932,321 @@ final class FinanceController extends FinanceBaseController
             'accounts' => $accounts,
             'filters' => $filters,
         ]);
+    }
+
+    /**
+     * Rapport de rentabilité (P&L) par trajet / lot de transport.
+     */
+    public function rentabilite(): void
+    {
+        RoleMiddleware::check(['comptable', 'dg', 'chef_agence', 'superviseur_general']);
+
+        $stmt = $this->db->query("
+            SELECT t.id, t.code, t.libelle, t.type_transport,
+                   COALESCE(fac.total_recettes, 0.0) AS total_recettes,
+                   COALESCE(dep.total_depenses, 0.0) AS total_depenses
+            FROM trajets t
+            LEFT JOIN (
+                SELECT COALESCE(f.trajet_id, c.trajet_id) AS t_id, SUM(f.montant_total) AS total_recettes
+                FROM lbp_factures f
+                JOIN lbp_colis c ON f.colis_id = c.id
+                GROUP BY t_id
+            ) fac ON fac.t_id = t.id
+            LEFT JOIN (
+                SELECT trajet_id, SUM(montant) AS total_depenses
+                FROM lbp_demandes_paiement_prestataires
+                WHERE statut = 'validee'
+                GROUP BY trajet_id
+            ) dep ON dep.trajet_id = t.id
+            ORDER BY t.code ASC
+        ");
+
+        $rawTrajets = $stmt ? $stmt->fetchAll(PDO::FETCH_ASSOC) : [];
+        $totalRecettesGlobal = 0.0;
+        $totalDepensesGlobal = 0.0;
+
+        $processedTrajets = array_map(static function(array $r) use (&$totalRecettesGlobal, &$totalDepensesGlobal): array {
+            $recettes = (float) ($r['total_recettes'] ?? 0.0);
+            $depenses = (float) ($r['total_depenses'] ?? 0.0);
+            $margeNette = $recettes - $depenses;
+            $tauxMarge = $recettes > 0 ? ($margeNette / $recettes) * 100.0 : 0.0;
+
+            $totalRecettesGlobal += $recettes;
+            $totalDepensesGlobal += $depenses;
+
+            return array_merge($r, [
+                'total_recettes' => $recettes,
+                'total_depenses' => $depenses,
+                'marge_nette' => $margeNette,
+                'taux_marge' => $tauxMarge,
+            ]);
+        }, $rawTrajets);
+
+        $margeNetteGlobale = $totalRecettesGlobal - $totalDepensesGlobal;
+        $tauxMargeGlobal = $totalRecettesGlobal > 0 ? ($margeNetteGlobale / $totalRecettesGlobal) * 100.0 : 0.0;
+
+        $page = new \App\View\Pages\Finance\RentabilitePage(
+            $processedTrajets,
+            [
+                'total_recettes' => $totalRecettesGlobal,
+                'total_depenses' => $totalDepensesGlobal,
+                'marge_nette' => $margeNetteGlobale,
+                'taux_marge' => $tauxMargeGlobal,
+            ],
+            Session::getFlash('success'),
+            Session::getFlash('error')
+        );
+
+        $this->financeView('finance/rentabilite', 'Rentabilité par Trajet (P&L)', 'comptabilite', [
+            'page' => $page,
+        ]);
+    }
+
+    /**
+     * Balance Âgée des Créances (Aging Balance des factures impayées).
+     */
+    public function balanceAgee(): void
+    {
+        RoleMiddleware::check(['comptable', 'dg', 'chef_agence', 'superviseur_general']);
+
+        $sql = "
+            SELECT f.id, f.numero_facture, f.date_emission, f.montant_total, f.montant_restant, f.devise,
+                   c.name AS client_name, c.phone AS client_phone,
+                   DATEDIFF(NOW(), f.date_emission) AS jours_anciente
+            FROM lbp_factures f
+            JOIN lbp_clients c ON f.client_id = c.id
+            WHERE f.statut IN ('emise', 'partiellement_payee') AND f.montant_restant > 0
+            ORDER BY jours_anciente DESC
+        ";
+
+        $stmt = $this->db->query($sql);
+        $factures = $stmt ? $stmt->fetchAll(PDO::FETCH_ASSOC) : [];
+
+        $bucket30 = 0.0;
+        $bucket60 = 0.0;
+        $bucket90 = 0.0;
+        $bucketPlus90 = 0.0;
+
+        $clientMap = [];
+
+        foreach ($factures as $f) {
+            $restant = (float) $f['montant_restant'];
+            $days = (int) $f['jours_anciente'];
+            $clientName = (string) $f['client_name'];
+
+            if (!isset($clientMap[$clientName])) {
+                $clientMap[$clientName] = [
+                    'client_name' => $clientName,
+                    'phone' => (string) ($f['client_phone'] ?? ''),
+                    'b30' => 0.0,
+                    'b60' => 0.0,
+                    'b90' => 0.0,
+                    'bPlus90' => 0.0,
+                    'total' => 0.0,
+                ];
+            }
+
+            if ($days <= 30) {
+                $bucket30 += $restant;
+                $clientMap[$clientName]['b30'] += $restant;
+            } elseif ($days <= 60) {
+                $bucket60 += $restant;
+                $clientMap[$clientName]['b60'] += $restant;
+            } elseif ($days <= 90) {
+                $bucket90 += $restant;
+                $clientMap[$clientName]['b90'] += $restant;
+            } else {
+                $bucketPlus90 += $restant;
+                $clientMap[$clientName]['bPlus90'] += $restant;
+            }
+
+            $clientMap[$clientName]['total'] += $restant;
+        }
+
+        $page = new \App\View\Pages\Finance\BalanceAgeePage(
+            [
+                'b30' => $bucket30,
+                'b60' => $bucket60,
+                'b90' => $bucket90,
+                'bPlus90' => $bucketPlus90,
+                'total' => $bucket30 + $bucket60 + $bucket90 + $bucketPlus90,
+            ],
+            array_values($clientMap),
+            Session::getFlash('success'),
+            Session::getFlash('error')
+        );
+
+        $this->financeView('finance/balance_agee', 'Balance Âgée des Créances', 'factures', [
+            'page' => $page,
+        ]);
+    }
+
+    /**
+     * Export des écritures au format SYSCOHADA (CSV pour Sage / Odoo / Cegid).
+     */
+    public function exportSyscohada(): void
+    {
+        RoleMiddleware::check(['comptable', 'dg']);
+
+        $ecritures = $this->comptabiliteRepo->getEcritures([]);
+
+        $filename = 'export_ecritures_syscohada_' . date('Ymd_His') . '.csv';
+
+        header('Content-Type: text/csv; charset=utf-8');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        header('Cache-Control: max-age=0');
+
+        $output = fopen('php://output', 'w');
+        if ($output) {
+            // UTF-8 BOM pour Excel
+            fwrite($output, "\xEF\xBB\xBF");
+            // Entête CSV SYSCOHADA
+            fputcsv($output, ['Date', 'Journal', 'Compte Débit', 'Compte Crédit', 'Pièce Justificative', 'Libellé', 'Montant', 'Devise'], ';');
+
+            foreach ($ecritures as $e) {
+                fputcsv($output, [
+                    $e->dateEcriture,
+                    $e->journal,
+                    $e->compteDebit,
+                    $e->compteCredit,
+                    $e->pieceJustificativeId ?? '',
+                    $e->libelle,
+                    number_format($e->montant, 2, '.', ''),
+                    $e->devise,
+                ], ';');
+            }
+
+            fclose($output);
+        }
+        exit;
+    }
+
+    public function exportRentabilitePdf(): void
+    {
+        AuthMiddleware::check();
+        RoleMiddleware::check(['comptable', 'dg', 'chef_agence', 'superviseur_general']);
+
+        $stmt = $this->db->query("
+            SELECT t.id, t.code, t.libelle, t.type_transport,
+                   COALESCE(fac.total_recettes, 0.0) AS total_recettes,
+                   COALESCE(dep.total_depenses, 0.0) AS total_depenses
+            FROM trajets t
+            LEFT JOIN (
+                SELECT COALESCE(f.trajet_id, c.trajet_id) AS t_id, SUM(f.montant_total) AS total_recettes
+                FROM lbp_factures f
+                JOIN lbp_colis c ON f.colis_id = c.id
+                GROUP BY t_id
+            ) fac ON fac.t_id = t.id
+            LEFT JOIN (
+                SELECT trajet_id, SUM(montant) AS total_depenses
+                FROM lbp_demandes_paiement_prestataires
+                WHERE statut = 'validee'
+                GROUP BY trajet_id
+            ) dep ON dep.trajet_id = t.id
+            ORDER BY t.code ASC
+        ");
+
+        $rawTrajets = $stmt ? $stmt->fetchAll(PDO::FETCH_ASSOC) : [];
+        $totalRecettesGlobal = 0.0;
+        $totalDepensesGlobal = 0.0;
+
+        $trajets = array_map(static function(array $r) use (&$totalRecettesGlobal, &$totalDepensesGlobal): array {
+            $recettes = (float) ($r['total_recettes'] ?? 0.0);
+            $depenses = (float) ($r['total_depenses'] ?? 0.0);
+            $margeNette = $recettes - $depenses;
+            $tauxMarge = $recettes > 0 ? ($margeNette / $recettes) * 100.0 : 0.0;
+
+            $totalRecettesGlobal += $recettes;
+            $totalDepensesGlobal += $depenses;
+
+            return array_merge($r, [
+                'total_recettes' => $recettes,
+                'total_depenses' => $depenses,
+                'marge_nette' => $margeNette,
+                'taux_marge' => $tauxMarge,
+            ]);
+        }, $rawTrajets);
+
+        $margeNetteGlobale = $totalRecettesGlobal - $totalDepensesGlobal;
+        $tauxMargeGlobal = $totalRecettesGlobal > 0 ? ($margeNetteGlobale / $totalRecettesGlobal) * 100.0 : 0.0;
+
+        $summary = [
+            'total_recettes' => $totalRecettesGlobal,
+            'total_depenses' => $totalDepensesGlobal,
+            'marge_nette' => $margeNetteGlobale,
+            'taux_marge' => $tauxMargeGlobal,
+        ];
+
+        require BASE_PATH . '/views/finance/rentabilite_pdf.php';
+    }
+
+    public function exportBalanceAgeePdf(): void
+    {
+        AuthMiddleware::check();
+        RoleMiddleware::check(['comptable', 'dg', 'chef_agence', 'superviseur_general']);
+
+        $sql = "
+            SELECT f.id, f.numero_facture, f.date_emission, f.montant_total, f.montant_restant, f.devise,
+                   c.name AS client_name, c.phone AS client_phone,
+                   DATEDIFF(NOW(), f.date_emission) AS jours_anciente
+            FROM lbp_factures f
+            JOIN lbp_clients c ON f.client_id = c.id
+            WHERE f.statut IN ('emise', 'partiellement_payee') AND f.montant_restant > 0
+            ORDER BY jours_anciente DESC
+        ";
+
+        $stmt = $this->db->query($sql);
+        $factures = $stmt ? $stmt->fetchAll(PDO::FETCH_ASSOC) : [];
+
+        $bucket30 = 0.0;
+        $bucket60 = 0.0;
+        $bucket90 = 0.0;
+        $bucketPlus90 = 0.0;
+        $clientMap = [];
+
+        foreach ($factures as $f) {
+            $restant = (float) $f['montant_restant'];
+            $days = (int) $f['jours_anciente'];
+            $clientName = (string) $f['client_name'];
+
+            if (!isset($clientMap[$clientName])) {
+                $clientMap[$clientName] = [
+                    'client_name' => $clientName,
+                    'phone' => (string) ($f['client_phone'] ?? ''),
+                    'b30' => 0.0,
+                    'b60' => 0.0,
+                    'b90' => 0.0,
+                    'bPlus90' => 0.0,
+                    'total' => 0.0,
+                ];
+            }
+
+            if ($days <= 30) {
+                $bucket30 += $restant;
+                $clientMap[$clientName]['b30'] += $restant;
+            } elseif ($days <= 60) {
+                $bucket60 += $restant;
+                $clientMap[$clientName]['b60'] += $restant;
+            } elseif ($days <= 90) {
+                $bucket90 += $restant;
+                $clientMap[$clientName]['b90'] += $restant;
+            } else {
+                $bucketPlus90 += $restant;
+                $clientMap[$clientName]['bPlus90'] += $restant;
+            }
+
+            $clientMap[$clientName]['total'] += $restant;
+        }
+
+        $agingBuckets = [
+            'b30' => $bucket30,
+            'b60' => $bucket60,
+            'b90' => $bucket90,
+            'bPlus90' => $bucketPlus90,
+            'total' => $bucket30 + $bucket60 + $bucket90 + $bucketPlus90,
+        ];
+        $clientDetails = array_values($clientMap);
+
+        require BASE_PATH . '/views/finance/balance_agee_pdf.php';
     }
 }

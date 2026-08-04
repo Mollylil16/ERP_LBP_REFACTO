@@ -117,6 +117,15 @@ class Auth
     }
 
     /**
+     * Rôles considérés comme privilégiés pour la Facturation (accès toutes agences,
+     * modification de factures verrouillées, consultation de l'audit).
+     */
+    public static function isFacturationPrivileged(): bool
+    {
+        return self::hasAnyRole(['responsable', 'chef_agence', 'superviseur_general', 'dg', 'comptable']);
+    }
+
+    /**
      * Retourne l'identifiant de l'agence de l'utilisateur.
      */
     public static function agenceId(): ?int

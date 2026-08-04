@@ -44,6 +44,13 @@ class AuditLogService
             ]);
         } catch (\Exception $e) {
             // Empêche un échec de log d'interrompre une opération financière critique
+            error_log(sprintf(
+                '[AuditLogService] Échec écriture audit (action=%s, entity_type=%s, entity_id=%d): %s',
+                $action,
+                $entityType,
+                $entityId,
+                $e->getMessage()
+            ));
         }
     }
 }

@@ -333,6 +333,8 @@ final class ModuleDashboardService
                 ['key' => 'factures', 'label' => 'Factures Clients', 'icon' => 'FAC', 'url' => '/finance/factures', 'available' => true],
                 ['key' => 'clotures', 'label' => 'Points de Caisse', 'icon' => 'CLT', 'url' => '/finance/clotures', 'available' => true],
                 ['key' => 'depenses', 'label' => 'Dépenses Prestataires', 'icon' => 'DEP', 'url' => '/finance/depenses', 'available' => true],
+                ['key' => 'rentabilite', 'label' => 'Rentabilité (P&L)', 'icon' => 'PL', 'url' => '/finance/rentabilite', 'available' => true],
+                ['key' => 'balance_agee', 'label' => 'Balance Âgée', 'icon' => 'BAG', 'url' => '/finance/balance-agee', 'available' => true],
                 ['key' => 'comptabilite', 'label' => 'Comptabilité', 'icon' => 'CPT', 'url' => '/finance/comptabilite', 'available' => true],
             ];
         }

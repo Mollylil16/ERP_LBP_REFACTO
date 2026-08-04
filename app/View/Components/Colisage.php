@@ -920,7 +920,7 @@ final class Colisage
         return '<div class="finea-section-card" style="margin-top: 1rem; padding: 1.5rem;">'
             . '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">'
             . '<div class="finea-section-card-nested" style="background: rgba(249, 115, 22, 0.05); padding: 1rem; border: 1px solid rgba(249, 115, 22, 0.1); border-radius: 8px;">'
-            . '<strong>Europe</strong><p style="margin-top: 0.5rem; font-size: 0.9rem; color: #475569;">Agence France (Paris)</p></div>'
+            . '<strong>Europe</strong><p style="margin-top: 0.5rem; font-size: 0.9rem; color: #475569;">Paris 17 chemin des Vignes 93000 Bobigny</p></div>'
             . '<div class="finea-section-card-nested" style="background: rgba(249, 115, 22, 0.05); padding: 1rem; border: 1px solid rgba(249, 115, 22, 0.1); border-radius: 8px;">'
             . '<strong>Afrique de l\'Ouest</strong><p style="margin-top: 0.5rem; font-size: 0.9rem; color: #475569;">Agence Sénégal (Dakar)</p></div>'
             . '<div class="finea-section-card-nested" style="background: rgba(249, 115, 22, 0.05); padding: 1rem; border: 1px solid rgba(249, 115, 22, 0.1); border-radius: 8px;">'
@@ -932,14 +932,14 @@ final class Colisage
 
     public static function listPage(ColisageIndexPage $page): string
     {
-        $actionHtml = Ui::button('Enregistrer un colis', [
-            'href' => 'colisage/parcels/nouveau',
-            'variant' => 'accent',
-        ]);
+        $actionHtml = '<a href="' . View::url('colisage/parcels/nouveau') . '" class="rh-filter-btn rh-filter-btn--primary" style="display: inline-flex; align-items: center; gap: 8px; padding: 10px 20px; background: linear-gradient(135deg, #fabd02 0%, #eab308 100%); color: #0f172a; font-weight: 800; border-radius: 10px; text-decoration: none; box-shadow: 0 4px 14px rgba(250,189,2,0.35); transition: all 0.2s ease;">'
+            . '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>'
+            . 'Enregistrer un colis'
+            . '</a>';
 
         $header = Ui::pageHeader(
             'Gestion des Colis',
-            'Saisie, suivi et groupage des colis des clients.',
+            'Saisie, suivi temps réel et groupage des colis clients.',
             [
                 'eyebrow' => 'Opérations de Colisage',
                 'class' => 'rh-hero-white',
@@ -949,11 +949,62 @@ final class Colisage
             ]
         );
 
+        // Compute KPIs for Stats Bar
+        $totalCount = $page->total;
+        $pagePoids = array_sum(array_column($page->parcels, 'poids_total'));
+        $pageValeur = array_sum(array_column($page->parcels, 'valeur_declaree'));
+        $inTransitCount = count(array_filter($page->parcels, static function(array $p): bool {
+            return in_array($p['statut'], ['EN_TRANSIT', 'EN_PRÉPARATION', 'RÉCEPTIONNÉ'], true);
+        }));
+
+        $statsGrid = '
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.25rem; margin-bottom: 1.75rem;">
+            <div style="background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%); border: 1px solid #e2e8f0; border-radius: 14px; padding: 1.25rem; box-shadow: 0 4px 12px rgba(15,23,42,0.03); display: flex; align-items: center; justify-content: space-between;">
+                <div>
+                    <div style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; margin-bottom: 0.35rem;">Total Fiches Colis</div>
+                    <div style="font-size: 1.65rem; font-weight: 800; color: #0f172a; line-height: 1;">' . number_format($totalCount) . '</div>
+                </div>
+                <div style="width: 46px; height: 46px; border-radius: 12px; background: rgba(14, 165, 233, 0.12); color: #0284c7; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+                </div>
+            </div>
+
+            <div style="background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%); border: 1px solid #e2e8f0; border-radius: 14px; padding: 1.25rem; box-shadow: 0 4px 12px rgba(15,23,42,0.03); display: flex; align-items: center; justify-content: space-between;">
+                <div>
+                    <div style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; margin-bottom: 0.35rem;">Poids Cumulé (Page)</div>
+                    <div style="font-size: 1.65rem; font-weight: 800; color: #0f172a; line-height: 1;">' . number_format($pagePoids, 2, ',', ' ') . ' <span style="font-size: 0.95rem; font-weight: 600; color: #64748b;">kg</span></div>
+                </div>
+                <div style="width: 46px; height: 46px; border-radius: 12px; background: rgba(16, 185, 129, 0.12); color: #059669; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"></circle><path d="M12 6v6l4 2"></path></svg>
+                </div>
+            </div>
+
+            <div style="background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%); border: 1px solid #e2e8f0; border-radius: 14px; padding: 1.25rem; box-shadow: 0 4px 12px rgba(15,23,42,0.03); display: flex; align-items: center; justify-content: space-between;">
+                <div>
+                    <div style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; margin-bottom: 0.35rem;">Valeur Déclarée</div>
+                    <div style="font-size: 1.65rem; font-weight: 800; color: #0f172a; line-height: 1;">' . number_format($pageValeur, 0, ',', ' ') . ' <span style="font-size: 0.95rem; font-weight: 600; color: #64748b;">XOF</span></div>
+                </div>
+                <div style="width: 46px; height: 46px; border-radius: 12px; background: rgba(245, 158, 11, 0.12); color: #d97706; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+                </div>
+            </div>
+
+            <div style="background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%); border: 1px solid #e2e8f0; border-radius: 14px; padding: 1.25rem; box-shadow: 0 4px 12px rgba(15,23,42,0.03); display: flex; align-items: center; justify-content: space-between;">
+                <div>
+                    <div style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; margin-bottom: 0.35rem;">En Cours / Transit</div>
+                    <div style="font-size: 1.65rem; font-weight: 800; color: #4f46e5; line-height: 1;">' . number_format($inTransitCount) . '</div>
+                </div>
+                <div style="width: 46px; height: 46px; border-radius: 12px; background: rgba(99, 102, 241, 0.12); color: #4f46e5; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>
+                </div>
+            </div>
+        </div>';
+
         // Filters form
         $q = Form::input('q', [
             'label' => 'Recherche',
             'value' => (string) ($page->filters['q'] ?? ''),
-            'placeholder' => 'N° Tracking, expéditeur, destinataire',
+            'placeholder' => 'N° Tracking, expéditeur, destinataire...',
         ]);
 
         $status = Form::selectSearch('statut', [
@@ -976,18 +1027,45 @@ final class Colisage
 
         $filterGrid = '<div class="rh-personnel-filter-grid">' . $q . $status . $type . '</div>';
 
-        $searchBtn = '<button type="submit" class="rh-filter-btn rh-filter-btn--primary">'
-            . '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="rh-btn-icon"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>'
+        $searchBtn = '<button type="submit" class="rh-filter-btn rh-filter-btn--primary" style="background: #0f172a; color: #ffffff; border: none; font-weight: 700; border-radius: 8px; padding: 10px 18px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px;">'
+            . '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="16" height="16"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>'
             . 'Rechercher'
             . '</button>';
 
-        $resetBtn = '<a href="' . View::url('colisage/parcels') . '" class="rh-filter-btn rh-filter-btn--reset">'
-            . '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" class="rh-btn-icon"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"></path></svg>'
+        $resetBtn = '<a href="' . View::url('colisage/parcels') . '" class="rh-filter-btn rh-filter-btn--reset" style="background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; font-weight: 600; border-radius: 8px; padding: 10px 18px; text-decoration: none; display: inline-flex; align-items: center; gap: 8px;">'
+            . '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" width="16" height="16"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"></path></svg>'
             . 'Réinitialiser'
             . '</a>';
 
         $filterActions = '<div class="rh-personnel-filter-actions">' . $searchBtn . $resetBtn . '</div>';
-        $form = '<form method="get" action="' . View::url('colisage/parcels') . '" class="rh-personnel-filters">' . $filterGrid . $filterActions . '</form>';
+
+        // Quick status pills
+        $currentStatut = (string) ($page->filters['statut'] ?? '');
+        $statusPills = [
+            '' => 'Tous les colis',
+            'RÉCEPTIONNÉ' => 'Réceptionné',
+            'EN_PRÉPARATION' => 'En préparation',
+            'EN_TRANSIT' => 'En transit',
+            'ARRIVÉ' => 'Arrivé',
+            'LIVRÉ' => 'Livré',
+            'RETIRÉ' => 'Retiré',
+        ];
+
+        $pillsHtml = '<div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #f1f5f9;">';
+        foreach ($statusPills as $val => $lbl) {
+            $isActive = $currentStatut === $val;
+            $pillBg = $isActive ? '#0f172a' : '#f8fafc';
+            $pillColor = $isActive ? '#ffffff' : '#64748b';
+            $pillBorder = $isActive ? '#0f172a' : '#e2e8f0';
+
+            $queryParams = array_filter(array_merge($page->filters, ['statut' => $val, 'page' => 1]), fn($v) => $v !== '');
+            $pillUrl = View::url('colisage/parcels' . (!empty($queryParams) ? '?' . http_build_query($queryParams) : ''));
+
+            $pillsHtml .= '<a href="' . $pillUrl . '" style="padding: 6px 14px; border-radius: 20px; font-size: 0.78rem; font-weight: 600; text-decoration: none; background: ' . $pillBg . '; color: ' . $pillColor . '; border: 1px solid ' . $pillBorder . '; transition: all 0.2s ease;">' . View::e($lbl) . '</a>';
+        }
+        $pillsHtml .= '</div>';
+
+        $form = '<form method="get" action="' . View::url('colisage/parcels') . '" class="rh-personnel-filters" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 1.25rem; box-shadow: 0 4px 12px rgba(15,23,42,0.03); margin-bottom: 1.75rem;">' . $filterGrid . $filterActions . $pillsHtml . '</form>';
 
         // Table
         $tableHtml = '';
@@ -1000,31 +1078,45 @@ final class Colisage
             $canDelete = \App\Helpers\Auth::isAdmin() || \App\Helpers\Auth::hasRole('dg');
             $rows = '';
             foreach ($page->parcels as $p) {
-                $typeLabel = match($p['type_expediteur']) {
-                    'export_aerien' => 'Export Aérien',
-                    'export_maritime' => 'Export Maritime',
-                    'import_aerien' => 'Import Aérien',
-                    'import_maritime' => 'Import Maritime',
-                    default => $p['type_expediteur']
+                $categoryBadge = match($p['type_expediteur']) {
+                    'export_aerien' => '<span style="display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 700; background: #e0f2fe; color: #0369a1;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3.5c-.5-.5-2.5 0-4 1.5L13.5 8.5 5.3 6.7c-.5-.1-.9.1-1.2.5l-.6.6c-.3.4-.2 1 .2 1.3L8 12l-3.5 3.5-2.2-.7c-.4-.1-.8.1-1 .4l-.3.3c-.3.4-.2.9.2 1.2l3 2.5 2.5 3c.3.4.8.5 1.2.2l.3-.3c.3-.2.5-.6.4-1l-.7-2.2L12 16l2.9 4.3c.3.4.9.5 1.3.2l.6-.6c.4-.3.6-.7.5-1.2z"/></svg> Export Aérien</span>',
+                    'export_maritime' => '<span style="display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 700; background: #f0fdf4; color: #15803d;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M2 21c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1 .6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/><path d="M19.38 20A11.6 11.6 0 0 0 21 14l-9-4-9 4c0 2.9.94 5.34 2.81 7.76"/></svg> Export Maritime</span>',
+                    'import_aerien' => '<span style="display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 700; background: #faf5ff; color: #7e22ce;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3.5c-.5-.5-2.5 0-4 1.5L13.5 8.5 5.3 6.7c-.5-.1-.9.1-1.2.5l-.6.6c-.3.4-.2 1 .2 1.3L8 12l-3.5 3.5-2.2-.7c-.4-.1-.8.1-1 .4l-.3.3c-.3.4-.2.9.2 1.2l3 2.5 2.5 3c.3.4.8.5 1.2.2l.3-.3c.3-.2.5-.6.4-1l-.7-2.2L12 16l2.9 4.3c.3.4.9.5 1.3.2l.6-.6c.4-.3.6-.7.5-1.2z"/></svg> Import Aérien</span>',
+                    'import_maritime' => '<span style="display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 700; background: #fff7ed; color: #c2410c;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M2 21c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1 .6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/><path d="M19.38 20A11.6 11.6 0 0 0 21 14l-9-4-9 4c0 2.9.94 5.34 2.81 7.76"/></svg> Import Maritime</span>',
+                    default => '<span style="display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 600; background: #f1f5f9; color: #475569;">' . View::e($p['type_expediteur']) . '</span>'
                 };
 
-                $badgeTone = match($p['statut']) {
-                    'RETIRÉ', 'LIVRÉ' => 'success',
-                    'RÉCEPTIONNÉ' => 'info',
-                    'EN_PRÉPARATION' => 'warning',
-                    'EN_TRANSIT' => 'primary',
-                    default => 'secondary'
+                $badge = match($p['statut']) {
+                    'RETIRÉ', 'LIVRÉ' => '<span style="display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0;"><span style="width: 7px; height: 7px; border-radius: 50%; background: #16a34a; display: inline-block;"></span> ' . View::e($p['statut']) . '</span>',
+                    'EN_TRANSIT' => '<span style="display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; background: #e0e7ff; color: #3730a3; border: 1px solid #c7d2fe;"><span style="width: 7px; height: 7px; border-radius: 50%; background: #4f46e5; display: inline-block;"></span> ' . View::e($p['statut']) . '</span>',
+                    'EN_PRÉPARATION' => '<span style="display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; background: #fef3c7; color: #b45309; border: 1px solid #fde68a;"><span style="width: 7px; height: 7px; border-radius: 50%; background: #d97706; display: inline-block;"></span> ' . View::e($p['statut']) . '</span>',
+                    'RÉCEPTIONNÉ' => '<span style="display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd;"><span style="width: 7px; height: 7px; border-radius: 50%; background: #0284c7; display: inline-block;"></span> ' . View::e($p['statut']) . '</span>',
+                    default => '<span style="display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0;">' . View::e($p['statut']) . '</span>'
                 };
 
-                $badge = Ui::badge($p['statut'], $badgeTone);
+                $trackingBadge = '<div style="display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; font-family: monospace; font-size: 0.85rem; font-weight: 800; color: #0f172a;">'
+                    . '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>'
+                    . View::e($p['numero_tracking'])
+                    . '</div>';
+
+                $expInitial = mb_strtoupper(mb_substr($p['expediteur_name'] !== '' ? $p['expediteur_name'] : 'E', 0, 1));
+                $expCell = '<div style="display: flex; align-items: center; gap: 10px;">'
+                    . '<div style="width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, #0ea5e9, #2563eb); color: #ffffff; font-weight: 800; font-size: 0.8rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 2px 6px rgba(14,165,233,0.3);">' . $expInitial . '</div>'
+                    . '<span style="font-weight: 600; color: #1e293b;">' . View::e($p['expediteur_name']) . '</span>'
+                    . '</div>';
+
+                $destInitial = mb_strtoupper(mb_substr($p['destinataire_name'] !== '' ? $p['destinataire_name'] : 'D', 0, 1));
+                $destCell = '<div style="display: flex; align-items: center; gap: 10px;">'
+                    . '<div style="width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, #8b5cf6, #6366f1); color: #ffffff; font-weight: 800; font-size: 0.8rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 2px 6px rgba(139,92,246,0.3);">' . $destInitial . '</div>'
+                    . '<span style="font-weight: 600; color: #1e293b;">' . View::e($p['destinataire_name']) . '</span>'
+                    . '</div>';
 
                 $actionsStr = '';
                 foreach ($p['actions'] as $act) {
-                    $actionsStr .= Ui::button($act['label'], [
-                        'href' => $act['href'],
-                        'variant' => $act['variant'] ?? 'secondary',
-                        'class' => 'finea-button-sm'
-                    ]);
+                    $actionsStr .= '<a href="' . View::url($act['href']) . '" style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; background: #0f172a; color: #ffffff; font-size: 0.78rem; font-weight: 700; border-radius: 6px; text-decoration: none; transition: background 0.2s;">'
+                        . '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>'
+                        . View::e($act['label'])
+                        . '</a>';
                 }
                 if ($canDelete) {
                     $actionsStr .= ' ' . Ui::deleteForm(
@@ -1033,30 +1125,30 @@ final class Colisage
                     );
                 }
 
-                $rows .= '<tr>'
-                    . '<td><strong>' . View::e($p['numero_tracking']) . '</strong></td>'
-                    . '<td>' . View::e($p['expediteur_name']) . '</td>'
-                    . '<td>' . View::e($p['destinataire_name']) . '</td>'
-                    . '<td><small>' . View::e($typeLabel) . '</small></td>'
-                    . '<td>' . View::e((string) $p['poids_total']) . ' kg</td>'
-                    . '<td>' . View::e(number_format((float) $p['valeur_declaree'], 0, ',', ' ')) . ' ' . View::e($p['devise']) . '</td>'
-                    . '<td>' . $badge . '</td>'
-                    . '<td>' . $actionsStr . '</td>'
+                $rows .= '<tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.15s ease;" onmouseover="this.style.background=\'#f8fafc\'" onmouseout="this.style.background=\'transparent\'">'
+                    . '<td style="padding: 14px 16px;">' . $trackingBadge . '</td>'
+                    . '<td style="padding: 14px 16px;">' . $expCell . '</td>'
+                    . '<td style="padding: 14px 16px;">' . $destCell . '</td>'
+                    . '<td style="padding: 14px 16px;">' . $categoryBadge . '</td>'
+                    . '<td style="padding: 14px 16px; font-weight: 700; color: #334155;">' . View::e((string) $p['poids_total']) . ' kg</td>'
+                    . '<td style="padding: 14px 16px; font-weight: 800; color: #0f172a;">' . View::e(number_format((float) $p['valeur_declaree'], 0, ',', ' ')) . ' <small style="color: #64748b;">' . View::e($p['devise']) . '</small></td>'
+                    . '<td style="padding: 14px 16px;">' . $badge . '</td>'
+                    . '<td style="padding: 14px 16px;">' . $actionsStr . '</td>'
                     . '</tr>';
             }
 
-            $tableHtml = '<div class="finea-table-wrapper">'
-                . '<table class="finea-table">'
-                . '<thead>'
+            $tableHtml = '<div class="finea-table-wrapper" style="overflow-x: auto; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 14px; box-shadow: 0 4px 12px rgba(15,23,42,0.03);">'
+                . '<table class="finea-table" style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.875rem;">'
+                . '<thead style="background: #0f172a; color: #ffffff;">'
                 . '<tr>'
-                . '<th>N° Tracking</th>'
-                . '<th>Expéditeur</th>'
-                . '<th>Destinataire</th>'
-                . '<th>Catégorie</th>'
-                . '<th>Poids</th>'
-                . '<th>Valeur Décl.</th>'
-                . '<th>Statut</th>'
-                . '<th>Actions</th>'
+                . '<th style="padding: 12px 16px; font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em;">N° Tracking</th>'
+                . '<th style="padding: 12px 16px; font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em;">Expéditeur</th>'
+                . '<th style="padding: 12px 16px; font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em;">Destinataire</th>'
+                . '<th style="padding: 12px 16px; font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em;">Catégorie</th>'
+                . '<th style="padding: 12px 16px; font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em;">Poids</th>'
+                . '<th style="padding: 12px 16px; font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em;">Valeur Décl.</th>'
+                . '<th style="padding: 12px 16px; font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em;">Statut</th>'
+                . '<th style="padding: 12px 16px; font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em;">Actions</th>'
                 . '</tr>'
                 . '</thead>'
                 . '<tbody>' . $rows . '</tbody>'
@@ -1069,11 +1161,12 @@ final class Colisage
         return '<div class="finea-shell">'
             . '<div class="finea-container">'
             . $header
+            . $statsGrid
             . $form
-            . '<div class="finea-section-card" style="margin-top: 1.5rem;">'
+            . '<div class="finea-section-card" style="margin-top: 1rem; padding: 0; background: transparent; border: none; box-shadow: none;">'
             . $tableHtml
             . '</div>'
-            . $pagination
+            . '<div style="margin-top: 1.5rem;">' . $pagination . '</div>'
             . '</div></div>';
     }
 
@@ -2503,24 +2596,24 @@ final class Colisage
     public static function thermalLabelPage(array $colis): string
     {
         $trackingNum = (string) ($colis['numero_tracking'] ?? '');
-        $depAgency = (string) ($colis['agence_depart_name'] ?? 'Siège Abidjan');
+        
+        $rawDepAgency = (string) ($colis['agence_depart_name'] ?? '');
+        $depAgency = !empty($rawDepAgency) && !in_array($rawDepAgency, ['Agence Départ', '—', 'N/A'], true)
+            ? mb_strtoupper($rawDepAgency, 'UTF-8')
+            : 'ABIDJAN SIÈGE';
         
         $rawArrAgency = (string) ($colis['agence_arrivee_name'] ?? '');
-        if (!empty($rawArrAgency) && !in_array($rawArrAgency, ['Agence Arrivée', '—', 'N/A'], true)) {
-            $arrAgency = mb_strtoupper($rawArrAgency, 'UTF-8');
-        } else {
-            $arrAgency = 'BOBIGNY (FRANCE)';
-        }
+        $arrAgency = !empty($rawArrAgency) && !in_array($rawArrAgency, ['Agence Arrivée', '—', 'N/A'], true)
+            ? mb_strtoupper($rawArrAgency, 'UTF-8')
+            : 'BOBIGNY (FRANCE)';
 
         $destName = (string) ($colis['destinataire_name'] ?? 'Client Destinataire');
         $destPhone = (string) ($colis['destinataire_phone'] ?? '—');
-        $destAddress = (string) ($colis['destinataire_address'] ?? '—');
-        $expName = (string) ($colis['expediteur_name'] ?? 'Expéditeur');
-        $expPhone = (string) ($colis['expediteur_phone'] ?? '—');
         $weight = number_format((float) ($colis['poids_total'] ?? 0.0), 2, '.', '');
         $pkgCount = (int) ($colis['nombre_colis'] ?? 1);
         $trafic = (string) ($colis['trafic'] ?? $colis['type_expediteur'] ?? 'Groupage Aérien');
         $rayonCode = (string) ($colis['code_rayon'] ?? '');
+        $statutRaw = (string) ($colis['statut'] ?? 'en_transit');
         $createdAt = !empty($colis['created_at']) ? date('d/m/Y H:i', strtotime((string) $colis['created_at'])) : date('d/m/Y H:i');
 
         $siteUrl = 'https://labelleporte.net';
@@ -2535,9 +2628,16 @@ final class Colisage
             $barcodePattern .= "<rect x='" . ($i * 11 + $w1 + 1) . "' y='0' width='{$w2}' height='50' fill='#000'/>";
         }
 
-        $rayonBanner = !empty($rayonCode)
-            ? 'RAYON : ' . View::e($rayonCode)
-            : 'EN TRANSIT / EN ATTENTE RAYON';
+        $rayonText = !empty($rayonCode)
+            ? 'RAYON DE L\'AGENCE : ' . View::e($rayonCode)
+            : 'RAYON : EN ATTENTE AFFECTATION';
+
+        $statusBannerText = match(strtolower($statutRaw)) {
+            'livre' => 'COLIS LIVRÉ AU DESTINATAIRE',
+            'recupere' => 'COLIS RETIRÉ EN AGENCE',
+            'arrive' => 'ARRIVÉ EN AGENCE / DISPONIBLE',
+            default => 'EN TRANSIT / EXPÉDITION EN COURS'
+        };
 
         return '<!DOCTYPE html>'
             . '<html lang="fr">'
@@ -2551,17 +2651,30 @@ final class Colisage
             . '.logo-title { font-size: 16px; font-weight: 900; letter-spacing: 0.5px; }'
             . '.logo-subtitle { font-size: 8px; font-weight: 700; text-transform: uppercase; }'
             . '.trafic-badge { background: #000; color: #fff; padding: 3px 6px; font-size: 9px; font-weight: 800; border-radius: 3px; text-transform: uppercase; }'
-            . '.dest-banner { background: #f1f5f9; border: 2px solid #000; padding: 6px; text-align: center; margin-top: 4px; }'
-            . '.dest-label { font-size: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }'
-            . '.dest-city { font-size: 18px; font-weight: 900; text-transform: uppercase; line-height: 1.1; }'
-            . '.tracking-block { text-align: center; border: 2px solid #000; padding: 6px 4px; margin-top: 4px; background: #fff; }'
-            . '.tracking-code { font-size: 22px; font-weight: 900; letter-spacing: 1.5px; font-family: "Arial Black", "Impact", "Inter", sans-serif; text-transform: uppercase; }'
-            . '.barcode-container { display: flex; justify-content: center; margin: 4px 0; overflow: hidden; height: 42px; }'
-            . '.middle-grid { display: flex; justify-content: center; align-items: center; margin-top: 4px; border: 2px solid #000; padding: 10px; min-height: 90px; }'
+            
+            // Rayon Banner à haut du tableau
+            . '.rayon-banner { background: #ffcc00; border: 2px solid #000; padding: 5px; text-align: center; font-weight: 900; font-size: 11px; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px; }'
+            
+            // Tableau Départ / Destination divisé en 2
+            . '.route-table { display: flex; border: 2px solid #000; margin-top: 4px; background: #ffffff; }'
+            . '.route-cell { flex: 1; padding: 6px; text-align: center; min-height: 48px; display: flex; flex-direction: column; justify-content: center; }'
+            . '.route-depart { border-right: 2px solid #000; background: #f8fafc; }'
+            . '.route-dest { background: #ffffff; }'
+            . '.route-label { font-size: 8px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; color: #475569; margin-bottom: 2px; }'
+            . '.route-city { font-size: 12px; font-weight: 900; text-transform: uppercase; line-height: 1.15; color: #000000; }'
+            
+            // Code-barres centré
+            . '.tracking-block { text-align: center; border: 2px solid #000; padding: 6px 4px; margin-top: 4px; background: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; }'
+            . '.tracking-code { font-size: 22px; font-weight: 900; letter-spacing: 1.5px; font-family: "Arial Black", "Impact", "Inter", sans-serif; text-transform: uppercase; margin-bottom: 2px; text-align: center; }'
+            . '.barcode-container { display: flex; justify-content: center; align-items: center; margin: 4px auto; overflow: hidden; height: 45px; width: 100%; text-align: center; }'
+            . '.barcode-container svg { display: block; margin: 0 auto; }'
+            . '.barcode-sub { font-size: 7px; font-weight: 800; text-align: center; letter-spacing: 0.5px; }'
+            
+            . '.status-banner { background: #ffcc00; border: 2px solid #000; padding: 4px; text-align: center; font-weight: 900; font-size: 10px; margin-top: 4px; text-transform: uppercase; }'
+            . '.middle-grid { display: flex; justify-content: center; align-items: center; margin-top: 4px; border: 2px solid #000; padding: 8px; min-height: 85px; }'
             . '.qr-box { text-align: center; }'
-            . '.qr-img { width: 75px; height: 75px; display: block; margin: 0 auto; }'
+            . '.qr-img { width: 70px; height: 70px; display: block; margin: 0 auto; }'
             . '.qr-sub { font-size: 8px; font-weight: 800; margin-top: 4px; letter-spacing: 0.5px; }'
-            . '.rayon-banner { background: #ffcc00; border: 2px solid #000; padding: 4px; text-align: center; font-weight: 900; font-size: 13px; margin-top: 4px; text-transform: uppercase; }'
             . '.metrics-row { display: flex; border: 2px solid #000; margin-top: 4px; text-align: center; font-size: 9px; font-weight: 700; }'
             . '.metric-cell { flex: 1; padding: 4px; border-right: 1px solid #000; }'
             . '.metric-cell:last-child { border-right: none; }'
@@ -2575,13 +2688,36 @@ final class Colisage
             . '<div class="print-btn-bar"><button class="print-btn" onclick="window.print()">Imprimer l\'Étiquette (4x6")</button></div>'
             . '<div class="etiquette-card">'
             . '<div class="etiquette-header"><div><div class="logo-title">LBP LOGISTICS</div><div class="logo-subtitle">Fret & Colisage International</div></div><div class="trafic-badge">' . View::e($trafic) . '</div></div>'
-            . '<div class="dest-banner"><div class="dest-label">DESTINATION :</div><div class="dest-city">' . View::e($arrAgency) . '</div></div>'
-            . '<div class="tracking-block"><div class="tracking-code">' . View::e($trackingNum) . '</div><div class="barcode-container"><svg width="220" height="45" viewBox="0 0 220 45">' . $barcodePattern . '</svg></div><div style="font-size: 7px; font-weight:700;">CODE-BARRES OFFICIEL LBP</div></div>'
-            . '<div class="rayon-banner">' . $rayonBanner . '</div>'
+            
+            // 1. Rayon de l'agence au-dessus du tableau Départ / Destination
+            . '<div class="rayon-banner">' . $rayonText . '</div>'
+            
+            // 2. Tableau Départ & Destination divisé en 2 (tous deux en gras)
+            . '<div class="route-table">'
+            . '<div class="route-cell route-depart"><div class="route-label">DÉPART :</div><div class="route-city">' . View::e($depAgency) . '</div></div>'
+            . '<div class="route-cell route-dest"><div class="route-label">DESTINATION :</div><div class="route-city">' . View::e($arrAgency) . '</div></div>'
+            . '</div>'
+            
+            // 3. Code-barres centré
+            . '<div class="tracking-block">'
+            . '<div class="tracking-code">' . View::e($trackingNum) . '</div>'
+            . '<div class="barcode-container"><svg width="220" height="45" viewBox="0 0 220 45">' . $barcodePattern . '</svg></div>'
+            . '<div class="barcode-sub">CODE-BARRES OFFICIEL LBP</div>'
+            . '</div>'
+            
+            // Bannière Statut
+            . '<div class="status-banner">' . $statusBannerText . '</div>'
+            
+            // QR Code
             . '<div class="middle-grid"><div class="qr-box"><img src="' . $qrCodeUrl . '" class="qr-img" alt="QR Code Web"><div class="qr-sub">LABELLEPORTE.NET</div></div></div>'
-            . '<div class="metrics-row"><div class="metric-cell"><div>POIDS TOTAL</div><div class="metric-value">' . $weight . ' kg</div></div>'
+            
+            // Pied de fiche (Metriques)
+            . '<div class="metrics-row">'
+            . '<div class="metric-cell"><div>POIDS TOTAL</div><div class="metric-value">' . $weight . ' kg</div></div>'
             . '<div class="metric-cell"><div>SÉQUENCE</div><div class="metric-value">1 / ' . $pkgCount . '</div></div>'
-            . '<div class="metric-cell"><div>DATE SAISIE</div><div style="font-size:9.5px; margin-top:2px;">' . $createdAt . '</div></div></div>'
+            . '<div class="metric-cell"><div>DATE SAISIE</div><div style="font-size:9.5px; margin-top:2px;">' . $createdAt . '</div></div>'
+            . '</div>'
+            
             . '</div>'
             . '<script>if (window.location.search.indexOf("autoprint") !== -1) { window.addEventListener("load", function() { window.print(); }); }</script>'
             . '</body></html>';

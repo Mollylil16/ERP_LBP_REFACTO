@@ -708,21 +708,40 @@ final class Finance
                     . '</div>';
 
                 if ($statut === 'brouillon') {
-                    $submissionForm .= '<form method="post" action="' . View::url('finance/clotures/soumettre') . '" class="js-protect-form" style="background:#fff; border:1px solid #cbd5e1; padding:1.25rem; border-radius:8px; margin-top:1rem;">'
-                        . '<h4 style="margin-bottom:0.75rem;">Rapprochement Financier & Comptage Physique</h4>'
+                    $submissionForm .= '<form method="post" action="' . View::url('finance/clotures/soumettre') . '" class="js-protect-form" style="background:#fff; border:1px solid #cbd5e1; padding:1.5rem; border-radius:12px; margin-top:1rem; box-shadow: 0 4px 14px rgba(15,23,42,0.03);">'
+                        . '<h4 style="margin-bottom:0.5rem; font-size:1.1rem; font-weight:800; color:#0f172a;">🔒 Rapprochement Financier & Comptage de Caisse à l\'Aveugle</h4>'
+                        . '<p style="color:#64748b; font-size:0.85rem; margin-bottom:1.25rem;">Effectuez le décompte physique de vos billets et pièces en caisse sans vous fier au montant théorique du système.</p>'
+                        
+                        // Denomination Counting Grid
+                        . '<div style="background:#f8fafc; border:1px solid #e2e8f0; padding:1.25rem; border-radius:10px; margin-bottom:1.25rem;">'
+                        . '<div style="font-size:0.8rem; font-weight:800; text-transform:uppercase; color:#0f172a; margin-bottom:0.75rem;">Grille de comptage par coupures (XOF)</div>'
+                        . '<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap:0.75rem;">'
+                        . '<div><label style="font-size:0.75rem; font-weight:700; color:#475569;">10 000 XOF</label><input type="number" min="0" class="b-cnt" data-val="10000" style="width:100%; padding:6px; border:1px solid #cbd5e1; border-radius:6px; font-weight:700;"></div>'
+                        . '<div><label style="font-size:0.75rem; font-weight:700; color:#475569;">5 000 XOF</label><input type="number" min="0" class="b-cnt" data-val="5000" style="width:100%; padding:6px; border:1px solid #cbd5e1; border-radius:6px; font-weight:700;"></div>'
+                        . '<div><label style="font-size:0.75rem; font-weight:700; color:#475569;">2 000 XOF</label><input type="number" min="0" class="b-cnt" data-val="2000" style="width:100%; padding:6px; border:1px solid #cbd5e1; border-radius:6px; font-weight:700;"></div>'
+                        . '<div><label style="font-size:0.75rem; font-weight:700; color:#475569;">1 000 XOF</label><input type="number" min="0" class="b-cnt" data-val="1000" style="width:100%; padding:6px; border:1px solid #cbd5e1; border-radius:6px; font-weight:700;"></div>'
+                        . '<div><label style="font-size:0.75rem; font-weight:700; color:#475569;">500 / Pièces</label><input type="number" min="0" class="b-cnt" data-val="500" style="width:100%; padding:6px; border:1px solid #cbd5e1; border-radius:6px; font-weight:700;"></div>'
+                        . '</div></div>'
+
                         . '<div style="display:grid; grid-template-columns: 1fr 1fr; gap:1.25rem;">'
-                        . Form::input('solde_physique_declare', ['label' => 'Solde Physique Compté (Billets + Pièces - XOF)', 'type' => 'number', 'step' => '1', 'placeholder' => 'Saisir le montant exact compté en caisse', 'required' => true, 'id' => 'solde_physique_input'])
+                        . Form::input('solde_physique_declare', ['label' => 'Total Physique Calculé (XOF)', 'type' => 'number', 'step' => '1', 'placeholder' => 'Calculé automatiquement ci-dessus', 'required' => true, 'id' => 'solde_physique_input'])
                         . '<div style="background:#f1f5f9; padding:0.8rem; border-radius:8px; display:flex; flex-direction:column; justify-content:center;">'
-                        . '<small style="color:#64748b; font-weight:600;">Solde Théorique attendu :</small>'
-                        . '<strong style="font-size:1.1rem; color:#1e293b;">' . number_format($totalEncaisseXof, 0, ',', ' ') . ' XOF</strong>'
+                        . '<small style="color:#64748b; font-weight:600;">Solde Théorique attendu (Blind Count) :</small>'
+                        . '<strong id="blind_theo_val" style="font-size:1.1rem; color:#1e293b;">•••••• XOF <button type="button" onclick="document.getElementById(\'blind_theo_val\').innerText=\'' . number_format($totalEncaisseXof, 0, ',', ' ') . ' XOF\'" style="border:none; background:none; color:#2563eb; font-size:0.75rem; cursor:pointer; text-decoration:underline;">Afficher</button></strong>'
                         . '</div>'
                         . '</div>'
                         . '<div style="margin-top:1rem;">'
-                        . Form::input('explication_ecart', ['label' => 'Explication obligatoire si écart de caisse (manquant ou surplus)', 'placeholder' => 'Préciser les motifs de l\'écart éventuel (ex: erreur de rendu de monnaie, justificatif en attente)', 'id' => 'explication_ecart_input'])
+                        . Form::input('explication_ecart', ['label' => 'Explication obligatoire en cas d\'écart de caisse (manquant/surplus > 5000 XOF)', 'placeholder' => 'Préciser les motifs de l\'écart éventuel (ex: monnaie en attente, justificatif)', 'id' => 'explication_ecart_input'])
                         . '</div>'
                         . '<div style="margin-top:1.25rem; display:flex; justify-content:flex-end;">'
-                        . Ui::button('🔒 Soumettre le point & Verrouiller la caisse', ['type' => 'submit', 'variant' => 'accent'])
+                        . Ui::button('🔒 Soumettre & Verrouiller la Caisse', ['type' => 'submit', 'variant' => 'accent'])
                         . '</div>'
+                        . '<script>'
+                        . 'document.addEventListener("DOMContentLoaded", function() {'
+                        . 'var inputs = document.querySelectorAll(".b-cnt"); var soldeInput = document.getElementById("solde_physique_input");'
+                        . 'function calcTotal() { var sum = 0; inputs.forEach(function(i) { var count = parseInt(i.value) || 0; var mult = parseInt(i.dataset.val) || 0; sum += (count * mult); }); soldeInput.value = sum; }'
+                        . 'inputs.forEach(function(i) { i.addEventListener("input", calcTotal); }); });'
+                        . '</script>'
                         . '</form>';
                 } else {
                     $submissionForm .= '<p style="color:#16a34a; font-weight:600;"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" style="display:inline; margin-right:0.25rem;"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg> Point soumis et verrouillé.</p>';
@@ -753,9 +772,13 @@ final class Finance
                 };
                 $badge = Ui::badge(strtoupper($r->statut), $badgeTone);
 
-                $actionsHtml = '—';
-                if ($r->statut === 'soumis' && Auth::hasRole('caissiere_principale')) {
-                    $actionsHtml = '<form method="post" action="' . View::url('finance/clotures/' . $r->id . '/consolider') . '" class="js-protect-form">'
+                $pdfBtn = '<a href="' . View::url('finance/clotures/' . $r->id . '/export-pdf') . '" target="_blank" class="finea-button-sm" style="display:inline-flex; align-items:center; gap:4px; background:#f1f5f9; color:#0f172a; border:1px solid #cbd5e1; border-radius:6px; padding:4px 8px; font-weight:700; text-decoration:none; font-size:0.75rem; margin-right:4px;">'
+                    . '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg> PDF'
+                    . '</a>';
+
+                $actionsHtml = $pdfBtn;
+                if ($r->statut === 'soumis' && Auth::hasRole(['caissiere_principale', 'dg'])) {
+                    $actionsHtml .= '<form method="post" action="' . View::url('finance/clotures/' . $r->id . '/consolider') . '" class="js-protect-form" style="display:inline;">'
                         . Ui::button('Consolider', ['type' => 'submit', 'variant' => 'success', 'class' => 'finea-button-sm'])
                         . '</form>';
                 }
@@ -1020,5 +1043,181 @@ final class Finance
             . '.catch(function(e) { console.error(e); processingScreen.style.display = "none"; alert("Erreur réseau."); formScreen.style.display = "block"; });'
             . '}, 3000); }); });'
             . '</script></body></html>';
+    }
+
+    public static function rentabilitePage(\App\View\Pages\Finance\RentabilitePage $page): string
+    {
+        $actionPdf = '<a href="' . View::url('finance/rentabilite/export-pdf') . '" target="_blank" style="display: inline-flex; align-items: center; gap: 8px; padding: 10px 18px; background: #0f172a; color: #ffffff; font-weight: 700; border-radius: 8px; text-decoration: none; box-shadow: 0 4px 12px rgba(15,23,42,0.15);">'
+            . '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>'
+            . 'Imprimer / Export PDF'
+            . '</a>';
+
+        $header = Ui::pageHeader(
+            'Rentabilité par Trajet (P&L Logistique)',
+            'Analyse croisée des recettes facturées et des débours prestataires par lot de transport.',
+            [
+                'eyebrow' => 'Pilotage Financier',
+                'class' => 'rh-hero-white',
+                'actions' => [$actionPdf],
+            ]
+        );
+
+        $recettes = number_format($page->summary['total_recettes'] ?? 0.0, 0, ',', ' ');
+        $depenses = number_format($page->summary['total_depenses'] ?? 0.0, 0, ',', ' ');
+        $margeNette = number_format($page->summary['marge_nette'] ?? 0.0, 0, ',', ' ');
+        $tauxMarge = number_format($page->summary['taux_marge'] ?? 0.0, 1, ',', ' ');
+
+        $statsGrid = '
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.25rem; margin-bottom: 1.75rem;">
+            <div style="background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%); border: 1px solid #e2e8f0; border-radius: 14px; padding: 1.25rem; box-shadow: 0 4px 12px rgba(15,23,42,0.03); display: flex; align-items: center; justify-content: space-between;">
+                <div>
+                    <div style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; margin-bottom: 0.35rem;">Total Recettes (Factures)</div>
+                    <div style="font-size: 1.65rem; font-weight: 800; color: #0f172a; line-height: 1;">' . $recettes . ' <span style="font-size:0.9rem; font-weight:600; color:#64748b;">XOF</span></div>
+                </div>
+                <div style="width: 46px; height: 46px; border-radius: 12px; background: rgba(16, 185, 129, 0.12); color: #059669; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+                </div>
+            </div>
+
+            <div style="background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%); border: 1px solid #e2e8f0; border-radius: 14px; padding: 1.25rem; box-shadow: 0 4px 12px rgba(15,23,42,0.03); display: flex; align-items: center; justify-content: space-between;">
+                <div>
+                    <div style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; margin-bottom: 0.35rem;">Total Débours Prestataires</div>
+                    <div style="font-size: 1.65rem; font-weight: 800; color: #dc2626; line-height: 1;">' . $depenses . ' <span style="font-size:0.9rem; font-weight:600; color:#64748b;">XOF</span></div>
+                </div>
+                <div style="width: 46px; height: 46px; border-radius: 12px; background: rgba(220, 38, 38, 0.12); color: #dc2626; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"></path></svg>
+                </div>
+            </div>
+
+            <div style="background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%); border: 1px solid #e2e8f0; border-radius: 14px; padding: 1.25rem; box-shadow: 0 4px 12px rgba(15,23,42,0.03); display: flex; align-items: center; justify-content: space-between;">
+                <div>
+                    <div style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; margin-bottom: 0.35rem;">Marge Nette Globale</div>
+                    <div style="font-size: 1.65rem; font-weight: 800; color: #2563eb; line-height: 1;">' . $margeNette . ' <span style="font-size:0.9rem; font-weight:600; color:#64748b;">XOF</span></div>
+                </div>
+                <div style="width: 46px; height: 46px; border-radius: 12px; background: rgba(37, 99, 235, 0.12); color: #2563eb; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>
+                </div>
+            </div>
+
+            <div style="background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%); border: 1px solid #e2e8f0; border-radius: 14px; padding: 1.25rem; box-shadow: 0 4px 12px rgba(15,23,42,0.03); display: flex; align-items: center; justify-content: space-between;">
+                <div>
+                    <div style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; margin-bottom: 0.35rem;">Taux de Marge Moyen</div>
+                    <div style="font-size: 1.65rem; font-weight: 800; color: #0f172a; line-height: 1;">' . $tauxMarge . '%</div>
+                </div>
+                <div style="width: 46px; height: 46px; border-radius: 12px; background: rgba(14, 165, 233, 0.12); color: #0284c7; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 20V10M12 20V4M6 20v-6"></path></svg>
+                </div>
+            </div>
+        </div>';
+
+        $rows = '';
+        foreach ($page->trajets as $t) {
+            $margeVal = (float) $t['marge_nette'];
+            $margeTone = $margeVal >= 0 ? 'background: #dcfce7; color: #15803d;' : 'background: #fee2e2; color: #b91c1c;';
+            $tauxVal = number_format((float) $t['taux_marge'], 1, ',', ' ');
+
+            $rows .= '<tr style="border-bottom: 1px solid #f1f5f9;">'
+                . '<td style="padding: 14px 16px;"><strong>' . View::e($t['code']) . '</strong></td>'
+                . '<td style="padding: 14px 16px;">' . View::e($t['libelle']) . ' <small style="color:#64748b;">(' . View::e($t['type_transport']) . ')</small></td>'
+                . '<td style="padding: 14px 16px; font-weight: 700; color: #15803d; text-align: right;">' . number_format((float) $t['total_recettes'], 0, ',', ' ') . ' XOF</td>'
+                . '<td style="padding: 14px 16px; font-weight: 700; color: #b91c1c; text-align: right;">' . number_format((float) $t['total_depenses'], 0, ',', ' ') . ' XOF</td>'
+                . '<td style="padding: 14px 16px; font-weight: 800; text-align: right;"><span style="display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 0.85rem; ' . $margeTone . '">' . number_format($margeVal, 0, ',', ' ') . ' XOF</span></td>'
+                . '<td style="padding: 14px 16px; font-weight: 800; text-align: right; color: #0f172a;">' . $tauxVal . '%</td>'
+                . '</tr>';
+        }
+
+        $tableHtml = '<div class="finea-table-wrapper" style="overflow-x: auto; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 14px; box-shadow: 0 4px 12px rgba(15,23,42,0.03);">'
+            . '<table class="finea-table" style="width: 100%; border-collapse: collapse; font-size: 0.875rem;">'
+            . '<thead style="background: #0f172a; color: #ffffff;">'
+            . '<tr>'
+            . '<th style="padding: 12px 16px; font-size: 0.75rem; font-weight: 800; text-transform: uppercase;">Code Lot</th>'
+            . '<th style="padding: 12px 16px; font-size: 0.75rem; font-weight: 800; text-transform: uppercase;">Trajet & Type</th>'
+            . '<th style="padding: 12px 16px; font-size: 0.75rem; font-weight: 800; text-transform: uppercase; text-align: right;">Recettes Factures</th>'
+            . '<th style="padding: 12px 16px; font-size: 0.75rem; font-weight: 800; text-transform: uppercase; text-align: right;">Débours Prestataires</th>'
+            . '<th style="padding: 12px 16px; font-size: 0.75rem; font-weight: 800; text-transform: uppercase; text-align: right;">Marge Nette</th>'
+            . '<th style="padding: 12px 16px; font-size: 0.75rem; font-weight: 800; text-transform: uppercase; text-align: right;">Taux Marge</th>'
+            . '</tr>'
+            . '</thead>'
+            . '<tbody>' . $rows . '</tbody>'
+            . '</table></div>';
+
+        return '<div class="finea-shell"><div class="finea-container">' . $header . $statsGrid . $tableHtml . '</div></div>';
+    }
+
+    public static function balanceAgeePage(\App\View\Pages\Finance\BalanceAgeePage $page): string
+    {
+        $actionPdf = '<a href="' . View::url('finance/balance-agee/export-pdf') . '" target="_blank" style="display: inline-flex; align-items: center; gap: 8px; padding: 10px 18px; background: #2563eb; color: #ffffff; font-weight: 700; border-radius: 8px; text-decoration: none; box-shadow: 0 4px 12px rgba(37,99,235,0.25);">'
+            . '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>'
+            . 'Imprimer / Export PDF'
+            . '</a>';
+
+        $actionExport = '<a href="' . View::url('finance/export-syscohada') . '" style="display: inline-flex; align-items: center; gap: 8px; padding: 10px 18px; background: #0f172a; color: #ffffff; font-weight: 700; border-radius: 8px; text-decoration: none;">'
+            . '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"></path></svg>'
+            . 'Export SYSCOHADA (CSV)'
+            . '</a>';
+
+        $header = Ui::pageHeader(
+            'Balance Âgée des Créances',
+            'Ventilation des restes à encaisser par tranches d\'ancienneté.',
+            [
+                'eyebrow' => 'Recouvrement & Crédits',
+                'class' => 'rh-hero-white',
+                'actions' => [$actionPdf, $actionExport],
+            ]
+        );
+
+        $b30 = number_format($page->agingBuckets['b30'] ?? 0.0, 0, ',', ' ');
+        $b60 = number_format($page->agingBuckets['b60'] ?? 0.0, 0, ',', ' ');
+        $b90 = number_format($page->agingBuckets['b90'] ?? 0.0, 0, ',', ' ');
+        $bPlus90 = number_format($page->agingBuckets['bPlus90'] ?? 0.0, 0, ',', ' ');
+
+        $statsGrid = '
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.25rem; margin-bottom: 1.75rem;">
+            <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 1.25rem; border-left: 5px solid #16a34a;">
+                <div style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: #64748b;">0 à 30 jours (Récent)</div>
+                <div style="font-size: 1.65rem; font-weight: 800; color: #16a34a; margin-top: 0.35rem;">' . $b30 . ' <small style="font-size:0.9rem; color:#64748b;">XOF</small></div>
+            </div>
+            <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 1.25rem; border-left: 5px solid #0284c7;">
+                <div style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: #64748b;">31 à 60 jours</div>
+                <div style="font-size: 1.65rem; font-weight: 800; color: #0284c7; margin-top: 0.35rem;">' . $b60 . ' <small style="font-size:0.9rem; color:#64748b;">XOF</small></div>
+            </div>
+            <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 1.25rem; border-left: 5px solid #d97706;">
+                <div style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: #64748b;">61 à 90 jours</div>
+                <div style="font-size: 1.65rem; font-weight: 800; color: #d97706; margin-top: 0.35rem;">' . $b90 . ' <small style="font-size:0.9rem; color:#64748b;">XOF</small></div>
+            </div>
+            <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 1.25rem; border-left: 5px solid #dc2626;">
+                <div style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: #64748b;">+ 90 jours (Alerte Recouvrement)</div>
+                <div style="font-size: 1.65rem; font-weight: 800; color: #dc2626; margin-top: 0.35rem;">' . $bPlus90 . ' <small style="font-size:0.9rem; color:#64748b;">XOF</small></div>
+            </div>
+        </div>';
+
+        $rows = '';
+        foreach ($page->clientDetails as $c) {
+            $rows .= '<tr style="border-bottom: 1px solid #f1f5f9;">'
+                . '<td style="padding: 14px 16px;"><strong>' . View::e($c['client_name']) . '</strong><br><small style="color:#64748b;">' . View::e($c['phone']) . '</small></td>'
+                . '<td style="padding: 14px 16px; text-align: right; color: #16a34a; font-weight: 600;">' . number_format((float) $c['b30'], 0, ',', ' ') . ' XOF</td>'
+                . '<td style="padding: 14px 16px; text-align: right; color: #0284c7; font-weight: 600;">' . number_format((float) $c['b60'], 0, ',', ' ') . ' XOF</td>'
+                . '<td style="padding: 14px 16px; text-align: right; color: #d97706; font-weight: 600;">' . number_format((float) $c['b90'], 0, ',', ' ') . ' XOF</td>'
+                . '<td style="padding: 14px 16px; text-align: right; color: #dc2626; font-weight: 700;">' . number_format((float) $c['bPlus90'], 0, ',', ' ') . ' XOF</td>'
+                . '<td style="padding: 14px 16px; text-align: right; font-weight: 800; color: #0f172a;">' . number_format((float) $c['total'], 0, ',', ' ') . ' XOF</td>'
+                . '</tr>';
+        }
+
+        $tableHtml = '<div class="finea-table-wrapper" style="overflow-x: auto; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 14px; box-shadow: 0 4px 12px rgba(15,23,42,0.03);">'
+            . '<table class="finea-table" style="width: 100%; border-collapse: collapse; font-size: 0.875rem;">'
+            . '<thead style="background: #0f172a; color: #ffffff;">'
+            . '<tr>'
+            . '<th style="padding: 12px 16px; font-size: 0.75rem; font-weight: 800; text-transform: uppercase;">Client</th>'
+            . '<th style="padding: 12px 16px; font-size: 0.75rem; font-weight: 800; text-transform: uppercase; text-align: right;">0 - 30j</th>'
+            . '<th style="padding: 12px 16px; font-size: 0.75rem; font-weight: 800; text-transform: uppercase; text-align: right;">31 - 60j</th>'
+            . '<th style="padding: 12px 16px; font-size: 0.75rem; font-weight: 800; text-transform: uppercase; text-align: right;">61 - 90j</th>'
+            . '<th style="padding: 12px 16px; font-size: 0.75rem; font-weight: 800; text-transform: uppercase; text-align: right;">+ 90j</th>'
+            . '<th style="padding: 12px 16px; font-size: 0.75rem; font-weight: 800; text-transform: uppercase; text-align: right;">Total Reste à Payer</th>'
+            . '</tr>'
+            . '</thead>'
+            . '<tbody>' . $rows . '</tbody>'
+            . '</table></div>';
+
+        return '<div class="finea-shell"><div class="finea-container">' . $header . $statsGrid . $tableHtml . '</div></div>';
     }
 }

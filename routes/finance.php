@@ -24,6 +24,7 @@ $router->group('/finance', function (Router $router): void {
     // Clôtures et Points de caisse
     $router->get('/clotures', [FinanceController::class, 'cloturesIndex']);
     $router->post('/clotures/soumettre', [FinanceController::class, 'clotureSoumettre']);
+    $router->get('/clotures/{id}/export-pdf', [FinanceController::class, 'exportCloturePdf']);
     $router->post('/clotures/{id}/consolider', [FinanceController::class, 'clotureConsolider']);
 
     // Dépenses prestataires
@@ -31,6 +32,13 @@ $router->group('/finance', function (Router $router): void {
     $router->post('/depenses/enregistrer', [FinanceController::class, 'depenseStore']);
     $router->post('/depenses/{id}/valider', [FinanceController::class, 'depenseValider']);
 
-    // Comptabilité
+    // Comptabilité & SYSCOHADA
     $router->get('/comptabilite', [FinanceController::class, 'comptabilite']);
+    $router->get('/export-syscohada', [FinanceController::class, 'exportSyscohada']);
+
+    // Pilotage financier & Rentabilité
+    $router->get('/rentabilite', [FinanceController::class, 'rentabilite']);
+    $router->get('/rentabilite/export-pdf', [FinanceController::class, 'exportRentabilitePdf']);
+    $router->get('/balance-agee', [FinanceController::class, 'balanceAgee']);
+    $router->get('/balance-agee/export-pdf', [FinanceController::class, 'exportBalanceAgeePdf']);
 });
