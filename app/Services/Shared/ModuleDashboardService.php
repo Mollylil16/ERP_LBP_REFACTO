@@ -249,9 +249,10 @@ final class ModuleDashboardService
                     ['label' => 'Décisions', 'value' => '0', 'meta' => 'Actions à prioriser'],
                 ],
                 'actions' => [
-                    ['label' => 'Synthèse exécutive', 'hint' => 'Afficher les KPI prioritaires', 'url' => '/pilotage-dg/dashboard'],
-                    ['label' => 'Alertes critiques', 'hint' => 'Suivre les points bloquants', 'url' => '/pilotage-dg/dashboard'],
-                    ['label' => 'Performance sites', 'hint' => 'Comparer les agences et pays', 'url' => '/pilotage-dg/dashboard'],
+                    ['label' => 'Supervision du personnel', 'hint' => 'Présence, évaluations, objectifs, discipline', 'url' => '/pilotage-dg/personnel'],
+                    ['label' => 'Centre de validation', 'hint' => 'Tout ce qui attend votre décision', 'url' => '/pilotage-dg/validations'],
+                    ['label' => 'Anomalies & fraude', 'hint' => 'Écarts de caisse et signaux suspects', 'url' => '/pilotage-dg/anomalies'],
+                    ['label' => 'Journal d\'audit', 'hint' => 'Qui a fait quoi, sur toute la plateforme', 'url' => '/pilotage-dg/audit'],
                 ],
             ],
             'call-center' => [
@@ -357,6 +358,16 @@ final class ModuleDashboardService
                 ['key' => 'groupage', 'label' => 'Groupage & Expéditions', 'icon' => 'GP', 'url' => '/colisage/groupage', 'available' => true],
                 ['key' => 'tracking', 'label' => 'Suivi GPS', 'icon' => 'GPS', 'url' => '/colisage/exploitation/tracking', 'available' => true],
                 ['key' => 'exploitation_fournitures', 'label' => 'Fournitures bureau', 'icon' => 'FT', 'url' => '/colisage/exploitation/fournitures', 'available' => \App\Helpers\Auth::can(\App\Security\PermissionEntityRegistry::EXPLOITATION_FOURNITURES)],
+            ];
+        }
+
+        if ($module['slug'] === 'pilotage-dg') {
+            return [
+                ['key' => 'dashboard', 'label' => 'Vue Exécutive', 'icon' => 'DB', 'url' => '/pilotage-dg/dashboard', 'available' => true],
+                ['key' => 'personnel', 'label' => 'Supervision Personnel', 'icon' => 'RH', 'url' => '/pilotage-dg/personnel', 'available' => true],
+                ['key' => 'validations', 'label' => 'Centre de Validation', 'icon' => 'VAL', 'url' => '/pilotage-dg/validations', 'available' => true],
+                ['key' => 'anomalies', 'label' => 'Anomalies & Fraude', 'icon' => 'ALT', 'url' => '/pilotage-dg/anomalies', 'available' => true],
+                ['key' => 'audit', 'label' => 'Journal d\'Audit', 'icon' => 'AUD', 'url' => '/pilotage-dg/audit', 'available' => true],
             ];
         }
 

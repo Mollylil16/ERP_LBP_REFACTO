@@ -5,10 +5,11 @@ declare(strict_types=1);
 use App\View\Components\PilotageDg;
 
 /** @var \App\Support\ViewBag $viewData */ $viewData ??= \App\Support\ViewBag::from(get_defined_vars());
-/** @var array<string, mixed> $dashboardModule */
+/** @var array<int, array<string, mixed>> $employees */
+/** @var array<int, array<string, string>> $alerts */
 
 ob_start();
-echo PilotageDg::dashboardPage($dashboardModule);
+echo PilotageDg::personnelPage($employees, $alerts);
 $content = ob_get_clean();
 
 require BASE_PATH . '/views/layouts/module.php';
