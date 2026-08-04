@@ -82,10 +82,16 @@ class Auth
     }
 
     /**
-     * Vérifie si l'utilisateur connecté possède un rôle particulier.
+     * Vérifie si l'utilisateur connecté possède un rôle particulier (ou au moins un de la liste si un tableau est transmis).
+     *
+     * @param string|array<string> $role
      */
-    public static function hasRole(string $role): bool
+    public static function hasRole(string|array $role): bool
     {
+        if (is_array($role)) {
+            return self::hasAnyRole($role);
+        }
+
         $user = self::user();
         if (!$user) {
             return false;

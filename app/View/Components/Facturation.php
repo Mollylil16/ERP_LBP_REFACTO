@@ -77,7 +77,7 @@ final class Facturation
         array $trajets,
         array $results,
         array $kpis,
-        array $pagination
+        array $pagination = ['currentPage' => 1, 'totalPages' => 1, 'itemsPerPage' => 50, 'totalItems' => 0]
     ): string {
         $months = View::monthNames();
         $years = range((int) date('Y') - 2, (int) date('Y') + 1);

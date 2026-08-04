@@ -21,6 +21,7 @@ $router->group('/logistique', function (Router $router): void {
 
     // Rayons & Capacité de stockage
     $router->get('/rayons', [RayonsController::class, 'index']);
+    $router->post('/rayons', [RayonsController::class, 'store']);
     $router->post('/rayons/enregistrer', [RayonsController::class, 'store']);
     $router->post('/rayons/{id}/supprimer', [RayonsController::class, 'delete']);
 

@@ -15,6 +15,7 @@ use App\View\Components\Facturation;
 /** @var array<int, array<string, mixed>> $trajets */
 /** @var array<int, array<string, mixed>> $results */
 /** @var array<string, mixed> $kpis */
+/** @var array{currentPage: int, totalPages: int, itemsPerPage: int, totalItems: int}|null $pagination */
 
 echo Facturation::filtrePage(
     $startMonth,
@@ -27,5 +28,6 @@ echo Facturation::filtrePage(
     $sites,
     $trajets,
     $results,
-    $kpis
+    $kpis,
+    $pagination ?? ['currentPage' => 1, 'totalPages' => 1, 'itemsPerPage' => 50, 'totalItems' => 0]
 );

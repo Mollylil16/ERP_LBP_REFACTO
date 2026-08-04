@@ -218,7 +218,7 @@ final class Logistique
                 ['value' => 'MAINTENANCE', 'label' => 'MAINTENANCE'],
             ], 'ACTIF', ['label' => 'Statut']);
 
-        $modalHtml = Ui::modal('modal-add-rayon', 'Ajouter un nouveau Rayon', $fieldsHtml, View::url('logistique/rayons'), [
+        $modalHtml = Ui::modal('modal-add-rayon', 'Ajouter un nouveau Rayon', $fieldsHtml, View::url('logistique/rayons/enregistrer'), [
             'btnLabel' => 'Créer le rayon',
             'btnVariant' => 'accent',
         ]);
