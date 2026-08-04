@@ -38,6 +38,7 @@ class MigrationRunner
         $this->createLogistiqueRayonsAndSettingsTables();
         $this->createCallCenterTables();
         $this->createColisageOperationRefactoTables();
+        $this->createMissingProductionTables();
     }
 
 
@@ -2327,5 +2328,311 @@ class MigrationRunner
         }
 
         $this->pdo->exec("UPDATE trajets SET type_transport = 'AÉRIEN' WHERE code IN ('LB-CI', 'LB-FR', 'S-FR', 'LB-CA', 'F-SN') OR LOWER(type_transport) = 'maritime'");
+    }
+
+    /**
+     * Tables présentes en production mais jamais créées par les migrations versionnées
+     * (constat d'audit du module Recherche & Audit) : chaîne caisse/prestataires et
+     * chaîne congés/paie RH. Schéma repris tel quel depuis la base de production.
+     */
+    private function createMissingProductionTables(): void
+    {
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS company_settings (
+                id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                setting_key VARCHAR(100) NOT NULL,
+                setting_value TEXT NULL,
+                setting_label VARCHAR(255) NULL,
+                updated_at DATETIME NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                UNIQUE KEY uniq_company_settings_key (setting_key)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS lbp_devises_taux (
+                id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                devise_source VARCHAR(10) NOT NULL,
+                devise_cible VARCHAR(10) NOT NULL,
+                taux DECIMAL(12,6) NOT NULL,
+                updated_at DATETIME NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS lbp_expedition_status_history (
+                id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                expedition_id INT NOT NULL,
+                statut_depart VARCHAR(50) NOT NULL,
+                statut_arrive VARCHAR(50) NOT NULL,
+                changed_by_user_id INT NULL,
+                created_at DATETIME NOT NULL
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+
+        if ($this->schema->tableExists('company_sites')) {
+            $this->pdo->exec("
+                CREATE TABLE IF NOT EXISTS lbp_caisses (
+                    id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                    agency_id INT UNSIGNED NOT NULL,
+                    balance DECIMAL(15,2) NOT NULL DEFAULT 0.00,
+                    status ENUM('OUVERTE', 'FERMEE') NOT NULL DEFAULT 'FERMEE',
+                    updated_at DATETIME NULL,
+                    UNIQUE KEY uniq_lbp_caisses_agency (agency_id),
+                    CONSTRAINT fk_caisses_agency FOREIGN KEY (agency_id) REFERENCES company_sites(id) ON DELETE RESTRICT
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            ");
+
+            $this->pdo->exec("
+                CREATE TABLE IF NOT EXISTS lbp_credits_inter_agences (
+                    id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                    from_agency_id INT UNSIGNED NOT NULL,
+                    to_agency_id INT UNSIGNED NOT NULL,
+                    amount DECIMAL(15,2) NOT NULL,
+                    currency ENUM('XOF', 'EUR') NOT NULL DEFAULT 'XOF',
+                    reason TEXT NULL,
+                    status ENUM('EN_ATTENTE', 'VALIDE') NOT NULL DEFAULT 'EN_ATTENTE',
+                    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    reference_colis VARCHAR(100) NULL,
+                    settled_at DATETIME NULL,
+                    updated_at DATETIME NULL,
+                    KEY fk_credit_from (from_agency_id),
+                    KEY fk_credit_to (to_agency_id),
+                    CONSTRAINT fk_credit_from FOREIGN KEY (from_agency_id) REFERENCES company_sites(id) ON DELETE RESTRICT,
+                    CONSTRAINT fk_credit_to FOREIGN KEY (to_agency_id) REFERENCES company_sites(id) ON DELETE RESTRICT
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            ");
+        }
+
+        if ($this->schema->tableExists('lbp_colis') && $this->schema->tableExists('lbp_expeditions')) {
+            $this->pdo->exec("
+                CREATE TABLE IF NOT EXISTS lbp_colis_expeditions (
+                    colis_id INT UNSIGNED NOT NULL,
+                    expedition_id INT UNSIGNED NOT NULL,
+                    added_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (colis_id, expedition_id),
+                    KEY fk_pivot_expedition (expedition_id),
+                    CONSTRAINT fk_pivot_colis FOREIGN KEY (colis_id) REFERENCES lbp_colis(id) ON DELETE CASCADE,
+                    CONSTRAINT fk_pivot_expedition FOREIGN KEY (expedition_id) REFERENCES lbp_expeditions(id) ON DELETE CASCADE
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            ");
+        }
+
+        if ($this->schema->tableExists('lbp_prestataires')) {
+            $this->pdo->exec("
+                CREATE TABLE IF NOT EXISTS lbp_factures_prestataires (
+                    id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                    prestataire_id INT UNSIGNED NOT NULL,
+                    invoice_number VARCHAR(100) NOT NULL,
+                    amount DECIMAL(15,2) NOT NULL,
+                    currency ENUM('XOF', 'EUR') NOT NULL DEFAULT 'XOF',
+                    status ENUM('EN_ATTENTE', 'PAYEE', 'ANNULEE') NOT NULL DEFAULT 'EN_ATTENTE',
+                    due_date DATE NULL,
+                    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    lta_number VARCHAR(100) NULL,
+                    issue_date DATE NULL,
+                    amount_paid DECIMAL(15,2) NOT NULL DEFAULT 0.00,
+                    notes TEXT NULL,
+                    updated_at DATETIME NULL,
+                    KEY fk_facture_prestataire (prestataire_id),
+                    CONSTRAINT fk_facture_prestataire FOREIGN KEY (prestataire_id) REFERENCES lbp_prestataires(id) ON DELETE RESTRICT
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            ");
+        }
+
+        if ($this->schema->tableExists('lbp_caisses')) {
+            $this->pdo->exec("
+                CREATE TABLE IF NOT EXISTS lbp_mouvements_caisse (
+                    id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                    caisse_id INT UNSIGNED NOT NULL,
+                    type ENUM('ENTREE', 'DECAISSEMENT', 'APPRO') NOT NULL,
+                    amount DECIMAL(15,2) NOT NULL,
+                    justification VARCHAR(255) NULL,
+                    recorded_by INT NULL,
+                    created_at DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
+                    KEY fk_mouvements_caisse (caisse_id),
+                    CONSTRAINT fk_mouvements_caisse FOREIGN KEY (caisse_id) REFERENCES lbp_caisses(id) ON DELETE CASCADE
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            ");
+
+            $this->pdo->exec("
+                CREATE TABLE IF NOT EXISTS lbp_points_caisse (
+                    id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                    caisse_id INT UNSIGNED NOT NULL,
+                    declared_balance DECIMAL(15,2) NOT NULL,
+                    theoretical_balance DECIMAL(15,2) NOT NULL,
+                    status ENUM('EN_ATTENTE', 'VALIDE', 'REJETE') NOT NULL DEFAULT 'EN_ATTENTE',
+                    rejection_reason TEXT NULL,
+                    created_by INT NULL,
+                    validated_by INT NULL,
+                    validated_at DATETIME NULL,
+                    created_at DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
+                    KEY fk_points_caisse (caisse_id),
+                    CONSTRAINT fk_points_caisse FOREIGN KEY (caisse_id) REFERENCES lbp_caisses(id) ON DELETE CASCADE
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            ");
+        }
+
+        if ($this->schema->tableExists('lbp_factures_prestataires') && $this->schema->tableExists('users')) {
+            $this->pdo->exec("
+                CREATE TABLE IF NOT EXISTS lbp_retraits_prestataires (
+                    id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                    facture_id INT UNSIGNED NOT NULL,
+                    amount_paid DECIMAL(15,2) NOT NULL,
+                    currency ENUM('XOF', 'EUR') NOT NULL DEFAULT 'XOF',
+                    payment_date DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    recorded_by INT NOT NULL,
+                    reference_transaction VARCHAR(100) NULL,
+                    status ENUM('EN_ATTENTE', 'APPROUVE', 'REFUSE') NOT NULL DEFAULT 'EN_ATTENTE',
+                    approved_by INT NULL,
+                    approved_at DATETIME NULL,
+                    rejection_reason TEXT NULL,
+                    notes TEXT NULL,
+                    updated_at DATETIME NULL,
+                    KEY fk_retrait_facture (facture_id),
+                    KEY fk_retrait_user (recorded_by),
+                    CONSTRAINT fk_retrait_facture FOREIGN KEY (facture_id) REFERENCES lbp_factures_prestataires(id) ON DELETE CASCADE,
+                    CONSTRAINT fk_retrait_user FOREIGN KEY (recorded_by) REFERENCES users(id) ON DELETE RESTRICT
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            ");
+        }
+
+        if ($this->schema->tableExists('rh_employees')) {
+            $this->pdo->exec("
+                CREATE TABLE IF NOT EXISTS rh_attendances (
+                    id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                    employee_id INT UNSIGNED NOT NULL,
+                    date DATE NOT NULL,
+                    check_in TIME NULL,
+                    check_out TIME NULL,
+                    total_hours DECIMAL(5,2) NOT NULL DEFAULT 0.00,
+                    overtime_hours DECIMAL(5,2) NOT NULL DEFAULT 0.00,
+                    status ENUM('present', 'absent', 'leave', 'holiday') NOT NULL DEFAULT 'present',
+                    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME NULL,
+                    UNIQUE KEY uniq_rh_attendances_emp_date (employee_id, date),
+                    CONSTRAINT fk_rh_attendances_employee FOREIGN KEY (employee_id) REFERENCES rh_employees(id) ON DELETE CASCADE
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            ");
+        }
+
+        if ($this->schema->tableExists('rh_contracts')) {
+            $this->pdo->exec("
+                CREATE TABLE IF NOT EXISTS rh_contract_allowances (
+                    id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                    contract_id INT UNSIGNED NOT NULL,
+                    name VARCHAR(150) NOT NULL,
+                    amount DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+                    is_taxable TINYINT(1) NOT NULL DEFAULT 0,
+                    KEY idx_rh_contract_allowances_contract (contract_id),
+                    CONSTRAINT fk_rh_contract_allowances_contract FOREIGN KEY (contract_id) REFERENCES rh_contracts(id) ON DELETE CASCADE
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            ");
+        }
+
+        // Table autonome : clé unique sur name ajoutée pour empêcher la ré-insertion en doublon
+        // constatée en production (683 doublons des 5 mêmes libellés, cf. audit du 2026-08-04).
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS rh_leave_types (
+                id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                name VARCHAR(150) NOT NULL,
+                is_paid TINYINT(1) NOT NULL DEFAULT 1,
+                deduct_from_balance TINYINT(1) NOT NULL DEFAULT 1,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME NULL,
+                UNIQUE KEY uniq_rh_leave_types_name (name)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+
+        if ($this->schema->tableExists('rh_employees')) {
+            $this->pdo->exec("
+                CREATE TABLE IF NOT EXISTS rh_leave_requests (
+                    id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                    employee_id INT UNSIGNED NOT NULL,
+                    leave_type_id INT UNSIGNED NOT NULL,
+                    start_date DATE NOT NULL,
+                    end_date DATE NOT NULL,
+                    duration_days DECIMAL(5,2) NOT NULL,
+                    status ENUM('pending', 'approved', 'rejected', 'cancelled') NOT NULL DEFAULT 'pending',
+                    reason TEXT NULL,
+                    approved_by INT NULL,
+                    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME NULL,
+                    KEY fk_rh_leave_requests_employee (employee_id),
+                    KEY fk_rh_leave_requests_type (leave_type_id),
+                    CONSTRAINT fk_rh_leave_requests_employee FOREIGN KEY (employee_id) REFERENCES rh_employees(id) ON DELETE CASCADE,
+                    CONSTRAINT fk_rh_leave_requests_type FOREIGN KEY (leave_type_id) REFERENCES rh_leave_types(id) ON DELETE RESTRICT
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            ");
+        }
+
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS rh_payroll_campaigns (
+                id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                month TINYINT UNSIGNED NOT NULL,
+                year INT UNSIGNED NOT NULL,
+                status ENUM('draft', 'validated', 'paid') NOT NULL DEFAULT 'draft',
+                created_by INT NULL,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME NULL,
+                UNIQUE KEY uniq_rh_payroll_campaigns_my (month, year)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS rh_payroll_parameters (
+                id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                year INT UNSIGNED NOT NULL,
+                smig DECIMAL(10,2) NOT NULL DEFAULT 75000.00,
+                cnps_ceiling DECIMAL(12,2) NOT NULL DEFAULT 1647315.00,
+                cnps_employee_rate DECIMAL(5,2) NOT NULL DEFAULT 3.20,
+                cnps_employer_rate DECIMAL(5,2) NOT NULL DEFAULT 7.70,
+                cmu_employee_rate DECIMAL(5,2) NOT NULL DEFAULT 2.00,
+                cmu_employer_rate DECIMAL(5,2) NOT NULL DEFAULT 2.00,
+                cn_rate DECIMAL(5,2) NOT NULL DEFAULT 1.50,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME NULL,
+                UNIQUE KEY uniq_rh_payroll_params_year (year)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+
+        if ($this->schema->tableExists('rh_employees')) {
+            $this->pdo->exec("
+                CREATE TABLE IF NOT EXISTS rh_payslips (
+                    id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                    employee_id INT UNSIGNED NOT NULL,
+                    campaign_id INT UNSIGNED NOT NULL,
+                    base_salary DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+                    overtime_pay DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+                    total_allowances DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+                    gross_salary DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+                    cnps_deduction DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+                    cmu_deduction DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+                    its_deduction DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+                    net_salary DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+                    payment_method VARCHAR(50) NULL,
+                    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE KEY uniq_rh_payslips_emp_camp (employee_id, campaign_id),
+                    KEY fk_rh_payslips_campaign (campaign_id),
+                    CONSTRAINT fk_rh_payslips_campaign FOREIGN KEY (campaign_id) REFERENCES rh_payroll_campaigns(id) ON DELETE CASCADE,
+                    CONSTRAINT fk_rh_payslips_employee FOREIGN KEY (employee_id) REFERENCES rh_employees(id) ON DELETE CASCADE
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            ");
+
+            $this->pdo->exec("
+                CREATE TABLE IF NOT EXISTS rh_payslip_lines (
+                    id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                    payslip_id INT UNSIGNED NOT NULL,
+                    type ENUM('gain', 'deduction') NOT NULL,
+                    label VARCHAR(150) NOT NULL,
+                    base DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+                    rate DECIMAL(5,2) NULL,
+                    amount DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+                    is_taxable TINYINT(1) NOT NULL DEFAULT 0,
+                    sort_order INT NOT NULL DEFAULT 0,
+                    KEY fk_rh_payslip_lines_payslip (payslip_id),
+                    CONSTRAINT fk_rh_payslip_lines_payslip FOREIGN KEY (payslip_id) REFERENCES rh_payslips(id) ON DELETE CASCADE
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            ");
+        }
     }
 }
