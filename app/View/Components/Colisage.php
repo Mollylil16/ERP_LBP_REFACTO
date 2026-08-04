@@ -11,6 +11,22 @@ use App\View\Components\Form;
 
 final class Colisage
 {
+    /** @return array<int, array{value: string, label: string}> */
+    private static function emballageOptions(): array
+    {
+        return [
+            ['value' => '', 'label' => '-- Sélectionner --'],
+            ['value' => 'Carton', 'label' => 'Carton'],
+            ['value' => 'Sac', 'label' => 'Sac'],
+            ['value' => 'Caisse en bois', 'label' => 'Caisse en bois'],
+            ['value' => 'Palette', 'label' => 'Palette'],
+            ['value' => 'Bidon/Fût', 'label' => 'Bidon / Fût'],
+            ['value' => 'Valise', 'label' => 'Valise'],
+            ['value' => 'Enveloppe', 'label' => 'Enveloppe'],
+            ['value' => 'Autre', 'label' => 'Autre'],
+        ];
+    }
+
     public static function dashboardPage(\App\View\Pages\Colisage\DashboardPage $page, array $dashboardModule): string
     {
         $header = \App\View\Components\Dashboard::header(
@@ -271,10 +287,10 @@ final class Colisage
             . '        let totalWeight = 0;'
             . '        let totalCount = 0;'
             . '        rows.forEach(row => {'
-            . '            const qtyInput = row.querySelector(\'input[name="m_qty[]"]\');'
+            . '            const qtyInput = row.querySelector(\'input[name="m_nbre_colis[]"]\');'
             . '            const weightInput = row.querySelector(\'input[name="m_weight[]"]\');'
             . '            const priceInput = row.querySelector(\'input[name="m_prix_kg[]"]\');'
-            . '            const totalInput = row.querySelector(\'.js-item-total\');'
+            . '            const totalInput = row.querySelector(\'.ligne-total\');'
             . '            if (qtyInput && weightInput && priceInput && totalInput) {'
             . '                const qty = parseInt(qtyInput.value) || 0;'
             . '                const weight = parseFloat(weightInput.value) || 0;'
@@ -1325,7 +1341,7 @@ final class Colisage
                 . $customPriceInput
                 . '</div>'
                 . '</td>'
-                . '<td>' . Form::rawInput('m_emballage[]', '', ['placeholder' => 'Carton, Sac...']) . '</td>'
+                . '<td>' . Form::rawSelect('m_emballage[]', self::emballageOptions(), '') . '</td>'
                 . '<td>' . Form::rawInput('m_qte_emballage[]', '1', ['type' => 'number', 'min' => '1']) . '</td>'
                 . '<td>' . Form::rawInput('m_weight[]', '0.00', ['type' => 'number', 'step' => '0.01', 'min' => '0']) . '</td>'
                 . '<td>' . Form::rawInput('m_prix_kg[]', '0.00', ['type' => 'number', 'step' => '0.01', 'min' => '0']) . '</td>'
@@ -1493,7 +1509,17 @@ final class Colisage
             . '                + \'<input class="finea-input" name="m_custom_price[]" type="number" step="0.01" placeholder="Prix unit.">\''
             . '                + \'</div>\''
             . '                + \'</td>\''
-            . '                + \'<td><input class="finea-input" name="m_emballage[]" placeholder="Carton, Sac..."></td>\''
+            . '                + \'<td><select class="finea-select" name="m_emballage[]">'
+            . '<option value="">-- Sélectionner --</option>'
+            . '<option value="Carton">Carton</option>'
+            . '<option value="Sac">Sac</option>'
+            . '<option value="Caisse en bois">Caisse en bois</option>'
+            . '<option value="Palette">Palette</option>'
+            . '<option value="Bidon/Fût">Bidon / Fût</option>'
+            . '<option value="Valise">Valise</option>'
+            . '<option value="Enveloppe">Enveloppe</option>'
+            . '<option value="Autre">Autre</option>'
+            . '</select></td>\''
             . '                + \'<td><input class="finea-input" type="number" name="m_qte_emballage[]" value="1" min="1"></td>\''
             . '                + \'<td><input class="finea-input" type="number" name="m_weight[]" value="0.00" step="0.01" min="0"></td>\''
             . '                + \'<td><input class="finea-input" type="number" name="m_prix_kg[]" value="0.00" step="0.01" min="0"></td>\''
@@ -2543,7 +2569,7 @@ final class Colisage
                 . Form::rawInput('m_custom_price[]', '', ['type' => 'number', 'step' => '0.01', 'placeholder' => 'Prix unit.'])
                 . '</div>'
                 . '</td>'
-                . '<td>' . Form::rawInput('m_emballage[]', '', ['placeholder' => 'Carton, Sac...']) . '</td>'
+                . '<td>' . Form::rawSelect('m_emballage[]', self::emballageOptions(), '') . '</td>'
                 . '<td>' . Form::rawInput('m_qte_emballage[]', '1', ['type' => 'number', 'min' => '1']) . '</td>'
                 . '<td>' . Form::rawInput('m_weight[]', '0.00', ['type' => 'number', 'step' => '0.01', 'min' => '0']) . '</td>'
                 . '<td>' . Form::rawInput('m_prix_kg[]', '0.00', ['type' => 'number', 'step' => '0.01', 'min' => '0']) . '</td>'

@@ -212,11 +212,15 @@ final class ColisageAutresController extends ColisageBaseController
             $trafic .= ' (' . $trajetLabel . ')';
         }
 
+        // Le nombre total de colis doit refléter la somme des lignes de marchandises saisies,
+        // pas le champ 'nombre_colis' du formulaire (alimenté par un JS qui pouvait rester bloqué à 1).
+        $totalNombreColis = array_sum(array_column($marchandises, 'nbre_colis'));
+
         $newId = $this->service->registerParcel([
             'expediteur_id' => $expediteurId,
             'destinataire_id' => $destinataireId,
             'poids_total' => (float) ($_POST['poids_total'] ?? 0.0),
-            'nombre_colis' => (int) ($_POST['nombre_colis'] ?? 1),
+            'nombre_colis' => $totalNombreColis > 0 ? $totalNombreColis : (int) ($_POST['nombre_colis'] ?? 1),
             'valeur_declaree' => (float) ($_POST['valeur_declaree'] ?? 0.0),
             'montant_total' => (float) ($_POST['valeur_declaree'] ?? 0.0),
             'devise' => $_POST['devise'] ?? 'XOF',

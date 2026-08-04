@@ -188,11 +188,15 @@ final class ColisageController extends ColisageBaseController
             }
         }
 
+        // Le nombre total de colis doit refléter la somme des lignes de marchandises saisies,
+        // pas le champ 'nombre_colis' du formulaire (absent de cet écran, ou pas fiable côté client).
+        $totalNombreColis = array_sum(array_column($marchandises, 'nbre_colis'));
+
         $registerData = [
             'expediteur_id' => $expediteurId,
             'destinataire_id' => $destinataireId,
             'poids_total' => (float) ($_POST['poids_total'] ?? 0.0),
-            'nombre_colis' => (int) ($_POST['nombre_colis'] ?? 1),
+            'nombre_colis' => $totalNombreColis > 0 ? $totalNombreColis : (int) ($_POST['nombre_colis'] ?? 1),
             'valeur_declaree' => (float) ($_POST['valeur_declaree'] ?? 0.0),
             'montant_total' => (float) ($_POST['valeur_declaree'] ?? 0.0),
             'devise' => $_POST['devise'] ?? 'XOF',
