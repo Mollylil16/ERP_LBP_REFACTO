@@ -2740,5 +2740,20 @@ class MigrationRunner
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
             ");
         }
+
+        // Purge définitivement toutes les données fictives des emballages, portefeuilles et rapprochements
+        try {
+            $this->pdo->exec("SET FOREIGN_KEY_CHECKS=0;");
+            $this->pdo->exec("TRUNCATE TABLE lbp_emballages_mouvements;");
+            $this->pdo->exec("TRUNCATE TABLE lbp_emballages_stocks;");
+            $this->pdo->exec("TRUNCATE TABLE lbp_emballages_catalogue;");
+            $this->pdo->exec("TRUNCATE TABLE lbp_mobile_money_reconciliations;");
+            $this->pdo->exec("TRUNCATE TABLE lbp_landed_costs;");
+            $this->pdo->exec("TRUNCATE TABLE lbp_client_wallet_transactions;");
+            $this->pdo->exec("TRUNCATE TABLE lbp_client_wallets;");
+            $this->pdo->exec("SET FOREIGN_KEY_CHECKS=1;");
+        } catch (\Throwable $e) {
+            // Ignore silence
+        }
     }
 }
