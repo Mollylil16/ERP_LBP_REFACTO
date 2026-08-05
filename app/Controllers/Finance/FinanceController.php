@@ -40,6 +40,7 @@ final class FinanceController extends FinanceBaseController
     public function __construct()
     {
         $this->db = Database::getConnection();
+        $this->dashboardRepo = new \App\Repositories\Finance\FinanceDashboardRepository($this->db);
         $this->factureRepo = new FactureRepository($this->db);
         $this->paiementRepo = new PaiementRepository($this->db);
         $this->etatRepo = new EtatJournalierRepository($this->db);
@@ -1256,7 +1257,8 @@ final class FinanceController extends FinanceBaseController
         $wallets = $pdo->query("SELECT * FROM lbp_client_wallets ORDER BY updated_at DESC, created_at DESC")->fetchAll(\PDO::FETCH_ASSOC);
         $recentTx = $pdo->query("SELECT t.*, w.client_nom FROM lbp_client_wallet_transactions t JOIN lbp_client_wallets w ON t.wallet_id = w.id ORDER BY t.created_at DESC LIMIT 20")->fetchAll(\PDO::FETCH_ASSOC);
 
-        $module = $this->dashboardRepo->dashboard();
+        $dashService = new \App\Services\Shared\ModuleDashboardService();
+        $module = $dashService->dashboard('finance');
 
         $this->financeView(
             'finance/portefeuilles',
@@ -1318,7 +1320,8 @@ final class FinanceController extends FinanceBaseController
         $landedCosts = $pdo->query("SELECT * FROM lbp_landed_costs ORDER BY created_at DESC")->fetchAll(\PDO::FETCH_ASSOC);
         $trajets = $pdo->query("SELECT code, libelle FROM trajets ORDER BY code")->fetchAll(\PDO::FETCH_ASSOC);
 
-        $module = $this->dashboardRepo->dashboard();
+        $dashService = new \App\Services\Shared\ModuleDashboardService();
+        $module = $dashService->dashboard('finance');
 
         $this->financeView(
             'finance/couts_approche',
@@ -1382,7 +1385,8 @@ final class FinanceController extends FinanceBaseController
         $pdo = \App\Models\Database::getConnection();
         $reconciliations = $pdo->query("SELECT * FROM lbp_mobile_money_reconciliations ORDER BY date_transaction DESC")->fetchAll(\PDO::FETCH_ASSOC);
 
-        $module = $this->dashboardRepo->dashboard();
+        $dashService = new \App\Services\Shared\ModuleDashboardService();
+        $module = $dashService->dashboard('finance');
 
         $this->financeView(
             'finance/rapprochement_mobile_money',
@@ -1434,13 +1438,14 @@ final class FinanceController extends FinanceBaseController
         $totalEncaissementsPrevus = (float)($stmtEnc ? $stmtEnc->fetchColumn() : 0.0);
 
         // Décaissements prévus (Prestataires en attente de paiement)
-        $stmtDec = $pdo->query("SELECT SUM(montant_xof) FROM lbp_demandes_paiement_prestataires WHERE statut = 'EN_ATTENTE'");
+        $stmtDec = $pdo->query("SELECT SUM(montant) FROM lbp_demandes_paiement_prestataires WHERE LOWER(statut) = 'en_attente'");
         $totalDecaissementsPrevus = (float)($stmtDec ? $stmtDec->fetchColumn() : 0.0);
 
         // Solde estimé de trésorerie nette
         $soldeTrésorerieEstime = $totalEncaissementsPrevus - $totalDecaissementsPrevus;
 
-        $module = $this->dashboardRepo->dashboard();
+        $dashService = new \App\Services\Shared\ModuleDashboardService();
+        $module = $dashService->dashboard('finance');
 
         $this->financeView(
             'finance/tresorerie',
