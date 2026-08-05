@@ -39,6 +39,7 @@ class MigrationRunner
         $this->createCallCenterTables();
         $this->createColisageOperationRefactoTables();
         $this->createMissingProductionTables();
+        $this->migrateCrmClientsIntoLbpClients();
     }
 
 
@@ -2739,6 +2740,48 @@ class MigrationRunner
                     CONSTRAINT fk_rh_payslip_lines_payslip FOREIGN KEY (payslip_id) REFERENCES rh_payslips(id) ON DELETE CASCADE
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
             ");
+        }
+    }
+
+    /**
+     * Fusionne le schéma CRM sur la table client unique (lbp_clients) au lieu de la table
+     * crm_clients, disjointe et jamais alimentée par aucun code applicatif. crm_opportunities
+     * et crm_interactions sont repointées vers lbp_clients, puis crm_clients est supprimée
+     * (constatée vide sur tous les environnements, aucune référence de code ailleurs).
+     */
+    private function migrateCrmClientsIntoLbpClients(): void
+    {
+        if (!$this->schema->tableExists('lbp_clients')) {
+            return;
+        }
+
+        $this->addColumnIfMissing('lbp_clients', 'crm_status', "ENUM('prospect', 'actif', 'dormant', 'perdu') NOT NULL DEFAULT 'actif'");
+        $this->addColumnIfMissing('lbp_clients', 'secteur_activite', 'VARCHAR(120) NULL');
+        $this->addColumnIfMissing('lbp_clients', 'notes_commerciales', 'TEXT NULL');
+        $this->addColumnIfMissing('lbp_clients', 'commercial_owner_id', 'INT NULL');
+
+        if ($this->schema->tableExists('users')) {
+            $this->addForeignKeyIfMissing('lbp_clients', 'fk_lbp_clients_commercial_owner', 'commercial_owner_id', 'users', 'id', 'SET NULL');
+        }
+
+        $this->addIndexIfMissing('lbp_clients', 'idx_lbp_clients_crm_status', 'crm_status');
+
+        if ($this->schema->tableExists('crm_opportunities')) {
+            if ($this->schema->foreignKeyExists('crm_opportunities', 'fk_crm_opportunities_client')) {
+                $this->pdo->exec("ALTER TABLE crm_opportunities DROP FOREIGN KEY fk_crm_opportunities_client");
+            }
+            $this->addForeignKeyIfMissing('crm_opportunities', 'fk_crm_opportunities_lbp_client', 'client_id', 'lbp_clients', 'id', 'CASCADE');
+        }
+
+        if ($this->schema->tableExists('crm_interactions')) {
+            if ($this->schema->foreignKeyExists('crm_interactions', 'fk_crm_interactions_client')) {
+                $this->pdo->exec("ALTER TABLE crm_interactions DROP FOREIGN KEY fk_crm_interactions_client");
+            }
+            $this->addForeignKeyIfMissing('crm_interactions', 'fk_crm_interactions_lbp_client', 'client_id', 'lbp_clients', 'id', 'CASCADE');
+        }
+
+        if ($this->schema->tableExists('crm_clients')) {
+            $this->pdo->exec("DROP TABLE crm_clients");
         }
     }
 }

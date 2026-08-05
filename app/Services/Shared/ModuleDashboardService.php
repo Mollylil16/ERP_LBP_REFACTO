@@ -90,9 +90,9 @@ final class ModuleDashboardService
                     ['label' => 'Interactions', 'value' => '0', 'meta' => 'Historique relation client'],
                 ],
                 'actions' => [
-                    ['label' => 'Nouveau client', 'hint' => 'Créer une fiche client/prospect', 'url' => '/crm/dashboard'],
-                    ['label' => 'Pipeline', 'hint' => 'Suivre les opportunités et relances', 'url' => '/crm/dashboard'],
-                    ['label' => 'Interactions', 'hint' => 'Historique appels, mails et visites', 'url' => '/crm/dashboard'],
+                    ['label' => 'Annuaire clients', 'hint' => 'Rechercher, consulter et créer des fiches client/prospect', 'url' => '/crm/clients'],
+                    ['label' => 'Nouveau client', 'hint' => 'Créer une fiche client/prospect', 'url' => '/crm/clients/nouveau'],
+                    ['label' => 'Recherche Call Center', 'hint' => 'Localiser un colis pour un appel client', 'url' => '/call-center/recherche-colis'],
                 ],
             ],
             'tickets' => [
@@ -379,7 +379,7 @@ final class ModuleDashboardService
         if ($module['slug'] === 'crm') {
             return [
                 ['key' => 'dashboard', 'label' => 'Tableau de bord', 'icon' => 'DB', 'url' => '/crm/dashboard', 'available' => true],
-                ['key' => 'callcenter', 'label' => 'Recherche Call Center', 'icon' => 'CC', 'url' => '/crm/callcenter', 'available' => true],
+                ['key' => 'clients', 'label' => 'Annuaire Clients', 'icon' => 'CLI', 'url' => '/crm/clients', 'available' => true],
             ];
         }
 
