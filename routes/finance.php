@@ -41,4 +41,20 @@ $router->group('/finance', function (Router $router): void {
     $router->get('/rentabilite/export-pdf', [FinanceController::class, 'exportRentabilitePdf']);
     $router->get('/balance-agee', [FinanceController::class, 'balanceAgee']);
     $router->get('/balance-agee/export-pdf', [FinanceController::class, 'exportBalanceAgeePdf']);
+
+    // Portefeuilles Clients & Acomptes
+    $router->get('/portefeuilles', [FinanceController::class, 'portefeuillesIndex']);
+    $router->post('/portefeuilles/crediter', [FinanceController::class, 'portefeuilleCrediter']);
+
+    // Landed Costs / Coûts d'approche Douane & Fret
+    $router->get('/couts-approche', [FinanceController::class, 'coutsApprocheIndex']);
+    $router->post('/couts-approche/calculer', [FinanceController::class, 'coutsApprocheCalculer']);
+
+    // Rapprochement Mobile Money & Reçus Officiels
+    $router->get('/rapprochement-mobile-money', [FinanceController::class, 'rapprochementMobileMoneyIndex']);
+    $router->post('/rapprochement-mobile-money/valider', [FinanceController::class, 'rapprochementMobileMoneyValider']);
+    $router->get('/factures/{id}/recu-pdf', [FinanceController::class, 'exportRecuPdf']);
+
+    // Trésorerie Prévisionnelle (30/60/90j)
+    $router->get('/tresorerie', [FinanceController::class, 'tresorerieIndex']);
 });

@@ -393,6 +393,7 @@ final class Finance
                 'class' => 'rh-hero-white',
                 'actions' => [
                     $badge,
+                    Ui::button('🖨️ Reçu Officiel (PDF)', ['href' => 'finance/factures/' . $facture->id . '/recu-pdf', 'variant' => 'primary', 'target' => '_blank']),
                     Ui::button('Retour', ['href' => 'finance/factures', 'variant' => 'secondary'])
                 ]
             ]
@@ -1219,5 +1220,230 @@ final class Finance
             . '</table></div>';
 
         return '<div class="finea-shell"><div class="finea-container">' . $header . $statsGrid . $tableHtml . '</div></div>';
+    }
+
+    public static function portefeuillesPage(array $wallets, array $recentTx): string
+    {
+        $header = Ui::pageHeader(
+            'Portefeuilles Clients & Compte Avances',
+            'Gestion des solde créditeurs (avances) et contrôle des plafonds de crédit client.',
+            'FINANCE',
+            [
+                ['label' => 'Factures', 'href' => 'finance/factures', 'variant' => 'outline'],
+                ['label' => 'Portefeuilles', 'href' => 'finance/portefeuilles', 'variant' => 'primary'],
+            ]
+        );
+
+        $walletOptions = [];
+        foreach ($wallets as $w) {
+            $walletOptions[] = [
+                'value' => (string)$w['id'],
+                'label' => $w['client_nom'] . ' (Solde: ' . number_format((float)$w['solde_xof'], 0, ',', ' ') . ' XOF)',
+            ];
+        }
+
+        $fields = Form::selectSearch('wallet_id', $walletOptions, '', ['label' => 'Client / Compte Avance', 'required' => true])
+            . Form::input('montant_xof', ['label' => 'Montant du Crédit (XOF)', 'type' => 'number', 'step' => '1000', 'required' => true])
+            . Form::select('mode_paiement', [
+                ['value' => 'Espèces', 'label' => 'Espèces (Caisse)'],
+                ['value' => 'Wave', 'label' => 'Wave Mobile Money'],
+                ['value' => 'Orange Money', 'label' => 'Orange Money'],
+                ['value' => 'Virement Bancaire', 'label' => 'Virement Bancaire'],
+                ['value' => 'Chèque', 'label' => 'Chèque certifié'],
+            ], 'Espèces', ['label' => 'Mode de Règlement'])
+            . Form::input('reference_transac', ['label' => 'Référence Transaction / Chèque', 'placeholder' => 'Ex: WAV-2026-99182'])
+            . Form::input('motif', ['label' => 'Motif / Note', 'value' => 'Avance sur expédition douane/fret']);
+
+        $modalHtml = Ui::modal('modal-credit-wallet', 'Créditer un Portefeuille Client', $fields, View::url('finance/portefeuilles/crediter'), [
+            'btnLabel' => 'Enregistrer le crédit',
+            'btnVariant' => 'accent',
+        ]);
+
+        $walletRows = '';
+        foreach ($wallets as $w) {
+            $solde = (float)$w['solde_xof'];
+            $plafond = (float)$w['plafond_credit_xof'];
+            $soldeTone = $solde > 0 ? '#16a34a' : '#64748b';
+            
+            $walletRows .= '<tr>'
+                . '<td><strong>' . View::e($w['client_nom']) . '</strong><br><small style="color:#64748b;">' . View::e($w['telephone'] ?? '—') . '</small></td>'
+                . '<td style="text-align:right; font-weight:800; color:' . $soldeTone . ';">' . number_format($solde, 0, ',', ' ') . ' XOF</td>'
+                . '<td style="text-align:right; font-weight:600; color:#2563eb;">' . number_format((float)$w['solde_eur'], 2, '.', ' ') . ' €</td>'
+                . '<td style="text-align:right; font-weight:600; color:#d97706;">' . number_format($plafond, 0, ',', ' ') . ' XOF</td>'
+                . '<td style="text-align:center;">' . Ui::badge($w['statut'], $w['statut'] === 'ACTIF' ? 'success' : 'danger') . '</td>'
+                . '</tr>';
+        }
+
+        $txRows = '';
+        foreach ($recentTx as $tx) {
+            $txRows .= '<tr>'
+                . '<td>' . date('d/m/Y H:i', strtotime($tx['created_at'])) . '</td>'
+                . '<td><strong>' . View::e($tx['client_nom']) . '</strong></td>'
+                . '<td><span style="background:#e0f2fe; color:#0369a1; padding:2px 6px; border-radius:4px; font-weight:700; font-size:11px;">' . View::e($tx['type']) . '</span></td>'
+                . '<td style="text-align:right; font-weight:800; color:#16a34a;">+' . number_format((float)$tx['montant_xof'], 0, ',', ' ') . ' XOF</td>'
+                . '<td>' . View::e($tx['mode_paiement']) . '</td>'
+                . '<td>' . View::e($tx['motif'] ?? '—') . '</td>'
+                . '</tr>';
+        }
+
+        return '<div class="finea-shell"><div class="finea-container">'
+            . $header
+            . '<div style="margin-bottom:1.5rem; text-align:right;"><button class="finea-button finea-button--accent" onclick="document.getElementById(\'modal-credit-wallet\').showModal()">+ Créditer un Portefeuille Client</button></div>'
+            . '<div class="finea-section-card" style="margin-bottom:2rem;">'
+            . '<h3 style="font-weight:800; font-size:1.1rem; margin-bottom:1rem;">Comptes Créditeurs Clients (Avances & Plafonds)</h3>'
+            . '<div class="finea-table-wrapper"><table class="finea-table"><thead><tr>'
+            . '<th>Client</th><th style="text-align:right;">Solde Disponible (XOF)</th><th style="text-align:right;">Solde (EUR)</th><th style="text-align:right;">Plafond Crédit Autorisé</th><th style="text-align:center;">Statut</th>'
+            . '</tr></thead><tbody>' . $walletRows . '</tbody></table></div></div>'
+            . '<div class="finea-section-card">'
+            . '<h3 style="font-weight:800; font-size:1.1rem; margin-bottom:1rem;">Dernières Transactions d\'Avances</h3>'
+            . '<div class="finea-table-wrapper"><table class="finea-table"><thead><tr>'
+            . '<th>Date</th><th>Client</th><th>Type</th><th style="text-align:right;">Montant</th><th>Mode</th><th>Motif</th>'
+            . '</tr></thead><tbody>' . $txRows . '</tbody></table></div></div>'
+            . $modalHtml
+            . '</div></div>';
+    }
+
+    public static function coutsApprochePage(array $landedCosts, array $trajets): string
+    {
+        $header = Ui::pageHeader(
+            'Ventilation des Coûts d\'Approche (Landed Costs)',
+            'Répartition des débours de Douane, Fret et Manutention au kilo/volume sur chaque colis.',
+            'FINANCE',
+            [
+                ['label' => 'Rentabilité Trajets', 'href' => 'finance/rentabilite', 'variant' => 'outline'],
+                ['label' => 'Coûts d\'Approche', 'href' => 'finance/couts-approche', 'variant' => 'primary'],
+            ]
+        );
+
+        $trajetOpts = [];
+        foreach ($trajets as $t) {
+            $trajetOpts[] = ['value' => $t['code'], 'label' => $t['code'] . ' - ' . $t['libelle']];
+        }
+
+        $fields = Form::input('reference_lot', ['label' => 'Référence du Lot / Conteneur / Vol', 'placeholder' => 'Ex: LOT-AIR-FR-2026-08', 'required' => true])
+            . Form::select('trajet_code', $trajetOpts, 'LB-FR', ['label' => 'Trajet / Route'])
+            . Form::input('frais_douane_xof', ['label' => 'Total Frais de Douane & Taxes (XOF)', 'type' => 'number', 'value' => '1500000', 'required' => true])
+            . Form::input('frais_fret_xof', ['label' => 'Total Fret Principal Aérien/Maritime (XOF)', 'type' => 'number', 'value' => '800000', 'required' => true])
+            . Form::input('frais_manutention_xof', ['label' => 'Frais de Manutention & Magasinage (XOF)', 'type' => 'number', 'value' => '200000'])
+            . Form::input('poids_total_kg', ['label' => 'Poids Brut Total du Lot (kg)', 'type' => 'number', 'step' => '0.1', 'value' => '1250.0', 'required' => true]);
+
+        $modalHtml = Ui::modal('modal-landed-cost', 'Calculer & Ventiler un Coût d\'Approche', $fields, View::url('finance/couts-approche/calculer'), [
+            'btnLabel' => 'Calculer le Coût d\'Approche',
+            'btnVariant' => 'accent',
+        ]);
+
+        $rows = '';
+        foreach ($landedCosts as $lc) {
+            $totalFrais = (float)$lc['frais_douane_xof'] + (float)$lc['frais_fret_xof'] + (float)$lc['frais_manutention_xof'];
+            $rows .= '<tr>'
+                . '<td><strong>' . View::e($lc['reference_lot']) . '</strong></td>'
+                . '<td><span style="background:#0f172a; color:#fff; padding:2px 6px; border-radius:4px; font-weight:800; font-size:11px;">' . View::e($lc['trajet_code']) . '</span></td>'
+                . '<td style="text-align:right;">' . number_format((float)$lc['frais_douane_xof'], 0, ',', ' ') . ' XOF</td>'
+                . '<td style="text-align:right;">' . number_format((float)$lc['frais_fret_xof'], 0, ',', ' ') . ' XOF</td>'
+                . '<td style="text-align:right;">' . number_format((float)$lc['poids_total_kg'], 2, '.', ' ') . ' kg</td>'
+                . '<td style="text-align:right; font-weight:800; color:#ea580c;">' . number_format($totalFrais, 0, ',', ' ') . ' XOF</td>'
+                . '<td style="text-align:right; font-weight:900; color:#16a34a; background:#f0fdf4;">' . number_format((float)$lc['cout_par_kg_xof'], 2, '.', ' ') . ' XOF / kg</td>'
+                . '<td style="text-align:center;">' . Ui::badge($lc['statut'], 'success') . '</td>'
+                . '</tr>';
+        }
+
+        return '<div class="finea-shell"><div class="finea-container">'
+            . $header
+            . '<div style="margin-bottom:1.5rem; text-align:right;"><button class="finea-button finea-button--accent" onclick="document.getElementById(\'modal-landed-cost\').showModal()">+ Nouveau Calcul Coût d\'Approche</button></div>'
+            . '<div class="finea-section-card">'
+            . '<h3 style="font-weight:800; font-size:1.1rem; margin-bottom:1rem;">Lots & Ventilation des Coûts Réels par kg</h3>'
+            . '<div class="finea-table-wrapper"><table class="finea-table"><thead><tr>'
+            . '<th>Référence Lot</th><th>Trajet</th><th style="text-align:right;">Douane (XOF)</th><th style="text-align:right;">Fret (XOF)</th><th style="text-align:right;">Poids Lot</th><th style="text-align:right;">Total Débours</th><th style="text-align:right;">Coût Net / kg</th><th style="text-align:center;">Statut</th>'
+            . '</tr></thead><tbody>' . $rows . '</tbody></table></div></div>'
+            . $modalHtml
+            . '</div></div>';
+    }
+
+    public static function rapprochementMobileMoneyPage(array $reconciliations): string
+    {
+        $header = Ui::pageHeader(
+            'Rapprochement Mobile Money & Banque',
+            'Vérification et validation 1-clic des flux Wave, Orange Money et virements bancaires.',
+            'FINANCE',
+            [
+                ['label' => 'Factures', 'href' => 'finance/factures', 'variant' => 'outline'],
+                ['label' => 'Rapprochement', 'href' => 'finance/rapprochement-mobile-money', 'variant' => 'primary'],
+            ]
+        );
+
+        $rows = '';
+        foreach ($reconciliations as $r) {
+            $tone = match($r['statut']) {
+                'RAPPROCHÉ' => 'success',
+                'ECART_MONTANT' => 'warning',
+                'REJETÉ' => 'danger',
+                default => 'info'
+            };
+
+            $rows .= '<tr>'
+                . '<td>' . date('d/m/Y H:i', strtotime($r['date_transaction'])) . '</td>'
+                . '<td><strong>' . View::e($r['operateur']) . '</strong></td>'
+                . '<td><code style="background:#f1f5f9; padding:2px 6px; border-radius:4px; font-weight:700;">' . View::e($r['reference_transac']) . '</code></td>'
+                . '<td>' . View::e($r['client_nom'] ?? '—') . '</td>'
+                . '<td>' . View::e($r['facture_numero'] ?? '—') . '</td>'
+                . '<td style="text-align:right; font-weight:800; color:#16a34a;">' . number_format((float)$r['montant_xof'], 0, ',', ' ') . ' XOF</td>'
+                . '<td style="text-align:center;">' . Ui::badge($r['statut'], $tone) . '</td>'
+                . '<td style="text-align:center;">'
+                . '<form method="post" action="' . View::url('finance/rapprochement-mobile-money/valider') . '" style="display:inline;">'
+                . Form::hidden('_csrf_token', \App\Helpers\Csrf::token())
+                . Form::hidden('id', (string)$r['id'])
+                . Form::hidden('statut', 'RAPPROCHÉ')
+                . '<button type="submit" class="finea-button finea-button--outline" style="padding:4px 8px; font-size:11px;">Valider 1-Clic</button>'
+                . '</form>'
+                . '</td>'
+                . '</tr>';
+        }
+
+        return '<div class="finea-shell"><div class="finea-container">'
+            . $header
+            . '<div class="finea-section-card">'
+            . '<h3 style="font-weight:800; font-size:1.1rem; margin-bottom:1rem;">Transactions Mobile Money & Relevés en Attente</h3>'
+            . '<div class="finea-table-wrapper"><table class="finea-table"><thead><tr>'
+            . '<th>Date</th><th>Opérateur</th><th>N° Transaction</th><th>Client</th><th>Facture LBP</th><th style="text-align:right;">Montant Reçu</th><th style="text-align:center;">Statut</th><th style="text-align:center;">Action</th>'
+            . '</tr></thead><tbody>' . $rows . '</tbody></table></div></div>'
+            . '</div></div>';
+    }
+
+    public static function tresoreriePage(float $totalEncaissementsPrevus, float $totalDecaissementsPrevus, float $soldeTrésorerieEstime): string
+    {
+        $header = Ui::pageHeader(
+            'Trésorerie Prévisionnelle & Cashflow (30/60/90 jours)',
+            'Anticipation des encaissements clients et des décaissements prestataires / douane.',
+            'FINANCE',
+            [
+                ['label' => 'Tableau de bord', 'href' => 'finance/dashboard', 'variant' => 'outline'],
+                ['label' => 'Trésorerie', 'href' => 'finance/tresorerie', 'variant' => 'primary'],
+            ]
+        );
+
+        $soldeTone = $soldeTrésorerieEstime >= 0 ? '#16a34a' : '#dc2626';
+
+        $kpis = '<div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap: 1.5rem; margin-bottom: 2rem;">'
+            . '<div style="background:#ffffff; border:1px solid #e2e8f0; border-left:5px solid #16a34a; padding:1.25rem; border-radius:12px;">'
+            . '<div style="font-size:0.75rem; font-weight:800; color:#64748b; text-transform:uppercase;">Encaissements Prévisionnels (Rentrées)</div>'
+            . '<div style="font-size:1.8rem; font-weight:900; color:#16a34a; margin-top:0.4rem;">+' . number_format($totalEncaissementsPrevus, 0, ',', ' ') . ' XOF</div>'
+            . '</div>'
+            . '<div style="background:#ffffff; border:1px solid #e2e8f0; border-left:5px solid #dc2626; padding:1.25rem; border-radius:12px;">'
+            . '<div style="font-size:0.75rem; font-weight:800; color:#64748b; text-transform:uppercase;">Décaissements Prévus (Douane / Fret)</div>'
+            . '<div style="font-size:1.8rem; font-weight:900; color:#dc2626; margin-top:0.4rem;">-' . number_format($totalDecaissementsPrevus, 0, ',', ' ') . ' XOF</div>'
+            . '</div>'
+            . '<div style="background:#ffffff; border:1px solid #e2e8f0; border-left:5px solid ' . $soldeTone . '; padding:1.25rem; border-radius:12px;">'
+            . '<div style="font-size:0.75rem; font-weight:800; color:#64748b; text-transform:uppercase;">Trésorerie Nette Estimée</div>'
+            . '<div style="font-size:1.8rem; font-weight:900; color:' . $soldeTone . '; margin-top:0.4rem;">' . number_format($soldeTrésorerieEstime, 0, ',', ' ') . ' XOF</div>'
+            . '</div>'
+            . '</div>';
+
+        return '<div class="finea-shell"><div class="finea-container">'
+            . $header
+            . $kpis
+            . '<div class="finea-section-card">'
+            . '<h3 style="font-weight:800; font-size:1.1rem; margin-bottom:0.5rem;">Analyse Prévisionnelle de la Trésorerie LBP</h3>'
+            . '<p style="color:#64748b; font-size:0.9rem;">La trésorerie nette estimée prend en compte l\'ensemble des créances clients à recouvrer par rapport aux engagements de décaissement douaniers et prestataires en attente de validation.</p>'
+            . '</div></div></div>';
     }
 }

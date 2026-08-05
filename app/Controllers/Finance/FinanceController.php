@@ -1245,8 +1245,229 @@ final class FinanceController extends FinanceBaseController
             'bPlus90' => $bucketPlus90,
             'total' => $bucket30 + $bucket60 + $bucket90 + $bucketPlus90,
         ];
-        $clientDetails = array_values($clientMap);
-
         require BASE_PATH . '/views/finance/balance_agee_pdf.php';
+    }
+
+    public function portefeuillesIndex(): void
+    {
+        RoleMiddleware::check(['caissiere', 'caissiere_principale', 'chef_agence', 'dg', 'comptable', 'superviseur_regional', 'superviseur_general']);
+
+        $pdo = \App\Models\Database::getConnection();
+        $wallets = $pdo->query("SELECT * FROM lbp_client_wallets ORDER BY updated_at DESC, created_at DESC")->fetchAll(\PDO::FETCH_ASSOC);
+        $recentTx = $pdo->query("SELECT t.*, w.client_nom FROM lbp_client_wallet_transactions t JOIN lbp_client_wallets w ON t.wallet_id = w.id ORDER BY t.created_at DESC LIMIT 20")->fetchAll(\PDO::FETCH_ASSOC);
+
+        $module = $this->dashboardRepo->dashboard();
+
+        $this->financeView(
+            'finance/portefeuilles',
+            'Portefeuilles Clients & Acomptes - Finance',
+            'portefeuilles',
+            $module,
+            [
+                'wallets' => $wallets,
+                'recentTx' => $recentTx,
+            ]
+        );
+    }
+
+    public function portefeuilleCrediter(): void
+    {
+        RoleMiddleware::check(['caissiere', 'caissiere_principale', 'chef_agence', 'dg', 'comptable']);
+
+        if (!Csrf::verify($_POST['_csrf_token'] ?? null)) {
+            Session::flash('error', 'Session expirée ou requête invalide (CSRF).');
+            header('Location: ' . View::url('finance/portefeuilles'));
+            exit;
+        }
+
+        $walletId = (int)($_POST['wallet_id'] ?? 0);
+        $montant = (float)($_POST['montant_xof'] ?? 0.0);
+        $modePaiement = trim((string)($_POST['mode_paiement'] ?? 'Espèces'));
+        $refTransac = trim((string)($_POST['reference_transac'] ?? ''));
+        $motif = trim((string)($_POST['motif'] ?? 'Acompte / Avance sur expédition'));
+
+        if ($walletId <= 0 || $montant <= 0) {
+            Session::flash('error', 'Le montant du crédit et le client doivent être valides.');
+            header('Location: ' . View::url('finance/portefeuilles'));
+            exit;
+        }
+
+        $pdo = \App\Models\Database::getConnection();
+        $stmt = $pdo->prepare("UPDATE lbp_client_wallets SET solde_xof = solde_xof + :montant, updated_at = NOW() WHERE id = :id");
+        $stmt->execute(['montant' => $montant, 'id' => $walletId]);
+
+        $stmtTx = $pdo->prepare("INSERT INTO lbp_client_wallet_transactions (wallet_id, type, montant_xof, mode_paiement, reference_transac, motif) VALUES (:wallet_id, 'AVANCE', :montant, :mode, :ref, :motif)");
+        $stmtTx->execute([
+            'wallet_id' => $walletId,
+            'montant' => $montant,
+            'mode' => $modePaiement,
+            'ref' => $refTransac,
+            'motif' => $motif,
+        ]);
+
+        Session::flash('success', "Le portefeuille client a été crédité avec succès de " . number_format($montant, 0, ',', ' ') . " XOF.");
+        header('Location: ' . View::url('finance/portefeuilles'));
+        exit;
+    }
+
+    public function coutsApprocheIndex(): void
+    {
+        RoleMiddleware::check(['caissiere', 'caissiere_principale', 'chef_agence', 'dg', 'comptable', 'superviseur_regional', 'superviseur_general']);
+
+        $pdo = \App\Models\Database::getConnection();
+        $landedCosts = $pdo->query("SELECT * FROM lbp_landed_costs ORDER BY created_at DESC")->fetchAll(\PDO::FETCH_ASSOC);
+        $trajets = $pdo->query("SELECT code, libelle FROM trajets ORDER BY code")->fetchAll(\PDO::FETCH_ASSOC);
+
+        $module = $this->dashboardRepo->dashboard();
+
+        $this->financeView(
+            'finance/couts_approche',
+            'Ventilation des Coûts d\'Approche (Landed Costs) - Finance',
+            'couts_approche',
+            $module,
+            [
+                'landedCosts' => $landedCosts,
+                'trajets' => $trajets,
+            ]
+        );
+    }
+
+    public function coutsApprocheCalculer(): void
+    {
+        RoleMiddleware::check(['caissiere', 'caissiere_principale', 'chef_agence', 'dg', 'comptable']);
+
+        if (!Csrf::verify($_POST['_csrf_token'] ?? null)) {
+            Session::flash('error', 'Session expirée ou requête invalide (CSRF).');
+            header('Location: ' . View::url('finance/couts-approche'));
+            exit;
+        }
+
+        $refLot = trim((string)($_POST['reference_lot'] ?? ''));
+        $trajetCode = trim((string)($_POST['trajet_code'] ?? 'LB-FR'));
+        $fraisDouane = (float)($_POST['frais_douane_xof'] ?? 0.0);
+        $fraisFret = (float)($_POST['frais_fret_xof'] ?? 0.0);
+        $fraisManutention = (float)($_POST['frais_manutention_xof'] ?? 0.0);
+        $poidsTotal = (float)($_POST['poids_total_kg'] ?? 1.0);
+
+        if (empty($refLot) || $poidsTotal <= 0) {
+            Session::flash('error', 'La référence du lot et le poids total en kg sont obligatoires.');
+            header('Location: ' . View::url('finance/couts-approche'));
+            exit;
+        }
+
+        $totalCouts = $fraisDouane + $fraisFret + $fraisManutention;
+        $coutParKg = $totalCouts / max($poidsTotal, 0.1);
+
+        $pdo = \App\Models\Database::getConnection();
+        $stmt = $pdo->prepare("INSERT INTO lbp_landed_costs (reference_lot, trajet_code, frais_douane_xof, frais_fret_xof, frais_manutention_xof, poids_total_kg, cout_par_kg_xof, statut) VALUES (:ref, :trajet, :douane, :fret, :manut, :poids, :cout_kg, 'VALIDÉ')");
+        $stmt->execute([
+            'ref' => $refLot,
+            'trajet' => $trajetCode,
+            'douane' => $fraisDouane,
+            'fret' => $fraisFret,
+            'manut' => $fraisManutention,
+            'poids' => $poidsTotal,
+            'cout_kg' => $coutParKg,
+        ]);
+
+        Session::flash('success', "Ventilation effectuée : Coût d'approche = " . number_format($coutParKg, 2, '.', ' ') . " XOF / kg pour le lot {$refLot}.");
+        header('Location: ' . View::url('finance/couts-approche'));
+        exit;
+    }
+
+    public function rapprochementMobileMoneyIndex(): void
+    {
+        RoleMiddleware::check(['caissiere', 'caissiere_principale', 'chef_agence', 'dg', 'comptable', 'superviseur_regional', 'superviseur_general']);
+
+        $pdo = \App\Models\Database::getConnection();
+        $reconciliations = $pdo->query("SELECT * FROM lbp_mobile_money_reconciliations ORDER BY date_transaction DESC")->fetchAll(\PDO::FETCH_ASSOC);
+
+        $module = $this->dashboardRepo->dashboard();
+
+        $this->financeView(
+            'finance/rapprochement_mobile_money',
+            'Rapprochement Mobile Money & Banque - Finance',
+            'rapprochement',
+            $module,
+            [
+                'reconciliations' => $reconciliations,
+            ]
+        );
+    }
+
+    public function rapprochementMobileMoneyValider(): void
+    {
+        RoleMiddleware::check(['caissiere', 'caissiere_principale', 'chef_agence', 'dg', 'comptable']);
+
+        if (!Csrf::verify($_POST['_csrf_token'] ?? null)) {
+            Session::flash('error', 'Session expirée ou requête invalide (CSRF).');
+            header('Location: ' . View::url('finance/rapprochement-mobile-money'));
+            exit;
+        }
+
+        $id = (int)($_POST['id'] ?? 0);
+        $statut = (string)($_POST['statut'] ?? 'RAPPROCHÉ');
+
+        if ($id <= 0) {
+            Session::flash('error', 'Identifiant de transaction invalide.');
+            header('Location: ' . View::url('finance/rapprochement-mobile-money'));
+            exit;
+        }
+
+        $pdo = \App\Models\Database::getConnection();
+        $stmt = $pdo->prepare("UPDATE lbp_mobile_money_reconciliations SET statut = :statut WHERE id = :id");
+        $stmt->execute(['statut' => $statut, 'id' => $id]);
+
+        Session::flash('success', "La transaction a été marquée comme {$statut}.");
+        header('Location: ' . View::url('finance/rapprochement-mobile-money'));
+        exit;
+    }
+
+    public function tresorerieIndex(): void
+    {
+        RoleMiddleware::check(['caissiere', 'caissiere_principale', 'chef_agence', 'dg', 'comptable', 'superviseur_regional', 'superviseur_general']);
+
+        $pdo = \App\Models\Database::getConnection();
+        
+        // Encaissements attendus (Balance âgée factures emises/partiellement payees)
+        $stmtEnc = $pdo->query("SELECT SUM(montant_restant) FROM lbp_factures WHERE statut IN ('emise', 'partiellement_payee')");
+        $totalEncaissementsPrevus = (float)($stmtEnc ? $stmtEnc->fetchColumn() : 0.0);
+
+        // Décaissements prévus (Prestataires en attente de paiement)
+        $stmtDec = $pdo->query("SELECT SUM(montant_xof) FROM lbp_demandes_paiement_prestataires WHERE statut = 'EN_ATTENTE'");
+        $totalDecaissementsPrevus = (float)($stmtDec ? $stmtDec->fetchColumn() : 0.0);
+
+        // Solde estimé de trésorerie nette
+        $soldeTrésorerieEstime = $totalEncaissementsPrevus - $totalDecaissementsPrevus;
+
+        $module = $this->dashboardRepo->dashboard();
+
+        $this->financeView(
+            'finance/tresorerie',
+            'Trésorerie Prévisionnelle & Cashflow (30/60/90j) - Finance',
+            'tresorerie',
+            $module,
+            [
+                'totalEncaissementsPrevus' => $totalEncaissementsPrevus,
+                'totalDecaissementsPrevus' => $totalDecaissementsPrevus,
+                'soldeTrésorerieEstime' => $soldeTrésorerieEstime,
+            ]
+        );
+    }
+
+    public function exportRecuPdf(string $id): void
+    {
+        RoleMiddleware::check(['caissiere', 'caissiere_principale', 'chef_agence', 'dg', 'comptable', 'superviseur_regional', 'superviseur_general']);
+
+        $id = (int) $id;
+        $facture = $this->factureRepo->findById($id);
+
+        if (!$facture) {
+            Session::flash('error', 'Facture introuvable pour générer le reçu.');
+            header('Location: ' . View::url('finance/factures'));
+            exit;
+        }
+
+        require BASE_PATH . '/views/finance/recu_pdf.php';
     }
 }

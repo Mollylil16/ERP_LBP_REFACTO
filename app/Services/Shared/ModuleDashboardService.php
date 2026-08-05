@@ -332,8 +332,12 @@ final class ModuleDashboardService
             return [
                 ['key' => 'dashboard', 'label' => 'Tableau de bord', 'icon' => 'DB', 'url' => '/finance/dashboard', 'available' => true],
                 ['key' => 'factures', 'label' => 'Factures Clients', 'icon' => 'FAC', 'url' => '/finance/factures', 'available' => true],
+                ['key' => 'portefeuilles', 'label' => 'Portefeuilles Clients', 'icon' => 'WAL', 'url' => '/finance/portefeuilles', 'available' => true],
                 ['key' => 'clotures', 'label' => 'Points de Caisse', 'icon' => 'CLT', 'url' => '/finance/clotures', 'available' => true],
                 ['key' => 'depenses', 'label' => 'Dépenses Prestataires', 'icon' => 'DEP', 'url' => '/finance/depenses', 'available' => true],
+                ['key' => 'couts_approche', 'label' => 'Coûts d\'Approche', 'icon' => 'LND', 'url' => '/finance/couts-approche', 'available' => true],
+                ['key' => 'rapprochement', 'label' => 'Rapprochement Mobile', 'icon' => 'WAV', 'url' => '/finance/rapprochement-mobile-money', 'available' => true],
+                ['key' => 'tresorerie', 'label' => 'Trésorerie & Cashflow', 'icon' => 'TS', 'url' => '/finance/tresorerie', 'available' => true],
                 ['key' => 'rentabilite', 'label' => 'Rentabilité (P&L)', 'icon' => 'PL', 'url' => '/finance/rentabilite', 'available' => true],
                 ['key' => 'balance_agee', 'label' => 'Balance Âgée', 'icon' => 'BAG', 'url' => '/finance/balance-agee', 'available' => true],
                 ['key' => 'comptabilite', 'label' => 'Comptabilité', 'icon' => 'CPT', 'url' => '/finance/comptabilite', 'available' => true],
