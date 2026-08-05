@@ -330,39 +330,39 @@ final class ModuleDashboardService
     {
         if ($module['slug'] === 'finance') {
             return [
-                ['key' => 'dashboard', 'label' => 'Tableau de bord', 'icon' => 'DB', 'url' => '/finance/dashboard', 'available' => true],
-                ['key' => 'factures', 'label' => 'Factures Clients', 'icon' => 'FAC', 'url' => '/finance/factures', 'available' => true],
-                ['key' => 'portefeuilles', 'label' => 'Portefeuilles Clients', 'icon' => 'WAL', 'url' => '/finance/portefeuilles', 'available' => true],
-                ['key' => 'clotures', 'label' => 'Points de Caisse', 'icon' => 'CLT', 'url' => '/finance/clotures', 'available' => true],
-                ['key' => 'depenses', 'label' => 'Dépenses Prestataires', 'icon' => 'DEP', 'url' => '/finance/depenses', 'available' => true],
-                ['key' => 'couts_approche', 'label' => 'Coûts d\'Approche', 'icon' => 'LND', 'url' => '/finance/couts-approche', 'available' => true],
-                ['key' => 'rapprochement', 'label' => 'Rapprochement Mobile', 'icon' => 'WAV', 'url' => '/finance/rapprochement-mobile-money', 'available' => true],
-                ['key' => 'tresorerie', 'label' => 'Trésorerie & Cashflow', 'icon' => 'TS', 'url' => '/finance/tresorerie', 'available' => true],
-                ['key' => 'rentabilite', 'label' => 'Rentabilité (P&L)', 'icon' => 'PL', 'url' => '/finance/rentabilite', 'available' => true],
-                ['key' => 'balance_agee', 'label' => 'Balance Âgée', 'icon' => 'BAG', 'url' => '/finance/balance-agee', 'available' => true],
-                ['key' => 'comptabilite', 'label' => 'Comptabilité', 'icon' => 'CPT', 'url' => '/finance/comptabilite', 'available' => true],
+                ['key' => 'dashboard', 'label' => 'Tableau de bord', 'icon' => 'DB', 'url' => '/finance/dashboard', 'available' => true, 'group' => 'Pilotage'],
+                ['key' => 'factures', 'label' => 'Factures Clients', 'icon' => 'FAC', 'url' => '/finance/factures', 'available' => true, 'group' => 'Facturation & Caisse'],
+                ['key' => 'portefeuilles', 'label' => 'Portefeuilles Clients', 'icon' => 'WAL', 'url' => '/finance/portefeuilles', 'available' => true, 'group' => 'Facturation & Caisse'],
+                ['key' => 'clotures', 'label' => 'Points de Caisse', 'icon' => 'CLT', 'url' => '/finance/clotures', 'available' => true, 'group' => 'Facturation & Caisse'],
+                ['key' => 'depenses', 'label' => 'Dépenses Prestataires', 'icon' => 'DEP', 'url' => '/finance/depenses', 'available' => true, 'group' => 'Gestion des Coûts'],
+                ['key' => 'couts_approche', 'label' => 'Coûts d\'Approche', 'icon' => 'LND', 'url' => '/finance/couts-approche', 'available' => true, 'group' => 'Gestion des Coûts'],
+                ['key' => 'rapprochement', 'label' => 'Rapprochement Mobile', 'icon' => 'WAV', 'url' => '/finance/rapprochement-mobile-money', 'available' => true, 'group' => 'Trésorerie & Banque'],
+                ['key' => 'tresorerie', 'label' => 'Trésorerie & Cashflow', 'icon' => 'TS', 'url' => '/finance/tresorerie', 'available' => true, 'group' => 'Trésorerie & Banque'],
+                ['key' => 'rentabilite', 'label' => 'Rentabilité (P&L)', 'icon' => 'PL', 'url' => '/finance/rentabilite', 'available' => true, 'group' => 'Analyse & Comptabilité'],
+                ['key' => 'balance_agee', 'label' => 'Balance Âgée', 'icon' => 'BAG', 'url' => '/finance/balance-agee', 'available' => true, 'group' => 'Analyse & Comptabilité'],
+                ['key' => 'comptabilite', 'label' => 'Comptabilité', 'icon' => 'CPT', 'url' => '/finance/comptabilite', 'available' => true, 'group' => 'Analyse & Comptabilité'],
             ];
         }
 
         if ($module['slug'] === 'facturation') {
             return [
-                ['key' => 'dashboard', 'label' => 'Tableau de bord', 'icon' => 'DB', 'url' => '/facturation/dashboard', 'available' => true],
-                ['key' => 'factures', 'label' => 'Factures Clients', 'icon' => 'FAC', 'url' => '/finance/factures', 'available' => true],
-                ['key' => 'clotures', 'label' => 'Points de Caisse', 'icon' => 'CLT', 'url' => '/finance/clotures', 'available' => true],
+                ['key' => 'dashboard', 'label' => 'Tableau de bord', 'icon' => 'DB', 'url' => '/facturation/dashboard', 'available' => true, 'group' => 'Pilotage'],
+                ['key' => 'factures', 'label' => 'Factures Clients', 'icon' => 'FAC', 'url' => '/finance/factures', 'available' => true, 'group' => 'Facturation & Caisse'],
+                ['key' => 'clotures', 'label' => 'Points de Caisse', 'icon' => 'CLT', 'url' => '/finance/clotures', 'available' => true, 'group' => 'Facturation & Caisse'],
             ];
         }
 
         if ($module['slug'] === 'logistique') {
             return [
-                ['key' => 'dashboard', 'label' => 'Tableau de bord', 'icon' => 'DB', 'url' => '/logistique/dashboard', 'available' => true],
-                ['key' => 'colisage', 'label' => 'Suivi Colisage', 'icon' => 'SC', 'url' => '/logistique/colisage', 'available' => true],
-                ['key' => 'rayons', 'label' => 'Gestion des Rayons', 'icon' => 'RY', 'url' => '/logistique/rayons', 'available' => true],
-                ['key' => 'emballages', 'label' => 'Emballages LBP', 'icon' => 'EMB', 'url' => '/logistique/emballages', 'available' => true],
-                ['key' => 'parametres', 'label' => 'Délais & Gardiennage', 'icon' => 'PR', 'url' => '/logistique/parametres', 'available' => true],
-                ['key' => 'parcels', 'label' => 'Gestion des Colis', 'icon' => 'CL', 'url' => '/colisage/parcels', 'available' => true],
-                ['key' => 'groupage', 'label' => 'Groupage & Expéditions', 'icon' => 'GP', 'url' => '/colisage/groupage', 'available' => true],
-                ['key' => 'tracking', 'label' => 'Suivi GPS', 'icon' => 'GPS', 'url' => '/colisage/exploitation/tracking', 'available' => true],
-                ['key' => 'exploitation_fournitures', 'label' => 'Fournitures bureau', 'icon' => 'FT', 'url' => '/colisage/exploitation/fournitures', 'available' => \App\Helpers\Auth::can(\App\Security\PermissionEntityRegistry::EXPLOITATION_FOURNITURES)],
+                ['key' => 'dashboard', 'label' => 'Tableau de bord', 'icon' => 'DB', 'url' => '/logistique/dashboard', 'available' => true, 'group' => 'Pilotage'],
+                ['key' => 'colisage', 'label' => 'Suivi Colisage', 'icon' => 'SC', 'url' => '/logistique/colisage', 'available' => true, 'group' => 'Magasin & Stockage'],
+                ['key' => 'rayons', 'label' => 'Gestion des Rayons', 'icon' => 'RY', 'url' => '/logistique/rayons', 'available' => true, 'group' => 'Magasin & Stockage'],
+                ['key' => 'emballages', 'label' => 'Emballages LBP', 'icon' => 'EMB', 'url' => '/logistique/emballages', 'available' => true, 'group' => 'Magasin & Stockage'],
+                ['key' => 'parametres', 'label' => 'Délais & Gardiennage', 'icon' => 'PR', 'url' => '/logistique/parametres', 'available' => true, 'group' => 'Paramétrage & Gardiennage'],
+                ['key' => 'parcels', 'label' => 'Gestion des Colis', 'icon' => 'CL', 'url' => '/colisage/parcels', 'available' => true, 'group' => 'Expéditions & Fret'],
+                ['key' => 'groupage', 'label' => 'Groupage & Expéditions', 'icon' => 'GP', 'url' => '/colisage/groupage', 'available' => true, 'group' => 'Expéditions & Fret'],
+                ['key' => 'tracking', 'label' => 'Suivi GPS', 'icon' => 'GPS', 'url' => '/colisage/exploitation/tracking', 'available' => true, 'group' => 'Suivi & Transport'],
+                ['key' => 'exploitation_fournitures', 'label' => 'Fournitures bureau', 'icon' => 'FT', 'url' => '/colisage/exploitation/fournitures', 'available' => \App\Helpers\Auth::can(\App\Security\PermissionEntityRegistry::EXPLOITATION_FOURNITURES), 'group' => 'Ressources Internes'],
             ];
         }
 
