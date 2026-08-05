@@ -30,6 +30,7 @@ $router->group('/logistique', function (Router $router): void {
     // Emballages & Consommables LBP (Cartons, Bôrô, Valises, Sacs)
     $router->get('/emballages', [LogistiqueEmballagesController::class, 'index']);
     $router->post('/emballages/mouvement', [LogistiqueEmballagesController::class, 'store']);
+    $router->post('/emballages/creer', [LogistiqueEmballagesController::class, 'creerEmballage']);
 
     // Délais & Frais de gardiennage
     $router->get('/parametres', [LogistiqueParametresController::class, 'index']);

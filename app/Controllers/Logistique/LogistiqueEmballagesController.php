@@ -114,4 +114,61 @@ final class LogistiqueEmballagesController extends LogistiqueBaseController
         header('Location: ' . View::url('logistique/emballages'));
         exit;
     }
+
+    public function creerEmballage(): void
+    {
+        AuthMiddleware::check();
+        RoleMiddleware::check(['admin', 'chef_agence', 'agent', 'magasinier', 'agent_logistique', 'superviseur_general']);
+
+        if (!Csrf::verify($_POST['_csrf_token'] ?? null)) {
+            Session::flash('error', 'Session expirée ou requête invalide (CSRF). Veuillez réessayer.');
+            header('Location: ' . View::url('logistique/emballages'));
+            exit;
+        }
+
+        $code = strtoupper(trim((string)($_POST['code'] ?? '')));
+        $libelle = trim((string)($_POST['libelle'] ?? ''));
+        $type = (string)($_POST['type'] ?? 'Carton');
+        $dimensions = trim((string)($_POST['dimensions'] ?? ''));
+        $prixVente = (float)($_POST['prix_vente_xof'] ?? 0);
+        $prixAchat = (float)($_POST['prix_achat_xof'] ?? 0);
+        $minAlert = (int)($_POST['min_stock_alerte'] ?? 10);
+
+        if ($code === '' || $libelle === '') {
+            Session::flash('error', 'Le code et le libellé de l\'emballage sont obligatoires.');
+            header('Location: ' . View::url('logistique/emballages'));
+            exit;
+        }
+
+        $pdo = Database::getConnection();
+
+        try {
+            $stmt = $pdo->prepare("INSERT INTO lbp_emballages_catalogue (code, libelle, type, dimensions, prix_vente_xof, prix_achat_xof, min_stock_alerte) 
+                                   VALUES (:code, :libelle, :type, :dimensions, :prix_v, :prix_a, :min_alert)");
+            $stmt->execute([
+                'code' => $code,
+                'libelle' => $libelle,
+                'type' => $type,
+                'dimensions' => $dimensions,
+                'prix_v' => $prixVente,
+                'prix_a' => $prixAchat,
+                'min_alert' => $minAlert,
+            ]);
+            $newId = (int)$pdo->lastInsertId();
+
+            // Créer les entrées de stock initial (0) pour toutes les agences actives
+            $sites = $pdo->query("SELECT id FROM company_sites WHERE is_active = 1")->fetchAll(PDO::FETCH_ASSOC);
+            $stmtStock = $pdo->prepare("INSERT INTO lbp_emballages_stocks (emballage_id, agence_id, quantite_disponible, updated_at) VALUES (:emb, :site, 0, NOW())");
+            foreach ($sites as $site) {
+                $stmtStock->execute(['emb' => $newId, 'site' => $site['id']]);
+            }
+
+            Session::flash('success', "L'article d'emballage '{$libelle}' ({$code}) a été créé avec succès.");
+        } catch (\Throwable $e) {
+            Session::flash('error', 'Erreur lors de la création de l\'emballage : ' . $e->getMessage());
+        }
+
+        header('Location: ' . View::url('logistique/emballages'));
+        exit;
+    }
 }

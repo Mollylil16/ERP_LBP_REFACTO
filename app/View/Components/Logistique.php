@@ -404,11 +404,22 @@ final class Logistique
     {
         $header = Ui::pageHeader(
             'Gestion des Emballages & Consommables LBP',
-            'Suivi des stocks de Cartons, Sacs Bôrô, Valises et consommables par agence.',
-            'LOGISTIQUE',
+            'Enregistrement et suivi des stocks de Cartons, Sacs Bôrô, Valises et consommables par agence.',
             [
-                ['label' => 'Gestion Rayons', 'href' => 'logistique/rayons', 'variant' => 'outline'],
-                ['label' => 'Emballages LBP', 'href' => 'logistique/emballages', 'variant' => 'primary'],
+                'eyebrow' => 'LOGISTIQUE',
+                'class' => 'rh-hero-white',
+                'actions' => [
+                    Ui::button('+ Ajouter un type d\'emballage', [
+                        'type' => 'button',
+                        'variant' => 'primary',
+                        'onclick' => 'document.getElementById("modal-creer-emballage").showModal(); return false;',
+                    ]),
+                    Ui::button('+ Approvisionner / Ajuster Stock', [
+                        'type' => 'button',
+                        'variant' => 'accent',
+                        'onclick' => 'document.getElementById("modal-emb-mvt").showModal(); return false;',
+                    ]),
+                ]
             ]
         );
 
@@ -420,16 +431,39 @@ final class Logistique
         $embOpts = [];
         $uniqueEmbs = [];
         foreach ($stocks as $st) {
-            if (!isset($uniqueEmbs[$st['id']])) {
+            if (!empty($st['id']) && !isset($uniqueEmbs[$st['id']])) {
                 $uniqueEmbs[$st['id']] = true;
                 $embOpts[] = [
                     'value' => (string)$st['id'],
-                    'label' => '[' . $st['type'] . '] ' . $st['libelle'] . ' (' . ($st['dimensions'] ?? '') . ')',
+                    'label' => '[' . View::e($st['type']) . '] ' . View::e($st['libelle']) . ' (' . View::e($st['dimensions'] ?? '') . ')',
                 ];
             }
         }
 
-        $fields = Form::select('emballage_id', $embOpts, '', ['label' => 'Article / Emballage', 'required' => true])
+        // Modal 1: Création d'un nouvel emballage (Code, Libellé, Type, Prix, etc.)
+        $creerFields = Form::hidden('_csrf_token', \App\Helpers\Csrf::token())
+            . Form::input('code', ['label' => 'Code Article (ex: CART-XL, BORO-50KG)', 'placeholder' => 'ex: CART-XL', 'required' => true])
+            . Form::input('libelle', ['label' => 'Libellé de l\'Emballage', 'placeholder' => 'ex: Grand Carton Renforcé LBP', 'required' => true])
+            . Form::select('type', [
+                ['value' => 'Carton', 'label' => '📦 Carton'],
+                ['value' => 'Bôrô', 'label' => '🎒 Sac Tissé Bôrô'],
+                ['value' => 'Valise', 'label' => '🧳 Valise / Malle Fret'],
+                ['value' => 'Sac', 'label' => '🛍️ Sac Scellé Sécurisé'],
+                ['value' => 'Consommable', 'label' => '🎗️ Consommable (Scotch, Film)'],
+            ], 'Carton', ['label' => 'Catégorie d\'emballage', 'required' => true])
+            . Form::input('dimensions', ['label' => 'Dimensions / Format', 'placeholder' => 'ex: 60x60x60 cm ou 50kg'])
+            . Form::input('prix_vente_xof', ['label' => 'Prix de Vente Client (XOF)', 'type' => 'number', 'value' => '0', 'required' => true])
+            . Form::input('prix_achat_xof', ['label' => 'Prix d\'Achat / Coût Unitaire (XOF)', 'type' => 'number', 'value' => '0'])
+            . Form::input('min_stock_alerte', ['label' => 'Seuil de Stock Bas Alerte', 'type' => 'number', 'value' => '10']);
+
+        $modalCreerHtml = Ui::modal('modal-creer-emballage', 'Nouveau Type d\'Emballage LBP', $creerFields, View::url('logistique/emballages/creer'), [
+            'btnLabel' => 'Enregistrer l\'emballage',
+            'btnVariant' => 'primary',
+        ]);
+
+        // Modal 2: Mouvement de Stock (Approvisionnement / Sortie)
+        $mvtFields = Form::hidden('_csrf_token', \App\Helpers\Csrf::token())
+            . Form::select('emballage_id', $embOpts ?: [['value' => '', 'label' => 'Veuillez créer un emballage au préalable']], '', ['label' => 'Article / Emballage', 'required' => true])
             . Form::select('agence_id', array_slice($siteOpts, 1), '1', ['label' => 'Agence de destination', 'required' => true])
             . Form::select('type_mouvement', [
                 ['value' => 'APPROVISIONNEMENT', 'label' => '📥 Approvisionnement / Entrée de Stock (Fournisseur/Achat)'],
@@ -437,19 +471,20 @@ final class Logistique
                 ['value' => 'TRANSFERT', 'label' => '🔄 Transfert inter-agences'],
                 ['value' => 'PERTE', 'label' => '⚠️ Démarque / Pertes / Endommagé'],
             ], 'APPROVISIONNEMENT', ['label' => 'Type de Mouvement', 'required' => true])
-            . Form::input('quantite', ['label' => 'Quantité (unités)', 'type' => 'number', 'value' => '50', 'required' => true])
-            . Form::input('motif', ['label' => 'Motif / N° Commande / Note', 'placeholder' => 'Ex: Réception livraison cartons siège']);
+            . Form::input('quantite', ['label' => 'Quantité (unités)', 'type' => 'number', 'value' => '10', 'required' => true])
+            . Form::input('motif', ['label' => 'Motif / N° Commande / Note', 'placeholder' => 'Ex: Réception livraison initiale cartons']);
 
-        $modalHtml = Ui::modal('modal-emb-mvt', 'Enregistrer un Mouvement d\'Emballage', $fields, View::url('logistique/emballages/mouvement'), [
+        $modalMvtHtml = Ui::modal('modal-emb-mvt', 'Enregistrer un Mouvement d\'Emballage', $mvtFields, View::url('logistique/emballages/mouvement'), [
             'btnLabel' => 'Enregistrer le mouvement',
             'btnVariant' => 'accent',
         ]);
 
         $stockRows = '';
         foreach ($stocks as $s) {
+            if (empty($s['code'])) continue;
             $qte = (int)($s['quantite_disponible'] ?? 0);
             $minAlert = (int)($s['min_stock_alerte'] ?? 10);
-            $badgeTone = $qte <= 5 ? 'danger' : ($qte <= $minAlert ? 'warning' : 'success');
+            $badgeTone = $qte <= 0 ? 'danger' : ($qte <= $minAlert ? 'warning' : 'success');
             
             $stockRows .= '<tr>'
                 . '<td><code style="background:#f1f5f9; padding:2px 6px; border-radius:4px; font-weight:800;">' . View::e($s['code']) . '</code></td>'
@@ -457,7 +492,7 @@ final class Logistique
                 . '<td><span style="background:#e2e8f0; color:#0f172a; padding:2px 8px; border-radius:12px; font-size:11px; font-weight:700;">' . View::e($s['type']) . '</span></td>'
                 . '<td>' . View::e($s['dimensions'] ?? '—') . '</td>'
                 . '<td><strong>' . View::e($s['agence_nom'] ?? 'Siège / Global') . '</strong></td>'
-                . '<td style="text-align:right;">' . number_format((float)$s['prix_vente_xof'], 0, ',', ' ') . ' XOF</td>'
+                . '<td style="text-align:right;"><strong>' . number_format((float)$s['prix_vente_xof'], 0, ',', ' ') . ' XOF</strong></td>'
                 . '<td style="text-align:right; font-weight:900; font-size:1.05rem;">' . Ui::badge($qte . ' unités', $badgeTone) . '</td>'
                 . '</tr>';
         }
@@ -478,26 +513,28 @@ final class Logistique
                 . '</tr>';
         }
 
+        $filterBtn = Ui::button('Filtrer par Agence', ['type' => 'submit', 'variant' => 'secondary']);
+
         return '<div class="finea-shell"><div class="finea-container">'
             . $header
             . '<div style="margin-bottom:1.5rem; display:flex; justify-content:space-between; align-items:center;">'
             . '<form method="get" action="' . View::url('logistique/emballages') . '" style="display:flex; gap:10px; align-items:center;">'
             . Form::select('agence_id', $siteOpts, (string)$selectedAgenceId, ['class' => 'finea-input'])
-            . '<button type="submit" class="finea-button finea-button--secondary">Filtrer par Agence</button>'
+            . $filterBtn
             . '</form>'
-            . '<button class="finea-button finea-button--accent" onclick="document.getElementById(\'modal-emb-mvt\').showModal()">+ Approvisionner / Ajuster Stock</button>'
             . '</div>'
             . '<div class="finea-section-card" style="margin-bottom:2rem;">'
             . '<h3 style="font-weight:800; font-size:1.1rem; margin-bottom:1rem;">Niveaux de Stock Emballages par Agence (Cartons, Bôrô, Valises, Sacs)</h3>'
             . '<div class="finea-table-wrapper"><table class="finea-table"><thead><tr>'
             . '<th>Code</th><th>Libellé Article</th><th>Catégorie</th><th>Dimensions</th><th>Agence</th><th style="text-align:right;">Prix Vente</th><th style="text-align:right;">Stock Disponible</th>'
-            . '</tr></thead><tbody>' . ($stockRows ?: '<tr><td colspan="7">Aucun stock répertorié.</td></tr>') . '</tbody></table></div></div>'
+            . '</tr></thead><tbody>' . ($stockRows ?: '<tr><td colspan="7" style="text-align:center; padding:2rem; color:#64748b;">Aucun emballage enregistré dans le catalogue. Cliquez sur <strong>+ Ajouter un type d\'emballage</strong> ci-dessus pour enregistrer vos prix et stocks réels.</td></tr>') . '</tbody></table></div></div>'
             . '<div class="finea-section-card">'
             . '<h3 style="font-weight:800; font-size:1.1rem; margin-bottom:1rem;">Historique des Mouvements d\'Emballages</h3>'
             . '<div class="finea-table-wrapper"><table class="finea-table"><thead><tr>'
             . '<th>Date</th><th>Article</th><th>Agence</th><th>Type Mouvement</th><th style="text-align:right;">Quantité</th><th>Motif / Remarque</th>'
-            . '</tr></thead><tbody>' . ($mvtRows ?: '<tr><td colspan="6">Aucun mouvement récent.</td></tr>') . '</tbody></table></div></div>'
-            . $modalHtml
+            . '</tr></thead><tbody>' . ($mvtRows ?: '<tr><td colspan="6" style="text-align:center; padding:2rem; color:#64748b;">Aucun mouvement de stock enregistré.</td></tr>') . '</tbody></table></div></div>'
+            . $modalCreerHtml
+            . $modalMvtHtml
             . '</div></div>';
     }
 }

@@ -1082,3 +1082,73 @@ textarea.finea-input {
     grid-template-columns: 1fr;
   }
 }
+
+/* Global Finea Button Components */
+.finea-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  border-radius: 8px;
+  padding: 0.55rem 1.25rem;
+  font-size: 0.875rem;
+  font-family: inherit;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  border: 1px solid transparent;
+  text-decoration: none;
+  line-height: 1.25;
+}
+
+.finea-button--primary {
+  background-color: #1e3a5f !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 4px rgba(30, 58, 95, 0.15) !important;
+}
+
+.finea-button--primary:hover {
+  background-color: #0f172a !important;
+  box-shadow: 0 4px 8px rgba(15, 23, 42, 0.25) !important;
+}
+
+.finea-button--accent {
+  background: linear-gradient(135deg, #d97706 0%, #b45309 100%) !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 10px rgba(217, 119, 6, 0.25) !important;
+}
+
+.finea-button--accent:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 14px rgba(217, 119, 6, 0.35) !important;
+}
+
+.finea-button--secondary {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #334155 !important;
+}
+
+.finea-button--secondary:hover {
+  background-color: #f1f5f9 !important;
+  border-color: #94a3b8 !important;
+}
+
+.finea-button--outline {
+  background-color: transparent !important;
+  border-color: #3b82f6 !important;
+  color: #2563eb !important;
+}
+
+.finea-button--outline:hover {
+  background-color: #eff6ff !important;
+}
+
+.finea-button--danger {
+  background-color: #dc2626 !important;
+  color: #ffffff !important;
+}
+
+.finea-button--danger:hover {
+  background-color: #b91c1c !important;
+}
