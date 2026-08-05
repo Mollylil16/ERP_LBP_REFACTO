@@ -21,13 +21,16 @@ abstract class FacturationBaseController extends BaseController
         array $data = [],
         array $layout = [],
     ): void {
+        $dashService = new \App\Services\Shared\ModuleDashboardService();
+        $defaultModule = $dashService->dashboard('facturation');
+
         $layoutData = [
             'pageTitle' => $pageTitle,
             'moduleName' => $module['label'] ?? 'Facturation',
             'moduleCode' => $module['code'] ?? 'FAC',
             'moduleTheme' => $module,
             'activeModule' => $activeModule,
-            'moduleNavigation' => $module['navigation'] ?? [],
+            'moduleNavigation' => $module['items'] ?? $module['navigation'] ?? $defaultModule['items'] ?? [],
             'additionalStyles' => ['css/finea-ui.css'],
         ];
 

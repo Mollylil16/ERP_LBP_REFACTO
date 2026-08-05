@@ -312,11 +312,15 @@ final class FacturationFilterController extends FacturationBaseController
 
     private function renderView(string $view, array $data): void
     {
+        $dashService = new \App\Services\Shared\ModuleDashboardService();
+        $module = $dashService->dashboard('facturation');
+
         $layoutData = [
             'pageTitle' => $data['pageTitle'] ?? 'Facturation',
             'moduleName' => 'Facturation',
             'moduleCode' => 'FAC',
             'activeModule' => 'factures',
+            'moduleNavigation' => $module['items'] ?? [],
             'additionalStyles' => ['css/finea-ui.css'],
         ];
 

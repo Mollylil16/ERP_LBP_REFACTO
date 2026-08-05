@@ -17,6 +17,33 @@ $successMessage = Session::getFlash('success');
 $errorMessage = Session::getFlash('error');
 $moduleNavigation = $moduleNavigation ?? [];
 $moduleTheme = $moduleTheme ?? [];
+
+if (empty($moduleNavigation) && !empty($moduleTheme['items'])) {
+    $moduleNavigation = $moduleTheme['items'];
+}
+if (empty($moduleNavigation) && !empty($module['items'])) {
+    $moduleNavigation = $module['items'];
+}
+if (empty($moduleNavigation)) {
+    $codeSlug = match(strtolower((string)($moduleCode ?? ''))) {
+        'fin' => 'finance',
+        'fac' => 'facturation',
+        'log' => 'logistique',
+        'col' => 'colisage',
+        'rh' => 'rh',
+        default => strtolower((string)($moduleCode ?? ''))
+    };
+    if ($codeSlug !== '') {
+        try {
+            $dashService = new \App\Services\Shared\ModuleDashboardService();
+            $dashData = $dashService->dashboard($codeSlug);
+            $moduleNavigation = $dashData['items'] ?? [];
+        } catch (\Throwable $e) {
+            // Ignore fallback failure
+        }
+    }
+}
+
 $moduleAccent = $moduleTheme['accent'] ?? '#7c3aed';
 $moduleAccent2 = $moduleTheme['accent2'] ?? '#1d2b57';
 $moduleGradient = $moduleTheme['gradient'] ?? 'linear-gradient(135deg, #1d2b57, #7c3aed)';

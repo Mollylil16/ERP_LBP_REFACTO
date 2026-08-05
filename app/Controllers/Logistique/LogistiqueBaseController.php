@@ -21,13 +21,16 @@ abstract class LogistiqueBaseController extends BaseController
         array $data = [],
         array $layout = [],
     ): void {
+        $dashService = new \App\Services\Shared\ModuleDashboardService();
+        $defaultModule = $dashService->dashboard('logistique');
+
         $layoutData = [
             'pageTitle' => $pageTitle,
             'moduleName' => $module['label'] ?? 'Logistique',
             'moduleCode' => $module['code'] ?? 'LOG',
             'moduleTheme' => $module,
             'activeModule' => $activeModule,
-            'moduleNavigation' => $module['navigation'] ?? [],
+            'moduleNavigation' => $module['items'] ?? $module['navigation'] ?? $defaultModule['items'] ?? [],
             'additionalStyles' => ['css/finea-ui.css'],
         ];
 
