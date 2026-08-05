@@ -2741,19 +2741,27 @@ class MigrationRunner
             ");
         }
 
-        // Purge définitivement toutes les données fictives des emballages, portefeuilles et rapprochements
+        // Purge définitivement toutes les données de test (colis, factures, clients, portefeuilles, emballages, caisses)
         try {
             $this->pdo->exec("SET FOREIGN_KEY_CHECKS=0;");
-            $this->pdo->exec("TRUNCATE TABLE lbp_emballages_mouvements;");
-            $this->pdo->exec("TRUNCATE TABLE lbp_emballages_stocks;");
-            $this->pdo->exec("TRUNCATE TABLE lbp_emballages_catalogue;");
-            $this->pdo->exec("TRUNCATE TABLE lbp_mobile_money_reconciliations;");
-            $this->pdo->exec("TRUNCATE TABLE lbp_landed_costs;");
-            $this->pdo->exec("TRUNCATE TABLE lbp_client_wallet_transactions;");
-            $this->pdo->exec("TRUNCATE TABLE lbp_client_wallets;");
+            $tablesToTruncate = [
+                'lbp_colis_expeditions', 'lbp_expedition_status_history', 'lbp_marchandises',
+                'lbp_colis', 'lbp_expeditions', 'shipment_events', 'shipment_tracking_requests', 'shipments',
+                'lbp_factures_prestataires', 'lbp_paiement_callbacks', 'lbp_recus', 'lbp_paiements',
+                'lbp_factures', 'lbp_etats_journaliers', 'lbp_ecritures_comptables',
+                'lbp_demandes_paiement_prestataires', 'lbp_demandes_fournitures',
+                'lbp_mouvements_caisse', 'lbp_mouvements_caisse_principale',
+                'lbp_client_wallet_transactions', 'lbp_client_wallets',
+                'lbp_mobile_money_reconciliations', 'lbp_landed_costs',
+                'lbp_emballages_mouvements', 'lbp_emballages_stocks', 'lbp_emballages_catalogue',
+                'crm_interactions', 'crm_opportunities', 'crm_clients', 'lbp_clients'
+            ];
+            foreach ($tablesToTruncate as $t) {
+                try { $this->pdo->exec("TRUNCATE TABLE `{$t}`;"); } catch (\Throwable $e) {}
+            }
             $this->pdo->exec("SET FOREIGN_KEY_CHECKS=1;");
         } catch (\Throwable $e) {
-            // Ignore silence
+            // Silence
         }
     }
 }
