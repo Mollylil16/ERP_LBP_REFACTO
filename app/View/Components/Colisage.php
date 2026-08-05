@@ -702,7 +702,7 @@ final class Colisage
                     Ui::button('+ Nouvelle demande de fournitures', [
                         'type' => 'button',
                         'variant' => 'accent',
-                        'onclick' => 'document.getElementById("modal-demande").showModal(); return false;'
+                        'onclick' => 'document.getElementById("modal-demande").style.display="flex"; return false;'
                     ])
                 ]
             ]

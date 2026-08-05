@@ -412,12 +412,12 @@ final class Logistique
                     Ui::button('+ Ajouter un type d\'emballage', [
                         'type' => 'button',
                         'variant' => 'primary',
-                        'onclick' => 'document.getElementById("modal-creer-emballage").showModal(); return false;',
+                        'onclick' => 'document.getElementById("modal-creer-emballage").style.display="flex"; return false;',
                     ]),
                     Ui::button('+ Approvisionner / Ajuster Stock', [
                         'type' => 'button',
                         'variant' => 'accent',
-                        'onclick' => 'document.getElementById("modal-emb-mvt").showModal(); return false;',
+                        'onclick' => 'document.getElementById("modal-emb-mvt").style.display="flex"; return false;',
                     ]),
                 ]
             ]

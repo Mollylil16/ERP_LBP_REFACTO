@@ -30,7 +30,7 @@ abstract class FacturationBaseController extends BaseController
             'moduleCode' => $module['code'] ?? 'FAC',
             'moduleTheme' => $module,
             'activeModule' => $activeModule,
-            'moduleNavigation' => $module['items'] ?? $module['navigation'] ?? $defaultModule['items'] ?? [],
+            'moduleNavigation' => $module['navigation'] ?? $module['items'] ?? $defaultModule['navigation'] ?? [],
             'additionalStyles' => ['css/finea-ui.css'],
         ];
 

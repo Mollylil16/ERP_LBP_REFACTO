@@ -52,7 +52,7 @@ abstract class FinanceBaseController extends BaseController
                 'gradient' => 'linear-gradient(135deg, #1d2b57, #2563eb)',
             ],
             'activeModule' => $activeModule,
-            'moduleNavigation' => $module['items'] ?? [],
+            'moduleNavigation' => $module['navigation'] ?? $module['items'] ?? [],
             'additionalStyles' => ['css/finea-ui.css', 'css/finance.css'],
         ];
     }

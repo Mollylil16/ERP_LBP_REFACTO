@@ -18,8 +18,14 @@ $errorMessage = Session::getFlash('error');
 $moduleNavigation = $moduleNavigation ?? [];
 $moduleTheme = $moduleTheme ?? [];
 
+if (empty($moduleNavigation) && !empty($moduleTheme['navigation'])) {
+    $moduleNavigation = $moduleTheme['navigation'];
+}
 if (empty($moduleNavigation) && !empty($moduleTheme['items'])) {
     $moduleNavigation = $moduleTheme['items'];
+}
+if (empty($moduleNavigation) && !empty($module['navigation'])) {
+    $moduleNavigation = $module['navigation'];
 }
 if (empty($moduleNavigation) && !empty($module['items'])) {
     $moduleNavigation = $module['items'];
@@ -37,7 +43,7 @@ if (empty($moduleNavigation)) {
         try {
             $dashService = new \App\Services\Shared\ModuleDashboardService();
             $dashData = $dashService->dashboard($codeSlug);
-            $moduleNavigation = $dashData['items'] ?? [];
+            $moduleNavigation = $dashData['navigation'] ?? $dashData['items'] ?? [];
         } catch (\Throwable $e) {
             // Ignore fallback failure
         }
