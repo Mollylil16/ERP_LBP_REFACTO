@@ -1917,6 +1917,72 @@ class MigrationRunner
             ");
         }
 
+        // Table Catalogue d'Emballages LBP (Cartons, Bôrô, Valises, Sacs)
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS lbp_emballages_catalogue (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                code VARCHAR(50) NOT NULL,
+                libelle VARCHAR(255) NOT NULL,
+                type ENUM('Carton', 'Bôrô', 'Valise', 'Sac', 'Consommable') NOT NULL DEFAULT 'Carton',
+                dimensions VARCHAR(100) NULL,
+                prix_vente_xof DECIMAL(15,2) NOT NULL DEFAULT 0.00,
+                prix_achat_xof DECIMAL(15,2) NOT NULL DEFAULT 0.00,
+                min_stock_alerte INT NOT NULL DEFAULT 10,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE KEY uniq_lbp_emballages_code (code)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS lbp_emballages_stocks (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                emballage_id INT UNSIGNED NOT NULL,
+                agence_id INT UNSIGNED NOT NULL,
+                quantite_disponible INT NOT NULL DEFAULT 0,
+                updated_at DATETIME NULL,
+                UNIQUE KEY uniq_emballage_agence (emballage_id, agence_id),
+                CONSTRAINT fk_emb_stock_item FOREIGN KEY (emballage_id) REFERENCES lbp_emballages_catalogue(id) ON DELETE CASCADE,
+                CONSTRAINT fk_emb_stock_site FOREIGN KEY (agence_id) REFERENCES company_sites(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS lbp_emballages_mouvements (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                emballage_id INT UNSIGNED NOT NULL,
+                agence_id INT UNSIGNED NOT NULL,
+                type_mouvement ENUM('APPROVISIONNEMENT', 'SORTIE_COLISAGE', 'TRANSFERT', 'PERTE') NOT NULL,
+                quantite INT NOT NULL,
+                motif TEXT NULL,
+                user_id INT NULL,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                CONSTRAINT fk_emb_mvt_item FOREIGN KEY (emballage_id) REFERENCES lbp_emballages_catalogue(id) ON DELETE CASCADE,
+                CONSTRAINT fk_emb_mvt_site FOREIGN KEY (agence_id) REFERENCES company_sites(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+
+        // Seed default packaging types if empty
+        $stmtE = $this->pdo->query("SELECT COUNT(*) FROM lbp_emballages_catalogue");
+        if ($stmtE && (int)$stmtE->fetchColumn() === 0) {
+            $this->pdo->exec("
+                INSERT INTO lbp_emballages_catalogue (code, libelle, type, dimensions, prix_vente_xof, prix_achat_xof, min_stock_alerte) VALUES
+                ('CART-S', 'Petit Carton LBP Standard', 'Carton', '25x25x25 cm', 1500.00, 750.00, 20),
+                ('CART-M', 'Moyen Carton LBP Renforcé', 'Carton', '40x40x40 cm', 3000.00, 1500.00, 15),
+                ('CART-L', 'Grand Carton LBP Export', 'Carton', '60x60x60 cm', 5500.00, 2800.00, 10),
+                ('BORO-STD', 'Sac Tissé Bôrô LBP Fret', 'Bôrô', 'Format Moyen 30kg', 2500.00, 1200.00, 25),
+                ('BORO-XL', 'Grand Sac Bôrô Fret Lourd', 'Bôrô', 'Format XL 50kg', 4000.00, 2000.00, 15),
+                ('VAL-FRET', 'Valise / Malle Fret Souple LBP', 'Valise', 'Format Cabine / Soute', 12000.00, 6000.00, 5),
+                ('SAC-PLAST', 'Sac Plastique Scellé Sécurisé', 'Sac', 'Standard Colis', 800.00, 350.00, 50),
+                ('FILM-STRETCH', 'Film Étirable LBP (Rouleau)', 'Consommable', 'Rouleau 500m', 6500.00, 3200.00, 8)
+            ");
+
+            // Seed initial stock per site
+            $this->pdo->exec("
+                INSERT INTO lbp_emballages_stocks (emballage_id, agence_id, quantite_disponible, updated_at)
+                SELECT e.id, s.id, 50, NOW() FROM lbp_emballages_catalogue e CROSS JOIN company_sites s
+            ");
+        }
+
         $this->seedColisageProducts();
     }
 

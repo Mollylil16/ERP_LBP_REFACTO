@@ -8,6 +8,8 @@ use App\Controllers\Logistique\RayonsController;
 use App\Controllers\Logistique\LogistiqueParametresController;
 use App\Controllers\Logistique\LogistiqueColisageController;
 
+use App\Controllers\Logistique\LogistiqueEmballagesController;
+
 /** @var Router $router */
 
 $router->group('/logistique', function (Router $router): void {
@@ -24,6 +26,10 @@ $router->group('/logistique', function (Router $router): void {
     $router->post('/rayons', [RayonsController::class, 'store']);
     $router->post('/rayons/enregistrer', [RayonsController::class, 'store']);
     $router->post('/rayons/{id}/supprimer', [RayonsController::class, 'delete']);
+
+    // Emballages & Consommables LBP (Cartons, Bôrô, Valises, Sacs)
+    $router->get('/emballages', [LogistiqueEmballagesController::class, 'index']);
+    $router->post('/emballages/mouvement', [LogistiqueEmballagesController::class, 'store']);
 
     // Délais & Frais de gardiennage
     $router->get('/parametres', [LogistiqueParametresController::class, 'index']);
