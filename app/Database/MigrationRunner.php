@@ -1893,29 +1893,7 @@ class MigrationRunner
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         ");
 
-        // Seed initial wallet sample data if empty
-        $stmtW = $this->pdo->query("SELECT COUNT(*) FROM lbp_client_wallets");
-        if ($stmtW && (int)$stmtW->fetchColumn() === 0) {
-            $this->pdo->exec("
-                INSERT INTO lbp_client_wallets (client_nom, telephone, solde_xof, solde_eur, solde_cad, plafond_credit_xof, statut) VALUES
-                ('KOUASSI JEAN-BAPTISTE', '+225 07 08 09 10 11', 150000.00, 228.67, 0.00, 1000000.00, 'ACTIF'),
-                ('SOCIÉTÉ IVOIRE IMPORT SARL', '+225 27 21 00 11 22', 450000.00, 686.02, 0.00, 2500000.00, 'ACTIF'),
-                ('DIABATÉ AMINATA', '+33 6 12 34 56 78', 75000.00, 114.34, 0.00, 500000.00, 'ACTIF'),
-                ('GLOBAL CARGO LOGISTICS CANADA', '+1 514 555 0199', 0.00, 0.00, 350.00, 750000.00, 'ACTIF')
-            ");
-        }
 
-        // Seed initial mobile money reconciliation sample data if empty
-        $stmtM = $this->pdo->query("SELECT COUNT(*) FROM lbp_mobile_money_reconciliations");
-        if ($stmtM && (int)$stmtM->fetchColumn() === 0) {
-            $this->pdo->exec("
-                INSERT INTO lbp_mobile_money_reconciliations (operateur, reference_transac, montant_xof, client_nom, facture_numero, statut, date_transaction) VALUES
-                ('Wave', 'WAV-2026-99182', 45000.00, 'KOUASSI JEAN-BAPTISTE', 'FAC-2026-001', 'RAPPROCHÉ', NOW()),
-                ('Orange Money', 'OM-88371-2026', 120000.00, 'SOCIÉTÉ IVOIRE IMPORT SARL', 'FAC-2026-002', 'EN_ATTENTE', NOW()),
-                ('Wave', 'WAV-2026-10492', 78500.00, 'DIABATÉ AMINATA', 'FAC-2026-003', 'RAPPROCHÉ', NOW()),
-                ('Virement Bancaire', 'VIR-BNI-00491', 250000.00, 'GLOBAL CARGO LOGISTICS CANADA', 'FAC-2026-004', 'RAPPROCHÉ', NOW())
-            ");
-        }
 
         // Table Catalogue d'Emballages LBP (Cartons, Bôrô, Valises, Sacs)
         $this->pdo->exec("
