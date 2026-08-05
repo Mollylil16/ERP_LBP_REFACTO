@@ -547,12 +547,17 @@ final class CallCenterController extends BaseController
         ";
 
         if ($search !== '') {
-            $sql .= " WHERE c.numero_tracking LIKE :search 
-                       OR dest.name LIKE :search 
-                       OR dest.phone LIKE :search 
-                       OR exp.name LIKE :search 
-                       OR exp.phone LIKE :search";
-            $params['search'] = '%' . $search . '%';
+            $sql .= " WHERE c.numero_tracking LIKE :search1
+                       OR dest.name LIKE :search2
+                       OR dest.phone LIKE :search3
+                       OR exp.name LIKE :search4
+                       OR exp.phone LIKE :search5";
+            $like = '%' . $search . '%';
+            $params['search1'] = $like;
+            $params['search2'] = $like;
+            $params['search3'] = $like;
+            $params['search4'] = $like;
+            $params['search5'] = $like;
         }
 
         $sql .= " ORDER BY c.id DESC LIMIT 100";

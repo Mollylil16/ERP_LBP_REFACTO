@@ -126,8 +126,11 @@ class UserRepository
         $params = [];
 
         if (($filters['q'] ?? '') !== '') {
-            $conditions[] = '(full_name LIKE :q OR email LIKE :q OR phone LIKE :q)';
-            $params['q'] = '%' . $filters['q'] . '%';
+            $conditions[] = '(full_name LIKE :q1 OR email LIKE :q2 OR phone LIKE :q3)';
+            $like = '%' . $filters['q'] . '%';
+            $params['q1'] = $like;
+            $params['q2'] = $like;
+            $params['q3'] = $like;
         }
         if (($filters['status'] ?? '') !== '') {
             $conditions[] = 'status = :status';

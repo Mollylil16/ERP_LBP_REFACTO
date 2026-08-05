@@ -72,8 +72,11 @@ class ColisageRepository
         $params = [];
 
         if (!empty($filters['q'])) {
-            $sql .= " AND (c.numero_tracking LIKE :q OR exp.name LIKE :q OR dest.name LIKE :q)";
-            $params['q'] = '%' . $filters['q'] . '%';
+            $sql .= " AND (c.numero_tracking LIKE :q1 OR exp.name LIKE :q2 OR dest.name LIKE :q3)";
+            $like = '%' . $filters['q'] . '%';
+            $params['q1'] = $like;
+            $params['q2'] = $like;
+            $params['q3'] = $like;
         }
         if (!empty($filters['statut'])) {
             $sql .= " AND c.statut = :statut";
@@ -110,8 +113,11 @@ class ColisageRepository
         $params = [];
 
         if (!empty($filters['q'])) {
-            $sql .= " AND (c.numero_tracking LIKE :q OR exp.name LIKE :q OR dest.name LIKE :q)";
-            $params['q'] = '%' . $filters['q'] . '%';
+            $sql .= " AND (c.numero_tracking LIKE :q1 OR exp.name LIKE :q2 OR dest.name LIKE :q3)";
+            $like = '%' . $filters['q'] . '%';
+            $params['q1'] = $like;
+            $params['q2'] = $like;
+            $params['q3'] = $like;
         }
         if (!empty($filters['statut'])) {
             $sql .= " AND c.statut = :statut";

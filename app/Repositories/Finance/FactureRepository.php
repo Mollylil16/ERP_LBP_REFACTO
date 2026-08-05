@@ -255,14 +255,16 @@ class FactureRepository
             $params['statut'] = $filters['statut'];
         }
         if (($filters['q'] ?? '') !== '') {
-            $conditions[] = '(numero_facture LIKE :q OR client_id IN (SELECT id FROM lbp_clients WHERE name LIKE :q))';
-            $params['q'] = '%' . $filters['q'] . '%';
+            $conditions[] = '(numero_facture LIKE :q1 OR client_id IN (SELECT id FROM lbp_clients WHERE name LIKE :q2))';
+            $like = '%' . $filters['q'] . '%';
+            $params['q1'] = $like;
+            $params['q2'] = $like;
         }
 
         $where = 'WHERE ' . implode(' AND ', $conditions);
         $stmt = $this->pdo->prepare("
-            SELECT * FROM lbp_factures 
-            {$where} 
+            SELECT * FROM lbp_factures
+            {$where}
             ORDER BY date_emission DESC
         ");
         $stmt->execute($params);
@@ -283,14 +285,16 @@ class FactureRepository
             $params['statut'] = $filters['statut'];
         }
         if (($filters['q'] ?? '') !== '') {
-            $conditions[] = '(numero_facture LIKE :q OR client_id IN (SELECT id FROM lbp_clients WHERE name LIKE :q))';
-            $params['q'] = '%' . $filters['q'] . '%';
+            $conditions[] = '(numero_facture LIKE :q1 OR client_id IN (SELECT id FROM lbp_clients WHERE name LIKE :q2))';
+            $like = '%' . $filters['q'] . '%';
+            $params['q1'] = $like;
+            $params['q2'] = $like;
         }
 
         $where = $conditions ? 'WHERE ' . implode(' AND ', $conditions) : '';
         $stmt = $this->pdo->prepare("
-            SELECT * FROM lbp_factures 
-            {$where} 
+            SELECT * FROM lbp_factures
+            {$where}
             ORDER BY date_emission DESC
         ");
         $stmt->execute($params);
