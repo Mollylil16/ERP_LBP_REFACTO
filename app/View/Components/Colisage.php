@@ -699,10 +699,10 @@ final class Colisage
                 'eyebrow' => 'Ressources Internes',
                 'class' => 'rh-hero-white',
                 'actions' => [
-                    Ui::button('Nouvelle demande (Simulation)', [
-                        'href' => '#',
+                    Ui::button('+ Nouvelle demande de fournitures', [
+                        'type' => 'button',
                         'variant' => 'accent',
-                        'onclick' => 'document.getElementById("modal-demande").style.display="flex"; return false;'
+                        'onclick' => 'document.getElementById("modal-demande").showModal(); return false;'
                     ])
                 ]
             ]

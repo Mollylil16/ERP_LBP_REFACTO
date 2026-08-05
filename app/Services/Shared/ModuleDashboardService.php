@@ -357,6 +357,7 @@ final class ModuleDashboardService
                 ['key' => 'dashboard', 'label' => 'Tableau de bord', 'icon' => 'DB', 'url' => '/logistique/dashboard', 'available' => true],
                 ['key' => 'colisage', 'label' => 'Suivi Colisage', 'icon' => 'SC', 'url' => '/logistique/colisage', 'available' => true],
                 ['key' => 'rayons', 'label' => 'Gestion des Rayons', 'icon' => 'RY', 'url' => '/logistique/rayons', 'available' => true],
+                ['key' => 'emballages', 'label' => 'Emballages LBP', 'icon' => 'EMB', 'url' => '/logistique/emballages', 'available' => true],
                 ['key' => 'parametres', 'label' => 'Délais & Gardiennage', 'icon' => 'PR', 'url' => '/logistique/parametres', 'available' => true],
                 ['key' => 'parcels', 'label' => 'Gestion des Colis', 'icon' => 'CL', 'url' => '/colisage/parcels', 'available' => true],
                 ['key' => 'groupage', 'label' => 'Groupage & Expéditions', 'icon' => 'GP', 'url' => '/colisage/groupage', 'available' => true],
