@@ -12,21 +12,38 @@ final class SiteAdminDashboardRepository extends \App\Repositories\Shared\Module
     public function dashboard(): array
     {
         $module = $this->dashboardFor('site-admin');
+        
         $count = fn(string $table, string $where = '1=1'): string => (string) (
             $this->pdo->query("SELECT COUNT(*) FROM {$table} WHERE {$where}")->fetchColumn() ?: 0
         );
+
+        $onlineCount = (string) ($this->pdo->query("
+            SELECT COUNT(DISTINCT visitor_id) 
+            FROM website_analytics_events 
+            WHERE created_at >= DATE_SUB(NOW(), INTERVAL 15 MINUTE)
+        ")->fetchColumn() ?: 0);
+
+        $trackingSearchesToday = (string) ($this->pdo->query("
+            SELECT COUNT(*) 
+            FROM website_analytics_events 
+            WHERE (target_key = 'tracking_search' OR page_path LIKE '%tracking%') 
+              AND DATE(created_at) = CURDATE()
+        ")->fetchColumn() ?: 0);
+
         $module['kpis'] = [
-            ['label' => 'Slides actifs', 'value' => $count('website_slides', 'is_active = 1'), 'meta' => 'Carrousel de la page d’accueil', 'href' => '/site-admin/configuration#carousel'],
-            ['label' => 'Offres publiées', 'value' => $count('website_products', 'is_active = 1'), 'meta' => 'Marketplace publique', 'href' => '/site-admin/configuration#marketplace'],
-            ['label' => 'Discussions', 'value' => $count('website_forum_topics', 'is_published = 1'), 'meta' => 'Communauté import-export', 'href' => '/site/forum'],
-            ['label' => 'Conversations', 'value' => $count('website_conversations'), 'meta' => 'Échanges avec les clients connectés', 'href' => '/site-admin/messages'],
+            ['label' => 'Visiteurs en direct', 'value' => $onlineCount, 'meta' => 'Connectés les 15 dernières min', 'href' => '/site-admin/analytics'],
+            ['label' => 'Recherches tracking (Auj.)', 'value' => $trackingSearchesToday, 'meta' => 'Consultations colis aujourd’hui', 'href' => '/site-admin/analytics'],
+            ['label' => 'Annonces & Soldes', 'value' => $count('website_announcements', 'is_active = 1'), 'meta' => 'Bannières promos actives', 'href' => '/site-admin/configuration#announcements'],
+            ['label' => 'Conversations & Messages', 'value' => $count('website_conversations'), 'meta' => 'Demandes clients enregistrées', 'href' => '/site-admin/messages'],
         ];
+
         $module['actions'] = [
-            ['label' => 'Design & contenus', 'hint' => 'Branding, couleurs, carrousel et boutique', 'url' => '/site-admin/configuration'],
-            ['label' => 'Prévisualiser le site', 'hint' => 'Contrôler immédiatement le rendu public', 'url' => '/site'],
-            ['label' => 'Voir la marketplace', 'hint' => 'Tester le catalogue et le panier', 'url' => '/site/shop'],
-            ['label' => 'Répondre aux clients', 'hint' => 'Messages, images, vidéos et notes vocales', 'url' => '/site-admin/messages'],
+            ['label' => 'Audience & Visiteurs en direct', 'hint' => 'Suivre qui est connecté et qui recherche son colis', 'url' => '/site-admin/analytics'],
+            ['label' => 'Publier une Annonce / Promo', 'hint' => 'Poster une solde de fret ou une alerte en bannière', 'url' => '/site-admin/configuration#announcements'],
+            ['label' => 'Design & Carrousel', 'hint' => 'Modifier le branding, les images d’en-tête et les couleurs', 'url' => '/site-admin/configuration'],
+            ['label' => 'Voir le site vitrine', 'hint' => 'Prévisualiser immédiatement le site public', 'url' => '/site'],
         ];
+
         $module['showWorkflow'] = false;
         return $module;
     }
