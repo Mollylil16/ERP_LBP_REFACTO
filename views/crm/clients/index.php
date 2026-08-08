@@ -9,8 +9,4 @@ use App\View\Components\Crm;
 /** @var array<string, string> $filters */
 /** @var array{currentPage: int, totalPages: int, itemsPerPage: int, totalItems: int} $pagination */
 
-ob_start();
 echo Crm::clientsListPage($clients, $filters, $pagination);
-$content = ob_get_clean();
-
-require BASE_PATH . '/views/layouts/module.php';

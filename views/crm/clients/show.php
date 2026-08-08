@@ -12,8 +12,4 @@ use App\View\Components\Crm;
 /** @var array<int, array<string, mixed>> $opportunities */
 /** @var array<int, array<string, mixed>> $commercialOwners */
 
-ob_start();
 echo Crm::clientDetailPage($client, $colis, $factures, $interactions, $opportunities, $commercialOwners);
-$content = ob_get_clean();
-
-require BASE_PATH . '/views/layouts/module.php';
