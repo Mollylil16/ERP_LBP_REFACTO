@@ -33,9 +33,9 @@ final class WebsiteAnalyticsRepository
 
         // Recent parcel tracking lookups
         $trackingSearches = $this->pdo->query("
-            SELECT e.created_at, e.target_label AS tracking_ref, e.ip_address, c.statut, c.reference, c.created_at AS colis_date
+            SELECT e.created_at, e.target_label AS tracking_ref, e.ip_address, c.statut, c.numero_tracking AS reference, c.created_at AS colis_date
             FROM website_analytics_events e
-            LEFT JOIN lbp_colis c ON (c.numero_tracking = e.target_label OR c.reference = e.target_label)
+            LEFT JOIN lbp_colis c ON c.numero_tracking = e.target_label
             WHERE e.target_key = 'tracking_search' OR e.page_path LIKE '%tracking%'
             ORDER BY e.id DESC
             LIMIT 25
