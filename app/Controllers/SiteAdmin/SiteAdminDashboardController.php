@@ -36,12 +36,16 @@ final class SiteAdminDashboardController extends SiteAdminBaseController
         AuthMiddleware::check();
 
         $module = $this->service->dashboard();
+        $analyticsData = (new WebsiteAnalyticsRepository(Database::getConnection()))->dashboard();
 
         $this->siteAdminView(
             'site_admin/dashboard',
             'Tableau de bord ' . (string) $module['label'],
             'dashboard',
-            ['page' => new DashboardPage($module)],
+            [
+                'page' => new DashboardPage($module),
+                'analytics' => $analyticsData,
+            ],
             $module,
         );
     }
