@@ -121,13 +121,14 @@ ob_start();
     </script>
 
     <!-- Partenaires & Hubs -->
-    <section class="site-trust-strip" style="background: #ffffff; border-radius: 14px; padding: 20px 28px; border: 1px solid #e2e8f0; margin-bottom: 30px;">
-        <span style="font-size: 0.85rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Réseau & Partenaires International</span>
-        <strong>AFRICA MEDICAL</strong>
-        <strong>KAB TRANSIT</strong>
-        <strong>NOVA RETAIL</strong>
-        <strong>WEST AFRICA TRADE</strong>
-        <strong>CI INDUSTRIES</strong>
+    <section class="site-trust-strip" style="background: #ffffff; border-radius: 14px; padding: 20px 28px; border: 1px solid #e2e8f0; margin-bottom: 30px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:15px;">
+        <span style="font-size: 0.85rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Partenaires & Compagnies Logistiques</span>
+        <strong style="color:#0f172a; font-weight:800; font-size:0.9rem;">PORT AUTONOME D'ABIDJAN</strong>
+        <strong style="color:#0f172a; font-weight:800; font-size:0.9rem;">AIR FRANCE CARGO</strong>
+        <strong style="color:#0f172a; font-weight:800; font-size:0.9rem;">DHL EXPRESS</strong>
+        <strong style="color:#0f172a; font-weight:800; font-size:0.9rem;">MAERSK LINE</strong>
+        <strong style="color:#0f172a; font-weight:800; font-size:0.9rem;">ETHIOPIAN CARGO</strong>
+        <strong style="color:#0f172a; font-weight:800; font-size:0.9rem;">DOUANES IVOIRIENNES</strong>
     </section>
 
     <?= Site::stats($page->stats) ?>

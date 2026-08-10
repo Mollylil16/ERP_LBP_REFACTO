@@ -24,12 +24,12 @@ $statusClass = match(strtoupper($current['status'] ?? '')) {
 
 <style>
 /* Live Tracking Styles */
-.yango-container {
+.lbp-track-container {
     max-width: 1200px;
     margin: 0 auto;
     padding: 20px 20px 60px 20px;
 }
-.yango-hero {
+.lbp-track-hero {
     background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
     border-radius: 20px;
     padding: 35px 40px;
@@ -38,18 +38,18 @@ $statusClass = match(strtoupper($current['status'] ?? '')) {
     box-shadow: 0 20px 40px -15px rgba(15, 23, 42, 0.35);
     border: 1px solid rgba(255, 255, 255, 0.08);
 }
-.yango-hero h1 {
+.lbp-track-hero h1 {
     font-size: 2rem;
     font-weight: 800;
     margin: 0 0 10px 0;
     color: #ffffff;
 }
-.yango-hero p {
+.lbp-track-hero p {
     color: #94a3b8;
     font-size: 1rem;
     margin: 0 0 24px 0;
 }
-.yango-searchbar {
+.lbp-track-searchbar {
     display: flex;
     gap: 12px;
     max-width: 650px;
@@ -59,7 +59,7 @@ $statusClass = match(strtoupper($current['status'] ?? '')) {
     border: 1px solid rgba(255, 255, 255, 0.15);
     backdrop-filter: blur(10px);
 }
-.yango-searchbar input {
+.lbp-track-searchbar input {
     flex: 1;
     background: transparent;
     border: none;
@@ -69,10 +69,10 @@ $statusClass = match(strtoupper($current['status'] ?? '')) {
     outline: none;
     font-weight: 600;
 }
-.yango-searchbar input::placeholder {
+.lbp-track-searchbar input::placeholder {
     color: #94a3b8;
 }
-.yango-searchbar button {
+.lbp-track-searchbar button {
     background: #2563eb;
     color: #ffffff;
     border: none;
@@ -87,13 +87,13 @@ $statusClass = match(strtoupper($current['status'] ?? '')) {
     transition: all 0.2s ease;
     box-shadow: 0 4px 14px rgba(37, 99, 235, 0.4);
 }
-.yango-searchbar button:hover {
+.lbp-track-searchbar button:hover {
     background: #1d4ed8;
     transform: translateY(-1px);
 }
 
 /* Tracking Map Card */
-.yango-map-card {
+.lbp-track-map-card {
     background: #ffffff;
     border-radius: 20px;
     border: 1px solid #e2e8f0;
@@ -102,7 +102,7 @@ $statusClass = match(strtoupper($current['status'] ?? '')) {
     margin-bottom: 25px;
     position: relative;
 }
-.yango-map-header {
+.lbp-track-map-header {
     padding: 20px 28px;
     border-bottom: 1px solid #e2e8f0;
     display: flex;
@@ -112,18 +112,18 @@ $statusClass = match(strtoupper($current['status'] ?? '')) {
     flex-wrap: wrap;
     gap: 15px;
 }
-.yango-map-header__title {
+.lbp-track-map-header__title {
     display: flex;
     align-items: center;
     gap: 12px;
 }
-.yango-map-header__title strong {
+.lbp-track-map-header__title strong {
     font-size: 1.3rem;
     font-weight: 800;
     color: #0f172a;
     font-family: Consolas, Monaco, monospace;
 }
-.yango-live-tag {
+.lbp-track-live-tag {
     display: inline-flex;
     align-items: center;
     gap: 6px;
@@ -137,17 +137,17 @@ $statusClass = match(strtoupper($current['status'] ?? '')) {
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
-.yango-pulse {
+.lbp-track-pulse {
     width: 8px;
     height: 8px;
     border-radius: 50%;
     background: #10b981;
-    animation: yangoPulse 1.5s infinite;
+    animation: lbpPulse 1.5s infinite;
 }
-@keyframes yangoPulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(1.3); } }
+@keyframes lbpPulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(1.3); } }
 
 /* Leaflet Container */
-#yango-live-map {
+#lbp-live-map {
     height: 420px;
     width: 100%;
     background: #0f172a;
@@ -155,7 +155,7 @@ $statusClass = match(strtoupper($current['status'] ?? '')) {
 }
 
 /* Map Overlay Floating HUD */
-.yango-hud {
+.lbp-track-hud {
     position: absolute;
     bottom: 20px;
     left: 20px;
@@ -172,12 +172,12 @@ $statusClass = match(strtoupper($current['status'] ?? '')) {
     box-shadow: 0 10px 25px rgba(0,0,0,0.3);
     max-width: calc(100% - 40px);
 }
-.yango-hud__speed {
+.lbp-track-hud__speed {
     display: flex;
     align-items: center;
     gap: 12px;
 }
-.yango-hud__icon {
+.lbp-track-hud__icon {
     width: 44px;
     height: 44px;
     border-radius: 12px;
@@ -188,36 +188,36 @@ $statusClass = match(strtoupper($current['status'] ?? '')) {
     justify-content: center;
     box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
 }
-.yango-hud__info strong {
+.lbp-track-hud__info strong {
     display: block;
     font-size: 0.95rem;
     font-weight: 700;
     color: #ffffff;
 }
-.yango-hud__info small {
+.lbp-track-hud__info small {
     color: #94a3b8;
     font-size: 0.78rem;
 }
 
 /* Details Grid */
-.yango-details-grid {
+.lbp-track-details-grid {
     display: grid;
     grid-template-columns: 1fr 380px;
     gap: 25px;
 }
 @media (max-width: 900px) {
-    .yango-details-grid {
+    .lbp-track-details-grid {
         grid-template-columns: 1fr;
     }
 }
-.yango-card {
+.lbp-track-card {
     background: #ffffff;
     border-radius: 18px;
     padding: 28px;
     border: 1px solid #e2e8f0;
     box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.05);
 }
-.yango-card-title {
+.lbp-track-card-title {
     font-size: 1.15rem;
     font-weight: 800;
     color: #0f172a;
@@ -228,11 +228,11 @@ $statusClass = match(strtoupper($current['status'] ?? '')) {
 }
 
 /* Timeline */
-.yango-timeline {
+.lbp-track-timeline {
     position: relative;
     padding-left: 30px;
 }
-.yango-timeline::before {
+.lbp-track-timeline::before {
     content: '';
     position: absolute;
     top: 5px;
@@ -242,14 +242,14 @@ $statusClass = match(strtoupper($current['status'] ?? '')) {
     background: #e2e8f0;
     border-radius: 2px;
 }
-.yango-step {
+.lbp-track-step {
     position: relative;
     margin-bottom: 24px;
 }
-.yango-step:last-child {
+.lbp-track-step:last-child {
     margin-bottom: 0;
 }
-.yango-step-dot {
+.lbp-track-step-dot {
     position: absolute;
     left: -30px;
     top: 3px;
@@ -260,30 +260,30 @@ $statusClass = match(strtoupper($current['status'] ?? '')) {
     border: 3px solid #2563eb;
     box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
 }
-.yango-step--active .yango-step-dot {
+.lbp-track-step--active .lbp-track-step-dot {
     background: #10b981;
     border-color: #10b981;
     box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.25);
 }
-.yango-step-time {
+.lbp-track-step-time {
     font-size: 0.78rem;
     font-weight: 700;
     color: #64748b;
     margin-bottom: 3px;
 }
-.yango-step-title {
+.lbp-track-step-title {
     font-size: 0.95rem;
     font-weight: 700;
     color: #0f172a;
 }
-.yango-step-detail {
+.lbp-track-step-detail {
     font-size: 0.85rem;
     color: #64748b;
     margin-top: 2px;
 }
 
 /* Custom Vehicle Map Marker Icon */
-.yango-vehicle-marker {
+.lbp-track-vehicle-marker {
     background: #2563eb;
     border: 3px solid #ffffff;
     border-radius: 50%;
@@ -296,13 +296,13 @@ $statusClass = match(strtoupper($current['status'] ?? '')) {
     box-shadow: 0 8px 20px rgba(37, 99, 235, 0.5);
     transition: all 0.3s ease;
 }
-.yango-vehicle-marker svg {
+.lbp-track-vehicle-marker svg {
     width: 22px;
     height: 22px;
 }
 
 /* Custom Pin Marker Icon */
-.yango-pin-marker {
+.lbp-track-pin-marker {
     background: #0f172a;
     border: 2px solid #ffffff;
     border-radius: 50%;
@@ -319,10 +319,10 @@ $statusClass = match(strtoupper($current['status'] ?? '')) {
 </style>
 
 <div class="site-content">
-<div class="yango-container">
+<div class="lbp-track-container">
 
     <!-- Search Hero -->
-    <section class="yango-hero">
+    <section class="lbp-track-hero">
         <span style="display:inline-flex; align-items:center; gap:6px; background:rgba(37,99,235,0.2); color:#60a5fa; border:1px solid rgba(96,165,250,0.3); padding:4px 12px; border-radius:20px; font-size:0.8rem; font-weight:700; text-transform:uppercase; margin-bottom:12px;">
             <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2.5" fill="none"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10z"/></svg>
             Suivi GPS Temps Réel ERP LBP
@@ -330,7 +330,7 @@ $statusClass = match(strtoupper($current['status'] ?? '')) {
         <h1>Suivi GPS en Temps Réel du Colis</h1>
         <p>Visualisez la trajectoire animée de votre cargaison entre l'agence de départ et sa destination finale.</p>
         
-        <form class="yango-searchbar" method="get" action="<?= View::url('site/tracking') ?>">
+        <form class="lbp-track-searchbar" method="get" action="<?= View::url('site/tracking') ?>">
             <input type="text" name="ref" value="<?= View::e($current['reference'] ?? '') ?>" placeholder="Entrez votre N° de tracking (Ex: LBP-EXP-2026-00124)..." required>
             <button type="submit">
                 <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.5" fill="none"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
@@ -340,9 +340,9 @@ $statusClass = match(strtoupper($current['status'] ?? '')) {
     </section>
 
     <!-- Interactive Map Card -->
-    <section class="yango-map-card">
-        <div class="yango-map-header">
-            <div class="yango-map-header__title">
+    <section class="lbp-track-map-card">
+        <div class="lbp-track-map-header">
+            <div class="lbp-track-map-header__title">
                 <div style="width:38px; height:38px; border-radius:10px; background:#eff6ff; color:#2563eb; display:flex; align-items:center; justify-content:center;">
                     <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2.2" fill="none"><path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z"/><circle cx="12" cy="10" r="3"/></svg>
                 </div>
@@ -352,8 +352,8 @@ $statusClass = match(strtoupper($current['status'] ?? '')) {
                 </div>
             </div>
             <div style="display:flex; align-items:center; gap:12px;">
-                <span class="yango-live-tag">
-                    <span class="yango-pulse"></span>
+                <span class="lbp-track-live-tag">
+                    <span class="lbp-track-pulse"></span>
                     SUIVI GPS EN DIRECT LBP
                 </span>
                 <button type="button" id="btn-replay-animation" style="background:#f1f5f9; border:1px solid #cbd5e1; color:#334155; padding:6px 14px; border-radius:8px; font-weight:700; font-size:0.82rem; cursor:pointer; display:flex; align-items:center; gap:6px;">
@@ -364,12 +364,12 @@ $statusClass = match(strtoupper($current['status'] ?? '')) {
         </div>
 
         <!-- Leaflet Map Container -->
-        <div id="yango-live-map"></div>
+        <div id="lbp-live-map"></div>
 
         <!-- Floating HUD Overlay -->
-        <div class="yango-hud">
-            <div class="yango-hud__speed">
-                <div class="yango-hud__icon">
+        <div class="lbp-track-hud">
+            <div class="lbp-track-hud__speed">
+                <div class="lbp-track-hud__icon">
                     <?php if ($transportMode === 'ship'): ?>
                         <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none"><path d="M2 21c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.5 0 2.5 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/><path d="M19.38 20A11.6 11.6 0 0 0 21 14l-9-4-9 4c0 2.9.94 5.34 2.81 7.03"/><path d="M12 10V4"/><path d="M8 7h8"/></svg>
                     <?php elseif ($transportMode === 'truck'): ?>
@@ -378,7 +378,7 @@ $statusClass = match(strtoupper($current['status'] ?? '')) {
                         <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none"><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.7 5.2c.3.4.8.5 1.3.3l.5-.3c.4-.2.6-.6.5-1.1z"/></svg>
                     <?php endif; ?>
                 </div>
-                <div class="yango-hud__info">
+                <div class="lbp-track-hud__info">
                     <strong><?= View::e($current['origin']) ?> ➔ <?= View::e($current['destination']) ?></strong>
                     <small>Progression : <strong><?= $progressPct ?>%</strong> &bull; Position : <?= View::e($current['lastLocation'] ?? 'En transit') ?></small>
                 </div>
@@ -391,12 +391,12 @@ $statusClass = match(strtoupper($current['status'] ?? '')) {
     </section>
 
     <!-- Details Grid -->
-    <div class="yango-details-grid">
+    <div class="lbp-track-details-grid">
         
         <!-- Left: Status & Metadata -->
-        <div class="yango-card">
+        <div class="lbp-track-card">
             <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; flex-wrap:wrap; gap:10px;">
-                <h3 class="yango-card-title" style="margin:0;">
+                <h3 class="lbp-track-card-title" style="margin:0;">
                     <svg viewBox="0 0 24 24" width="22" height="22" stroke="#2563eb" stroke-width="2.2" fill="none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
                     Fiche Récapitulative du Colis
                 </h3>
@@ -438,23 +438,23 @@ $statusClass = match(strtoupper($current['status'] ?? '')) {
         </div>
 
         <!-- Right: GPS Steps Timeline -->
-        <div class="yango-card">
-            <h3 class="yango-card-title">
+        <div class="lbp-track-card">
+            <h3 class="lbp-track-card-title">
                 <svg viewBox="0 0 24 24" width="22" height="22" stroke="#16a34a" stroke-width="2.2" fill="none"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                 Jalons Logistiques & GPS
             </h3>
 
-            <div class="yango-timeline">
+            <div class="lbp-track-timeline">
                 <?php $stepsList = $current['steps'] ?? []; ?>
                 <?php if (empty($stepsList)): ?>
                     <p style="color:#64748b; font-size:0.88rem;">Aucun jalon GPS pour le moment.</p>
                 <?php else: ?>
                     <?php foreach ($stepsList as $idx => $step): ?>
-                        <div class="yango-step <?= $idx === count($stepsList) - 1 ? 'yango-step--active' : '' ?>">
-                            <div class="yango-step-dot"></div>
-                            <div class="yango-step-time"><?= View::e($step['date']) ?></div>
-                            <div class="yango-step-title"><?= View::e($step['title']) ?></div>
-                            <div class="yango-step-detail"><?= View::e($step['detail']) ?></div>
+                        <div class="lbp-track-step <?= $idx === count($stepsList) - 1 ? 'lbp-track-step--active' : '' ?>">
+                            <div class="lbp-track-step-dot"></div>
+                            <div class="lbp-track-step-time"><?= View::e($step['date']) ?></div>
+                            <div class="lbp-track-step-title"><?= View::e($step['title']) ?></div>
+                            <div class="lbp-track-step-detail"><?= View::e($step['detail']) ?></div>
                         </div>
                     <?php endforeach; ?>
                 <?php endif; ?>
@@ -477,7 +477,7 @@ document.addEventListener("DOMContentLoaded", function () {
     var mode = "<?= $transportMode ?>";
 
     // Initialize Leaflet Map
-    var map = L.map('yango-live-map', {
+    var map = L.map('lbp-live-map', {
         zoomControl: true,
         scrollWheelZoom: false
     }).setView([
@@ -494,7 +494,7 @@ document.addEventListener("DOMContentLoaded", function () {
     // Custom Departure Pin (Green)
     var startIcon = L.divIcon({
         className: '',
-        html: '<div class="yango-pin-marker" style="background:#10b981;">A</div>',
+        html: '<div class="lbp-track-pin-marker" style="background:#10b981;">A</div>',
         iconSize: [32, 32],
         iconAnchor: [16, 16]
     });
@@ -503,7 +503,7 @@ document.addEventListener("DOMContentLoaded", function () {
     // Custom Arrival Pin (Red)
     var endIcon = L.divIcon({
         className: '',
-        html: '<div class="yango-pin-marker" style="background:#ef4444;">B</div>',
+        html: '<div class="lbp-track-pin-marker" style="background:#ef4444;">B</div>',
         iconSize: [32, 32],
         iconAnchor: [16, 16]
     });
@@ -537,7 +537,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     var vehicleIcon = L.divIcon({
         className: '',
-        html: '<div class="yango-vehicle-marker">' + svgIcon + '</div>',
+        html: '<div class="lbp-track-vehicle-marker">' + svgIcon + '</div>',
         iconSize: [44, 44],
         iconAnchor: [22, 22]
     });

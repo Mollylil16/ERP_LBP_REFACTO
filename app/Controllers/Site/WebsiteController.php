@@ -149,7 +149,7 @@ final class WebsiteController extends BaseController
     private function siteView(string $view, string $title, string $activePage, string $reference = ''): void
     {
         $content = $this->website->content();
-        $shipments = $this->demoShipments();
+        $shipments = $this->realShipments();
 
         if ($reference !== '') {
             $realData = $this->website->getRealTrackingData($reference);
@@ -184,56 +184,41 @@ final class WebsiteController extends BaseController
         ]);
     }
 
-    private function demoShipments(): array
+    private function realShipments(): array
     {
-        return [
-            'LBP-EXP-2026-00124' => [
-                'reference' => 'LBP-EXP-2026-00124',
-                'client' => 'Société KAB Transit',
-                'origin' => 'Guangzhou, Chine',
-                'destination' => 'Abidjan, Côte d’Ivoire',
-                'status' => 'Dédouanement en cours',
-                'progress' => 68,
-                'eta' => '21/06/2026',
-                'lastLocation' => 'Port Autonome d’Abidjan',
-                'steps' => [
-                    ['date' => '05/06/2026', 'title' => 'Dossier créé', 'detail' => 'Documents commerciaux reçus et contrôlés par le service transit.'],
-                    ['date' => '09/06/2026', 'title' => 'Marchandise embarquée', 'detail' => 'Conteneur confirmé au départ de Guangzhou.'],
-                    ['date' => '13/06/2026', 'title' => 'Arrivée portuaire', 'detail' => 'Déclaration douanière en cours de traitement.'],
-                    ['date' => 'Prévu', 'title' => 'Livraison finale', 'detail' => 'Livraison planifiée après mainlevée.'],
-                ],
-            ],
-            'LBP-COL-2026-00087' => [
-                'reference' => 'LBP-COL-2026-00087',
-                'client' => 'Client Particulier',
-                'origin' => 'Paris, France',
-                'destination' => 'Yamoussoukro, Côte d’Ivoire',
-                'status' => 'En transit international',
-                'progress' => 44,
-                'eta' => '24/06/2026',
-                'lastLocation' => 'Hub aérien Europe',
-                'steps' => [
-                    ['date' => '10/06/2026', 'title' => 'Colis enregistré', 'detail' => 'Référence de suivi générée.'],
-                    ['date' => '12/06/2026', 'title' => 'Pris en charge', 'detail' => 'Tri et consolidation export réalisés.'],
-                    ['date' => 'En cours', 'title' => 'Transit aérien', 'detail' => 'Acheminement vers Abidjan.'],
-                ],
-            ],
-            'BL-LBP-778245-CI' => [
-                'reference' => 'BL-LBP-778245-CI',
-                'client' => 'AFRICA MEDICAL SUPPLY',
-                'origin' => 'Dubaï, EAU',
-                'destination' => 'Cotonou, Bénin',
-                'status' => 'Livré',
-                'progress' => 100,
-                'eta' => '12/06/2026',
-                'lastLocation' => 'Cotonou - Client final',
-                'steps' => [
-                    ['date' => '01/06/2026', 'title' => 'Départ fournisseur', 'detail' => 'Lot sécurisé et documenté.'],
-                    ['date' => '08/06/2026', 'title' => 'Dédouané', 'detail' => 'Mainlevée obtenue.'],
-                    ['date' => '12/06/2026', 'title' => 'Livré', 'detail' => 'Remis au destinataire final.'],
-                ],
-            ],
-        ];
+        try {
+            $pdo = \App\Models\Database::getConnection();
+            $colisList = $pdo->query("SELECT numero_tracking FROM lbp_colis ORDER BY id DESC LIMIT 5")->fetchAll(\PDO::FETCH_COLUMN);
+            $shipments = [];
+            foreach ($colisList as $ref) {
+                if (!empty($ref)) {
+                    $data = $this->website->getRealTrackingData((string)$ref);
+                    if ($data !== null) {
+                        $shipments[$data['reference']] = $data;
+                    }
+                }
+            }
+            if (!empty($shipments)) {
+                return $shipments;
+            }
+
+            $expList = $pdo->query("SELECT reference FROM lbp_expeditions ORDER BY id DESC LIMIT 5")->fetchAll(\PDO::FETCH_COLUMN);
+            foreach ($expList as $ref) {
+                if (!empty($ref)) {
+                    $data = $this->website->getRealTrackingData((string)$ref);
+                    if ($data !== null) {
+                        $shipments[$data['reference']] = $data;
+                    }
+                }
+            }
+            if (!empty($shipments)) {
+                return $shipments;
+            }
+        } catch (\Throwable $e) {
+            // fallback
+        }
+
+        return [];
     }
 
     private function demoAgencies(): array
