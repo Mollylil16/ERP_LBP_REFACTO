@@ -270,28 +270,29 @@ final class WebsiteController extends BaseController
         }
 
         return [
-            ['code' => 'ABJ-SIEGE', 'name' => 'LBP Siège Abidjan', 'city' => 'Abidjan', 'country' => 'Côte d’Ivoire', 'address' => 'Plateau, Avenue de la République', 'phone' => '+225 07 00 00 00 01', 'email' => 'contact@lbp-logistics.com', 'hours' => 'Lun–Ven 08:00–18:00', 'lat' => 5.3204, 'lng' => -4.0161, 'services' => 'Transit, devis, suivi client'],
-            ['code' => 'GUANGZHOU', 'name' => 'LBP Guangzhou Desk', 'city' => 'Guangzhou', 'country' => 'Chine', 'address' => 'Baiyun logistics area', 'phone' => '+86 20 0000 0001', 'email' => 'china@lbp-logistics.com', 'hours' => 'Lun–Sam 09:00–18:00', 'lat' => 23.1291, 'lng' => 113.2644, 'services' => 'Achat, groupage, export'],
-            ['code' => 'PARIS', 'name' => 'LBP Paris Relay', 'city' => 'Paris', 'country' => 'France', 'address' => 'Île-de-France, zone fret', 'phone' => '+33 1 00 00 00 01', 'email' => 'paris@lbp-logistics.com', 'hours' => 'Lun–Ven 09:00–18:00', 'lat' => 48.8566, 'lng' => 2.3522, 'services' => 'Colis, documents, fret aérien'],
+            ['code' => 'ABJ-HQ', 'name' => 'LBP Siège Abidjan', 'city' => 'Abidjan', 'country' => 'Côte d’Ivoire', 'address' => 'Plateau, Avenue de la République', 'phone' => '+225 07 00 00 00 01', 'email' => 'contact@lbp-logistics.com', 'hours' => 'Lun–Ven 08:00–18:00', 'lat' => 5.3204, 'lng' => -4.0161, 'services' => 'Transit, devis, suivi client'],
+            ['code' => 'FRA', 'name' => 'LBP Paris - Bobigny', 'city' => 'Bobigny', 'country' => 'France', 'address' => '17 chemin des Vignes, 93000 Bobigny', 'phone' => '+33 1 48 00 00 00', 'email' => 'paris@lbp-logistics.com', 'hours' => 'Lun–Ven 09:00–18:00', 'lat' => 48.9086, 'lng' => 2.4397, 'services' => 'Colis, fret aérien, réception'],
+            ['code' => 'SEN', 'name' => 'LBP Agence Sénégal', 'city' => 'Dakar', 'country' => 'Sénégal', 'address' => 'Avenue Lamine Guèye, Dakar', 'phone' => '+221 33 800 00 00', 'email' => 'dakar@lbp-logistics.com', 'hours' => 'Lun–Ven 08:00–17:30', 'lat' => 14.6937, 'lng' => -17.4441, 'services' => 'Transit régional, colis, fret'],
+            ['code' => 'SPY', 'name' => 'LBP Agence San Pedro', 'city' => 'San Pedro', 'country' => 'Côte d’Ivoire', 'address' => 'Zone portuaire, San Pedro', 'phone' => '+225 07 00 00 00 03', 'email' => 'sanpedro@lbp-logistics.com', 'hours' => 'Lun–Ven 08:00–17:00', 'lat' => 4.7485, 'lng' => -6.6363, 'services' => 'Export, fret maritime, logistique'],
         ];
     }
 
     private function demoServices(): array
     {
         return [
-            ['title' => 'Dédouanement', 'text' => 'Formalités import-export, classification, liquidation et suivi mainlevée.', 'icon' => 'customs'],
-            ['title' => 'Fret international', 'text' => 'Organisation maritime, aérienne et routière avec consolidation multi-pays.', 'icon' => 'freight'],
-            ['title' => 'Tracking digital', 'text' => 'Références colis, notifications client et jalons opérationnels connectés ERP.', 'icon' => 'tracking'],
-            ['title' => 'Livraison locale', 'text' => 'Planification enlèvement, entreposage, dispatch et preuve de livraison.', 'icon' => 'delivery'],
+            ['title' => 'Dédouanement & Douane', 'text' => 'Formalités import-export, liquidation et suivi des mainlevées douanières.', 'icon' => 'customs'],
+            ['title' => 'Fret International Aérien & Maritime', 'text' => 'Organisation de transport aérien express et conteneurs maritimes FCL/LCL.', 'icon' => 'freight'],
+            ['title' => 'Suivi GPS en Temps Réel', 'text' => 'Tracking digital par code-barres et jalons GPS connectés à l’ERP.', 'icon' => 'tracking'],
+            ['title' => 'Enlèvement & Livraison Locale', 'text' => 'Prise en charge à domicile, stockage en rayon et remise finale.', 'icon' => 'delivery'],
         ];
     }
 
     private function demoNews(): array
     {
         return [
-            ['title' => 'Nouvelle liaison Guangzhou vers Abidjan', 'date' => 'Juin 2026'],
-            ['title' => 'Suivi colis disponible 24/7', 'date' => 'Juin 2026'],
-            ['title' => 'Extension du réseau LBP à Lomé et Cotonou', 'date' => 'Mai 2026'],
+            ['title' => 'Liaison Fret Aérien Paris ➔ Abidjan : Départs Quotidiens', 'date' => 'Juin 2026'],
+            ['title' => 'Suivi GPS Colis en temps réel disponible 24/7', 'date' => 'Juin 2026'],
+            ['title' => 'Optimisation du Dédouanement au Port Autonome d’Abidjan', 'date' => 'Mai 2026'],
         ];
     }
 }
