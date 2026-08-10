@@ -43,6 +43,7 @@ final class WebsiteCustomerController extends BaseController
                 $data['conversation'] ?? [],
                 $data['messages'] ?? [],
                 $customerId > 0,
+                $data['parcels'] ?? [],
             ),
         ]);
     }

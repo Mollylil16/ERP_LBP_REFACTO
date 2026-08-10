@@ -41,6 +41,8 @@ $nav = [
     <link href="<?= View::asset('css/finea-ui.css') ?>" rel="stylesheet">
     <link href="<?= View::asset('css/site.css') ?>" rel="stylesheet">
     <link href="<?= View::asset('css/site-chat.css') ?>" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 <body class="site-body" style="--site-primary:<?= View::e($page->brand('primary_color', '#111c44')) ?>;--site-secondary:<?= View::e($page->brand('secondary_color', '#ffcc00')) ?>;--site-accent:<?= View::e($page->brand('accent_color', '#d40511')) ?>;--site-surface:<?= View::e($page->brand('surface_color', '#f5f7fb')) ?>;--site-font:'<?= View::e($font) ?>',sans-serif">
 <?php if ($page->announcements !== []): ?>

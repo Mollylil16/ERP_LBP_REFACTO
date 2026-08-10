@@ -283,6 +283,42 @@ final class WebsiteService
             $destName = $colis['destinataire_name'] ?? 'Client Destinataire';
             $maskedClient = mb_substr($destName, 0, 3) . '*** ' . mb_substr($destName, -2);
 
+            $coordsMap = [
+                'abidjan' => [5.359951, -4.008256],
+                'paris' => [48.856614, 2.352221],
+                'dakar' => [14.716677, -17.467686],
+                'montreal' => [45.501688, -73.567256],
+                'montréal' => [45.501688, -73.567256],
+                'canada' => [45.501688, -73.567256],
+                'douala' => [4.051056, 9.767868],
+                'bamako' => [12.639232, -8.002889],
+                'ouagadougou' => [12.371428, -1.519660],
+            ];
+
+            $resolveCoords = static function(?string $name, array $default): array {
+                $nameLower = mb_strtolower((string) $name, 'UTF-8');
+                foreach ([
+                    'abidjan' => [5.359951, -4.008256],
+                    'paris' => [48.856614, 2.352221],
+                    'dakar' => [14.716677, -17.467686],
+                    'montreal' => [45.501688, -73.567256],
+                    'montréal' => [45.501688, -73.567256],
+                    'canada' => [45.501688, -73.567256],
+                    'douala' => [4.051056, 9.767868],
+                ] as $key => $c) {
+                    if (str_contains($nameLower, $key)) {
+                        return $c;
+                    }
+                }
+                return $default;
+            };
+
+            $originCoords = $resolveCoords($colis['agence_depart_name'] ?? '', [5.359951, -4.008256]);
+            $destCoords = $resolveCoords($colis['agence_arrivee_name'] ?? '', [48.856614, 2.352221]);
+
+            $typeExp = strtolower((string)($colis['type_expediteur'] ?? 'aerien'));
+            $mode = str_contains($typeExp, 'maritime') ? 'ship' : (str_contains($typeExp, 'dhl') || str_contains($typeExp, 'express') ? 'truck' : 'plane');
+
             return [
                 'reference' => $colis['numero_tracking'],
                 'client' => $maskedClient,
@@ -292,6 +328,11 @@ final class WebsiteService
                 'progress' => $progress,
                 'eta' => !empty($colis['date_limite_retrait']) ? date('d/m/Y', strtotime($colis['date_limite_retrait'])) : 'Non spécifiée',
                 'lastLocation' => $lastLocation,
+                'origin_coords' => $originCoords,
+                'dest_coords' => $destCoords,
+                'transport_mode' => $mode,
+                'poids_total' => $colis['poids_total'] ?? 0,
+                'nombre_colis' => $colis['nombre_colis'] ?? 1,
                 'steps' => $steps,
             ];
         }
@@ -336,6 +377,28 @@ final class WebsiteService
                 ];
             }
 
+            $resolveCoords = static function(?string $name, array $default): array {
+                $nameLower = mb_strtolower((string) $name, 'UTF-8');
+                foreach ([
+                    'abidjan' => [5.359951, -4.008256],
+                    'paris' => [48.856614, 2.352221],
+                    'dakar' => [14.716677, -17.467686],
+                    'montreal' => [45.501688, -73.567256],
+                    'montréal' => [45.501688, -73.567256],
+                    'canada' => [45.501688, -73.567256],
+                ] as $key => $c) {
+                    if (str_contains($nameLower, $key)) {
+                        return $c;
+                    }
+                }
+                return $default;
+            };
+
+            $originCoords = $resolveCoords($exp['agence_depart_name'], [5.359951, -4.008256]);
+            $destCoords = $resolveCoords($exp['agence_arrivee_name'], [48.856614, 2.352221]);
+            $typeTrans = strtolower((string)$exp['type_transport']);
+            $mode = str_contains($typeTrans, 'maritime') ? 'ship' : (str_contains($typeTrans, 'dhl') || str_contains($typeTrans, 'express') ? 'truck' : 'plane');
+
             return [
                 'reference' => $exp['reference'],
                 'client' => 'Groupage ' . $exp['type_transport'],
@@ -345,6 +408,9 @@ final class WebsiteService
                 'progress' => $progress,
                 'eta' => !empty($exp['date_arrivee_estimee']) ? date('d/m/Y', strtotime($exp['date_arrivee_estimee'])) : 'En cours',
                 'lastLocation' => $exp['statut'] === 'ARRIVÉ' ? $exp['agence_arrivee_name'] : 'En transit international',
+                'origin_coords' => $originCoords,
+                'dest_coords' => $destCoords,
+                'transport_mode' => $mode,
                 'steps' => $steps,
             ];
         }

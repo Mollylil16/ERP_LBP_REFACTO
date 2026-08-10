@@ -1834,6 +1834,10 @@ class MigrationRunner
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         ");
 
+        $this->addColumnIfMissing('lbp_demandes_fournitures', 'quantite', "INT UNSIGNED NOT NULL DEFAULT 1");
+        $this->addColumnIfMissing('lbp_demandes_fournitures', 'prix_unitaire', "DECIMAL(15,2) NULL");
+        $this->addColumnIfMissing('lbp_demandes_fournitures', 'montant', "DECIMAL(15,2) NULL");
+
         $this->pdo->exec("
             CREATE TABLE IF NOT EXISTS lbp_client_wallets (
                 id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,

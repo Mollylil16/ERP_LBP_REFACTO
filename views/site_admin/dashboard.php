@@ -369,37 +369,93 @@ ob_start();
         </a>
     </div>
 
+    <?php
+    $renderDashboardStatusBadge = static function(?string $statut): string {
+        if (empty($statut)) {
+            return '<span style="display:inline-flex; align-items:center; gap:5px; padding:4px 12px; border-radius:20px; font-size:0.76rem; font-weight:700; background:#fef2f2; color:#dc2626; border:1px solid #fecaca;"><span style="width:6px; height:6px; border-radius:50%; background:#ef4444; display:inline-block;"></span> NON TROUVÉ EN ERP</span>';
+        }
+        
+        $cleanStatus = mb_strtoupper(trim($statut), 'UTF-8');
+        
+        $config = match(true) {
+            str_contains($cleanStatus, 'RETIR') || str_contains($cleanStatus, 'LIVR') => [
+                'bg' => '#dcfce7', 'color' => '#15803d', 'border' => '#86efac', 'dot' => '#22c55e', 'label' => $cleanStatus
+            ],
+            str_contains($cleanStatus, 'TRANSIT') => [
+                'bg' => '#dbeafe', 'color' => '#1e40af', 'border' => '#93c5fd', 'dot' => '#3b82f6', 'label' => 'EN TRANSIT'
+            ],
+            str_contains($cleanStatus, 'ARRIV') || str_contains($cleanStatus, 'RECEPT') => [
+                'bg' => '#ccfbf1', 'color' => '#0f766e', 'border' => '#99f6e4', 'dot' => '#14b8a6', 'label' => $cleanStatus
+            ],
+            str_contains($cleanStatus, 'PREPAR') || str_contains($cleanStatus, 'BROUILLON') => [
+                'bg' => '#fef3c7', 'color' => '#b45309', 'border' => '#fde68a', 'dot' => '#f59e0b', 'label' => $cleanStatus
+            ],
+            default => [
+                'bg' => '#f1f5f9', 'color' => '#475569', 'border' => '#cbd5e1', 'dot' => '#64748b', 'label' => $cleanStatus
+            ]
+        };
+        
+        return sprintf(
+            '<span style="display:inline-flex; align-items:center; gap:5px; padding:4px 12px; border-radius:20px; font-size:0.78rem; font-weight:700; background:%s; color:%s; border:1px solid %s;"><span style="width:6px; height:6px; border-radius:50%%; background:%s; display:inline-block;"></span> %s</span>',
+            $config['bg'],
+            $config['color'],
+            $config['border'],
+            $config['dot'],
+            View::e($config['label'])
+        );
+    };
+    ?>
+
     <!-- Live Feed Table Section -->
-    <section class="site-feed-card">
-        <div class="site-feed-title">
-            <span>Dernières Recherches Colis & Activités du Site</span>
-            <span class="live-badge"><span class="live-pulse-dot"></span> SYNCHRONISÉ ERP</span>
+    <section class="site-feed-card" style="background:#ffffff; border-radius:18px; padding:28px; border:1px solid #e2e8f0; box-shadow: 0 10px 30px -5px rgba(15, 23, 42, 0.05);">
+        <div class="site-feed-title" style="margin-bottom: 20px; display:flex; align-items:center; justify-content:space-between;">
+            <div style="display:flex; align-items:center; gap:12px;">
+                <div style="width:40px; height:40px; border-radius:12px; background:#eff6ff; color:#2563eb; display:flex; align-items:center; justify-content:center;">
+                    <svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" stroke-width="2.2" fill="none"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                </div>
+                <span style="font-size:1.15rem; font-weight:800; color:#0f172a;">Dernières Recherches Colis & Activités du Site</span>
+            </div>
+            <span class="live-badge" style="background:#ecfdf5; color:#047857; font-weight:700; padding:6px 14px; border-radius:20px; font-size:0.8rem; border:1px solid #a7f3d0;"><span class="live-pulse-dot"></span> SYNCHRONISÉ ERP</span>
         </div>
 
         <?php if (empty($trackingSearches)): ?>
-            <p style="color: #64748b; font-size: 0.92rem; margin: 0; padding: 10px 0;">Aucune recherche récente enregistrée. Les consultations de colis effectuées par les clients s'afficheront ici en temps réel.</p>
+            <div style="text-align:center; padding:35px 20px; background:#f8fafc; border-radius:12px; border:1px dashed #cbd5e1; color:#64748b;">
+                <svg viewBox="0 0 24 24" width="40" height="40" stroke="#94a3b8" stroke-width="1.5" fill="none" style="margin-bottom:10px;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <p style="margin:0; font-size:0.95rem; font-weight:600;">Aucune recherche de colis récente enregistrée.</p>
+                <p style="margin:4px 0 0 0; font-size:0.82rem; color:#94a3b8;">Les consultations de suivi effectuées par les clients s'afficheront ici en temps réel.</p>
+            </div>
         <?php else: ?>
-            <div class="site-analytics-table">
-                <table>
+            <div style="overflow-x:auto; border-radius:12px; border:1px solid #e2e8f0;">
+                <table style="width:100%; border-collapse:collapse; text-align:left; font-size:0.88rem; background:#ffffff;">
                     <thead>
-                        <tr>
-                            <th>Heure</th>
-                            <th>Code Colis recherché</th>
-                            <th>Statut dans l'ERP</th>
-                            <th>Adresse IP Client</th>
+                        <tr style="background:#f8fafc; border-bottom:2px solid #e2e8f0; color:#475569; font-size:0.78rem; text-transform:uppercase; letter-spacing:0.6px;">
+                            <th style="padding:14px 20px; font-weight:800; width:150px;">Heure</th>
+                            <th style="padding:14px 20px; font-weight:800;">Code Colis recherché</th>
+                            <th style="padding:14px 20px; font-weight:800;">Statut dans l'ERP</th>
+                            <th style="padding:14px 20px; font-weight:800; text-align:right; width:180px;">Adresse IP Client</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <?php foreach (array_slice($trackingSearches, 0, 5) as $row): ?>
-                            <tr>
-                                <td><strong><?= View::e(date('H:i:s', strtotime((string)$row['created_at']))) ?></strong></td>
-                                <td><code style="background:#eff6ff; color:#1d4ed8; padding:3px 8px; border-radius:6px; font-weight:700;"><?= View::e((string)$row['tracking_ref']) ?></code></td>
-                                <td>
-                                    <span style="display:inline-block; padding:3px 10px; border-radius:12px; font-size:0.78rem; font-weight:700; background:#dbeafe; color:#1e40af;">
-                                        <?= View::e(strtoupper((string)($row['statut'] ?: 'EN TRANSIT'))) ?>
+                        <?php foreach (array_slice($trackingSearches, 0, 10) as $row): ?>
+                            <tr style="border-bottom:1px solid #f1f5f9; transition:background 0.15s ease;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='#ffffff'">
+                                <td style="padding:14px 20px; white-space:nowrap;">
+                                    <strong style="color:#0f172a; font-size:0.9rem;"><?= View::e(date('H:i:s', strtotime((string)$row['created_at']))) ?></strong>
+                                    <span style="color:#94a3b8; font-size:0.78rem; margin-left:6px; background:#f1f5f9; padding:2px 6px; border-radius:4px;"><?= View::e(date('d/m', strtotime((string)$row['created_at']))) ?></span>
+                                </td>
+                                <td style="padding:14px 20px;">
+                                    <code style="font-family:Consolas, Monaco, monospace; font-size:0.9rem; background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe; padding:5px 12px; border-radius:8px; font-weight:700; letter-spacing:0.5px; display:inline-block;">
+                                        <?= View::e((string)$row['tracking_ref']) ?>
+                                    </code>
+                                </td>
+                                <td style="padding:14px 20px;">
+                                    <?= $renderDashboardStatusBadge($row['statut'] ?? null) ?>
+                                </td>
+                                <td style="padding:14px 20px; text-align:right; white-space:nowrap;">
+                                    <span style="font-family:Consolas, Monaco, monospace; color:#475569; font-size:0.85rem; background:#f1f5f9; border:1px solid #e2e8f0; padding:4px 10px; border-radius:6px; display:inline-flex; align-items:center; gap:6px;">
+                                        <svg viewBox="0 0 24 24" width="13" height="13" stroke="#64748b" stroke-width="2" fill="none"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10z"/></svg>
+                                        <?= View::e((string)$row['ip_address']) ?>
                                     </span>
                                 </td>
-                                <td><?= View::e((string)$row['ip_address']) ?></td>
                             </tr>
                         <?php endforeach; ?>
                     </tbody>

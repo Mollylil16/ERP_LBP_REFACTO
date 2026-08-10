@@ -56,23 +56,38 @@ final class SiteAnalytics
         $html .= '</section>';
 
         // 2. Recherches de colis (Tracking) sur le site
-        $html .= '<section class="finea-section-card" style="margin-bottom: 24px;">';
-        $html .= '<h2 class="finea-section-title">🔍 Qui suit son colis sur le site ? (Consultations récentes)</h2>';
+        $html .= '<section class="finea-section-card" style="margin-bottom: 24px; padding: 24px;">';
+        $html .= '<h2 class="finea-section-title" style="margin-bottom: 16px; font-weight: 800; display:flex; align-items:center; gap:8px;"><svg viewBox="0 0 24 24" width="20" height="20" stroke="#2563eb" stroke-width="2.2" fill="none"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg> Qui suit son colis sur le site ? (Consultations récentes)</h2>';
         if (empty($d['tracking_searches'])) {
             $html .= '<p style="color: #64748b; font-size: 0.9rem; padding: 12px 0;">Aucune recherche de colis récente enregistrée. Les consultations de tracking s\'afficheront ici.</p>';
         } else {
-            $html .= '<div class="site-analytics-table"><table><thead><tr><th>Date & Heure</th><th>N° Tracking / Référence</th><th>Statut du Colis</th><th>Adresse IP Visiteur</th></tr></thead><tbody>';
+            $html .= '<div style="overflow-x:auto; border-radius:12px; border:1px solid #e2e8f0;"><table style="width:100%; border-collapse:collapse; text-align:left; font-size:0.88rem; background:#ffffff;"><thead><tr style="background:#f8fafc; border-bottom:2px solid #e2e8f0; color:#475569; font-size:0.78rem; text-transform:uppercase; letter-spacing:0.6px;"><th style="padding:14px 18px; font-weight:800; width:160px;">Date & Heure</th><th style="padding:14px 18px; font-weight:800;">N° Tracking / Référence</th><th style="padding:14px 18px; font-weight:800;">Statut du Colis</th><th style="padding:14px 18px; font-weight:800; text-align:right; width:180px;">Adresse IP Visiteur</th></tr></thead><tbody>';
             foreach ($d['tracking_searches'] as $row) {
-                $statusColor = '#2563eb';
-                $statusText = strtoupper((string)($row['statut'] ?: 'INCONNU'));
-                if (in_array($statusText, ['RETIRÉ', 'LIVRÉ'])) {
-                    $statusColor = '#10b981';
+                $statut = $row['statut'] ?? null;
+                $statusBadge = '';
+                if (empty($statut)) {
+                    $statusBadge = '<span style="display:inline-flex; align-items:center; gap:4px; padding:4px 12px; border-radius:20px; font-size:0.78rem; font-weight:700; background:#fef2f2; color:#dc2626; border:1px solid #fecaca;"><span style="width:6px; height:6px; border-radius:50%; background:#ef4444;"></span> NON TROUVÉ EN ERP</span>';
+                } else {
+                    $clean = mb_strtoupper(trim((string)$statut), 'UTF-8');
+                    $bg = '#dbeafe'; $color = '#1e40af'; $border = '#93c5fd'; $dot = '#3b82f6';
+                    if (str_contains($clean, 'RETIR') || str_contains($clean, 'LIVR')) {
+                        $bg = '#dcfce7'; $color = '#15803d'; $border = '#86efac'; $dot = '#22c55e';
+                    } elseif (str_contains($clean, 'ARRIV') || str_contains($clean, 'RECEPT')) {
+                        $bg = '#ccfbf1'; $color = '#0f766e'; $border = '#99f6e4'; $dot = '#14b8a6';
+                    } elseif (str_contains($clean, 'PREPAR') || str_contains($clean, 'BROUILLON')) {
+                        $bg = '#fef3c7'; $color = '#b45309'; $border = '#fde68a'; $dot = '#f59e0b';
+                    }
+                    $statusBadge = sprintf(
+                        '<span style="display:inline-flex; align-items:center; gap:4px; padding:4px 12px; border-radius:20px; font-size:0.78rem; font-weight:700; background:%s; color:%s; border:1px solid %s;"><span style="width:6px; height:6px; border-radius:50%%; background:%s;"></span> %s</span>',
+                        $bg, $color, $border, $dot, View::e($clean)
+                    );
                 }
-                $html .= '<tr>'
-                    . '<td>' . View::e(date('d/m/Y H:i', strtotime((string)$row['created_at']))) . '</td>'
-                    . '<td><strong style="color: #1d2b57;">' . View::e((string)$row['tracking_ref']) . '</strong></td>'
-                    . '<td><span style="display:inline-block; padding: 3px 10px; border-radius: 12px; font-size: 0.78rem; font-weight: 700; background: ' . $statusColor . '15; color: ' . $statusColor . ';">' . View::e($statusText) . '</span></td>'
-                    . '<td>' . View::e((string)$row['ip_address']) . '</td>'
+
+                $html .= '<tr style="border-bottom:1px solid #f1f5f9;">'
+                    . '<td style="padding:14px 18px; white-space:nowrap;"><strong style="color:#0f172a;">' . View::e(date('d/m/Y H:i', strtotime((string)$row['created_at']))) . '</strong></td>'
+                    . '<td style="padding:14px 18px;"><code style="font-family:Consolas, Monaco, monospace; font-size:0.9rem; background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe; padding:4px 10px; border-radius:6px; font-weight:700;">' . View::e((string)$row['tracking_ref']) . '</code></td>'
+                    . '<td style="padding:14px 18px;">' . $statusBadge . '</td>'
+                    . '<td style="padding:14px 18px; text-align:right; white-space:nowrap;"><span style="font-family:Consolas, monospace; color:#64748b; font-size:0.85rem; background:#f1f5f9; border:1px solid #e2e8f0; padding:4px 10px; border-radius:6px; display:inline-flex; align-items:center; gap:6px;"><svg viewBox="0 0 24 24" width="13" height="13" stroke="#64748b" stroke-width="2" fill="none"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10z"/></svg> ' . View::e((string)$row['ip_address']) . '</span></td>'
                     . '</tr>';
             }
             $html .= '</tbody></table></div>';
@@ -81,7 +96,7 @@ final class SiteAnalytics
 
         // 3. Colis retirés par les clients
         $html .= '<section class="finea-section-card" style="margin-bottom: 24px;">';
-        $html .= '<h2 class="finea-section-title">✅ Qui a récupéré son colis ? (Colis Retirés / Livrés)</h2>';
+        $html .= '<h2 class="finea-section-title" style="display:flex; align-items:center; gap:8px;"><svg viewBox="0 0 24 24" width="20" height="20" stroke="#16a34a" stroke-width="2.2" fill="none"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> Qui a récupéré son colis ? (Colis Retirés / Livrés)</h2>';
         if (empty($d['delivered_parcels'])) {
             $html .= '<p style="color: #64748b; font-size: 0.9rem; padding: 12px 0;">Aucun colis au statut RETIRÉ pour le moment.</p>';
         } else {

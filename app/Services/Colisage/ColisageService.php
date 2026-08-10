@@ -268,6 +268,19 @@ final class ColisageService
             }
 
             $pdo->commit();
+
+            // Envoi des notifications e-mail si des adresses e-mail ont été renseignées
+            if ($this->notificationService !== null) {
+                try {
+                    $colisDetails = $this->getParcelDetails($parcelId);
+                    if ($colisDetails !== null) {
+                        $this->notificationService->notifyParcelCreation($colisDetails);
+                    }
+                } catch (\Throwable $e) {
+                    error_log('[NOTIF_PARCEL_CREATION_ERROR] ' . $e->getMessage());
+                }
+            }
+
             return $parcelId;
         } catch (\Throwable $e) {
             if ($pdo->inTransaction()) {

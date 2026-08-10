@@ -26,7 +26,10 @@ final class SiteAdminDashboardRepository extends \App\Repositories\Shared\Module
         $trackingSearchesToday = (string) ($this->pdo->query("
             SELECT COUNT(*) 
             FROM website_analytics_events 
-            WHERE (target_key = 'tracking_search' OR page_path LIKE '%tracking%') 
+            WHERE (target_key = 'tracking_search' OR page_path LIKE '%tracking%')
+              AND target_label IS NOT NULL 
+              AND TRIM(target_label) != ''
+              AND target_label NOT IN ('Panier 0', 'Marketplace', 'Accueil', 'Boutique', 'Contact', 'Agences', 'Devis', 'Fermer', 'Envoyer')
               AND DATE(created_at) = CURDATE()
         ")->fetchColumn() ?: 0);
 

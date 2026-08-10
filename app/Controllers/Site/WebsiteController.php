@@ -54,6 +54,36 @@ final class WebsiteController extends BaseController
         $this->siteView('site/devis', 'Demande de devis', 'quote');
     }
 
+    public function submitQuote(): void
+    {
+        $name = trim((string)($_POST['customer_name'] ?? ''));
+        $email = trim((string)($_POST['email'] ?? ''));
+        $phone = trim((string)($_POST['phone'] ?? ''));
+        $origin = trim((string)($_POST['origin_country'] ?? ''));
+        $dest = trim((string)($_POST['destination_country'] ?? ''));
+        $mode = trim((string)($_POST['transport_mode'] ?? ''));
+        $goods = trim((string)($_POST['goods_description'] ?? ''));
+
+        if ($name !== '' && ($phone !== '' || $email !== '')) {
+            $subject = "Demande de Devis (" . strtoupper($mode ?: 'Transit') . ") : {$origin} -> {$dest}";
+            $message = "Origine: {$origin}\nDestination: {$dest}\nMode: {$mode}\nMarchandises: {$goods}";
+
+            $this->repository->saveLead([
+                'source' => 'devis_form',
+                'name' => $name,
+                'email' => $email,
+                'phone' => $phone,
+                'subject' => $subject,
+                'message' => $message,
+            ]);
+            \App\Helpers\Session::setFlash('success', 'Votre demande de devis a bien été enregistrée ! Un conseiller LBP vous recontactera sous 24h.');
+        } else {
+            \App\Helpers\Session::setFlash('error', 'Veuillez remplir votre nom et au moins un moyen de contact (Téléphone ou Email).');
+        }
+
+        $this->redirect('site/devis');
+    }
+
     public function contact(): void
     {
         $this->siteView('site/contact', 'Contact', 'contact');
@@ -72,6 +102,31 @@ final class WebsiteController extends BaseController
     public function forum(): void
     {
         $this->siteView('site/forum', 'Communauté', 'forum');
+    }
+
+    public function createForumTopic(): void
+    {
+        $title = trim((string)($_POST['title'] ?? ''));
+        $category = trim((string)($_POST['category'] ?? 'Général'));
+        $content = trim((string)($_POST['content'] ?? ''));
+        $author = trim((string)($_POST['author_name'] ?? 'Membre LBP'));
+
+        if ($title !== '' && $content !== '') {
+            $slug = strtolower((string)preg_replace('/[^a-z0-9]+/i', '-', $title));
+            $this->repository->saveForumTopic([
+                'category' => $category,
+                'title' => $title,
+                'slug' => $slug,
+                'excerpt' => mb_substr($content, 0, 120) . '...',
+                'content' => $content,
+                'author_name' => $author,
+            ]);
+            \App\Helpers\Session::setFlash('success', 'Votre sujet a été publié sur la communauté LBP !');
+        } else {
+            \App\Helpers\Session::setFlash('error', 'Veuillez remplir le titre et le contenu de votre message.');
+        }
+
+        $this->redirect('site/forum');
     }
 
     public function blog(): void

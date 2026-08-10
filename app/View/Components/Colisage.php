@@ -712,6 +712,31 @@ final class Colisage
         $modal = self::fournitureModal($siteOpts);
         $refusal = self::refusalModal();
 
+        $script = '<script>'
+            . 'document.addEventListener("DOMContentLoaded", function() {'
+            . '    var qtyEl = document.getElementById("fourniture_quantite");'
+            . '    var puEl = document.getElementById("fourniture_prix_unitaire");'
+            . '    var dispEl = document.getElementById("fourniture_montant_display");'
+            . '    var hidEl = document.getElementById("fourniture_montant");'
+            . '    function calcMontant() {'
+            . '        var q = parseInt(qtyEl ? qtyEl.value : 0) || 0;'
+            . '        var p = parseFloat(puEl ? puEl.value : 0) || 0;'
+            . '        var m = q * p;'
+            . '        if (dispEl) dispEl.innerText = m.toLocaleString("fr-FR") + " FCFA";'
+            . '        if (hidEl) hidEl.value = m;'
+            . '    }'
+            . '    if (qtyEl) qtyEl.addEventListener("input", calcMontant);'
+            . '    if (puEl) puEl.addEventListener("input", calcMontant);'
+            . '});'
+            . 'function openRefusalModal(demandeId) {'
+            . '    var modal = document.getElementById("modal-refus");'
+            . '    if (!modal) return;'
+            . '    var form = modal.querySelector("form");'
+            . '    if (form) form.action = "' . View::url('colisage/exploitation/fournitures/') . '" + demandeId + "/statut";'
+            . '    modal.style.display = "flex";'
+            . '}'
+            . '</script>';
+
         return '<div class="finea-shell">'
             . '<div class="finea-container">'
             . $header
@@ -719,7 +744,8 @@ final class Colisage
             . '</div>'
             . '</div>'
             . $modal
-            . $refusal;
+            . $refusal
+            . $script;
     }
 
     public static function documentsPage(array $manifests, array $parcels): string
@@ -2065,7 +2091,7 @@ final class Colisage
     {
         $rows = '';
         if ($demandes === []) {
-            $rows = '<tr><td colspan="6" style="text-align:center; padding:2rem; color:#94a3b8;">Aucune demande enregistrée.</td></tr>';
+            $rows = '<tr><td colspan="9" style="text-align:center; padding:2rem; color:#94a3b8;">Aucune demande enregistrée.</td></tr>';
         } else {
             foreach ($demandes as $d) {
                 $tone = match ($d['status']) {
@@ -2093,11 +2119,22 @@ final class Colisage
                     $actionHtml = '<span style="color:#64748b; font-size:0.85rem; font-weight:600;">Traité</span>';
                 }
 
+                $quantiteDisplay = isset($d['quantite']) ? (int) $d['quantite'] : '—';
+                $prixUnitaireDisplay = isset($d['prix_unitaire']) && $d['prix_unitaire'] !== null
+                    ? number_format((float) $d['prix_unitaire'], 0, ',', ' ') . ' FCFA'
+                    : '—';
+                $montantDisplay = isset($d['montant']) && $d['montant'] !== null
+                    ? '<strong style="color:#16a34a;">' . number_format((float) $d['montant'], 0, ',', ' ') . ' FCFA</strong>'
+                    : '—';
+
                 $rows .= '<tr>'
                     . '<td><small>' . View::e($d['created_at']) . '</small></td>'
                     . '<td><strong>' . View::e($d['agence_name']) . '</strong></td>'
                     . '<td>' . View::e($d['demandeur_name']) . '</td>'
                     . '<td>' . nl2br(View::e($d['items_requested'])) . $rejectionHtml . '</td>'
+                    . '<td style="text-align:center;">' . $quantiteDisplay . '</td>'
+                    . '<td style="text-align:right; white-space:nowrap;">' . $prixUnitaireDisplay . '</td>'
+                    . '<td style="text-align:right; white-space:nowrap;">' . $montantDisplay . '</td>'
                     . '<td>' . Ui::badge($statusLabel, $tone) . '</td>'
                     . '<td style="text-align:right; white-space:nowrap;">' . $actionHtml . '</td>'
                     . '</tr>';
@@ -2106,14 +2143,23 @@ final class Colisage
 
         return '<div class="finea-section-card"><h3 class="rh-step-title">Toutes les demandes de fournitures</h3>'
             . '<div class="finea-table-wrapper"><table class="finea-table"><thead>'
-            . '<tr style="background:#1e3a5f; color:#fff;"><th>Date</th><th>Agence</th><th>Demandeur</th><th>Description</th><th>Statut</th><th style="text-align:right;">Actions / Décisions</th></tr>'
+            . '<tr style="background:#1e3a5f; color:#fff;"><th>Date</th><th>Agence</th><th>Demandeur</th><th>Description</th><th style="text-align:center;">Quantité</th><th style="text-align:right;">Prix Unitaire</th><th style="text-align:right;">Montant</th><th>Statut</th><th style="text-align:right;">Actions / Décisions</th></tr>'
             . '</thead><tbody>' . $rows . '</tbody></table></div></div>';
     }
 
     public static function fournitureModal(array $siteOpts): string
     {
         $fields = Form::select('agence_id', $siteOpts, '', ['label' => 'Agence concernée', 'required' => true])
-            . Form::input('description', ['label' => 'Description détaillée', 'placeholder' => 'Ex: 5 Ramettes papier A4, 1 paquet de stylos bleus...', 'required' => true]);
+            . Form::input('description', ['label' => 'Description des fournitures', 'placeholder' => 'Ex: Ramettes papier A4, stylos bleus...', 'required' => true])
+            . '<div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:1rem;">'
+            . Form::input('quantite', ['label' => 'Quantité', 'type' => 'number', 'min' => '1', 'value' => '1', 'required' => true, 'id' => 'fourniture_quantite'])
+            . Form::input('prix_unitaire', ['label' => 'Prix unitaire (FCFA)', 'type' => 'number', 'min' => '0', 'step' => '1', 'placeholder' => 'Ex: 5000', 'id' => 'fourniture_prix_unitaire'])
+            . '<div class="rh-form-group">'
+            . '<label class="rh-label" style="font-weight:600;">Montant total (FCFA)</label>'
+            . '<div id="fourniture_montant_display" style="padding:0.6rem 1rem; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; font-size:1.1rem; font-weight:700; color:#16a34a; min-height:42px; display:flex; align-items:center;">0 FCFA</div>'
+            . '<input type="hidden" name="montant" id="fourniture_montant">'
+            . '</div>'
+            . '</div>';
 
         return Ui::modal('modal-demande', 'Faire une demande de fournitures', $fields, View::url('colisage/exploitation/fournitures/demander'));
     }

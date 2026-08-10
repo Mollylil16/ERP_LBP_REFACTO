@@ -18,6 +18,7 @@ final class CustomerAccountPage
         public readonly array $conversation = [],
         public readonly array $messages = [],
         public readonly bool $authenticated = false,
+        public readonly array $parcels = [],
     ) {
     }
 }

@@ -56,10 +56,31 @@ final class WebsiteCustomerService
             throw new RuntimeException('Compte client introuvable.');
         }
         $conversation = $this->repository->conversationForCustomer($customerId);
+
+        $pdo = \App\Models\Database::getConnection();
+        $stmt = $pdo->prepare("
+            SELECT c.*, s_dep.name AS agence_depart_name, s_arr.name AS agence_arrivee_name
+            FROM lbp_colis c
+            LEFT JOIN lbp_clients exp ON c.expediteur_id = exp.id
+            LEFT JOIN lbp_clients dest ON c.destinataire_id = dest.id
+            LEFT JOIN company_sites s_dep ON c.agence_depart_id = s_dep.id
+            LEFT JOIN company_sites s_arr ON c.agence_arrivee_id = s_arr.id
+            WHERE (exp.email IS NOT NULL AND exp.email != '' AND exp.email = :email)
+               OR (dest.email IS NOT NULL AND dest.email != '' AND dest.email = :email)
+               OR (exp.telephone IS NOT NULL AND exp.telephone != '' AND exp.telephone = :phone)
+            ORDER BY c.created_at DESC
+        ");
+        $stmt->execute([
+            'email' => $customer['email'],
+            'phone' => $customer['phone'] ?? '',
+        ]);
+        $parcels = $stmt->fetchAll(\PDO::FETCH_ASSOC) ?: [];
+
         return [
             'customer' => $customer,
             'conversation' => $conversation,
             'messages' => $this->repository->messages((int) $conversation['id']),
+            'parcels' => $parcels,
         ];
     }
 

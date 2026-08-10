@@ -204,4 +204,24 @@ final class WebsiteRepository
     {
         $this->pdo->prepare("DELETE FROM website_articles WHERE id = :id")->execute(['id' => $id]);
     }
+
+    /** @param array<string,mixed> $topic */
+    public function saveForumTopic(array $topic): void
+    {
+        $stmt = $this->pdo->prepare("
+            INSERT INTO website_forum_topics (category, title, slug, excerpt, content, author_name, is_published, created_at)
+            VALUES (:category, :title, :slug, :excerpt, :content, :author_name, 1, NOW())
+        ");
+        $stmt->execute($topic);
+    }
+
+    /** @param array<string,mixed> $lead */
+    public function saveLead(array $lead): void
+    {
+        $stmt = $this->pdo->prepare("
+            INSERT INTO website_leads (source, name, email, phone, subject, message, status, created_at)
+            VALUES (:source, :name, :email, :phone, :subject, :message, 'new', NOW())
+        ");
+        $stmt->execute($lead);
+    }
 }

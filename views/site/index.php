@@ -32,7 +32,93 @@ ob_start();
                 </button>
             </form>
         </div>
+    <!-- Real-Time Interactive Freight Rate Calculator Widget -->
+    <section style="background:#ffffff; border-radius:18px; padding:28px 34px; border:1px solid #e2e8f0; margin-bottom:30px; box-shadow:0 10px 30px -5px rgba(15,23,42,0.05);">
+        <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:15px; margin-bottom:20px;">
+            <div style="display:flex; align-items:center; gap:12px;">
+                <div style="width:40px; height:40px; border-radius:12px; background:#eff6ff; color:#2563eb; display:flex; align-items:center; justify-content:center;">
+                    <svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" stroke-width="2.2" fill="none"><rect x="2" y="4" width="20" height="16" rx="2"/><line x1="6" y1="8" x2="6" y2="8"/><line x1="10" y1="8" x2="18" y2="8"/><line x1="6" y1="12" x2="6" y2="12"/><line x1="10" y1="12" x2="18" y2="12"/><line x1="6" y1="16" x2="6" y2="16"/><line x1="10" y1="16" x2="14" y2="16"/></svg>
+                </div>
+                <div>
+                    <h3 style="font-size:1.15rem; font-weight:800; color:#0f172a; margin:0;">Calculateur Rapide de Tarif Fret (Aérien & Maritime)</h3>
+                    <p style="color:#64748b; font-size:0.88rem; margin:2px 0 0 0;">Obtenez immédiatement une estimation indicative du coût d'expédition.</p>
+                </div>
+            </div>
+            <span style="font-size:0.78rem; font-weight:700; color:#059669; background:#ecfdf5; border:1px solid #a7f3d0; padding:4px 12px; border-radius:20px;">GRILLES TARIFAIRES 2026 ERP SYNC</span>
+        </div>
+
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:16px; margin-bottom:20px;">
+            <div>
+                <label style="display:block; font-size:0.8rem; font-weight:700; color:#475569; margin-bottom:6px;">MODE DE TRANSPORT</label>
+                <select id="home-calc-mode" style="width:100%; padding:11px 14px; border-radius:10px; border:1px solid #cbd5e1; background:#f8fafc; font-weight:600; font-size:0.9rem; outline:none;">
+                    <option value="aerien">Fret Aérien (Express/Groupage)</option>
+                    <option value="maritime">Fret Maritime (Conteneur/m³)</option>
+                    <option value="dhl">DHL Express International</option>
+                </select>
+            </div>
+            <div>
+                <label style="display:block; font-size:0.8rem; font-weight:700; color:#475569; margin-bottom:6px;">TRAJET EXPÉDITION</label>
+                <select id="home-calc-route" style="width:100%; padding:11px 14px; border-radius:10px; border:1px solid #cbd5e1; background:#f8fafc; font-weight:600; font-size:0.9rem; outline:none;">
+                    <option value="CIV_FR">Côte d'Ivoire (Abidjan) ➔ France (Paris)</option>
+                    <option value="FR_CIV">France (Paris) ➔ Côte d'Ivoire (Abidjan)</option>
+                    <option value="CIV_SEN">Côte d'Ivoire (Abidjan) ➔ Sénégal (Dakar)</option>
+                    <option value="CIV_CAN">Côte d'Ivoire (Abidjan) ➔ Canada (Montréal)</option>
+                </select>
+            </div>
+            <div>
+                <label style="display:block; font-size:0.8rem; font-weight:700; color:#475569; margin-bottom:6px;">POIDS TOTAL (KG)</label>
+                <input type="number" id="home-calc-weight" value="10" min="1" step="0.5" style="width:100%; padding:11px 14px; border-radius:10px; border:1px solid #cbd5e1; background:#f8fafc; font-weight:700; font-size:0.9rem; outline:none;">
+            </div>
+            <div>
+                <label style="display:block; font-size:0.8rem; font-weight:700; color:#475569; margin-bottom:6px;">ESTIMATION TARIF</label>
+                <div style="background:#eff6ff; border:1px solid #bfdbfe; padding:10px 14px; border-radius:10px; display:flex; align-items:center; justify-content:space-between;">
+                    <strong id="home-calc-result" style="color:#1d4ed8; font-size:1.15rem; font-weight:800;">45 000 XOF</strong>
+                    <small id="home-calc-eur" style="color:#64748b; font-weight:600;">(~68.60 €)</small>
+                </div>
+            </div>
+        </div>
+
+        <div style="display:flex; justify-content:flex-end;">
+            <a id="home-calc-link" href="<?= View::url('site/devis') ?>" style="background:#2563eb; color:#ffffff; font-weight:700; padding:10px 22px; border-radius:10px; text-decoration:none; display:inline-flex; align-items:center; gap:8px; font-size:0.9rem;">
+                <span>Obtenir ce devis officiel</span>
+                <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2.5" fill="none"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+            </a>
+        </div>
     </section>
+
+    <script>
+    document.addEventListener("DOMContentLoaded", function () {
+        var modeEl = document.getElementById("home-calc-mode");
+        var routeEl = document.getElementById("home-calc-route");
+        var weightEl = document.getElementById("home-calc-weight");
+        var resEl = document.getElementById("home-calc-result");
+        var eurEl = document.getElementById("home-calc-eur");
+        var linkEl = document.getElementById("home-calc-link");
+
+        function updateHomeCalc() {
+            if (!modeEl || !weightEl || !resEl) return;
+            var mode = modeEl.value;
+            var weight = parseFloat(weightEl.value) || 1;
+            var ratePerKg = 4500; // Aérien fallback
+            if (mode === 'maritime') ratePerKg = 2500;
+            if (mode === 'dhl') ratePerKg = 8500;
+
+            var totalXof = Math.round(weight * ratePerKg);
+            var totalEur = (totalXof / 655.957).toFixed(2);
+
+            resEl.innerText = totalXof.toLocaleString("fr-FR") + " XOF";
+            eurEl.innerText = "(~" + totalEur + " €)";
+            if (linkEl) {
+                linkEl.href = "<?= View::url('site/devis') ?>?mode=" + mode + "&weight=" + weight + "&route=" + routeEl.value;
+            }
+        }
+
+        if (modeEl) modeEl.addEventListener("change", updateHomeCalc);
+        if (routeEl) routeEl.addEventListener("change", updateHomeCalc);
+        if (weightEl) weightEl.addEventListener("input", updateHomeCalc);
+        updateHomeCalc();
+    });
+    </script>
 
     <!-- Partenaires & Hubs -->
     <section class="site-trust-strip" style="background: #ffffff; border-radius: 14px; padding: 20px 28px; border: 1px solid #e2e8f0; margin-bottom: 30px;">
