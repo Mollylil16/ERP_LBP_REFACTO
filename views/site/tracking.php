@@ -23,7 +23,7 @@ $statusClass = match(strtoupper($current['status'] ?? '')) {
 ?>
 
 <style>
-/* Yango Live Tracking Styles */
+/* Live Tracking Styles */
 .yango-container {
     max-width: 1200px;
     margin: 0 auto;
@@ -327,11 +327,11 @@ $statusClass = match(strtoupper($current['status'] ?? '')) {
             <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2.5" fill="none"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10z"/></svg>
             Suivi GPS Temps Réel ERP LBP
         </span>
-        <h1>Suivi Live du Déplacement Colis (Style Yango)</h1>
+        <h1>Suivi GPS en Temps Réel du Colis</h1>
         <p>Visualisez la trajectoire animée de votre cargaison entre l'agence de départ et sa destination finale.</p>
         
         <form class="yango-searchbar" method="get" action="<?= View::url('site/tracking') ?>">
-            <input type="text" name="ref" value="<?= View::e($current['reference'] ?? '') ?>" placeholder="Entrez votre N° de tracking (Ex: LB-CI-001, MP-FR-002)..." required>
+            <input type="text" name="ref" value="<?= View::e($current['reference'] ?? '') ?>" placeholder="Entrez votre N° de tracking (Ex: LBP-EXP-2026-00124)..." required>
             <button type="submit">
                 <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.5" fill="none"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                 <span>Localiser</span>
@@ -339,7 +339,7 @@ $statusClass = match(strtoupper($current['status'] ?? '')) {
         </form>
     </section>
 
-    <!-- Interactive Yango Map Card -->
+    <!-- Interactive Map Card -->
     <section class="yango-map-card">
         <div class="yango-map-header">
             <div class="yango-map-header__title">
@@ -354,7 +354,7 @@ $statusClass = match(strtoupper($current['status'] ?? '')) {
             <div style="display:flex; align-items:center; gap:12px;">
                 <span class="yango-live-tag">
                     <span class="yango-pulse"></span>
-                    SUIVI EN DIRECT YANGO GPS
+                    SUIVI GPS EN DIRECT LBP
                 </span>
                 <button type="button" id="btn-replay-animation" style="background:#f1f5f9; border:1px solid #cbd5e1; color:#334155; padding:6px 14px; border-radius:8px; font-weight:700; font-size:0.82rem; cursor:pointer; display:flex; align-items:center; gap:6px;">
                     <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2.5" fill="none"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
@@ -420,7 +420,7 @@ $statusClass = match(strtoupper($current['status'] ?? '')) {
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:25px;">
                 <div style="background:#f8fafc; padding:14px; border-radius:12px; border:1px solid #e2e8f0;">
                     <span style="font-size:0.75rem; color:#64748b; font-weight:700; text-transform:uppercase; display:block;">Client / Destinataire</span>
-                    <strong style="font-size:0.95rem; color:#0f172a; margin-top:2px; display:block;"><?= View::e($current['client'] ?? 'Non masqué') ?></strong>
+                    <strong style="font-size:0.95rem; color:#0f172a; margin-top:2px; display:block;"><?= View::e($current['client'] ?? 'Client LBP') ?></strong>
                 </div>
                 <div style="background:#f8fafc; padding:14px; border-radius:12px; border:1px solid #e2e8f0;">
                     <span style="font-size:0.75rem; color:#64748b; font-weight:700; text-transform:uppercase; display:block;">Dernier Rayon / Emplacement</span>
@@ -463,23 +463,10 @@ $statusClass = match(strtoupper($current['status'] ?? '')) {
 
     </div>
 
-    <!-- Reference test list -->
-    <div style="margin-top:35px; background:#ffffff; padding:24px; border-radius:16px; border:1px solid #e2e8f0;">
-        <h4 style="margin:0 0 12px 0; font-size:0.95rem; font-weight:800; color:#475569; text-transform:uppercase; letter-spacing:0.5px;">Colis de démonstration disponibles pour tester la carte Yango</h4>
-        <div style="display:flex; gap:10px; flex-wrap:wrap;">
-            <?php foreach ($page->shipments as $shipment): ?>
-                <a href="<?= View::url('site/tracking') ?>?ref=<?= urlencode($shipment['reference']) ?>" style="background:#f1f5f9; border:1px solid #cbd5e1; color:#1e293b; padding:8px 16px; border-radius:10px; font-weight:700; font-size:0.85rem; text-decoration:none; display:inline-flex; align-items:center; gap:8px;">
-                    <code><?= View::e($shipment['reference']) ?></code>
-                    <span style="font-size:0.75rem; background:#dbeafe; color:#1e40af; padding:2px 6px; border-radius:4px;"><?= View::e($shipment['status']) ?></span>
-                </a>
-            <?php endforeach; ?>
-        </div>
-    </div>
-
 </div>
 </div>
 
-<!-- Yango Live Map Script (Leaflet Animated Path) -->
+<!-- Live Map Script (Leaflet Animated Path) -->
 <script>
 document.addEventListener("DOMContentLoaded", function () {
     if (typeof L === 'undefined') return;
@@ -522,7 +509,7 @@ document.addEventListener("DOMContentLoaded", function () {
     });
     L.marker(destCoords, { icon: endIcon }).addTo(map).bindPopup("<b>Agence d'Arrivée</b><br><?= View::e($current['destination']) ?>");
 
-    // Generate Trajectory Path Points (Geodesic / Curved interpolation)
+    // Generate Trajectory Path Points
     function interpolate(p1, p2, factor) {
         return [
             p1[0] + (p2[0] - p1[0]) * factor,
@@ -530,7 +517,7 @@ document.addEventListener("DOMContentLoaded", function () {
         ];
     }
 
-    // Trajectory Polyline (Dashed Blue Line)
+    // Trajectory Polyline
     var polyline = L.polyline([originCoords, destCoords], {
         color: '#2563eb',
         weight: 4,
@@ -558,12 +545,12 @@ document.addEventListener("DOMContentLoaded", function () {
     // Current Vehicle Marker on Map
     var currentPos = interpolate(originCoords, destCoords, progressPct);
     var vehicleMarker = L.marker(currentPos, { icon: vehicleIcon }).addTo(map);
-    vehicleMarker.bindPopup("<b>Position Yango en Direct</b><br>Colis <b><?= View::e($current['reference']) ?></b><br>Statut : <?= View::e($current['status']) ?>").openPopup();
+    vehicleMarker.bindPopup("<b>Position Actuelle LBP</b><br>Colis <b><?= View::e($current['reference']) ?></b><br>Statut : <?= View::e($current['status']) ?>").openPopup();
 
-    // Replay Animation Function (Smooth Yango Movement)
+    // Replay Animation Function
     function animateVehicle() {
         var start = 0;
-        var duration = 3000; // 3 seconds smooth sliding
+        var duration = 3000;
         var startTime = null;
 
         function step(timestamp) {

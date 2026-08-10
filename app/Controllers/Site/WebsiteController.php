@@ -238,16 +238,56 @@ final class WebsiteController extends BaseController
 
     private function demoAgencies(): array
     {
+        try {
+            $pdo = \App\Models\Database::getConnection();
+            $sites = $pdo->query("SELECT * FROM company_sites WHERE is_active = 1 ORDER BY id ASC")->fetchAll(\PDO::FETCH_ASSOC);
+            if (!empty($sites)) {
+                $coordsMap = [
+                    'abidjan' => [5.359951, -4.008256],
+                    'paris' => [48.856614, 2.352221],
+                    'dakar' => [14.716677, -17.467686],
+                    'guangzhou' => [23.1291, 113.2644],
+                    'san pedro' => [4.7485, -6.6363],
+                    'yamoussoukro' => [6.8276, -5.2893],
+                    'dubai' => [25.2048, 55.2708],
+                    'lome' => [6.1375, 1.2123],
+                    'cotonou' => [6.3703, 2.3912],
+                ];
+
+                return array_map(static function(array $site) use ($coordsMap): array {
+                    $nameLower = mb_strtolower((string)$site['name'], 'UTF-8');
+                    $cityLower = mb_strtolower((string)($site['city'] ?? ''), 'UTF-8');
+
+                    $lat = 5.359951; $lng = -4.008256;
+                    foreach ($coordsMap as $k => $c) {
+                        if (str_contains($nameLower, $k) || str_contains($cityLower, $k)) {
+                            $lat = $c[0]; $lng = $c[1]; break;
+                        }
+                    }
+
+                    return [
+                        'code' => $site['code'] ?? ('AG-' . $site['id']),
+                        'name' => $site['name'],
+                        'city' => $site['city'] ?? 'Abidjan',
+                        'country' => $site['country'] ?? 'Côte d\'Ivoire',
+                        'address' => $site['address'] ?? 'Agence LBP Logistics',
+                        'phone' => $site['phone'] ?? '+225 07 00 00 00 00',
+                        'email' => $site['email'] ?? 'contact@lbp-logistics.com',
+                        'hours' => 'Lun–Ven 08:00–18:00',
+                        'lat' => $lat,
+                        'lng' => $lng,
+                        'services' => 'Transit, Fret Aérien & Maritime, Douane',
+                    ];
+                }, $sites);
+            }
+        } catch (\Throwable $e) {
+            // fallback
+        }
+
         return [
-            ['code' => 'ABJ-SIEGE', 'name' => 'LBP Siège Abidjan', 'city' => 'Abidjan', 'country' => 'Côte d’Ivoire', 'address' => 'Plateau, Avenue de la République', 'phone' => '+225 07 00 00 00 01', 'email' => 'abidjan@lbp-transit.test', 'hours' => 'Lun–Ven 08:00–18:00', 'lat' => 5.3204, 'lng' => -4.0161, 'services' => 'Transit, devis, suivi client'],
-            ['code' => 'ABJ-PORT', 'name' => 'LBP Port Autonome', 'city' => 'Abidjan', 'country' => 'Côte d’Ivoire', 'address' => 'Zone portuaire, Treichville', 'phone' => '+225 07 00 00 00 02', 'email' => 'port.abidjan@lbp-transit.test', 'hours' => 'Lun–Sam 07:30–17:30', 'lat' => 5.2929, 'lng' => -4.0083, 'services' => 'Dédouanement, conteneurs'],
-            ['code' => 'SAN-PEDRO', 'name' => 'LBP San Pedro', 'city' => 'San Pedro', 'country' => 'Côte d’Ivoire', 'address' => 'Quartier portuaire, San Pedro', 'phone' => '+225 07 00 00 00 03', 'email' => 'sanpedro@lbp-transit.test', 'hours' => 'Lun–Ven 08:00–17:00', 'lat' => 4.7485, 'lng' => -6.6363, 'services' => 'Export, port, logistique'],
-            ['code' => 'YAMO', 'name' => 'LBP Yamoussoukro', 'city' => 'Yamoussoukro', 'country' => 'Côte d’Ivoire', 'address' => 'Quartier administratif', 'phone' => '+225 07 00 00 00 04', 'email' => 'yamoussoukro@lbp-transit.test', 'hours' => 'Lun–Ven 08:00–17:00', 'lat' => 6.8276, 'lng' => -5.2893, 'services' => 'Distribution intérieure'],
-            ['code' => 'LOME', 'name' => 'LBP Lomé', 'city' => 'Lomé', 'country' => 'Togo', 'address' => 'Avenue du Port', 'phone' => '+228 90 00 00 01', 'email' => 'lome@lbp-transit.test', 'hours' => 'Lun–Ven 08:00–17:30', 'lat' => 6.1375, 'lng' => 1.2123, 'services' => 'Transit régional, corridor'],
-            ['code' => 'COTONOU', 'name' => 'LBP Cotonou', 'city' => 'Cotonou', 'country' => 'Bénin', 'address' => 'Akpakpa, route portuaire', 'phone' => '+229 01 00 00 00 01', 'email' => 'cotonou@lbp-transit.test', 'hours' => 'Lun–Ven 08:00–17:30', 'lat' => 6.3703, 'lng' => 2.3912, 'services' => 'Import, last mile'],
-            ['code' => 'DUBAI', 'name' => 'LBP Dubai Desk', 'city' => 'Dubaï', 'country' => 'Émirats Arabes Unis', 'address' => 'Deira Logistics Center', 'phone' => '+971 50 000 0001', 'email' => 'dubai@lbp-transit.test', 'hours' => 'Lun–Ven 09:00–18:00', 'lat' => 25.2048, 'lng' => 55.2708, 'services' => 'Sourcing, consolidation'],
-            ['code' => 'GUANGZHOU', 'name' => 'LBP Guangzhou Desk', 'city' => 'Guangzhou', 'country' => 'Chine', 'address' => 'Baiyun logistics area', 'phone' => '+86 20 0000 0001', 'email' => 'guangzhou@lbp-transit.test', 'hours' => 'Lun–Sam 09:00–18:00', 'lat' => 23.1291, 'lng' => 113.2644, 'services' => 'Achat, groupage, export'],
-            ['code' => 'PARIS', 'name' => 'LBP Paris Relay', 'city' => 'Paris', 'country' => 'France', 'address' => 'Île-de-France, zone fret', 'phone' => '+33 1 00 00 00 01', 'email' => 'paris@lbp-transit.test', 'hours' => 'Lun–Ven 09:00–18:00', 'lat' => 48.8566, 'lng' => 2.3522, 'services' => 'Colis, documents, fret aérien'],
+            ['code' => 'ABJ-SIEGE', 'name' => 'LBP Siège Abidjan', 'city' => 'Abidjan', 'country' => 'Côte d’Ivoire', 'address' => 'Plateau, Avenue de la République', 'phone' => '+225 07 00 00 00 01', 'email' => 'contact@lbp-logistics.com', 'hours' => 'Lun–Ven 08:00–18:00', 'lat' => 5.3204, 'lng' => -4.0161, 'services' => 'Transit, devis, suivi client'],
+            ['code' => 'GUANGZHOU', 'name' => 'LBP Guangzhou Desk', 'city' => 'Guangzhou', 'country' => 'Chine', 'address' => 'Baiyun logistics area', 'phone' => '+86 20 0000 0001', 'email' => 'china@lbp-logistics.com', 'hours' => 'Lun–Sam 09:00–18:00', 'lat' => 23.1291, 'lng' => 113.2644, 'services' => 'Achat, groupage, export'],
+            ['code' => 'PARIS', 'name' => 'LBP Paris Relay', 'city' => 'Paris', 'country' => 'France', 'address' => 'Île-de-France, zone fret', 'phone' => '+33 1 00 00 00 01', 'email' => 'paris@lbp-logistics.com', 'hours' => 'Lun–Ven 09:00–18:00', 'lat' => 48.8566, 'lng' => 2.3522, 'services' => 'Colis, documents, fret aérien'],
         ];
     }
 
