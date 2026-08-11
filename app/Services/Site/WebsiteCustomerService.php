@@ -65,15 +65,20 @@ final class WebsiteCustomerService
             LEFT JOIN lbp_clients dest ON c.destinataire_id = dest.id
             LEFT JOIN company_sites s_dep ON c.agence_depart_id = s_dep.id
             LEFT JOIN company_sites s_arr ON c.agence_arrivee_id = s_arr.id
-            WHERE (exp.email IS NOT NULL AND exp.email != '' AND exp.email = :email)
-               OR (dest.email IS NOT NULL AND dest.email != '' AND dest.email = :email)
-               OR (exp.phone IS NOT NULL AND exp.phone != '' AND exp.phone = :phone)
-               OR (dest.phone IS NOT NULL AND dest.phone != '' AND dest.phone = :phone)
+            WHERE (exp.email IS NOT NULL AND exp.email != '' AND exp.email = :email_exp)
+               OR (dest.email IS NOT NULL AND dest.email != '' AND dest.email = :email_dest)
+               OR (exp.phone IS NOT NULL AND exp.phone != '' AND exp.phone = :phone_exp)
+               OR (dest.phone IS NOT NULL AND dest.phone != '' AND dest.phone = :phone_dest)
             ORDER BY c.created_at DESC
         ");
+        $customerEmail = (string) ($customer['email'] ?? '');
+        $customerPhone = (string) ($customer['phone'] ?? '');
+
         $stmt->execute([
-            'email' => $customer['email'],
-            'phone' => $customer['phone'] ?? '',
+            'email_exp' => $customerEmail,
+            'email_dest' => $customerEmail,
+            'phone_exp' => $customerPhone,
+            'phone_dest' => $customerPhone,
         ]);
         $parcels = $stmt->fetchAll(\PDO::FETCH_ASSOC) ?: [];
 
