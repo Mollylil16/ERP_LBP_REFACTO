@@ -1633,11 +1633,18 @@ class MigrationRunner
             INSERT IGNORE INTO website_articles
                 (id, slug, title, excerpt, content, author_name, is_published, published_at)
             VALUES
-                (1, 'preparer-son-expedition-fret-aérien-ou-maritime', 'Préparer son expédition Fret Aérien ou Maritime',
+                (1, 'preparer-son-expedition-fret-aerien-ou-maritime', 'Préparer son expédition Fret Aérien ou Maritime',
                  'Les étapes essentielles avant de réserver le transport et passer la douane.',
                  'Vérifiez la marchandise, définissez clairement les incoterms, contrôlez les documents commerciaux (facture, packing list) et anticipez les formalités douanières avant l’embarquement.',
                  'Équipe LBP', 1, NOW())
         ");
+
+        // Clean any pre-existing rows containing Chine in existing databases
+        $this->pdo->exec("UPDATE website_announcements SET title = 'Expéditions France & Europe → Afrique : départs réguliers chaque semaine' WHERE title LIKE '%Chine%' OR id = 1");
+        $this->pdo->exec("UPDATE website_articles SET title = 'Préparer son expédition Fret Aérien ou Maritime', slug = 'preparer-son-expedition-fret-aerien-ou-maritime', excerpt = 'Les étapes essentielles avant de réserver le transport et passer la douane.' WHERE title LIKE '%Chine%' OR id = 1");
+        $this->pdo->exec("UPDATE website_forum_topics SET category = 'Douane & Transit', title = 'Quels documents exiger de son expéditeur avant le départ ?' WHERE category LIKE '%Chine%' OR title LIKE '%Chine%' OR id = 1");
+        $this->pdo->exec("UPDATE website_products SET name = 'Réservation groupage France → Abidjan', sku = 'GROUPAGE-FR-CI' WHERE sku LIKE '%CN%' OR name LIKE '%Chine%' OR id = 2");
+        $this->pdo->exec("UPDATE website_branding SET announcement = 'Expéditions France & Europe → Afrique : départs réguliers chaque semaine' WHERE announcement LIKE '%Chine%' OR id = 1");
     }
 
     private function createColisageTables(): void
