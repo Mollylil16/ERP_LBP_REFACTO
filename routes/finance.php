@@ -54,6 +54,8 @@ $router->group('/finance', function (Router $router): void {
     $router->get('/rapprochement-mobile-money', [FinanceController::class, 'rapprochementMobileMoneyIndex']);
     $router->post('/rapprochement-mobile-money/valider', [FinanceController::class, 'rapprochementMobileMoneyValider']);
     $router->get('/factures/{id}/recu-pdf', [FinanceController::class, 'exportRecuPdf']);
+    $router->get('/paiements/{id}/recu', [FinanceController::class, 'exportRecuPdf']);
+    $router->get('/paiements/{id}/recu-pdf', [FinanceController::class, 'exportRecuPdf']);
 
     // Trésorerie Prévisionnelle (30/60/90j)
     $router->get('/tresorerie', [FinanceController::class, 'tresorerieIndex']);

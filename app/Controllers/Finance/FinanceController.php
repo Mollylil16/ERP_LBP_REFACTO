@@ -1469,13 +1469,22 @@ final class FinanceController extends FinanceBaseController
 
     public function exportRecuPdf(string $id): void
     {
-        RoleMiddleware::check(['caissiere', 'caissiere_principale', 'chef_agence', 'dg', 'comptable', 'superviseur_regional', 'superviseur_general']);
+        RoleMiddleware::check(['caissiere', 'caissiere_principale', 'chef_agence', 'dg', 'comptable', 'superviseur_regional', 'superviseur_general', 'admin', 'agent']);
 
         $id = (int) $id;
-        $facture = $this->factureRepo->findById($id);
+        $facture = null;
+        $paiement = $this->paiementRepo->findById($id);
+
+        if ($paiement && $paiement->factureId) {
+            $facture = $this->factureRepo->findById($paiement->factureId);
+        }
 
         if (!$facture) {
-            Session::flash('error', 'Facture introuvable pour générer le reçu.');
+            $facture = $this->factureRepo->findById($id);
+        }
+
+        if (!$facture) {
+            Session::flash('error', 'Facture ou reçu introuvable.');
             header('Location: ' . View::url('finance/factures'));
             exit;
         }
