@@ -31,8 +31,8 @@ ob_start();
             <div style="width:36px; height:36px; border-radius:10px; background:#eff6ff; color:#2563eb; display:flex; align-items:center; justify-content:center; margin-bottom:10px;">
                 <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
             </div>
-            <strong style="font-size:1rem; color:#0f172a; display:block;">Import Chine & Asie</strong>
-            <span style="font-size:0.82rem; color:#64748b;">Sourcing, fournisseurs, contrôles qualité et expéditions.</span>
+            <strong style="font-size:1rem; color:#0f172a; display:block;">Fret Europe & Transit</strong>
+            <span style="font-size:0.82rem; color:#64748b;">Envois France ➔ Afrique, dédouanement et suivi colis.</span>
         </div>
         <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:14px; padding:18px; box-shadow:0 4px 12px rgba(0,0,0,0.03);">
             <div style="width:36px; height:36px; border-radius:10px; background:#ecfdf5; color:#059669; display:flex; align-items:center; justify-content:center; margin-bottom:10px;">
@@ -75,7 +75,7 @@ ob_start();
             <div style="margin-bottom:14px;">
                 <label style="display:block; font-size:0.8rem; font-weight:700; color:#475569; margin-bottom:6px;">CATÉGORIE DU SUJET</label>
                 <select name="category" style="width:100%; padding:11px 14px; border-radius:10px; border:1px solid #cbd5e1; font-size:0.9rem; outline:none; background:#f8fafc; font-weight:600;">
-                    <option value="Import Chine">Import Chine & Sourcing</option>
+                    <option value="Douane & Transit">Douane & Transit</option>
                     <option value="Douane & Conformité">Douane & Conformité</option>
                     <option value="Transport & Logistique">Transport & Logistique</option>
                     <option value="Retours d'expérience">Retours d'expérience</option>

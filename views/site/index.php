@@ -95,22 +95,7 @@ ob_start();
 
 <div class="site-content">
 
-    <!-- 2. PARTENAIRES & COMPAGNIES OFFICIELLES -->
-    <section style="background:#ffffff; border-radius:16px; padding:22px 30px; border:1px solid #e2e8f0; margin-bottom:40px; box-shadow:0 4px 15px rgba(15,23,42,0.03);">
-        <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:20px;">
-            <span style="font-size:0.82rem; font-weight:800; color:#64748b; text-transform:uppercase; letter-spacing:0.5px;">Compagnies & Partenaires Officiels</span>
-            <div style="display:flex; align-items:center; gap:25px; flex-wrap:wrap;">
-                <strong style="color:#0f172a; font-weight:800; font-size:0.88rem; letter-spacing:0.5px;">PORT AUTONOME D'ABIDJAN</strong>
-                <strong style="color:#0f172a; font-weight:800; font-size:0.88rem; letter-spacing:0.5px;">AIR FRANCE CARGO</strong>
-                <strong style="color:#0f172a; font-weight:800; font-size:0.88rem; letter-spacing:0.5px;">DHL EXPRESS</strong>
-                <strong style="color:#0f172a; font-weight:800; font-size:0.88rem; letter-spacing:0.5px;">MAERSK LINE</strong>
-                <strong style="color:#0f172a; font-weight:800; font-size:0.88rem; letter-spacing:0.5px;">ETHIOPIAN CARGO</strong>
-                <strong style="color:#0f172a; font-weight:800; font-size:0.88rem; letter-spacing:0.5px;">DOUANES IVOIRIENNES</strong>
-            </div>
-        </div>
-    </section>
-
-    <!-- 3. METRICS & IMPACT KEY STATS -->
+    <!-- 2. METRICS & IMPACT KEY STATS -->
     <div style="margin-bottom:50px;">
         <?= Site::stats($page->stats) ?>
     </div>
