@@ -44,7 +44,8 @@ abstract class ColisageBaseController extends BaseController
             'moduleName' => 'Facturation',
             'moduleCode' => 'COL',
             'activeModule' => $activeModule,
-            'additionalStyles' => ['css/finea-ui.css', 'css/colisage.css'],
+            'additionalStyles' => ['css/finea-ui.css', 'css/colisage.css', 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'],
+            'additionalScripts' => ['https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'],
             'moduleNavigation' => ColisageNavigation::items(),
         ];
     }

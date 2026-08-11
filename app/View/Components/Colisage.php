@@ -2116,7 +2116,7 @@ final class Colisage
 
     public static function interactiveOperationalMapCard(): string
     {
-        return '<div class="finea-section-card" style="padding:0; overflow:hidden; border-radius:14px; border:1px solid #e2e8f0; display:flex; flex-direction:column; height:100%; min-height:380px;">'
+        return '<div class="finea-section-card" style="padding:0; overflow:hidden; border-radius:14px; border:1px solid #e2e8f0; display:flex; flex-direction:column;">'
             . '<div style="padding:16px 20px; background:#0f172a; color:#fff; display:flex; align-items:center; justify-content:space-between;">'
             . '<div style="display:flex; align-items:center; gap:10px;">'
             . '<svg viewBox="0 0 24 24" width="20" height="20" stroke="#38bdf8" stroke-width="2" fill="none"><circle cx="12" cy="12" r="10"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/><path d="M2 12h20"/></svg>'
@@ -2124,7 +2124,7 @@ final class Colisage
             . '</div>'
             . '<span style="font-size:0.75rem; background:rgba(56,189,248,0.15); color:#38bdf8; padding:3px 10px; border-radius:12px; font-weight:700;">Réseau International LBP</span>'
             . '</div>'
-            . '<div id="lbp-op-map" style="flex:1; width:100%; min-height:320px; background:#0f172a; z-index:1;"></div>'
+            . '<div id="lbp-op-map" style="width:100%; height:420px; min-height:420px; background:#0f172a; z-index:1;"></div>'
             . '</div>';
     }
 
