@@ -789,7 +789,7 @@ final class CallCenterController extends BaseController
         $duree = isset($_POST['duree_appel']) && $_POST['duree_appel'] !== '' ? (int)$_POST['duree_appel'] : null;
         $desc = isset($_POST['description']) && $_POST['description'] !== '' ? trim((string)$_POST['description']) : null;
         $satisfaction = isset($_POST['satisfaction_score']) && $_POST['satisfaction_score'] !== '' ? (int)$_POST['satisfaction_score'] : null;
-        $agentId = Auth::user()['id'] ?? 0;
+        $agentId = Auth::id() ?? Auth::user()?->id ?? 0;
 
         if ($colisId <= 0 || $clientId <= 0 || !in_array($typeNotif, ['whatsapp', 'sms', 'appel'], true)) {
             header('Content-Type: application/json');

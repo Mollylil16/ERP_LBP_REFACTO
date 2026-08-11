@@ -887,7 +887,7 @@ final class FinanceController extends FinanceBaseController
         }
 
         // Seul le chef de cette agence, la caissière principale, le DG ou le comptable peuvent exporter
-        $userAgenceId = Auth::user()['agence_id'] ?? 0;
+        $userAgenceId = Auth::user()?->agenceId ?? 0;
         if (!Auth::hasRole(['caissiere_principale', 'dg', 'comptable', 'superviseur_general']) && (int) $userAgenceId !== $report->agenceId) {
             Session::flash('error', 'Accès non autorisé au point de caisse d\'une autre agence.');
             header('Location: ' . View::url('finance/clotures'));
