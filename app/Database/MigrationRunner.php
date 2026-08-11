@@ -1733,6 +1733,7 @@ class MigrationRunner
 
         $this->addColumnIfMissing('lbp_colis', 'assurance_souscrite', "TINYINT(1) NOT NULL DEFAULT 0");
         $this->addColumnIfMissing('lbp_colis', 'montant_assurance', "DECIMAL(15,2) NOT NULL DEFAULT 0.00");
+        $this->addColumnIfMissing('lbp_colis', 'created_by', "INT NULL");
 
         $this->pdo->exec("
             CREATE TABLE IF NOT EXISTS lbp_marchandises (

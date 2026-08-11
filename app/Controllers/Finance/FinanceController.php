@@ -9,6 +9,7 @@ use App\Helpers\Csrf;
 use App\Helpers\Session;
 use App\Helpers\Response;
 use App\Helpers\View;
+use App\Middleware\AuthMiddleware;
 use App\Middleware\RoleMiddleware;
 use App\Models\Database;
 use App\Models\Finance\Facture;
@@ -304,9 +305,14 @@ final class FinanceController extends FinanceBaseController
         }
 
         // Sécurité SoD : l'agent groupage qui a créé le colis ne devrait pas pouvoir encaisser la facture
-        $stmt = $this->db->prepare("SELECT created_by FROM lbp_colis WHERE id = :id LIMIT 1");
-        $stmt->execute(['id' => $facture->colisId]);
-        $colisCreatorId = (int) $stmt->fetchColumn();
+        $colisCreatorId = 0;
+        try {
+            $stmt = $this->db->prepare("SELECT created_by FROM lbp_colis WHERE id = :id LIMIT 1");
+            $stmt->execute(['id' => $facture->colisId]);
+            $colisCreatorId = (int) $stmt->fetchColumn();
+        } catch (\Throwable $e) {
+            $colisCreatorId = 0;
+        }
 
         if ($colisCreatorId === Auth::id() && !Auth::hasRole('chef_agence') && !$facture->devise === 'EUR') {
             Session::flash('error', '🚨 Double contrôle (SoD) : Vous ne pouvez pas encaisser une facture liée à un colis que vous avez vous-même enregistré.');
