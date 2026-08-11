@@ -67,7 +67,8 @@ final class WebsiteCustomerService
             LEFT JOIN company_sites s_arr ON c.agence_arrivee_id = s_arr.id
             WHERE (exp.email IS NOT NULL AND exp.email != '' AND exp.email = :email)
                OR (dest.email IS NOT NULL AND dest.email != '' AND dest.email = :email)
-               OR (exp.telephone IS NOT NULL AND exp.telephone != '' AND exp.telephone = :phone)
+               OR (exp.phone IS NOT NULL AND exp.phone != '' AND exp.phone = :phone)
+               OR (dest.phone IS NOT NULL AND dest.phone != '' AND dest.phone = :phone)
             ORDER BY c.created_at DESC
         ");
         $stmt->execute([
