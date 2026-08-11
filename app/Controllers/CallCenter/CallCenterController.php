@@ -581,6 +581,9 @@ final class CallCenterController extends BaseController
             $this->redirect('portal');
         }
 
+        $search = trim((string) ($_GET['q'] ?? ''));
+        $agenceId = !empty($_GET['agence_id']) ? (int) $_GET['agence_id'] : null;
+
         $data = $this->fetchSuiviDepartsData($search, $agenceId);
         $canExportExcel = Auth::isAdmin() || Auth::can(\App\Security\PermissionEntityRegistry::EXPORTER_RAPPORTS_EXCEL);
 
@@ -653,8 +656,9 @@ final class CallCenterController extends BaseController
     }
 
     /** @return array{grouped: array, rawColis: array, sites: array} */
-    private function fetchSuiviDepartsData(string $search, ?int $agenceId): array
+    private function fetchSuiviDepartsData(?string $search = '', ?int $agenceId = null): array
     {
+        $search = trim((string) ($search ?? ''));
         $params = [];
         $whereClauses = ["1=1"];
 
