@@ -615,43 +615,55 @@ final class Colisage
             . '</div>';
     }
 
-    public static function trackingPage(array $expeditions, array $recentGps): string
+    public static function trackingPage(array $expeditions, array $recentGps, array $parcelsInTransit = []): string
     {
         $header = Ui::pageHeader(
-            'Suivi Cartographique & Logistique',
-            'Saisie des coordonnées GPS et suivi des expéditions inter-agences en cours de route.',
+            'Suivi Cartographique & Supervision Logistique',
+            'Supervision des trajets en temps réel (Aérien, Maritime, Express) et raccourci Scan Express 2-Scans.',
             [
-                'eyebrow' => 'Suivi de transit (Fret)',
-                'class' => 'rh-hero-white'
+                'eyebrow' => 'Supervision Logistique & Carte Inter-Agences',
+                'class' => 'rh-hero-white',
+                'actions' => [
+                    Ui::button('Ouvrir Scan Express Douchette (2-Scans)', [
+                        'href' => View::url('colisage/scan-express'),
+                        'variant' => 'accent'
+                    ])
+                ]
             ]
         );
 
-        $trackingForm = self::trackingForm($expeditions);
-        $trackingMapMockup = self::trackingMapMockup();
+        $activeTransitCard = self::activeTransitCard($expeditions, $parcelsInTransit);
+        $interactiveMapCard = self::interactiveOperationalMapCard();
         $gpsEventsTable = self::gpsEventsTable($recentGps);
 
         return '<div class="finea-shell">'
             . '<div class="finea-container">'
             . $header
             . '<div style="display:grid; grid-template-columns: 1fr 1fr; gap:1.5rem; margin-bottom:2rem;">'
-            . $trackingForm
-            . $trackingMapMockup
+            . $activeTransitCard
+            . $interactiveMapCard
             . '</div>'
             . $gpsEventsTable
             . '</div>'
             . '</div>'
             . '<script>'
-            . 'document.addEventListener(\'DOMContentLoaded\', function() {'
-            . '    const form = document.getElementById(\'gps-form\');'
-            . '    const select = document.getElementById(\'exp_select\');'
-            . '    if (form && select) {'
-            . '        const updateAction = () => {'
-            . '            const val = select.value;'
-            . '            form.action = \'' . View::url('colisage/exploitation/tracking/') . '\' + val;'
-            . '        };'
-            . '        select.addEventListener(\'change\', updateAction);'
-            . '        updateAction();'
-            . '    }'
+            . 'document.addEventListener("DOMContentLoaded", function() {'
+            . '    if (typeof L === "undefined") return;'
+            . '    var map = L.map("lbp-op-map", { zoomControl: true }).setView([14.7, -4.0], 3);'
+            . '    L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {'
+            . '        attribution: "&copy; CARTO &copy; OpenStreetMap", maxZoom: 19'
+            . '    }).addTo(map);'
+            . '    var abidjan = [5.359951, -4.008256];'
+            . '    var paris = [48.856614, 2.352221];'
+            . '    var dakar = [14.716677, -17.467686];'
+            . '    var montreal = [45.501688, -73.567256];'
+            . '    L.circleMarker(abidjan, {radius: 7, fillColor: "#10b981", color: "#fff", weight: 2, fillOpacity: 1}).addTo(map).bindPopup("<b>Hub Abidjan (Dokui)</b>");'
+            . '    L.circleMarker(paris, {radius: 7, fillColor: "#ef4444", color: "#fff", weight: 2, fillOpacity: 1}).addTo(map).bindPopup("<b>Agence Paris CDG</b>");'
+            . '    L.circleMarker(dakar, {radius: 7, fillColor: "#3b82f6", color: "#fff", weight: 2, fillOpacity: 1}).addTo(map).bindPopup("<b>Agence Dakar</b>");'
+            . '    L.circleMarker(montreal, {radius: 7, fillColor: "#8b5cf6", color: "#fff", weight: 2, fillOpacity: 1}).addTo(map).bindPopup("<b>Agence Montréal</b>");'
+            . '    L.polyline([abidjan, paris], {color: "#2563eb", weight: 3, opacity: 0.7, dashArray: "6,8"}).addTo(map);'
+            . '    L.polyline([abidjan, dakar], {color: "#059669", weight: 3, opacity: 0.7, dashArray: "6,8"}).addTo(map);'
+            . '    L.polyline([abidjan, montreal], {color: "#7c3aed", weight: 3, opacity: 0.7, dashArray: "6,8"}).addTo(map);'
             . '});'
             . '</script>';
     }
@@ -2033,44 +2045,66 @@ final class Colisage
             . '</thead><tbody>' . $rows . '</tbody></table></div></div>';
     }
 
-    // ─── TRACKING GPS ────────────────────────────────────────────────
-
-    public static function trackingForm(array $expeditions): string
+    public static function activeTransitCard(array $expeditions, array $parcelsInTransit = []): string
     {
-        if ($expeditions === []) {
-            return '<div class="finea-section-card"><h3 class="rh-step-title">Mettre à jour la position GPS</h3>'
-                . '<div style="padding:2rem; text-align:center; color:#94a3b8;">Aucune expédition en cours de transit à mettre à jour.</div></div>';
+        $items = [];
+        foreach ($parcelsInTransit as $p) {
+            $items[] = [
+                'ref' => $p['numero_tracking'],
+                'origin' => $p['agence_depart_name'] ?? 'Dokui',
+                'dest' => $p['agence_arrivee_name'] ?? 'Paris',
+                'type' => 'COLIS',
+                'status' => $p['statut'],
+                'url' => View::url('site/tracking?ref=' . urlencode($p['numero_tracking'])),
+            ];
+        }
+        foreach ($expeditions as $e) {
+            $items[] = [
+                'ref' => $e['reference'],
+                'origin' => $e['agence_depart_name'] ?? 'Départ',
+                'dest' => $e['agence_arrivee_name'] ?? 'Destination',
+                'type' => 'EXPÉDITION',
+                'status' => $e['statut'],
+                'url' => View::url('colisage/scan-express'),
+            ];
         }
 
-        $expOpts = array_map(fn($e) => [
-            'value' => $e['id'],
-            'label' => $e['reference'] . ' (' . $e['agence_depart_name'] . ' ➔ ' . $e['agence_arrivee_name'] . ')'
-        ], $expeditions);
+        $rows = '';
+        if ($items === []) {
+            $rows = '<tr><td colspan="4" style="text-align:center; padding:2rem; color:#94a3b8;">Aucune cargaison ou colis en transit actif pour le moment.<br><small style="color:#64748b;">Utilisez le <b>Scan Express Douchette</b> pour déclencher un transit au départ.</small></td></tr>';
+        } else {
+            foreach ($items as $item) {
+                $rows .= '<tr>'
+                    . '<td><strong style="font-family:monospace; color:#0f172a;">' . View::e($item['ref']) . '</strong><br><small style="color:#64748b;">' . View::e($item['type']) . '</small></td>'
+                    . '<td>' . View::e($item['origin']) . ' ➔ ' . View::e($item['dest']) . '</td>'
+                    . '<td>' . Ui::badge(View::e($item['status']), 'primary') . '</td>'
+                    . '<td style="text-align:right;"><a href="' . View::e($item['url']) . '" class="finea-button-sm finea-button-secondary" target="_blank">Suivre en direct</a></td>'
+                    . '</tr>';
+            }
+        }
 
-        $fields = Form::select('expeditions_list', $expOpts, '', ['label' => 'Sélectionner l\'expédition', 'required' => true, 'id' => 'exp_select'])
-            . Form::input('etape', ['label' => 'Étape logistique / Ville actuelle', 'placeholder' => 'Ex: Escale Bobo-Dioulasso, Douane Noé...', 'required' => true])
-            . '<div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">'
-            . Form::input('latitude', ['label' => 'Latitude', 'placeholder' => 'Ex: 5.3599', 'type' => 'number', 'step' => '0.0000001', 'required' => true])
-            . Form::input('longitude', ['label' => 'Longitude', 'placeholder' => 'Ex: -4.0083', 'type' => 'number', 'step' => '0.0000001', 'required' => true])
-            . '</div>';
-
-        return '<div class="finea-section-card"><h3 class="rh-step-title">Mettre à jour la position GPS</h3>'
-            . '<form method="post" action="" id="gps-form"><div class="rh-form-grid-3" style="grid-template-columns:1fr; gap:1rem;">'
-            . $fields . '</div>'
-            . '<div style="margin-top:1.5rem; display:flex; justify-content:flex-end;">'
-            . Ui::button('Enregistrer la position', ['type' => 'submit', 'variant' => 'accent'])
-            . '</div></form></div>';
+        return '<div class="finea-section-card">'
+            . '<h3 class="rh-step-title" style="display:flex; align-items:center; gap:8px;">'
+            . '<svg viewBox="0 0 24 24" width="20" height="20" stroke="#2563eb" stroke-width="2.2" fill="none"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>'
+            . 'Cargaisons & Colis en Transit Actif</h3>'
+            . '<p style="font-size:0.85rem; color:#64748b; margin-bottom:1rem;">Suivi automatique en temps réel des flux en cours d\'acheminement.</p>'
+            . '<div class="finea-table-wrapper"><table class="finea-table"><thead>'
+            . '<tr style="background:#f8fafc;"><th>Référence</th><th>Trajet</th><th>Statut</th><th style="text-align:right;">Action</th></tr>'
+            . '</thead><tbody>' . $rows . '</tbody></table></div></div>';
     }
 
-    public static function trackingMapMockup(): string
+    public static function interactiveOperationalMapCard(): string
     {
-        return '<div class="finea-section-card" style="background:#0f172a; color:#fff; display:flex; flex-direction:column; justify-content:center; align-items:center; border:none; border-radius:14px; position:relative; overflow:hidden;">'
-            . '<div style="position:absolute; inset:0; opacity:0.1; background-image: radial-gradient(#38bdf8 1px, transparent 0); background-size: 24px 24px;"></div>'
-            . '<div style="z-index:2; text-align:center; padding:2rem;">'
-            . '<svg style="width:64px; height:64px; color:#38bdf8; margin-bottom:1rem;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/><path d="M2 12h20"/></svg>'
-            . '<h3 style="font-weight:700; font-size:1.2rem; margin-bottom:0.5rem;">Visualisation Logistique Cartographique</h3>'
-            . '<p style="color:#94a3b8; font-size:0.85rem; max-width:320px; margin:0 auto;">Les coordonnées GPS soumises alimentent le widget de suivi client en temps réel pour tous les colis associés à la cargaison.</p>'
-            . '</div></div>';
+        return '<div class="finea-section-card" style="padding:0; overflow:hidden; border-radius:14px; border:1px solid #e2e8f0; display:flex; flex-direction:column; height:100%; min-height:380px;">'
+            . '<div style="padding:16px 20px; background:#0f172a; color:#fff; display:flex; align-items:center; justify-content:space-between;">'
+            . '<div style="display:flex; align-items:center; gap:10px;">'
+            . '<svg viewBox="0 0 24 24" width="20" height="20" stroke="#38bdf8" stroke-width="2" fill="none"><circle cx="12" cy="12" r="10"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/><path d="M2 12h20"/></svg>'
+            . '<strong style="font-size:0.95rem;">Carte Logistique en Direct</strong>'
+            . '</div>'
+            . '<span style="font-size:0.75rem; background:rgba(56,189,248,0.15); color:#38bdf8; padding:3px 10px; border-radius:12px; font-weight:700;">Réseau International LBP</span>'
+            . '</div>'
+            . '<div id="lbp-op-map" style="flex:1; width:100%; min-height:320px; background:#0f172a; z-index:1;"></div>'
+            . '</div>';
     }
 
     public static function gpsEventsTable(array $recentGps): string
