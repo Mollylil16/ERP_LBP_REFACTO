@@ -214,13 +214,57 @@ final class WebsiteService
         if ($colis) {
             $progressMap = [
                 'RÉCEPTIONNÉ' => 20,
-                'EN_PRÉPARATION' => 40,
+                'EN_PRÉPARATION' => 35,
                 'EN_TRANSIT' => 70,
-                'ARRIVÉ' => 90,
+                'ARRIVÉ' => 95,
                 'RETIRÉ' => 100,
                 'LIVRÉ' => 100,
             ];
-            $progress = $progressMap[strtoupper($colis['statut'])] ?? 30;
+
+            $statutUpper = strtoupper((string) ($colis['statut'] ?? ''));
+            $typeExp = strtolower((string) ($colis['type_expediteur'] ?? 'aerien'));
+            $mode = str_contains($typeExp, 'maritime') ? 'ship' : (str_contains($typeExp, 'dhl') || str_contains($typeExp, 'express') ? 'truck' : 'plane');
+
+            // Dynamic Real-Time Transit Progress & ETA calculation
+            $etaString = 'Estimation en cours';
+            if (in_array($statutUpper, ['RETIRÉ', 'LIVRÉ', 'ARRIVÉ', 'RÉCEPTIONNÉ'])) {
+                $progress = 100;
+                $etaString = 'Livré / Arrivé à destination';
+            } elseif ($statutUpper === 'EN_TRANSIT' || $statutUpper === 'EN TRANSIT') {
+                $departTime = !empty($colis['updated_at']) ? strtotime($colis['updated_at']) : strtotime($colis['created_at']);
+                $durationSeconds = match($mode) {
+                    'ship' => 1555200, // 18 days
+                    'truck' => 172800,  // 48 hours
+                    default => 25200    // 7 hours flight
+                };
+                $elapsedSeconds = time() - $departTime;
+
+                if ($elapsedSeconds <= 0) {
+                    $progress = 25;
+                } else {
+                    $ratio = $elapsedSeconds / $durationSeconds;
+                    $progress = (int) min(92, max(25, 25 + ($ratio * 67)));
+                }
+
+                $remSeconds = ($departTime + $durationSeconds) - time();
+                if ($remSeconds <= 0) {
+                    $etaString = 'Arrivée imminente en agence';
+                } else {
+                    $hours = floor($remSeconds / 3600);
+                    $mins = floor(($remSeconds % 3600) / 60);
+                    if ($hours >= 24) {
+                        $days = ceil($hours / 24);
+                        $etaString = "Arrivée estimée dans {$days} jour(s)";
+                    } else {
+                        $etaString = "Arrivée estimée dans {$hours}h {$mins}min";
+                    }
+                }
+            } else {
+                $progress = $progressMap[$statutUpper] ?? 30;
+                if (!empty($colis['date_limite_retrait'])) {
+                    $etaString = date('d/m/Y', strtotime($colis['date_limite_retrait']));
+                }
+            }
 
             // Fetch steps from lbp_tracking_gps & logistique_mouvements_rayon
             $steps = [];
@@ -326,7 +370,7 @@ final class WebsiteService
                 'destination' => $colis['agence_arrivee_name'] ?? 'Agence d\'arrivée',
                 'status' => $colis['statut'],
                 'progress' => $progress,
-                'eta' => !empty($colis['date_limite_retrait']) ? date('d/m/Y', strtotime($colis['date_limite_retrait'])) : 'Non spécifiée',
+                'eta' => $etaString,
                 'lastLocation' => $lastLocation,
                 'origin_coords' => $originCoords,
                 'dest_coords' => $destCoords,

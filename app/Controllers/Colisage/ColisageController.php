@@ -759,4 +759,102 @@ final class ColisageController extends ColisageBaseController
 
         $this->redirect('colisage/settings');
     }
+
+    public function expressScanPage(): void
+    {
+        AuthMiddleware::check();
+        $this->colisageView('colisage/parcels/scan_express', 'Scan Express Douchette & Tracking 2-Scans', 'operations', []);
+    }
+
+    public function processExpressScan(): void
+    {
+        AuthMiddleware::check();
+        header('Content-Type: application/json; charset=utf-8');
+
+        $barcode = trim((string) ($_POST['barcode'] ?? $_GET['barcode'] ?? ''));
+        $action = strtoupper(trim((string) ($_POST['scan_action'] ?? $_GET['scan_action'] ?? 'DEPART')));
+
+        if ($barcode === '') {
+            echo json_encode(['success' => false, 'message' => 'Veuillez biper / scanner un code-barres valide.']);
+            exit;
+        }
+
+        $pdo = Database::getConnection();
+        $stmt = $pdo->prepare("
+            SELECT c.*, s_dep.name AS agence_depart_name, s_arr.name AS agence_arrivee_name
+            FROM lbp_colis c
+            LEFT JOIN company_sites s_dep ON c.agence_depart_id = s_dep.id
+            LEFT JOIN company_sites s_arr ON c.agence_arrivee_id = s_arr.id
+            WHERE c.numero_tracking = :code OR c.id = :id_code
+            LIMIT 1
+        ");
+        $stmt->execute(['code' => $barcode, 'id_code' => is_numeric($barcode) ? (int)$barcode : 0]);
+        $colis = $stmt->fetch(\PDO::FETCH_ASSOC);
+
+        if (!$colis) {
+            echo json_encode(['success' => false, 'message' => "Colis introuvable avec le code-barres '{$barcode}'."]);
+            exit;
+        }
+
+        $colisId = (int) $colis['id'];
+
+        if ($action === 'DEPART') {
+            $updateStmt = $pdo->prepare("
+                UPDATE lbp_colis 
+                SET statut = 'EN_TRANSIT', statut_depart = 'PARTI', updated_at = NOW() 
+                WHERE id = :id
+            ");
+            $updateStmt->execute(['id' => $colisId]);
+
+            $etapeText = 'Départ de l\'agence ' . ($colis['agence_depart_name'] ?? 'de départ') . ' (Scan Douchette au départ)';
+            $gpsStmt = $pdo->prepare("
+                INSERT INTO lbp_tracking_gps (colis_id, etape, date_etape)
+                VALUES (:colis_id, :etape, NOW())
+            ");
+            $gpsStmt->execute(['colis_id' => $colisId, 'etape' => $etapeText]);
+
+            echo json_encode([
+                'success' => true,
+                'action' => 'DEPART',
+                'statut' => 'EN_TRANSIT',
+                'tracking' => $colis['numero_tracking'],
+                'message' => "Colis {$colis['numero_tracking']} marqué EN TRANSIT au départ. Le tracking dynamique est démarré !",
+            ]);
+            exit;
+        } else {
+            // ARRIVEE
+            $updateStmt = $pdo->prepare("
+                UPDATE lbp_colis 
+                SET statut = 'ARRIVÉ', statut_arrive = 'ARRIVE', updated_at = NOW() 
+                WHERE id = :id
+            ");
+            $updateStmt->execute(['id' => $colisId]);
+
+            $etapeText = 'Arrivée réceptionnée à l\'agence ' . ($colis['agence_arrivee_name'] ?? 'de destination') . ' (Scan Douchette à l\'arrivée)';
+            $gpsStmt = $pdo->prepare("
+                INSERT INTO lbp_tracking_gps (colis_id, etape, date_etape)
+                VALUES (:colis_id, :etape, NOW())
+            ");
+            $gpsStmt->execute(['colis_id' => $colisId, 'etape' => $etapeText]);
+
+            try {
+                $notifRepo = new \App\Repositories\Shared\NotificationRepository($pdo);
+                $notifService = new \App\Services\Shared\NotificationService($notifRepo);
+                $colisRepo = new ColisageRepository($pdo);
+                $pDetails = $colisRepo->findParcelById($colisId);
+                if ($pDetails) {
+                    $notifService->notifyParcelStatusChange($pDetails, 'ARRIVÉ', $etapeText);
+                }
+            } catch (\Throwable $e) {}
+
+            echo json_encode([
+                'success' => true,
+                'action' => 'ARRIVEE',
+                'statut' => 'ARRIVÉ',
+                'tracking' => $colis['numero_tracking'],
+                'message' => "Colis {$colis['numero_tracking']} marqué ARRIVÉ à destination. Notification client transmise !",
+            ]);
+            exit;
+        }
+    }
 }

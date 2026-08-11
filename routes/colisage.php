@@ -32,6 +32,10 @@ $router->group('/colisage', function (Router $router): void {
     $router->post('/parcels/{id}/supprimer', [ColisageController::class, 'deleteParcel']);
     $router->post('/parcels/{id}/statut-depart', [ColisageController::class, 'updateStatutDepart']);
 
+    // Scan Express 2-Scans (Départ / Arrivée)
+    $router->get('/scan-express', [ColisageController::class, 'expressScanPage']);
+    $router->post('/scan-express/process', [ColisageController::class, 'processExpressScan']);
+
     $router->get('/groupage', [ColisageController::class, 'groupageIndex']);
     $router->get('/groupage/nouveau', [ColisageController::class, 'groupageCreate']);
     $router->post('/groupage/enregistrer', [ColisageController::class, 'groupageStore']);
