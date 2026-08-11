@@ -9,8 +9,4 @@ use App\View\Components\CallCenter;
 /** @var array<int, mixed> $rayonsOverview */
 /** @var string $searchQuery */
 
-ob_start();
 echo CallCenter::colisLookupPage($searchResult, $rayonsOverview, $searchQuery);
-$content = ob_get_clean();
-
-require BASE_PATH . '/views/layouts/module.php';
