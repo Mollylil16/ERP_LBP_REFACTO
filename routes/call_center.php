@@ -30,6 +30,9 @@ $router->group('/call-center', function (Router $router): void {
 
     // Suivi et Relances (WhatsApp/SMS/Appels)
     $router->get('/suivi', [CallCenterController::class, 'suivi']);
+    $router->get('/suivi-departs', [CallCenterController::class, 'suiviDeparts']);
+    $router->get('/suivi-departs/export-pdf', [CallCenterController::class, 'exportSuiviDepartsPdf']);
+    $router->get('/suivi-departs/export-excel', [CallCenterController::class, 'exportSuiviDepartsExcel']);
     $router->post('/suivi/notifier', [CallCenterController::class, 'notifier']);
 });
 

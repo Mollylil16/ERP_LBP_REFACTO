@@ -12,19 +12,30 @@ use App\View\Components\Form;
 final class Colisage
 {
     /** @return array<int, array{value: string, label: string}> */
-    private static function emballageOptions(): array
+    /** @return array<int, array{value: string, label: string, price: float}> */
+    public static function emballageOptions(): array
     {
         return [
-            ['value' => '', 'label' => '-- Sélectionner --'],
-            ['value' => 'Carton', 'label' => 'Carton'],
-            ['value' => 'Sac', 'label' => 'Sac'],
-            ['value' => 'Caisse en bois', 'label' => 'Caisse en bois'],
-            ['value' => 'Palette', 'label' => 'Palette'],
-            ['value' => 'Bidon/Fût', 'label' => 'Bidon / Fût'],
-            ['value' => 'Valise', 'label' => 'Valise'],
-            ['value' => 'Enveloppe', 'label' => 'Enveloppe'],
-            ['value' => 'Autre', 'label' => 'Autre'],
+            ['value' => 'Propre emballage client / Aucun', 'label' => '-- Propre emballage client / Aucun (0 FCFA) --', 'price' => 0.0],
+            ['value' => 'Petit carton', 'label' => 'Petit carton (500 FCFA)', 'price' => 500.0],
+            ['value' => 'Gros carton', 'label' => 'Gros carton (500 FCFA)', 'price' => 500.0],
+            ['value' => 'Sac Bôrô', 'label' => 'Sac Bôrô (500 FCFA)', 'price' => 500.0],
+            ['value' => 'Sachet', 'label' => 'Sachet (500 FCFA)', 'price' => 500.0],
+            ['value' => 'Papier film (Gros colis)', 'label' => 'Papier film (Gros colis) (1 000 FCFA)', 'price' => 1000.0],
+            ['value' => 'Papier film (Petit colis)', 'label' => 'Papier film (Petit colis) (500 FCFA)', 'price' => 500.0],
+            ['value' => 'Étiquettes LBP', 'label' => 'Étiquettes LBP (200 FCFA)', 'price' => 200.0],
         ];
+    }
+
+    public static function emballageSelectHtml(string $name = 'm_emballage[]', string $selected = ''): string
+    {
+        $html = '<select class="finea-select js-emballage-select" name="' . $name . '">';
+        foreach (self::emballageOptions() as $opt) {
+            $sel = $selected === $opt['value'] ? ' selected' : '';
+            $html .= '<option value="' . View::e($opt['value']) . '" data-price="' . $opt['price'] . '"' . $sel . '>' . View::e($opt['label']) . '</option>';
+        }
+        $html .= '</select>';
+        return $html;
     }
 
     public static function dashboardPage(\App\View\Pages\Colisage\DashboardPage $page, array $dashboardModule): string
@@ -215,7 +226,7 @@ final class Colisage
                 ['value' => 'EUR', 'label' => 'Euro (EUR)'],
                 ['value' => 'USD', 'label' => 'US Dollar (USD)'],
             ], 'XOF', ['label' => 'Devise'])
-            . Form::input('valeur_declaree', ['label' => 'Valeur déclarée (assurance/douane)', 'type' => 'number', 'step' => '1'])
+            . Form::input('valeur_declaree', ['label' => 'Valeur déclarée (assurance/douane)', 'type' => 'number', 'step' => '1', 'placeholder' => 'Valeur déclarée par le client'])
             . '<div style="grid-column: span 3; background: #f0fdf4; border: 1px solid #bbf7d0; padding: 0.8rem 1.2rem; border-radius: 8px; margin-top: 0.5rem;">'
             . Form::checkbox('assurance_souscrite', '1', false, ['label' => 'Souscrire à l\'Assurance Colis (+2% de la valeur déclarée — Couverture jusqu\'à 100% de la valeur)'])
             . '</div></div></div>'
@@ -309,10 +320,7 @@ final class Colisage
             . '        if (inputPoidsTotal) inputPoidsTotal.value = totalWeight.toFixed(2);'
             . '        const inputNombreColis = document.querySelector(\'input[name="nombre_colis"]\');'
             . '        if (inputNombreColis) inputNombreColis.value = totalCount;'
-            . '        if (inputValeurDeclaree && (!inputValeurDeclaree.value || inputValeurDeclaree.dataset.auto === \'true\')) {'
-            . '            inputValeurDeclaree.value = Math.round(subtotal);'
-            . '            inputValeurDeclaree.dataset.auto = \'true\';'
-            . '        }'
+            . '        /* valeur_declaree is customer-declared: no auto-fill */'
             . '    }'
             . '    rows.forEach(row => {'
             . '        const prodSelect = row.querySelector(\'select[name="m_product_id[]"]\');'
@@ -1261,7 +1269,7 @@ final class Colisage
         }
 
         // Section Client/Expéditeur
-        $expChoice = Form::select('expediteur_id', $clientOpts, '', ['label' => 'Sélectionner l\'expéditeur']);
+        $expChoice = Form::selectSearch('expediteur_id', 'Sélectionner l\'expéditeur', $clientOpts, '', ['placeholder' => 'Tapez les premières lettres du nom ou téléphone...']);
         $expQuick = '<div class="finea-section-card-nested" style="margin-top:1rem; padding:1rem; background:rgba(0,0,0,0.02); border-radius:8px;">'
             . '<h4>Ou créer rapidement un nouvel expéditeur :</h4>'
             . '<div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem; margin-top:0.5rem;">'
@@ -1273,7 +1281,7 @@ final class Colisage
             . '</div>';
 
         // Section Destinataire
-        $destChoice = Form::select('destinataire_id', $clientOpts, '', ['label' => 'Sélectionner le destinataire']);
+        $destChoice = Form::selectSearch('destinataire_id', 'Sélectionner le destinataire', $clientOpts, '', ['placeholder' => 'Tapez les premières lettres du nom ou téléphone...']);
         $destQuick = '<div class="finea-section-card-nested" style="margin-top:1rem; padding:1rem; background:rgba(0,0,0,0.02); border-radius:8px;">'
             . '<h4>Ou créer rapidement un nouveau destinataire :</h4>'
             . '<div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem; margin-top:0.5rem;">'
@@ -1303,15 +1311,15 @@ final class Colisage
             $typeExp = Form::select('type_expediteur', $fretOpts, 'export_aerien', ['label' => 'Catégorie de Fret']);
         }
         $weight = Form::input('poids_total', ['label' => 'Poids total (kg)', 'type' => 'number', 'step' => '0.01']);
-        $valeur = Form::input('valeur_declaree', ['label' => 'Valeur déclarée', 'type' => 'number', 'step' => '1']);
+        $valeur = Form::input('valeur_declaree', ['label' => 'Valeur déclarée', 'type' => 'number', 'step' => '1', 'placeholder' => 'Valeur déclarée par le client']);
         $devise = Form::select('devise', [
             ['value' => 'XOF', 'label' => 'Franc CFA (XOF)'],
             ['value' => 'EUR', 'label' => 'Euro (EUR)'],
             ['value' => 'USD', 'label' => 'US Dollar (USD)'],
         ], 'XOF', ['label' => 'Devise']);
 
-        $depAgency = Form::select('agence_depart_id', $siteOpts, '', ['label' => 'Agence de départ']);
-        $arrAgency = Form::select('agence_arrivee_id', $siteOpts, '', ['label' => 'Agence d\'arrivée prévue']);
+        $depAgency = Form::selectSearch('agence_depart_id', $siteOpts, '', ['label' => 'Agence de départ']);
+        $arrAgency = Form::selectSearch('agence_arrivee_id', $siteOpts, '', ['label' => 'Agence d\'arrivée prévue']);
 
         $colisGrid = '<div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:1rem;">'
             . $typeExp . $weight . $valeur
@@ -1336,13 +1344,14 @@ final class Colisage
             . '<table class="finea-table" style="table-layout: auto;" id="marchandises-table">'
             . '<thead><tr style="background:#1e3a5f; color:#fff;">'
             . '<th style="width:3%; min-width:30px;">N°</th>'
-            . '<th style="width:7%; min-width:80px;">Nbre Colis</th>'
-            . '<th style="width:35%; min-width:320px;">Description</th>'
-            . '<th style="width:12%; min-width:110px;">Emballage</th>'
-            . '<th style="width:7%; min-width:80px;">Qté Emb.</th>'
-            . '<th style="width:11%; min-width:105px;">Poids (kg)</th>'
-            . '<th style="width:11%; min-width:110px;">Prix / Kg</th>'
-            . '<th style="width:14%; min-width:120px;">Total</th>'
+            . '<th style="width:6%; min-width:70px;">Nbre Colis</th>'
+            . '<th style="width:32%; min-width:280px;">Description</th>'
+            . '<th style="width:11%; min-width:100px;">Emballage</th>'
+            . '<th style="width:6%; min-width:65px;">Qté Emb.</th>'
+            . '<th style="width:9%; min-width:90px;">Prix Emb.</th>'
+            . '<th style="width:10%; min-width:95px;">Poids (kg)</th>'
+            . '<th style="width:10%; min-width:95px;">Prix / Kg</th>'
+            . '<th style="width:13%; min-width:110px;">Total</th>'
             . '</tr></thead>'
             . '<tbody id="marchandises-tbody">';
 
@@ -1367,8 +1376,9 @@ final class Colisage
                 . $customPriceInput
                 . '</div>'
                 . '</td>'
-                . '<td>' . Form::rawSelect('m_emballage[]', self::emballageOptions(), '') . '</td>'
+                . '<td>' . self::emballageSelectHtml('m_emballage[]', '') . '</td>'
                 . '<td>' . Form::rawInput('m_qte_emballage[]', '1', ['type' => 'number', 'min' => '1']) . '</td>'
+                . '<td>' . Form::rawInput('m_prix_emballage[]', '0.00', ['type' => 'number', 'step' => '0.01', 'min' => '0', 'placeholder' => 'Prix emb.']) . '</td>'
                 . '<td>' . Form::rawInput('m_weight[]', '0.00', ['type' => 'number', 'step' => '0.01', 'min' => '0']) . '</td>'
                 . '<td>' . Form::rawInput('m_prix_kg[]', '0.00', ['type' => 'number', 'step' => '0.01', 'min' => '0']) . '</td>'
                 . '<td style="background:rgba(0,0,0,0.02); text-align:right; font-weight:600;"><span class="ligne-total">0 FCFA</span></td>'
@@ -1377,8 +1387,8 @@ final class Colisage
 
         $marchandisesHtml .= '</tbody>'
             . '<tfoot>'
-            . '<tr><td colspan="7" style="text-align:right; font-weight:600;">SOUS-TOTAL</td><td style="text-align:right; font-weight:600;" id="sous_total">0 FCFA</td></tr>'
-            . '<tr style="background:#1e3a5f; color:#fff;"><td colspan="7" style="background:#1e3a5f !important; text-align:right; font-weight:700; font-size:1.1rem; color:#ffffff !important;">MONTANT TOTAL</td>'
+            . '<tr><td colspan="8" style="text-align:right; font-weight:600;">SOUS-TOTAL</td><td style="text-align:right; font-weight:600;" id="sous_total">0 FCFA</td></tr>'
+            . '<tr style="background:#1e3a5f; color:#fff;"><td colspan="8" style="background:#1e3a5f !important; text-align:right; font-weight:700; font-size:1.1rem; color:#ffffff !important;">MONTANT TOTAL</td>'
             . '<td style="background:#1e3a5f !important; text-align:right; font-weight:700; font-size:1.1rem; color:#ffffff !important;"><span id="montant_total_fcfa" style="color:#ffffff !important;">0 FCFA</span><br><small id="montant_total_eur" style="color:rgba(255,255,255,0.85) !important;">≈ 0.00 €</small></td></tr>'
             . '</tfoot></table></div>'
             . '<button type="button" id="add-row-btn" class="finea-button finea-button--secondary" style="margin-top: 1rem;">+ Ajouter une ligne</button>'
@@ -1443,7 +1453,9 @@ final class Colisage
             . '            const nbreColis = parseFloat(row.querySelector(\'input[name="m_nbre_colis[]"]\').value) || 0;'
             . '            const weight = parseFloat(row.querySelector(\'input[name="m_weight[]"]\').value) || 0;'
             . '            const prixKg = parseFloat(row.querySelector(\'input[name="m_prix_kg[]"]\').value) || 0;'
-            . '            const lineTotal = nbreColis * weight * prixKg;'
+            . '            const qteEmb = parseFloat(row.querySelector(\'input[name="m_qte_emballage[]"]\').value) || 0;'
+            . '            const prixEmb = parseFloat(row.querySelector(\'input[name="m_prix_emballage[]"]\').value) || 0;'
+            . '            const lineTotal = (nbreColis * weight * prixKg) + (qteEmb * prixEmb);'
             . '            grandTotal += lineTotal;'
             . '            const totalSpan = row.querySelector(".ligne-total");'
             . '            if (totalSpan) {'
@@ -1457,13 +1469,21 @@ final class Colisage
             . '        if (totalEurEl) {'
             . '            totalEurEl.textContent = "≈ " + new Intl.NumberFormat("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(grandTotalEur) + " €";'
             . '        }'
-            . '        if (inputValeurDeclaree && grandTotal > 0 && (!inputValeurDeclaree.value || inputValeurDeclaree.value === "0" || inputValeurDeclaree.dataset.auto === "true")) {'
-            . '            inputValeurDeclaree.value = Math.round(grandTotal);'
-            . '            inputValeurDeclaree.dataset.auto = "true";'
-            . '        }'
             . '    }'
             . '    tbody.addEventListener("input", calculateTotals);'
             . '    tbody.addEventListener("change", function(e) {'
+            . '        if (e.target && e.target.name === "m_emballage[]") {'
+            . '            const row = e.target.closest("tr");'
+            . '            if (row) {'
+            . '                const selectedOpt = e.target.selectedOptions[0];'
+            . '                const price = selectedOpt ? (parseFloat(selectedOpt.dataset.price) || 0) : 0;'
+            . '                const prixEmbInput = row.querySelector(\'input[name="m_prix_emballage[]"]\');'
+            . '                if (prixEmbInput) {'
+            . '                    prixEmbInput.value = price.toFixed(2);'
+            . '                }'
+            . '                calculateTotals();'
+            . '            }'
+            . '        }'
             . '        if (e.target && e.target.name && e.target.name.startsWith("m_product_id_")) {'
             . '            const row = e.target.closest("tr");'
             . '            const selectedOptions = Array.from(e.target.selectedOptions).filter(opt => opt.value !== "");'
@@ -1533,20 +1553,10 @@ final class Colisage
             . '                + \'<div style="margin-top:0.4rem; display:flex; gap:0.4rem;">\''
             . '                + \'<input class="finea-input" name="m_custom_name[]" placeholder="Ou saisir un nom...">\''
             . '                + \'<input class="finea-input" name="m_custom_price[]" type="number" step="0.01" placeholder="Prix unit.">\''
-            . '                + \'</div>\''
             . '                + \'</td>\''
-            . '                + \'<td><select class="finea-select" name="m_emballage[]">'
-            . '<option value="">-- Sélectionner --</option>'
-            . '<option value="Carton">Carton</option>'
-            . '<option value="Sac">Sac</option>'
-            . '<option value="Caisse en bois">Caisse en bois</option>'
-            . '<option value="Palette">Palette</option>'
-            . '<option value="Bidon/Fût">Bidon / Fût</option>'
-            . '<option value="Valise">Valise</option>'
-            . '<option value="Enveloppe">Enveloppe</option>'
-            . '<option value="Autre">Autre</option>'
-            . '</select></td>\''
+            . '                + \'<td>\' + ' . json_encode(self::emballageSelectHtml('m_emballage[]', '')) . ' + \'</td>\''
             . '                + \'<td><input class="finea-input" type="number" name="m_qte_emballage[]" value="1" min="1"></td>\''
+            . '                + \'<td><input class="finea-input" type="number" name="m_prix_emballage[]" value="0.00" step="0.01" min="0" placeholder="Prix emb."></td>\''
             . '                + \'<td><input class="finea-input" type="number" name="m_weight[]" value="0.00" step="0.01" min="0"></td>\''
             . '                + \'<td><input class="finea-input" type="number" name="m_prix_kg[]" value="0.00" step="0.01" min="0"></td>\''
             . '                + \'<td style="background:rgba(0,0,0,0.02); text-align:right; font-weight:600;"><span class="ligne-total">0 FCFA</span></td>\';'
@@ -2239,12 +2249,34 @@ final class Colisage
     {
         $rows = '';
         if ($parcels === []) {
-            $rows = '<tr><td colspan="7" style="text-align: center; padding: 2rem; color: #64748b;">Aucun colis chargé dans ce manifeste.</td></tr>';
+            $rows = '<tr><td colspan="8" style="text-align: center; padding: 2rem; color: #64748b;">Aucun colis chargé dans ce manifeste.</td></tr>';
         } else {
+            $csrfToken = \App\Helpers\Csrf::token();
             foreach ($parcels as $ap) {
                 $tone = match ($ap['statut']) {
                     'RETIRÉ', 'LIVRÉ' => 'success', 'RÉCEPTIONNÉ' => 'info', 'EN_PRÉPARATION' => 'warning', 'EN_TRANSIT' => 'primary', default => 'neutral'
                 };
+                
+                $statutDepart = $ap['statut_depart'] ?? 'NON_SPECIFIE';
+                $motifReste = $ap['motif_reste'] ?? '';
+                
+                $departBadge = match ($statutDepart) {
+                    'PARTI' => '<span style="background:#dcfce7;color:#15803d;padding:2px 8px;border-radius:12px;font-size:0.75rem;font-weight:700;">PARTI</span>',
+                    'RESTE' => '<span style="background:#fee2e2;color:#b91c1c;padding:2px 8px;border-radius:12px;font-size:0.75rem;font-weight:700;" title="' . View::e($motifReste) . '">RESTÉ' . ($motifReste ? ' (' . View::e($motifReste) . ')' : '') . '</span>',
+                    default => '<span style="background:#f1f5f9;color:#64748b;padding:2px 8px;border-radius:12px;font-size:0.75rem;font-weight:600;">En attente</span>',
+                };
+
+                $departForm = '<form method="post" action="' . View::url('colisage/parcels/' . $ap['id'] . '/statut-depart') . '" style="display:inline-flex;align-items:center;gap:0.3rem;">'
+                    . Form::hidden('_csrf_token', $csrfToken)
+                    . Form::hidden('redirect_url', View::url('colisage/groupage/' . ($ap['expedition_id'] ?? '')))
+                    . '<select name="statut_depart" style="font-size:0.75rem;padding:2px 4px;border-radius:4px;border:1px solid #cbd5e1;" onchange="if(this.value===\'RESTE\'){const m=prompt(\'Motif pour colis resté en agence :\', \'' . View::e($motifReste) . '\');if(m!==null){this.form.querySelector(\'input[name=motif_reste]\').value=m;}else{return false;}} this.form.submit();">'
+                    . '<option value="NON_SPECIFIE"' . ($statutDepart === 'NON_SPECIFIE' ? ' selected' : '') . '>-- Départ --</option>'
+                    . '<option value="PARTI"' . ($statutDepart === 'PARTI' ? ' selected' : '') . '>Parti</option>'
+                    . '<option value="RESTE"' . ($statutDepart === 'RESTE' ? ' selected' : '') . '>Resté en agence</option>'
+                    . '</select>'
+                    . '<input type="hidden" name="motif_reste" value="' . View::e($motifReste) . '">'
+                    . '</form>';
+
                 $rows .= '<tr>'
                     . '<td><strong>' . View::e($ap['numero_tracking']) . '</strong></td>'
                     . '<td>' . View::e($ap['expediteur_name']) . '</td>'
@@ -2252,6 +2284,7 @@ final class Colisage
                     . '<td>' . View::e((string) $ap['poids_total']) . ' kg</td>'
                     . '<td>' . View::e(number_format((float) $ap['valeur_declaree'], 0, ',', ' ')) . ' ' . View::e($ap['devise']) . '</td>'
                     . '<td>' . Ui::badge($ap['statut'], $tone) . '</td>'
+                    . '<td>' . $departBadge . ' ' . $departForm . '</td>'
                     . '<td>' . Ui::button('Voir colis', ['href' => 'colisage/parcels/' . $ap['id'], 'variant' => 'secondary', 'class' => 'finea-button-sm']) . '</td>'
                     . '</tr>';
             }
@@ -2259,7 +2292,7 @@ final class Colisage
 
         return Ui::section('Contenu du Manifeste (Colis groupés)',
             '<div class="finea-table-wrapper"><table class="finea-table"><thead>'
-            . '<tr><th>N° Tracking</th><th>Expéditeur</th><th>Destinataire</th><th>Poids</th><th>Valeur Déclarée</th><th>Statut Colis</th><th>Actions</th></tr>'
+            . '<tr><th>N° Tracking</th><th>Expéditeur</th><th>Destinataire</th><th>Poids</th><th>Valeur Déclarée</th><th>Statut Colis</th><th>État Départ</th><th>Actions</th></tr>'
             . '</thead><tbody>' . $rows . '</tbody></table></div>');
     }
 
@@ -2615,7 +2648,7 @@ final class Colisage
                 . Form::rawInput('m_custom_price[]', '', ['type' => 'number', 'step' => '0.01', 'placeholder' => 'Prix unit.'])
                 . '</div>'
                 . '</td>'
-                . '<td>' . Form::rawSelect('m_emballage[]', self::emballageOptions(), '') . '</td>'
+                . '<td>' . self::emballageSelectHtml('m_emballage[]', '') . '</td>'
                 . '<td>' . Form::rawInput('m_qte_emballage[]', '1', ['type' => 'number', 'min' => '1']) . '</td>'
                 . '<td>' . Form::rawInput('m_weight[]', '0.00', ['type' => 'number', 'step' => '0.01', 'min' => '0']) . '</td>'
                 . '<td>' . Form::rawInput('m_prix_kg[]', '0.00', ['type' => 'number', 'step' => '0.01', 'min' => '0']) . '</td>'

@@ -23,6 +23,7 @@ final class PermissionEntityRegistry
     public const CALL_CENTER_VIEW = 'call_center_view';
     public const CALL_CENTER_MANAGE = 'call_center_manage';
     public const RAPPORTS_AGENCE = 'rapports_agence';
+    public const EXPORTER_RAPPORTS_EXCEL = 'exporter_rapports_excel';
 
     public const SAISIR_FACTURE = 'saisir_facture';
     public const MODIFIER_FACTURE_APRES_CREATION = 'modifier_facture_apres_creation';
@@ -120,8 +121,14 @@ final class PermissionEntityRegistry
             self::RAPPORTS_AGENCE => [
                 'module' => 'Facturation',
                 'name' => 'Rapports journaliers par agence',
-                'description' => 'Accéder aux rapports journaliers et mensuels par agence avec export CSV.',
+                'description' => 'Accéder aux rapports journaliers et mensuels par agence.',
                 'sort_order' => 235,
+            ],
+            self::EXPORTER_RAPPORTS_EXCEL => [
+                'module' => 'Facturation',
+                'name' => 'Exporter rapports agence (Excel/CSV)',
+                'description' => 'Exporter les rapports journaliers et mensuels par agence au format Excel ou CSV.',
+                'sort_order' => 236,
             ],
             self::CALL_CENTER_VIEW => [
                 'module' => 'Call Center',

@@ -30,6 +30,7 @@ $router->group('/colisage', function (Router $router): void {
     $router->post('/parcels/{id}/retirer', [ColisageController::class, 'withdraw']);
     $router->post('/parcels/{id}/transferer', [ColisageController::class, 'transfer']);
     $router->post('/parcels/{id}/supprimer', [ColisageController::class, 'deleteParcel']);
+    $router->post('/parcels/{id}/statut-depart', [ColisageController::class, 'updateStatutDepart']);
 
     $router->get('/groupage', [ColisageController::class, 'groupageIndex']);
     $router->get('/groupage/nouveau', [ColisageController::class, 'groupageCreate']);
@@ -51,6 +52,7 @@ $router->group('/colisage', function (Router $router): void {
     $router->get('/rapports', [RapportsController::class, 'journalier']);
     $router->get('/rapports/mensuel', [RapportsController::class, 'mensuel']);
     $router->get('/rapports/export-csv', [RapportsController::class, 'exportCsv']);
+    $router->get('/rapports/export-pdf', [RapportsController::class, 'exportPdf']);
 
     $router->get('/settings', [ColisageController::class, 'settings']);
     $router->post('/settings/enregistrer', [ColisageController::class, 'saveSettings']);

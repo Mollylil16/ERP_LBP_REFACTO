@@ -291,15 +291,18 @@ class ColisageRepository
         $poidsUnitaire = (float) ($data['poids_unitaire'] ?? 0.0);
         $prixKg = (float) ($data['prix_kg'] ?? 0.0);
         $qte = (int) ($data['quantite'] ?? 1);
-        $totalLigne = $prixKg > 0 ? round($prixKg * $poidsUnitaire * $qte, 2) : 0.0;
+        $qteEmb = (int) ($data['qte_emballage'] ?? 1);
+        $prixEmb = (float) ($data['prix_emballage'] ?? 0.0);
+        $nbreColis = (int) ($data['nbre_colis'] ?? 1);
+        $totalLigne = round(($nbreColis * $poidsUnitaire * $prixKg) + ($qteEmb * $prixEmb), 2);
 
         $stmt = $this->pdo->prepare("
             INSERT INTO lbp_marchandises (
                 colis_id, description, emballage, quantite, nbre_colis,
-                qte_emballage, poids_unitaire, prix_kg, total_ligne, created_at
+                qte_emballage, prix_emballage, poids_unitaire, prix_kg, total_ligne, created_at
             ) VALUES (
                 :colis_id, :description, :emballage, :quantite, :nbre_colis,
-                :qte_emballage, :poids_unitaire, :prix_kg, :total_ligne, NOW()
+                :qte_emballage, :prix_emballage, :poids_unitaire, :prix_kg, :total_ligne, NOW()
             )
         ");
         $stmt->execute([
@@ -307,11 +310,66 @@ class ColisageRepository
             'description' => trim((string) $data['description']),
             'emballage' => isset($data['emballage']) ? trim((string) $data['emballage']) : null,
             'quantite' => $qte,
-            'nbre_colis' => (int) ($data['nbre_colis'] ?? 1),
-            'qte_emballage' => (int) ($data['qte_emballage'] ?? 1),
+            'nbre_colis' => $nbreColis,
+            'qte_emballage' => $qteEmb,
+            'prix_emballage' => $prixEmb,
             'poids_unitaire' => $poidsUnitaire,
             'prix_kg' => $prixKg,
             'total_ligne' => $totalLigne,
+        ]);
+    }
+
+    public function deductEmballageStock(string $emballageLibelle, int $agenceId, int $quantite, string $tracking, ?int $userId = null): void
+    {
+        $emballageLibelle = trim($emballageLibelle);
+        if ($emballageLibelle === '' || str_contains(strtolower($emballageLibelle), 'aucun') || str_contains(strtolower($emballageLibelle), 'propre')) {
+            return; // Client's own packaging: do not deduct LBP stock
+        }
+
+        if ($quantite <= 0 || $agenceId <= 0) {
+            return;
+        }
+
+        // Find matching emballage in catalogue
+        $stmt = $this->pdo->prepare("
+            SELECT id FROM lbp_emballages_catalogue 
+            WHERE libelle = :libelle OR libelle LIKE :like_libelle OR code = :code
+            LIMIT 1
+        ");
+        $stmt->execute([
+            'libelle' => $emballageLibelle,
+            'like_libelle' => '%' . $emballageLibelle . '%',
+            'code' => strtoupper(str_replace([' ', '(', ')'], ['_', '', ''], $emballageLibelle)),
+        ]);
+        $embId = $stmt->fetchColumn();
+
+        if (!$embId) {
+            return;
+        }
+
+        // Decrease agency stock
+        $stmtStock = $this->pdo->prepare("
+            INSERT INTO lbp_emballages_stocks (emballage_id, agence_id, quantite_disponible, updated_at)
+            VALUES (:emb, :agence, 0, NOW())
+            ON DUPLICATE KEY UPDATE quantite_disponible = GREATEST(0, quantite_disponible - :qte), updated_at = NOW()
+        ");
+        $stmtStock->execute([
+            'emb' => (int) $embId,
+            'agence' => $agenceId,
+            'qte' => $quantite,
+        ]);
+
+        // Record stock movement
+        $stmtMvt = $this->pdo->prepare("
+            INSERT INTO lbp_emballages_mouvements (emballage_id, agence_id, type_mouvement, quantite, motif, user_id, created_at)
+            VALUES (:emb, :agence, 'SORTIE_COLISAGE', :qte, :motif, :user, NOW())
+        ");
+        $stmtMvt->execute([
+            'emb' => (int) $embId,
+            'agence' => $agenceId,
+            'qte' => $quantite,
+            'motif' => 'Utilisation colisage ' . $tracking,
+            'user' => $userId,
         ]);
     }
 
@@ -501,12 +559,41 @@ class ColisageRepository
 
     public function updateParcelsStatusForExpedition(int $expeditionId, string $status): void
     {
+        // Detach parcels marked as RESTE so they remain at the origin agency
+        $stmtDetach = $this->pdo->prepare("
+            UPDATE lbp_colis
+            SET expedition_id = NULL, updated_at = NOW()
+            WHERE expedition_id = :expedition_id AND statut_depart = 'RESTE'
+        ");
+        $stmtDetach->execute(['expedition_id' => $expeditionId]);
+
+        // Update departing parcels to EN_TRANSIT
         $stmt = $this->pdo->prepare("
             UPDATE lbp_colis
-            SET statut = :status, updated_at = NOW()
+            SET statut = :status,
+                statut_depart = 'PARTI',
+                date_statut_depart = COALESCE(date_statut_depart, NOW()),
+                updated_at = NOW()
             WHERE expedition_id = :expedition_id
         ");
         $stmt->execute(['expedition_id' => $expeditionId, 'status' => trim(strtoupper($status))]);
+    }
+
+    public function updateParcelStatutDepart(int $parcelId, string $statutDepart, ?string $motifReste = null): void
+    {
+        $stmt = $this->pdo->prepare("
+            UPDATE lbp_colis
+            SET statut_depart = :statut_depart,
+                motif_reste = :motif_reste,
+                date_statut_depart = NOW(),
+                updated_at = NOW()
+            WHERE id = :id
+        ");
+        $stmt->execute([
+            'id' => $parcelId,
+            'statut_depart' => trim(strtoupper($statutDepart)),
+            'motif_reste' => $motifReste !== null && trim($motifReste) !== '' ? trim($motifReste) : null,
+        ]);
     }
 
     /** @param array<string, mixed> $data */

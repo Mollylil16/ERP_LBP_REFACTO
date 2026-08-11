@@ -190,6 +190,7 @@ final class ColisageAutresController extends ColisageBaseController
                     'nbre_colis' => (int) ($_POST['m_nbre_colis'][$idx] ?? 1),
                     'emballage' => $_POST['m_emballage'][$idx] ?? null,
                     'qte_emballage' => (int) ($_POST['m_qte_emballage'][$idx] ?? 1),
+                    'prix_emballage' => (float) ($_POST['m_prix_emballage'][$idx] ?? 0.0),
                     'poids_unitaire' => (float) ($_POST['m_weight'][$idx] ?? 0.0),
                     'prix_kg' => (float) ($_POST['m_prix_kg'][$idx] ?? 0.0),
                 ];

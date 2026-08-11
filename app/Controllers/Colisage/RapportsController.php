@@ -8,6 +8,7 @@ use App\Middleware\AuthMiddleware;
 use App\Helpers\Auth;
 use App\Helpers\Session;
 use App\Models\Database;
+use App\Security\PermissionEntityRegistry;
 use PDO;
 
 final class RapportsController extends ColisageBaseController
@@ -123,13 +124,16 @@ final class RapportsController extends ColisageBaseController
             $totaux['credits_regle_xof_jour'] += (float) ($cr['credits_regle_xof_jour'] ?? 0);
         }
 
+        $canExportExcel = Auth::isAdmin() || Auth::can(PermissionEntityRegistry::EXPORTER_RAPPORTS_EXCEL);
+
         $this->colisageView('colisage/rapports/journalier', 'Rapport Journalier par Agence', 'reporting', [
-            'date'          => $date,
-            'agenceId'      => $agenceId,
-            'sites'         => $sites,
-            'rapportColis'  => $rapportColis,
-            'creditsMap'    => $creditsMap,
-            'totaux'        => $totaux,
+            'date'            => $date,
+            'agenceId'        => $agenceId,
+            'sites'           => $sites,
+            'rapportColis'    => $rapportColis,
+            'creditsMap'      => $creditsMap,
+            'totaux'          => $totaux,
+            'canExportExcel'  => $canExportExcel,
         ]);
     }
 
@@ -181,16 +185,19 @@ final class RapportsController extends ColisageBaseController
         $stmtJ->execute($paramsJ);
         $journaliers = $stmtJ->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
+        $canExportExcel = Auth::isAdmin() || Auth::can(PermissionEntityRegistry::EXPORTER_RAPPORTS_EXCEL);
+
         $this->colisageView('colisage/rapports/journalier', 'Rapport Mensuel par Agence', 'reporting', [
-            'date'         => $dateDebut,
-            'mois'         => $mois,
-            'agenceId'     => $agenceId,
-            'sites'        => $sites,
-            'journaliers'  => $journaliers,
-            'vueMensuelle' => true,
-            'rapportColis' => [],
-            'creditsMap'   => [],
-            'totaux'       => [],
+            'date'           => $dateDebut,
+            'mois'           => $mois,
+            'agenceId'       => $agenceId,
+            'sites'          => $sites,
+            'journaliers'    => $journaliers,
+            'vueMensuelle'   => true,
+            'rapportColis'   => [],
+            'creditsMap'     => [],
+            'totaux'         => [],
+            'canExportExcel' => $canExportExcel,
         ]);
     }
 
@@ -201,9 +208,9 @@ final class RapportsController extends ColisageBaseController
     public function exportCsv(): void
     {
         AuthMiddleware::check();
-        if (!Auth::can('rapports_agence') && !Auth::can('exploitation_synthese')) {
-            http_response_code(403);
-            echo 'Accès refusé';
+        if (!Auth::isAdmin() && !Auth::can(PermissionEntityRegistry::EXPORTER_RAPPORTS_EXCEL)) {
+            Session::flash('error', 'Vous n\'avez pas la permission d\'exporter en Excel/CSV.');
+            header('Location: /colisage/rapports');
             exit;
         }
 
@@ -292,5 +299,80 @@ final class RapportsController extends ColisageBaseController
 
         fclose($out);
         exit;
+    }
+
+    // ==========================================
+    // EXPORT PDF
+    // ==========================================
+
+    public function exportPdf(): void
+    {
+        AuthMiddleware::check();
+        if (!Auth::can('rapports_agence') && !Auth::can('exploitation_synthese')) {
+            Session::flash('error', 'Accès refusé aux rapports.');
+            $this->redirect('colisage/dashboard');
+        }
+
+        $date     = $_GET['date'] ?? date('Y-m-d');
+        $agenceId = !empty($_GET['agence_id']) ? (int) $_GET['agence_id'] : null;
+
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+            $date = date('Y-m-d');
+        }
+
+        // Données colis
+        $sqlColis = "
+            SELECT
+                s.name AS agence,
+                COUNT(c.id) AS nb_colis,
+                COALESCE(SUM(c.poids_total), 0) AS poids_total,
+                COALESCE(SUM(CASE WHEN c.devise = 'XOF' THEN c.montant_total ELSE 0 END), 0) AS ca_xof,
+                COALESCE(SUM(CASE WHEN c.devise = 'EUR' THEN c.montant_total ELSE 0 END), 0) AS ca_eur,
+                COUNT(CASE WHEN c.statut = 'RÉCEPTIONNÉ' THEN 1 END) AS nb_receptiones,
+                COUNT(CASE WHEN c.statut = 'RETIRÉ' THEN 1 END) AS nb_retires,
+                COUNT(CASE WHEN c.statut NOT IN ('RETIRÉ', 'LIVRÉ', 'ANNULÉ') AND c.date_limite_retrait < NOW() THEN 1 END) AS nb_hors_delai
+            FROM company_sites s
+            LEFT JOIN lbp_colis c ON c.agence_depart_id = s.id AND DATE(c.created_at) = :date
+            WHERE s.is_active = 1
+        ";
+        $params = ['date' => $date];
+        if ($agenceId !== null) {
+            $sqlColis .= " AND s.id = :agence_id";
+            $params['agence_id'] = $agenceId;
+        }
+        $sqlColis .= " GROUP BY s.id ORDER BY s.name ASC";
+
+        $stmtC = $this->pdo->prepare($sqlColis);
+        $stmtC->execute($params);
+        $rows = $stmtC->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+        // Crédits
+        $sqlK = "
+            SELECT s.name AS agence,
+                COALESCE(SUM(CASE WHEN ci.statut='NON_REGLE' AND ci.devise='XOF' THEN ci.montant ELSE 0 END),0) AS credits_non_regle_xof,
+                COALESCE(SUM(CASE WHEN ci.statut='REGLE' AND DATE(ci.updated_at)=:date AND ci.devise='XOF' THEN ci.montant ELSE 0 END),0) AS credits_regle_xof
+            FROM company_sites s
+            LEFT JOIN lbp_credits_interagence ci ON ci.agence_creanciere_id = s.id
+            WHERE s.is_active = 1
+            GROUP BY s.id ORDER BY s.name ASC
+        ";
+        $stmtK = $this->pdo->prepare($sqlK);
+        $stmtK->execute(['date' => $date]);
+        $credRows = $stmtK->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+        $credMap = [];
+        foreach ($credRows as $cr) {
+            $credMap[$cr['agence']] = $cr;
+        }
+
+        // Agence label
+        $agenceLabel = 'Toutes les agences';
+        if ($agenceId !== null) {
+            $stmt = $this->pdo->prepare("SELECT name FROM company_sites WHERE id = :id LIMIT 1");
+            $stmt->execute(['id' => $agenceId]);
+            $agenceLabel = $stmt->fetchColumn() ?: 'Agence #' . $agenceId;
+        }
+
+        require BASE_PATH . '/views/colisage/rapports/journalier_pdf.php';
     }
 }

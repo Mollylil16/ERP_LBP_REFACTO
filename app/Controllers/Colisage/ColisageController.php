@@ -182,6 +182,7 @@ final class ColisageController extends ColisageBaseController
                     'nbre_colis' => (int) ($_POST['m_nbre_colis'][$idx] ?? 1),
                     'emballage' => $_POST['m_emballage'][$idx] ?? null,
                     'qte_emballage' => (int) ($_POST['m_qte_emballage'][$idx] ?? 1),
+                    'prix_emballage' => (float) ($_POST['m_prix_emballage'][$idx] ?? 0.0),
                     'poids_unitaire' => (float) ($_POST['m_weight'][$idx] ?? 0.0),
                     'prix_kg' => (float) ($_POST['m_prix_kg'][$idx] ?? 0.0),
                 ];
@@ -378,6 +379,42 @@ final class ColisageController extends ColisageBaseController
         }
 
         header('Location: ' . View::url('colisage/parcels'));
+        exit;
+    }
+
+    public function updateStatutDepart(int $id): void
+    {
+        AuthMiddleware::check();
+
+        if (!Csrf::verify($_POST['_csrf_token'] ?? null)) {
+            if (isset($_SERVER['HTTP_ACCEPT']) && str_contains($_SERVER['HTTP_ACCEPT'], 'application/json')) {
+                header('Content-Type: application/json');
+                echo json_encode(['ok' => false, 'message' => 'Token CSRF invalide.']);
+                exit;
+            }
+            Session::flash('error', 'Session expirée.');
+            header('Location: ' . View::url('colisage/parcels/' . $id));
+            exit;
+        }
+
+        $statutDepart = trim((string) ($_POST['statut_depart'] ?? 'NON_SPECIFIE'));
+        $motifReste = trim((string) ($_POST['motif_reste'] ?? ''));
+
+        if (!in_array($statutDepart, ['NON_SPECIFIE', 'PARTI', 'RESTE'], true)) {
+            $statutDepart = 'NON_SPECIFIE';
+        }
+
+        $this->service->updateParcelStatutDepart($id, $statutDepart, $motifReste);
+
+        if (isset($_SERVER['HTTP_ACCEPT']) && str_contains($_SERVER['HTTP_ACCEPT'], 'application/json')) {
+            header('Content-Type: application/json');
+            echo json_encode(['ok' => true, 'statut_depart' => $statutDepart, 'motif_reste' => $motifReste]);
+            exit;
+        }
+
+        Session::flash('success', 'Statut de départ du colis mis à jour avec succès.');
+        $redirectUrl = $_POST['redirect_url'] ?? View::url('colisage/parcels/' . $id);
+        header('Location: ' . $redirectUrl);
         exit;
     }
 

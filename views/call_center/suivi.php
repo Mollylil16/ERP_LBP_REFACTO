@@ -15,15 +15,20 @@ $csrfToken = Csrf::token();
 
     <!-- Header -->
     <div class="rh-hero rh-hero-white" style="background: linear-gradient(135deg,#0284c7,#0369a1); color:#fff; border-radius:1rem; padding:2rem; margin-bottom:2rem;">
-      <div style="display:flex;align-items:center;gap:1rem;">
-        <div style="width:56px;height:56px;border-radius:50%;background:rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;">
-          <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;">
+        <div style="display:flex;align-items:center;gap:1rem;">
+          <div style="width:56px;height:56px;border-radius:50%;background:rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;">
+            <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+          </div>
+          <div>
+            <div style="font-size:0.8rem;opacity:0.8;letter-spacing:0.08em;text-transform:uppercase;">CAL Suivi</div>
+            <h1 style="font-size:1.6rem;font-weight:700;margin:0;">Suivi & Relances Clients</h1>
+            <p style="opacity:0.8;margin:0.2rem 0 0;">Notifier les clients par WhatsApp/SMS et tracer les appels via Mobile connecté</p>
+          </div>
         </div>
-        <div>
-          <div style="font-size:0.8rem;opacity:0.8;letter-spacing:0.08em;text-transform:uppercase;">CAL Suivi</div>
-          <h1 style="font-size:1.6rem;font-weight:700;margin:0;">Suivi & Relances Clients</h1>
-          <p style="opacity:0.8;margin:0.2rem 0 0;">Notifier les clients par WhatsApp/SMS et tracer les appels via Mobile connecté</p>
-        </div>
+        <a href="/call-center/suivi-departs" style="background:#fff;color:#0369a1;padding:.6rem 1.2rem;border-radius:.5rem;font-weight:700;text-decoration:none;font-size:.875rem;display:inline-flex;align-items:center;gap:.4rem;box-shadow:0 2px 4px rgba(0,0,0,.1);">
+          📦 Bilan Départs & Colis Restés
+        </a>
       </div>
     </div>
 

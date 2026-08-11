@@ -139,6 +139,8 @@ final class ColisageService
                     $code = 'LB-FR';
                 } elseif ($from === 'SEN' && $to === 'FR') {
                     $code = 'S-FR';
+                } elseif ($from === 'SEN' && $to === 'CIV') {
+                    $code = 'S-CI';
                 } elseif ($from === 'CIV' && $to === 'CAN') {
                     $code = 'LB-CA';
                 } else {
@@ -253,16 +255,30 @@ final class ColisageService
                     }
 
                     if ($description !== '') {
+                        $embName = isset($m['emballage']) ? trim((string) $m['emballage']) : '';
+                        $qteEmb = (int) ($m['qte_emballage'] ?? 1);
+
                         $this->repository->createMarchandise([
                             'colis_id' => $parcelId,
                             'description' => $description,
-                            'emballage' => isset($m['emballage']) ? trim((string) $m['emballage']) : null,
+                            'emballage' => $embName,
                             'quantite' => (int) ($m['quantite'] ?? 1),
                             'nbre_colis' => (int) ($m['nbre_colis'] ?? 1),
-                            'qte_emballage' => (int) ($m['qte_emballage'] ?? 1),
+                            'qte_emballage' => $qteEmb,
+                            'prix_emballage' => (float) ($m['prix_emballage'] ?? 0.0),
                             'poids_unitaire' => (float) ($m['poids_unitaire'] ?? 0.0),
                             'prix_kg' => (float) ($m['prix_kg'] ?? 0.0),
                         ]);
+
+                        if ($embName !== '' && $agenceDepartId > 0) {
+                            $this->repository->deductEmballageStock(
+                                $embName,
+                                (int) $agenceDepartId,
+                                $qteEmb,
+                                $tracking,
+                                $userId
+                            );
+                        }
                     }
                 }
             }
@@ -444,6 +460,11 @@ final class ColisageService
     public function addParcelToExpedition(int $parcelId, int $expeditionId): void
     {
         $this->repository->assignParcelToExpedition($parcelId, $expeditionId);
+    }
+
+    public function updateParcelStatutDepart(int $parcelId, string $statutDepart, ?string $motifReste = null): void
+    {
+        $this->repository->updateParcelStatutDepart($parcelId, $statutDepart, $motifReste);
     }
 
     public function startExpedition(int $id): void

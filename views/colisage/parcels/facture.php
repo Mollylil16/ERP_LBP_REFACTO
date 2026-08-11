@@ -487,19 +487,20 @@ $operatorName = \App\Helpers\Auth::user() ? \App\Helpers\Auth::user()->fullName 
             <thead>
                 <tr>
                     <th style="width: 5%; text-align: center;">N°</th>
-                    <th style="width: 8%; text-align: center;">Nbre Colis</th>
+                    <th style="width: 7%; text-align: center;">Nbre Colis</th>
                     <th>Description</th>
-                    <th style="width: 15%;">Emballage</th>
-                    <th style="width: 10%; text-align: center;">Qté Emb.</th>
-                    <th style="width: 12%; text-align: right;">Poids (kg)</th>
-                    <th style="width: 12%; text-align: right;">Prix / Kg</th>
-                    <th style="width: 15%; text-align: right;">Total</th>
+                    <th style="width: 12%;">Emballage</th>
+                    <th style="width: 7%; text-align: center;">Qté Emb.</th>
+                    <th style="width: 11%; text-align: right;">Prix Emb.</th>
+                    <th style="width: 11%; text-align: right;">Poids (kg)</th>
+                    <th style="width: 11%; text-align: right;">Prix / Kg</th>
+                    <th style="width: 13%; text-align: right;">Total</th>
                 </tr>
             </thead>
             <tbody>
                 <?php if (empty($colis['marchandises'])): ?>
                     <tr>
-                        <td colspan="8" style="text-align: center; padding: 15px; color: #64748b;">Aucune marchandise répertoriée.</td>
+                        <td colspan="9" style="text-align: center; padding: 15px; color: #64748b;">Aucune marchandise répertoriée.</td>
                     </tr>
                 <?php else: ?>
                     <?php $idx = 0; foreach ($colis['marchandises'] as $m): $idx++; ?>
@@ -509,6 +510,7 @@ $operatorName = \App\Helpers\Auth::user() ? \App\Helpers\Auth::user()->fullName 
                             <td><strong><?= View::e($m['description']) ?></strong></td>
                             <td><?= View::e($m['emballage'] ?? '—') ?></td>
                             <td style="text-align: center;"><?= View::e((string) ($m['qte_emballage'] ?? 1)) ?></td>
+                            <td style="text-align: right;"><?= !empty($m['prix_emballage']) && (float)$m['prix_emballage'] > 0 ? number_format((float)$m['prix_emballage'], 0, ',', ' ') . ' F' : '—' ?></td>
                             <td style="text-align: right;"><?= View::e(number_format((float) $m['poids_unitaire'], 2, ',', ' ')) ?></td>
                             <td style="text-align: right;"><?= View::e(number_format((float) ($m['prix_kg'] ?? 0), 0, ',', ' ')) ?> F</td>
                             <td style="text-align: right; font-weight: 600;"><?= number_format((float) ($m['total_ligne'] ?? 0), 0, ',', '.') ?> F</td>
@@ -518,7 +520,7 @@ $operatorName = \App\Helpers\Auth::user() ? \App\Helpers\Auth::user()->fullName 
             </tbody>
             <tfoot>
                 <tr>
-                    <td colspan="6" style="border: none;"></td>
+                    <td colspan="7" style="border: none;"></td>
                     <td style="text-align: right; border: 1px solid #e2e8f0; background: #f8fafc; font-weight: 600;">SOUS-TOTAL</td>
                     <td style="text-align: right; border: 1px solid #e2e8f0; background: #f8fafc; font-weight: 600;"><?= number_format($sousTotal, 0, ',', '.') ?> FCFA</td>
                 </tr>
@@ -527,13 +529,13 @@ $operatorName = \App\Helpers\Auth::user() ? \App\Helpers\Auth::user()->fullName 
                 if ($fraisEmballage > 0):
                 ?>
                 <tr>
-                    <td colspan="6" style="border: none;"></td>
+                    <td colspan="7" style="border: none;"></td>
                     <td style="text-align: right; border: 1px solid #e2e8f0; background: #f8fafc; font-weight: 600;">EMBALLAGE</td>
                     <td style="text-align: right; border: 1px solid #e2e8f0; background: #f8fafc; font-weight: 600;"><?= number_format($fraisEmballage, 0, ',', '.') ?> FCFA</td>
                 </tr>
                 <?php endif; ?>
                 <tr class="total-row">
-                    <td colspan="6" style="border: none;"></td>
+                    <td colspan="7" style="border: none;"></td>
                     <td style="text-align: right; font-size: 11px; font-weight: 800; background: #1e3a5f; color: #ffffff; border: 1px solid #1e3a5f;">MONTANT TOTAL</td>
                     <td style="text-align: right; font-weight: 900; font-size: 13px; background: #e0f2fe; color: #0369a1; border: 1px solid #0369a1;">
                         <?= number_format($montantTotal, 0, ',', '.') ?> FCFA<br>

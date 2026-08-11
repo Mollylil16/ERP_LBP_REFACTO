@@ -40,6 +40,7 @@ class MigrationRunner
         $this->createColisageOperationRefactoTables();
         $this->createMissingProductionTables();
         $this->migrateCrmClientsIntoLbpClients();
+        $this->seedRealEmballagesCatalogue();
     }
 
 
@@ -1734,6 +1735,9 @@ class MigrationRunner
         $this->addColumnIfMissing('lbp_colis', 'assurance_souscrite', "TINYINT(1) NOT NULL DEFAULT 0");
         $this->addColumnIfMissing('lbp_colis', 'montant_assurance', "DECIMAL(15,2) NOT NULL DEFAULT 0.00");
         $this->addColumnIfMissing('lbp_colis', 'created_by', "INT NULL");
+        $this->addColumnIfMissing('lbp_colis', 'statut_depart', "ENUM('NON_SPECIFIE', 'PARTI', 'RESTE') NOT NULL DEFAULT 'NON_SPECIFIE'");
+        $this->addColumnIfMissing('lbp_colis', 'motif_reste', "VARCHAR(255) NULL");
+        $this->addColumnIfMissing('lbp_colis', 'date_statut_depart', "DATETIME NULL");
 
         $this->pdo->exec("
             CREATE TABLE IF NOT EXISTS lbp_marchandises (
@@ -1751,6 +1755,8 @@ class MigrationRunner
                 CONSTRAINT fk_lbp_marchandises_colis FOREIGN KEY (colis_id) REFERENCES lbp_colis(id) ON DELETE CASCADE
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         ");
+
+        $this->addColumnIfMissing('lbp_marchandises', 'prix_emballage', "DECIMAL(10,2) NOT NULL DEFAULT 0.00");
 
         $this->pdo->exec("
             CREATE TABLE IF NOT EXISTS lbp_tracking_gps (
@@ -2426,6 +2432,7 @@ class MigrationRunner
             ['LB-CI', 'Abidjan → France', 'AÉRIEN', 'France'],
             ['LB-FR', 'France → Abidjan', 'AÉRIEN', 'Abidjan'],
             ['S-FR', 'Sénégal → France', 'AÉRIEN', 'France'],
+            ['S-CI', 'Sénégal → Côte d\'Ivoire', 'AÉRIEN', 'Abidjan'],
             ['LB-CA', 'Abidjan → Canada', 'AÉRIEN', 'Canada'],
             ['F-SN', 'France → Sénégal', 'AÉRIEN', 'Sénégal'],
             ['CA-CI', 'Abidjan → Paris', 'rapide', 'Paris'],
@@ -2446,7 +2453,7 @@ class MigrationRunner
             ]);
         }
 
-        $this->pdo->exec("UPDATE trajets SET type_transport = 'AÉRIEN' WHERE code IN ('LB-CI', 'LB-FR', 'S-FR', 'LB-CA', 'F-SN') OR LOWER(type_transport) = 'maritime'");
+        $this->pdo->exec("UPDATE trajets SET type_transport = 'AÉRIEN' WHERE code IN ('LB-CI', 'LB-FR', 'S-FR', 'S-CI', 'LB-CA', 'F-SN') OR LOWER(type_transport) = 'maritime'");
     }
 
     /**
@@ -2794,6 +2801,67 @@ class MigrationRunner
 
         if ($this->schema->tableExists('crm_clients')) {
             $this->pdo->exec("DROP TABLE crm_clients");
+        }
+    }
+
+    private function seedRealEmballagesCatalogue(): void
+    {
+        if (!$this->schema->tableExists('lbp_emballages_catalogue')) {
+            return;
+        }
+
+        $realItems = [
+            ['code' => 'PETIT_CARTON',       'libelle' => 'Petit carton',               'type' => 'Carton',      'prix' => 500.00],
+            ['code' => 'GROS_CARTON',        'libelle' => 'Gros carton',                'type' => 'Carton',      'prix' => 500.00],
+            ['code' => 'SAC_BORO',           'libelle' => 'Sac Bôrô',                   'type' => 'Bôrô',        'prix' => 500.00],
+            ['code' => 'SACHET',             'libelle' => 'Sachet',                     'type' => 'Sac',         'prix' => 500.00],
+            ['code' => 'PAPIER_FILM_GROS',   'libelle' => 'Papier film (Gros colis)',   'type' => 'Consommable', 'prix' => 1000.00],
+            ['code' => 'PAPIER_FILM_PETIT',  'libelle' => 'Papier film (Petit colis)',  'type' => 'Consommable', 'prix' => 500.00],
+            ['code' => 'ETIQUETTE_LBP',      'libelle' => 'Étiquettes LBP',            'type' => 'Consommable', 'prix' => 200.00],
+        ];
+
+        $codes = array_column($realItems, 'code');
+        $placeholders = implode(',', array_fill(0, count($codes), '?'));
+
+        // Purge old emballages not in the real list
+        $stmtDel = $this->pdo->prepare("DELETE FROM lbp_emballages_catalogue WHERE code NOT IN ($placeholders)");
+        $stmtDel->execute($codes);
+
+        // Upsert real items
+        $stmtUpsert = $this->pdo->prepare("
+            INSERT INTO lbp_emballages_catalogue (code, libelle, type, prix_vente_xof, prix_achat_xof, min_stock_alerte, created_at)
+            VALUES (:code, :libelle, :type, :prix, 0.00, 10, NOW())
+            ON DUPLICATE KEY UPDATE 
+                libelle = VALUES(libelle),
+                type = VALUES(type),
+                prix_vente_xof = VALUES(prix_vente_xof)
+        ");
+
+        foreach ($realItems as $item) {
+            $stmtUpsert->execute([
+                'code' => $item['code'],
+                'libelle' => $item['libelle'],
+                'type' => $item['type'],
+                'prix' => $item['prix'],
+            ]);
+        }
+
+        // Initialize agency stocks for all active sites if missing
+        if ($this->schema->tableExists('lbp_emballages_stocks') && $this->schema->tableExists('company_sites')) {
+            $stmtSites = $this->pdo->query("SELECT id FROM company_sites WHERE is_active = 1");
+            $sites = $stmtSites ? $stmtSites->fetchAll(PDO::FETCH_COLUMN) : [];
+            $stmtEmbs = $this->pdo->query("SELECT id FROM lbp_emballages_catalogue");
+            $embs = $stmtEmbs ? $stmtEmbs->fetchAll(PDO::FETCH_COLUMN) : [];
+
+            $stmtStockInit = $this->pdo->prepare("
+                INSERT IGNORE INTO lbp_emballages_stocks (emballage_id, agence_id, quantite_disponible, updated_at)
+                VALUES (:emb, :site, 100, NOW())
+            ");
+            foreach ($sites as $siteId) {
+                foreach ($embs as $embId) {
+                    $stmtStockInit->execute(['emb' => $embId, 'site' => $siteId]);
+                }
+            }
         }
     }
 }

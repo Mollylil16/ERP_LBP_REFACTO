@@ -11,6 +11,7 @@
 /** @var array $journaliers */
 
 $vueMensuelle = $vueMensuelle ?? false;
+$canExportExcel = $canExportExcel ?? false;
 
 function fmt_xof(float $val): string {
     return number_format($val, 0, ',', ' ') . ' XOF';
@@ -48,10 +49,18 @@ function fmt_kg(float $val): string {
           Mensuel
         </a>
         <?php if (!$vueMensuelle): ?>
-          <a href="/colisage/rapports/export-csv?date=<?= htmlspecialchars($date) ?>&agence_id=<?= $agenceId ?? '' ?>"
-             style="background:#22c55e;color:#fff;padding:.5rem 1.1rem;border-radius:.4rem;text-decoration:none;font-weight:600;font-size:.875rem;display:flex;align-items:center;gap:.4rem;">
-            Export CSV
+          <a href="/colisage/rapports/export-pdf?date=<?= htmlspecialchars($date) ?>&agence_id=<?= $agenceId ?? '' ?>"
+             style="background:#0f172a;color:#fff;padding:.5rem 1.1rem;border-radius:.4rem;text-decoration:none;font-weight:600;font-size:.875rem;display:flex;align-items:center;gap:.4rem;">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+            Export PDF
           </a>
+          <?php if ($canExportExcel): ?>
+            <a href="/colisage/rapports/export-csv?date=<?= htmlspecialchars($date) ?>&agence_id=<?= $agenceId ?? '' ?>"
+               style="background:#22c55e;color:#fff;padding:.5rem 1.1rem;border-radius:.4rem;text-decoration:none;font-weight:600;font-size:.875rem;display:flex;align-items:center;gap:.4rem;">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Export Excel
+            </a>
+          <?php endif; ?>
         <?php endif; ?>
       </div>
     </div>
@@ -150,8 +159,14 @@ function fmt_kg(float $val): string {
       <div style="background:#fff;border-radius:.75rem;box-shadow:0 1px 4px rgba(0,0,0,.07);overflow:hidden;margin-bottom:1.5rem;">
         <div style="padding:1rem 1.25rem;border-bottom:1px solid #f1f5f9;display:flex;justify-content:space-between;align-items:center;">
           <div style="font-weight:700;font-size:.95rem;">Détail par Agence — <?= date('d/m/Y', strtotime($date)) ?></div>
-          <a href="/colisage/rapports/export-csv?date=<?= htmlspecialchars($date) ?>&agence_id=<?= $agenceId ?? '' ?>"
-             style="background:#22c55e;color:#fff;padding:.4rem .9rem;border-radius:.4rem;text-decoration:none;font-size:.8rem;font-weight:600;">CSV</a>
+          <div style="display:flex;gap:.5rem;">
+            <a href="/colisage/rapports/export-pdf?date=<?= htmlspecialchars($date) ?>&agence_id=<?= $agenceId ?? '' ?>"
+               style="background:#0f172a;color:#fff;padding:.4rem .9rem;border-radius:.4rem;text-decoration:none;font-size:.8rem;font-weight:600;">PDF</a>
+            <?php if ($canExportExcel): ?>
+              <a href="/colisage/rapports/export-csv?date=<?= htmlspecialchars($date) ?>&agence_id=<?= $agenceId ?? '' ?>"
+                 style="background:#22c55e;color:#fff;padding:.4rem .9rem;border-radius:.4rem;text-decoration:none;font-size:.8rem;font-weight:600;">CSV</a>
+            <?php endif; ?>
+          </div>
         </div>
         <div style="overflow-x:auto;">
           <table style="width:100%;border-collapse:collapse;font-size:.875rem;">

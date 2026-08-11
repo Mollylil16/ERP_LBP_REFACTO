@@ -573,6 +573,201 @@ final class CallCenterController extends BaseController
         ]);
     }
 
+    public function suiviDeparts(): void
+    {
+        AuthMiddleware::check();
+        if (!Auth::can('call_center_view')) {
+            Session::flash('error', 'Accès refusé au module Call Center.');
+            $this->redirect('portal');
+        }
+
+        $data = $this->fetchSuiviDepartsData($search, $agenceId);
+        $canExportExcel = Auth::isAdmin() || Auth::can(\App\Security\PermissionEntityRegistry::EXPORTER_RAPPORTS_EXCEL);
+
+        $this->callCenterView('call_center/suivi_departs', 'Bilan des Départs & Colis Restés', 'suivi-departs', [
+            'grouped'        => $data['grouped'],
+            'rawColis'       => $data['rawColis'],
+            'search'         => $search,
+            'agenceId'       => $agenceId,
+            'sites'          => $data['sites'],
+            'canManage'      => Auth::can('call_center_manage'),
+            'canExportExcel' => $canExportExcel,
+        ]);
+    }
+
+    public function exportSuiviDepartsPdf(): void
+    {
+        AuthMiddleware::check();
+        if (!Auth::can('call_center_view')) {
+            Session::flash('error', 'Accès refusé aux rapports.');
+            $this->redirect('portal');
+        }
+
+        $search = trim((string) ($_GET['q'] ?? ''));
+        $agenceId = !empty($_GET['agence_id']) ? (int) $_GET['agence_id'] : null;
+
+        $data = $this->fetchSuiviDepartsData($search, $agenceId);
+        $grouped = $data['grouped'];
+        $rawColis = $data['rawColis'];
+
+        $agenceLabel = 'Toutes les agences';
+        if ($agenceId !== null) {
+            $stmt = $this->db->prepare("SELECT name FROM company_sites WHERE id = :id LIMIT 1");
+            $stmt->execute(['id' => $agenceId]);
+            $agenceLabel = $stmt->fetchColumn() ?: 'Agence #' . $agenceId;
+        }
+
+        require BASE_PATH . '/views/call_center/suivi_departs_pdf.php';
+    }
+
+    public function exportSuiviDepartsExcel(): void
+    {
+        AuthMiddleware::check();
+        if (!Auth::isAdmin() && !Auth::can(\App\Security\PermissionEntityRegistry::EXPORTER_RAPPORTS_EXCEL)) {
+            Session::flash('error', 'Vous n\'avez pas la permission d\'exporter en Excel/CSV.');
+            header('Location: /call-center/suivi-departs');
+            exit;
+        }
+
+        $search = trim((string) ($_GET['q'] ?? ''));
+        $agenceId = !empty($_GET['agence_id']) ? (int) $_GET['agence_id'] : null;
+
+        $data = $this->fetchSuiviDepartsData($search, $agenceId);
+        $grouped = $data['grouped'];
+
+        $agenceLabel = 'Toutes les agences';
+        if ($agenceId !== null) {
+            $stmt = $this->db->prepare("SELECT name FROM company_sites WHERE id = :id LIMIT 1");
+            $stmt->execute(['id' => $agenceId]);
+            $agenceLabel = $stmt->fetchColumn() ?: 'Agence #' . $agenceId;
+        }
+
+        $filename = 'bilan_departs_colis_' . date('Y-m-d') . '.xls';
+
+        header('Content-Type: application/vnd.ms-excel; charset=utf-8');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        header('Cache-Control: max-age=0');
+
+        echo "\xEF\xBB\xBF"; // UTF-8 BOM
+        require BASE_PATH . '/views/call_center/suivi_departs_excel.php';
+    }
+
+    /** @return array{grouped: array, rawColis: array, sites: array} */
+    private function fetchSuiviDepartsData(string $search, ?int $agenceId): array
+    {
+        $params = [];
+        $whereClauses = ["1=1"];
+
+        if ($agenceId !== null) {
+            $whereClauses[] = "c.agence_depart_id = :agence_id";
+            $params['agence_id'] = $agenceId;
+        }
+
+        if ($search !== '') {
+            $whereClauses[] = "(c.numero_tracking LIKE :search1
+                               OR exp.name LIKE :search2
+                               OR exp.phone LIKE :search3
+                               OR dest.name LIKE :search4
+                               OR dest.phone LIKE :search5)";
+            $like = '%' . $search . '%';
+            $params['search1'] = $like;
+            $params['search2'] = $like;
+            $params['search3'] = $like;
+            $params['search4'] = $like;
+            $params['search5'] = $like;
+        }
+
+        $whereSql = implode(' AND ', $whereClauses);
+
+        $sql = "
+            SELECT 
+                c.id AS colis_id,
+                c.numero_tracking,
+                c.poids_total,
+                c.nombre_colis,
+                c.statut,
+                c.statut_depart,
+                c.motif_reste,
+                c.date_statut_depart,
+                c.type_expediteur,
+                c.trajet,
+                c.created_at AS date_depot,
+                exp.id AS expediteur_id,
+                exp.name AS expediteur_name,
+                exp.phone AS expediteur_phone,
+                dest.id AS destinataire_id,
+                dest.name AS destinataire_name,
+                dest.phone AS destinataire_phone,
+                s_dep.name AS agence_depart_name,
+                s_arr.name AS agence_arrivee_name,
+                e.reference AS manifeste_ref
+            FROM lbp_colis c
+            JOIN lbp_clients exp ON c.expediteur_id = exp.id
+            JOIN lbp_clients dest ON c.destinataire_id = dest.id
+            LEFT JOIN company_sites s_dep ON c.agence_depart_id = s_dep.id
+            LEFT JOIN company_sites s_arr ON c.agence_arrivee_id = s_arr.id
+            LEFT JOIN lbp_expeditions e ON c.expedition_id = e.id
+            WHERE {$whereSql}
+            ORDER BY c.id DESC
+            LIMIT 150
+        ";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        $rawColis = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+        // Agences list
+        $stmtSites = $this->db->query("SELECT id, name FROM company_sites WHERE is_active = 1 ORDER BY name ASC");
+        $sites = $stmtSites ? $stmtSites->fetchAll(PDO::FETCH_ASSOC) : [];
+
+        // Group by Expéditeur + Service Fret
+        $grouped = [];
+        foreach ($rawColis as $item) {
+            $fretLabel = !empty($item['type_expediteur']) ? strtoupper((string)$item['type_expediteur']) : 'STANDARD';
+            $key = $item['expediteur_id'] . '_' . $fretLabel;
+            
+            if (!isset($grouped[$key])) {
+                $grouped[$key] = [
+                    'expediteur_id'     => $item['expediteur_id'],
+                    'expediteur_name'   => $item['expediteur_name'],
+                    'expediteur_phone'  => $item['expediteur_phone'],
+                    'destinataire_name' => $item['destinataire_name'],
+                    'destinataire_phone'=> $item['destinataire_phone'],
+                    'destinataire_id'   => $item['destinataire_id'],
+                    'type_expediteur'   => $fretLabel,
+                    'trajet'            => $item['trajet'] ?: '',
+                    'agence_depart'     => $item['agence_depart_name'],
+                    'agence_arrivee'    => $item['agence_arrivee_name'],
+                    'manifeste_ref'     => $item['manifeste_ref'],
+                    'total_colis'       => 0,
+                    'nb_partis'         => 0,
+                    'nb_restes'         => 0,
+                    'nb_attente'        => 0,
+                    'colis'             => [],
+                ];
+            }
+            $grouped[$key]['total_colis']++;
+            $grouped[$key]['colis'][] = $item;
+
+            $stDepart = $item['statut_depart'];
+            $stColis  = $item['statut'];
+
+            if ($stDepart === 'PARTI' || in_array($stColis, ['EN_TRANSIT', 'ARRIVÉ', 'LIVRÉ', 'RETIRÉ'], true)) {
+                $grouped[$key]['nb_partis']++;
+            } elseif ($stDepart === 'RESTE') {
+                $grouped[$key]['nb_restes']++;
+            } else {
+                $grouped[$key]['nb_attente']++;
+            }
+        }
+
+        return [
+            'grouped'  => array_values($grouped),
+            'rawColis' => $rawColis,
+            'sites'    => $sites,
+        ];
+    }
+
     public function notifier(): void
     {
         AuthMiddleware::check();
@@ -630,6 +825,7 @@ final class CallCenterController extends BaseController
         $navigation = [
             ['key' => 'dashboard', 'label' => 'Tableau de bord',       'icon' => '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>',  'url' => '/call-center/dashboard',  'available' => true],
             ['key' => 'suivi',     'label' => 'Suivi & Relances',      'icon' => '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>',  'url' => '/call-center/suivi',      'available' => true],
+            ['key' => 'suivi-departs', 'label' => 'Bilan Départs & Restants', 'icon' => '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 17H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-1"/><polygon points="12 15 17 21 7 21 12 15"/></svg>', 'url' => '/call-center/suivi-departs', 'available' => true],
             ['key' => 'appels',    'label' => 'Journal des Appels',     'icon' => '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>', 'url' => '/call-center/appels',     'available' => true],
             ['key' => 'litiges',   'label' => 'Réclamations & Litiges', 'icon' => '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>', 'url' => '/call-center/litiges',    'available' => true],
             ['key' => 'rayons',    'label' => 'Vue Rayons Temps Réel',  'icon' => '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>', 'url' => '/call-center/rayons',     'available' => true],
