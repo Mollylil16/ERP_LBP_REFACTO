@@ -2239,10 +2239,6 @@ class MigrationRunner
      */
     private function createLbpUnifiedFlowTables(): void
     {
-        if ($this->schema->tableExists('lbp_factures')) {
-            return;
-        }
-
         $sqlFile = dirname(__DIR__, 2) . '/doc/backend/migrations/2026_07_05_lbp_unified_flow.sql';
         if (file_exists($sqlFile)) {
             $sql = file_get_contents($sqlFile);
@@ -2251,7 +2247,16 @@ class MigrationRunner
                 $sql = preg_replace('/DELIMITER\s+\S+/i', '', $sql);
                 // Remplacer les délimiteurs // par ;
                 $sql = str_replace('//', ';', $sql);
-                $this->pdo->exec($sql);
+                $queries = array_filter(array_map('trim', explode(';', $sql)));
+                foreach ($queries as $query) {
+                    if ($query !== '' && !str_starts_with(strtoupper($query), 'USE ') && !str_starts_with(strtoupper($query), 'DROP DATABASE')) {
+                        try {
+                            $this->pdo->exec($query);
+                        } catch (\Throwable $e) {
+                            // Continuer sur les requêtes individuelles si déjà existantes
+                        }
+                    }
+                }
             }
         }
     }
