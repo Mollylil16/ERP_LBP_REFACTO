@@ -481,7 +481,7 @@ final class FinanceController extends FinanceBaseController
 
         $count = 0;
         $totalMontant = 0.0;
-        $notifService = new \App\Services\Shared\NotificationService();
+        $notifService = $this->notifService;
 
         foreach ($unpaid as $f) {
             $paymentUrl = View::url('api/paiements/pay/' . $f['id']);
