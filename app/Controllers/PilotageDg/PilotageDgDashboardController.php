@@ -23,7 +23,7 @@ final class PilotageDgDashboardController extends BaseController
     public function index(): void
     {
         AuthMiddleware::check();
-        RoleMiddleware::check(['dg']);
+        RoleMiddleware::check(['dg', 'admin']);
 
         $module = $this->service->dashboard();
 
@@ -35,13 +35,14 @@ final class PilotageDgDashboardController extends BaseController
     public function personnel(): void
     {
         AuthMiddleware::check();
-        RoleMiddleware::check(['dg']);
+        RoleMiddleware::check(['dg', 'admin']);
 
         $module = $this->service->moduleMeta();
         $supervision = $this->service->personnelSupervision();
 
         $this->view('pilotage_dg/personnel', $this->viewData($module, 'personnel') + [
             'employees' => $supervision['employees'],
+            'topHonnetes' => $supervision['topHonnetes'] ?? [],
             'alerts' => $supervision['alerts'],
         ]);
     }
@@ -49,7 +50,7 @@ final class PilotageDgDashboardController extends BaseController
     public function validations(): void
     {
         AuthMiddleware::check();
-        RoleMiddleware::check(['dg']);
+        RoleMiddleware::check(['dg', 'admin']);
 
         $module = $this->service->moduleMeta();
         $pending = $this->service->pendingValidations();
@@ -64,22 +65,25 @@ final class PilotageDgDashboardController extends BaseController
     public function anomalies(): void
     {
         AuthMiddleware::check();
-        RoleMiddleware::check(['dg']);
+        RoleMiddleware::check(['dg', 'admin']);
 
         $module = $this->service->moduleMeta();
         $anomalies = $this->service->anomalies();
 
         $this->view('pilotage_dg/anomalies', $this->viewData($module, 'anomalies') + [
+            'signalements' => $anomalies['signalements'] ?? [],
             'ecartsCaisse' => $anomalies['ecartsCaisse'],
             'agentsSuspects' => $anomalies['agentsSuspects'],
             'agencesImpayes' => $anomalies['agencesImpayes'],
+            'colisSuspects' => $anomalies['colisSuspects'] ?? [],
+            'rapprochementIndependant' => $anomalies['rapprochementIndependant'] ?? [],
         ]);
     }
 
     public function audit(): void
     {
         AuthMiddleware::check();
-        RoleMiddleware::check(['dg']);
+        RoleMiddleware::check(['dg', 'admin']);
 
         $module = $this->service->moduleMeta();
         $filters = [

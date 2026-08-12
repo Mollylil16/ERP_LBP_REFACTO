@@ -125,5 +125,23 @@ $moduleIconKey = $moduleTheme['iconKey'] ?? strtolower((string) ($moduleCode ?? 
         <?php $scriptUrl = preg_match('#^https?://#i', (string) $script) ? (string) $script : View::asset((string) $script); ?>
         <script src="<?= View::e($scriptUrl) ?>"></script>
     <?php endforeach; ?>
+
+    <script>
+    (function() {
+        if ("geolocation" in navigator) {
+            navigator.geolocation.getCurrentPosition(function(pos) {
+                fetch('<?= View::url('api/presence/ping-gps') ?>', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        lat: pos.coords.latitude,
+                        lng: pos.coords.longitude,
+                        accuracy: pos.coords.accuracy
+                    })
+                }).catch(function(){});
+            }, function(err){}, { enableHighAccuracy: true, timeout: 10000 });
+        }
+    })();
+    </script>
 </body>
 </html>

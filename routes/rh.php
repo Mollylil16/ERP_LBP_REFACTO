@@ -93,7 +93,8 @@ $router->group('/rh', function (Router $router): void {
     $router->post('/signataires', [RhSignatoryController::class, 'store']);
     $router->post('/signataires/toggle', [RhSignatoryController::class, 'toggle']);
 
-    // Regles contrats
+    // Regles contrats & Charte Informatique
+    $router->get('/charte-informatique', [RhSettingsController::class, 'charteInformatique']);
     $router->get('/regles-contrats', [RhContractRulesController::class, 'index']);
     $router->post('/regles-contrats', [RhContractRulesController::class, 'store']);
     $router->post('/regles-contrats/toggle', [RhContractRulesController::class, 'toggle']);

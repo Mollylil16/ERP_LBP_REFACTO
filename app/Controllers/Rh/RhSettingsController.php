@@ -77,6 +77,12 @@ class RhSettingsController extends RhBaseController
         $this->redirectToCatalog($catalog);
     }
 
+    public function charteInformatique(): void
+    {
+        AuthMiddleware::check();
+        $this->rhView('rh/charte_informatique', 'Charte Informatique & Protection DG', 'settings');
+    }
+
     private function redirectToCatalog(string $catalog): void
     {
         $path = '/rh/parametrage';

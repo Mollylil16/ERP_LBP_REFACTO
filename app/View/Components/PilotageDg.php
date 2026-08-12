@@ -23,11 +23,12 @@ final class PilotageDg
 
         $kpis = Dashboard::kpis((array) ($module['kpis'] ?? []));
 
-        $quickLinks = '<div class="rh-form-grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));">'
-            . Ui::button('Supervision du Personnel', ['href' => 'pilotage-dg/personnel', 'variant' => 'secondary'])
-            . Ui::button('Centre de Validation', ['href' => 'pilotage-dg/validations', 'variant' => 'secondary'])
-            . Ui::button('Anomalies & Fraude', ['href' => 'pilotage-dg/anomalies', 'variant' => 'secondary'])
-            . Ui::button('Journal d\'Audit', ['href' => 'pilotage-dg/audit', 'variant' => 'secondary'])
+        $quickLinks = '<div class="rh-form-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">'
+            . Ui::button('Supervision du Personnel', ['href' => View::url('pilotage-dg/personnel'), 'variant' => 'secondary'])
+            . Ui::button('Centre de Validation', ['href' => View::url('pilotage-dg/validations'), 'variant' => 'secondary'])
+            . Ui::button('Anomalies & Fraude', ['href' => View::url('pilotage-dg/anomalies'), 'variant' => 'secondary'])
+            . Ui::button('Journal d\'Audit', ['href' => View::url('pilotage-dg/audit'), 'variant' => 'secondary'])
+            . Ui::button('📜 Charte Informatique (Protection DG)', ['href' => View::url('rh/charte-informatique'), 'variant' => 'accent'])
             . '</div>';
 
         $agenceStats = (array) ($module['agenceStats'] ?? []);
@@ -77,24 +78,57 @@ final class PilotageDg
      * @param array<int, array<string, mixed>> $employees
      * @param array<int, array<string, string>> $alerts
      */
-    public static function personnelPage(array $employees, array $alerts): string
+    public static function personnelPage(array $employees, array $alerts, array $topHonnetes = []): string
     {
         $header = Ui::pageHeader(
-            'Supervision du Personnel',
-            'Assiduité, performance, objectifs et discipline — pour savoir qui fait quoi et comment le travail est effectué.',
+            'Supervision du Personnel & Méritocratie',
+            'Score d\'intégrité, assiduité, performance et tableau d\'honneur des employés modèles.',
             ['eyebrow' => 'Pilotage DG', 'class' => 'rh-hero-white']
         );
 
+        $honnetesHtml = self::topHonnetesTable($topHonnetes);
         $alertsHtml = self::personnelAlerts($alerts);
         $tableHtml = self::personnelTable($employees);
 
         return '<div class="finea-shell">'
             . '<div class="finea-container">'
             . $header
+            . '<div style="margin-bottom: 1.5rem;">' . Ui::section('🏆 Tableau d\'Honneur DG - Employés Modèles & Primes Recommandées', $honnetesHtml) . '</div>'
             . '<div style="margin-bottom: 1.5rem;">' . Ui::section('Alertes personnel (' . count($alerts) . ')', $alertsHtml) . '</div>'
-            . Ui::section('Effectif actif (' . count($employees) . ')', $tableHtml)
+            . Ui::section('Effectif actif & Score d\'Intégrité (' . count($employees) . ')', $tableHtml)
             . '</div>'
             . '</div>';
+    }
+
+    /** @param array<int, array<string, mixed>> $topHonnetes */
+    private static function topHonnetesTable(array $topHonnetes): string
+    {
+        if (empty($topHonnetes)) {
+            return Ui::emptyState('Aucun résultat', 'Aucun employé modélisé pour le moment.');
+        }
+
+        $rows = '';
+        foreach ($topHonnetes as $idx => $emp) {
+            $rank = $idx + 1;
+            $medaille = match ($rank) {
+                1 => '🥇 Rang 1',
+                2 => '🥈 Rang 2',
+                3 => '🥉 Rang 3',
+                default => '#' . $rank,
+            };
+            $score = (int) ($emp['score_integrite'] ?? 85);
+            $rows .= '<tr>'
+                . '<td><strong style="color:#2563eb;">' . $medaille . '</strong></td>'
+                . '<td><strong>' . View::e((string) $emp['full_name']) . '</strong><br><small style="color:#64748b;">' . View::e((string)($emp['function_name'] ?? 'Agent')) . '</small></td>'
+                . '<td>' . View::e((string) ($emp['site_name'] ?? 'Agence')) . '</td>'
+                . '<td style="text-align:center;"><strong style="color:#10b981; font-size:1.1rem;">' . $score . ' / 100 PTS</strong></td>'
+                . '<td style="text-align:right;">' . Ui::badge('Récompense / Prime Recommandée', 'success') . '</td>'
+                . '</tr>';
+        }
+
+        return '<div class="finea-table-wrapper"><table class="finea-table"><thead><tr>'
+            . '<th>Classement</th><th>Employé Modèle</th><th>Agence</th><th style="text-align:center;">Score d\'Intégrité</th><th style="text-align:right;">Décision DG</th>'
+            . '</tr></thead><tbody>' . $rows . '</tbody></table></div>';
     }
 
     /** @param array<int, array<string, string>> $alerts */
@@ -108,7 +142,8 @@ final class PilotageDg
         foreach ($alerts as $alert) {
             $tone = match ($alert['type']) {
                 'Absentéisme' => 'warning',
-                'Discipline' => 'danger',
+                'Discipline', 'Écart de Caisse', 'Colis Suspects', 'Rapprochement Caisse' => 'danger',
+                'Factures Modifiées', 'Rapport Caisse Incohérent' => 'warning',
                 default => 'neutral',
             };
             $rows .= '<tr>'
@@ -139,26 +174,32 @@ final class PilotageDg
             $eval = $emp['derniere_evaluation'];
             $evalDisplay = $eval !== null ? number_format((float) $eval, 1, ',', ' ') . '/20' : '—';
 
-            $progression = $emp['progression_objectifs'];
-            $progressionDisplay = $progression !== null ? $progression . '%' : '—';
+            $score = (int) ($emp['score_integrite'] ?? 85);
+            $scoreTone = $score >= 80 ? 'success' : ($score >= 60 ? 'warning' : 'danger');
 
-            $nbMesures = (int) $emp['nb_mesures_disciplinaires'];
+            $gpsStatut = $emp['gps_statut'] ?? 'inconnu';
+            $gpsDist = $emp['gps_distance_km'] ?? null;
+            $gpsBadge = match ($gpsStatut) {
+                'sur_site' => Ui::badge('🟢 SUR SITE', 'success'),
+                'proximite' => Ui::badge('🟡 PROXIMITÉ (' . round((float)$gpsDist, 1) . ' km)', 'warning'),
+                'hors_site' => Ui::badge('🔴 HORS SITE (' . round((float)$gpsDist, 1) . ' km)', 'danger'),
+                default => Ui::badge('⚪ Non géolocalisé', 'neutral'),
+            };
 
             $rows .= '<tr>'
                 . '<td><strong>' . View::e((string) $emp['full_name']) . '</strong></td>'
-                . '<td>' . View::e((string) ($emp['function_name'] ?? '—')) . '</td>'
-                . '<td>' . View::e((string) ($emp['service_name'] ?? '—')) . '</td>'
                 . '<td>' . View::e((string) ($emp['site_name'] ?? '—')) . '</td>'
+                . '<td>' . View::e((string) ($emp['function_name'] ?? '—')) . '</td>'
+                . '<td style="text-align:center;">' . $gpsBadge . '</td>'
+                . '<td style="text-align:center;">' . Ui::badge($score . ' / 100', $scoreTone) . '</td>'
                 . '<td style="text-align:center;">' . Ui::badge($tauxDisplay, $tauxTone) . '</td>'
                 . '<td style="text-align:center;">' . View::e($evalDisplay) . '</td>'
-                . '<td style="text-align:center;">' . View::e($progressionDisplay) . '</td>'
-                . '<td style="text-align:center;">' . ($nbMesures > 0 ? Ui::badge((string) $nbMesures, 'danger') : '0') . '</td>'
+                . '<td style="text-align:center;">' . (int) $emp['nb_mesures_disciplinaires'] . '</td>'
                 . '</tr>';
         }
 
         return '<div class="finea-table-wrapper"><table class="finea-table"><thead><tr>'
-            . '<th>Employé</th><th>Fonction</th><th>Service</th><th>Site</th>'
-            . '<th>Présence (30j)</th><th>Dernière éval.</th><th>Objectifs</th><th>Mesures disc. (12m)</th>'
+            . '<th>Employé</th><th>Agence</th><th>Fonction</th><th style="text-align:center;">Localisation GPS Agence</th><th style="text-align:center;">Score Intégrité</th><th style="text-align:center;">Présence 30j</th><th style="text-align:center;">Éval. globale</th><th style="text-align:center;">Discipline</th>'
             . '</tr></thead><tbody>' . $rows . '</tbody></table></div>';
     }
 
@@ -263,32 +304,132 @@ final class PilotageDg
     }
 
     /**
-     * Anomalies & anti-fraude : écarts de caisse, agents à modifications répétées, agences à impayés anormaux.
+     * Anomalies & anti-fraude : signalements classés par degré de gravité, écarts de caisse,
+     * agents à modifications répétées, agences à impayés anormaux.
      *
      * @param array<int, array<string, mixed>> $ecartsCaisse
      * @param array<int, array<string, mixed>> $agentsSuspects
      * @param array<int, array<string, mixed>> $agencesImpayes
+     * @param array<int, array<string, mixed>> $signalements
+     * @param array<int, array<string, mixed>> $colisSuspects
+     * @param array<int, array<string, mixed>> $rapprochementIndependant
      */
-    public static function anomaliesPage(array $ecartsCaisse, array $agentsSuspects, array $agencesImpayes): string
+    public static function anomaliesPage(array $ecartsCaisse, array $agentsSuspects, array $agencesImpayes, array $signalements = [], array $colisSuspects = [], array $rapprochementIndependant = []): string
     {
+        $nbGraves = count(array_filter($signalements, fn($s) => (int) $s['degre'] >= 3));
+
         $header = Ui::pageHeader(
             'Anomalies & Anti-Fraude',
-            'Écarts de caisse, agents à modifications répétées et agences à taux d\'impayés anormal.',
+            'Signalements classés par degré de gravité — ' . count($signalements) . ' signalement(s) dont ' . $nbGraves . ' grave(s) ou très grave(s).',
             ['eyebrow' => 'Pilotage DG', 'class' => 'rh-hero-white']
         );
 
+        $signalementsHtml = self::signalementsTable($signalements);
+        $rapprochementHtml = self::rapprochementIndependantTable($rapprochementIndependant);
         $ecartsHtml = self::ecartsCaisseTable($ecartsCaisse);
         $agentsHtml = self::agentsSuspectsTable($agentsSuspects);
         $agencesHtml = self::agencesImpayesTable($agencesImpayes);
+        $colisHtml = self::colisSuspectsTable($colisSuspects);
 
         return '<div class="finea-shell">'
             . '<div class="finea-container">'
             . $header
-            . '<div style="margin-bottom: 1.5rem;">' . Ui::section('Écarts de caisse (états journaliers)', $ecartsHtml) . '</div>'
-            . '<div style="margin-bottom: 1.5rem;">' . Ui::section('Agents à modifications de factures répétées', $agentsHtml) . '</div>'
-            . Ui::section('Agences à taux d\'impayés élevé', $agencesHtml)
+            . '<div style="margin-bottom: 1.5rem;">' . Ui::section('Signalements par degré de gravité (' . count($signalements) . ')', $signalementsHtml) . '</div>'
+            . '<div style="margin-bottom: 1.5rem;">' . Ui::section('Détail — Rapprochement de caisse indépendant (90 derniers jours)', $rapprochementHtml) . '</div>'
+            . '<div style="margin-bottom: 1.5rem;">' . Ui::section('Détail — Écarts de caisse (états journaliers)', $ecartsHtml) . '</div>'
+            . '<div style="margin-bottom: 1.5rem;">' . Ui::section('Détail — Agents à modifications de factures répétées', $agentsHtml) . '</div>'
+            . '<div style="margin-bottom: 1.5rem;">' . Ui::section('Détail — Agents à colis systématiquement sous-déclarés', $colisHtml) . '</div>'
+            . Ui::section('Détail — Agences à taux d\'impayés élevé', $agencesHtml)
             . '</div>'
             . '</div>';
+    }
+
+    /** @param array<int, array<string, mixed>> $rows */
+    private static function rapprochementIndependantTable(array $rows): string
+    {
+        if (empty($rows)) {
+            return Ui::emptyState('Aucune donnée', 'Aucun état journalier avec comptage physique sur les 90 derniers jours.');
+        }
+
+        $body = '';
+        foreach ($rows as $r) {
+            $declare = (float) $r['total_encaisse_xof'];
+            $physique = (float) $r['solde_physique_declare'];
+            $calcule = (float) $r['montant_espece_calcule'];
+            $ecartPhysique = $physique - $calcule;
+            $tone = abs($ecartPhysique) >= 50000 ? 'danger' : (abs($ecartPhysique) >= 10000 ? 'warning' : 'success');
+
+            $body .= '<tr>'
+                . '<td>' . View::e((string) ($r['agence_name'] ?? 'Agence')) . '</td>'
+                . '<td>' . View::e((string) ($r['chef_agence_name'] ?? '—')) . '</td>'
+                . '<td>' . View::e(date('d/m/Y', strtotime((string) $r['date_jour']))) . '</td>'
+                . '<td style="text-align:right;">' . number_format($declare, 0, ',', ' ') . '</td>'
+                . '<td style="text-align:right;">' . number_format($calcule, 0, ',', ' ') . '</td>'
+                . '<td style="text-align:right;">' . number_format($physique, 0, ',', ' ') . '</td>'
+                . '<td style="text-align:center;">' . Ui::badge(number_format($ecartPhysique, 0, ',', ' ') . ' XOF', $tone) . '</td>'
+                . '</tr>';
+        }
+
+        return '<div class="finea-table-wrapper"><table class="finea-table"><thead><tr>'
+            . '<th>Agence</th><th>Chef d\'agence</th><th>Date</th>'
+            . '<th style="text-align:right;">Déclaré (rapport)</th><th style="text-align:right;">Calculé (registre)</th><th style="text-align:right;">Physique (comptage)</th>'
+            . '<th style="text-align:center;">Écart Physique − Registre</th>'
+            . '</tr></thead><tbody>' . $body . '</tbody></table></div>';
+    }
+
+    /** @param array<int, array<string, mixed>> $colisSuspects */
+    private static function colisSuspectsTable(array $colisSuspects): string
+    {
+        if (empty($colisSuspects)) {
+            return Ui::emptyState('Aucun signal', 'Aucun agent ne présente un prix moyen au kg significativement inférieur à la moyenne (180 derniers jours, min. 5 colis).');
+        }
+
+        $rows = '';
+        foreach ($colisSuspects as $cs) {
+            $ratio = $cs['ratio_vs_moyenne'] ?? null;
+            if ($ratio === null) {
+                continue;
+            }
+            $tone = $ratio < 50 ? 'danger' : ($ratio < 70 ? 'warning' : 'success');
+            $rows .= '<tr>'
+                . '<td><strong>' . View::e((string) ($cs['user_name'] ?? ('Utilisateur #' . $cs['user_id']))) . '</strong></td>'
+                . '<td style="text-align:center;">' . (int) $cs['nb_colis'] . '</td>'
+                . '<td style="text-align:right;">' . number_format((float) $cs['prix_kg_moyen_agent'], 0, ',', ' ') . ' XOF/kg</td>'
+                . '<td style="text-align:center;">' . Ui::badge($ratio . '% de la moyenne', $tone) . '</td>'
+                . '</tr>';
+        }
+
+        if ($rows === '') {
+            return Ui::emptyState('Aucun signal', 'Aucun agent ne présente un prix moyen au kg significativement inférieur à la moyenne (180 derniers jours, min. 5 colis).');
+        }
+
+        return '<div class="finea-table-wrapper"><table class="finea-table"><thead><tr>'
+            . '<th>Agent</th><th>Nb colis (180j)</th><th style="text-align:right;">Prix moyen/kg</th><th style="text-align:center;">Vs moyenne des pairs</th>'
+            . '</tr></thead><tbody>' . $rows . '</tbody></table></div>';
+    }
+
+    /** @param array<int, array<string, mixed>> $signalements */
+    private static function signalementsTable(array $signalements): string
+    {
+        if (empty($signalements)) {
+            return Ui::emptyState('Aucun signalement', 'Aucune anomalie détectée sur les données actuelles.');
+        }
+
+        $rows = '';
+        foreach ($signalements as $s) {
+            $rows .= '<tr>'
+                . '<td>' . Ui::badge((string) $s['gravite'], (string) $s['badgeTone']) . '</td>'
+                . '<td>' . View::e((string) $s['type']) . '</td>'
+                . '<td><strong>' . View::e((string) $s['employee']) . '</strong><br><small style="color:#64748b;">' . View::e((string) $s['agence']) . '</small></td>'
+                . '<td>' . View::e((string) $s['description']) . '</td>'
+                . '<td style="text-align:right;">' . ((float) $s['montant'] > 0 ? number_format((float) $s['montant'], 0, ',', ' ') . ' XOF' : '—') . '</td>'
+                . '<td>' . View::e(date('d/m/Y', strtotime((string) $s['date']))) . '</td>'
+                . '</tr>';
+        }
+
+        return '<div class="finea-table-wrapper"><table class="finea-table"><thead><tr>'
+            . '<th>Gravité</th><th>Type</th><th>Agent / Agence</th><th>Description</th><th style="text-align:right;">Montant</th><th>Date</th>'
+            . '</tr></thead><tbody>' . $rows . '</tbody></table></div>';
     }
 
     /** @param array<int, array<string, mixed>> $ecarts */

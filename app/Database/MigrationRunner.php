@@ -41,6 +41,7 @@ class MigrationRunner
         $this->createMissingProductionTables();
         $this->migrateCrmClientsIntoLbpClients();
         $this->seedRealEmballagesCatalogue();
+        $this->createIntegrityAndAntiFraudTables();
     }
 
 
@@ -2867,6 +2868,103 @@ class MigrationRunner
                     $stmtStockInit->execute(['emb' => $embId, 'site' => $siteId]);
                 }
             }
+        }
+    }
+
+    /**
+     * Tables d'intégrité anti-fraude, audit immutatif par hashage cryptographique et scoring employés.
+     */
+    private function createIntegrityAndAntiFraudTables(): void
+    {
+        if ($this->schema->tableExists('lbp_audit_logs')) {
+            $this->addColumnIfMissing('lbp_audit_logs', 'hash_precedent', "VARCHAR(64) NULL");
+            $this->addColumnIfMissing('lbp_audit_logs', 'hash_courant', "VARCHAR(64) NULL");
+        }
+
+        if (!$this->schema->tableExists('lbp_regles_config')) {
+            $this->pdo->exec("
+                CREATE TABLE lbp_regles_config (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    code VARCHAR(100) NOT NULL UNIQUE,
+                    titre VARCHAR(255) NOT NULL,
+                    description TEXT NULL,
+                    gravite ENUM('faible', 'moyen', 'grave', 'tres_grave') NOT NULL DEFAULT 'moyen',
+                    seuil_valeur DECIMAL(12,2) DEFAULT 0.00,
+                    is_active TINYINT(1) DEFAULT 1,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+            ");
+
+            $this->pdo->exec("
+                INSERT IGNORE INTO lbp_regles_config (code, titre, description, gravite) VALUES
+                ('SOUS_DECLARATION_COLIS', 'Sous-déclaration Colis (Poids/Valeur)', 'Valeur ou poids déclaré anormalement inférieur au standard', 'moyen'),
+                ('MODIF_POST_VALIDATION', 'Modification Post-Validation', 'Modification de facture ou colis déjà validé/clôturé', 'grave'),
+                ('ECART_ENCAISSEMENT_COMPTA', 'Écart d\'Encaissement / Caisse', 'Disparité entre montants encaissés et état de caisse comptable', 'tres_grave'),
+                ('CUMUL_ROLES_TRANSACTION', 'Cumul de Rôles sur Transaction', 'Même utilisateur qui crée, valide et encaisse la transaction', 'grave'),
+                ('SUPPRESSION_HORS_HORAIRES', 'Suppression / Modification Hors Horaires', 'Action sensible effectuée en dehors des heures de bureau', 'moyen'),
+                ('ECART_PESEE_RECURRENT', 'Écart de Pesée Récurrent', 'Disparités de pesée répétées sur le même agent (>=3/mois)', 'grave'),
+                ('ACCES_SURVEILLANCE_NON_AUTORISE', 'Tentative d\'Accès Surveillance DG', 'Accès non autorisé aux pages de contrôle DG', 'tres_grave')
+            ");
+        }
+
+        if (!$this->schema->tableExists('lbp_alertes_integrite')) {
+            $this->pdo->exec("
+                CREATE TABLE lbp_alertes_integrite (
+                    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                    user_id INT NOT NULL,
+                    regle_code VARCHAR(100) NOT NULL,
+                    gravite ENUM('faible', 'moyen', 'grave', 'tres_grave') NOT NULL DEFAULT 'moyen',
+                    entity_type VARCHAR(50) NULL,
+                    entity_id INT NULL,
+                    contexte JSON NULL,
+                    statut ENUM('nouvelle', 'en_cours', 'justifiee', 'confirmee') DEFAULT 'nouvelle',
+                    commentaire_dg TEXT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    traite_at TIMESTAMP NULL,
+                    INDEX idx_user (user_id),
+                    INDEX idx_gravite (gravite),
+                    INDEX idx_statut (statut)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+            ");
+        }
+
+        if (!$this->schema->tableExists('lbp_scores_employes')) {
+            $this->pdo->exec("
+                CREATE TABLE lbp_scores_employes (
+                    user_id INT PRIMARY KEY,
+                    score_global DECIMAL(6,2) DEFAULT 100.00,
+                    nb_taches_completees INT DEFAULT 0,
+                    nb_alertes_moyen INT DEFAULT 0,
+                    nb_alertes_grave INT DEFAULT 0,
+                    nb_alertes_tres_grave INT DEFAULT 0,
+                    delai_moyen_traitement DECIMAL(8,2) DEFAULT 0.00,
+                    taux_erreur DECIMAL(5,2) DEFAULT 0.00,
+                    derniere_maj TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+            ");
+        }
+
+        if (!$this->schema->tableExists('lbp_employee_presence_gps')) {
+            $this->pdo->exec("
+                CREATE TABLE lbp_employee_presence_gps (
+                    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                    user_id INT NOT NULL,
+                    employee_id INT NULL,
+                    site_id INT NULL,
+                    latitude DECIMAL(10,7) NOT NULL,
+                    longitude DECIMAL(10,7) NOT NULL,
+                    accuracy DECIMAL(8,2) NULL,
+                    distance_site_km DECIMAL(8,3) NULL,
+                    statut_presence ENUM('sur_site', 'proximite', 'hors_site', 'inconnu') NOT NULL DEFAULT 'sur_site',
+                    ip_address VARCHAR(45) NULL,
+                    user_agent VARCHAR(255) NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    INDEX idx_user (user_id),
+                    INDEX idx_site (site_id),
+                    INDEX idx_statut (statut_presence),
+                    INDEX idx_created (created_at)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+            ");
         }
     }
 }
