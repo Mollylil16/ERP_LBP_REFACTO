@@ -6,7 +6,15 @@ class View
 {
     public static function e(mixed $value): string
     {
+        if ($value instanceof HtmlString) {
+            return $value->toHtml();
+        }
         return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
+    }
+
+    public static function html(string $html): HtmlString
+    {
+        return new HtmlString($html);
     }
 
     public static function asset(string $path): string
@@ -57,4 +65,11 @@ class View
             9 => 'Septembre', 10 => 'Octobre', 11 => 'Novembre', 12 => 'Décembre',
         ];
     }
+}
+
+class HtmlString
+{
+    public function __construct(private string $html) {}
+    public function toHtml(): string { return $this->html; }
+    public function __toString(): string { return $this->html; }
 }

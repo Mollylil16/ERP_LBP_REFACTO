@@ -63,7 +63,7 @@ final class Surveillance
         if ($nbRecPending > 0) {
             $recAlert = '<div style="background:#fffbeb; border-left:4px solid #f59e0b; padding:1.25rem; border-radius:6px; margin-bottom:1.5rem; display:flex; justify-content:space-between; align-items:center; box-shadow:0 1px 3px rgba(0,0,0,0.05);">'
                 . '  <div>'
-                . '    <strong style="color:#d97706; font-size:1rem;">🤖 ' . $nbRecPending . ' recommandation(s) IA en attente</strong>'
+                . '    <strong style="color:#d97706; font-size:1rem; display:inline-flex; align-items:center; gap:6px;"><svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" style="vertical-align:middle; display:inline-block;"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/><line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="15" x2="23" y2="15"/><line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="15" x2="4" y2="15"/></svg>' . $nbRecPending . ' recommandation(s) IA en attente</strong>'
                 . '    <p style="margin:0.25rem 0 0 0; color:#475569; font-size:0.9rem;">Les modèles de machine learning ont formulé des préconisations de sécurité qui nécessitent la validation de la Direction.</p>'
                 . '  </div>'
                 . '  ' . Ui::button('Consulter les recommandations', ['href' => 'surveillance/recommandations', 'variant' => 'warning', 'class' => 'finea-button-sm'])
@@ -86,13 +86,13 @@ final class Surveillance
             . $recAlert
             . $kpis
             . '<div style="display:grid; grid-template-columns:1fr 1fr; gap:1.5rem; margin-top:1.5rem;">'
-            . '  <div>' . Ui::section('📈 Tendance mensuelle des alertes', $trendSection) . '</div>'
-            . '  <div>' . Ui::section('🔥 Heatmap des Anomalies Actives (Agence vs Service)', self::renderHeatmap()) . '</div>'
+            . '  <div>' . Ui::section(View::html('<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.5" fill="none" style="vertical-align:middle; margin-right:8px; display:inline-block; color:#2563eb;"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg> Tendance mensuelle des alertes'), $trendSection) . '</div>'
+            . '  <div>' . Ui::section(View::html('<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.5" fill="none" style="vertical-align:middle; margin-right:8px; display:inline-block; color:#ef4444;"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg> Heatmap des Anomalies Actives (Agence vs Service)'), self::renderHeatmap()) . '</div>'
             . '</div>'
             . '<div style="margin-top: 1.5rem;">' . $filterForm . '</div>'
             . '<div class="surveillance-grid">'
-            . '  <div>' . Ui::section('🚨 Alertes d\'intégrité non résolues', $alertsSection) . '</div>'
-            . '  <div>' . Ui::section('🏆 Classement de Performance & Intégrité des employés', $rankingSection) . '</div>'
+            . '  <div>' . Ui::section(View::html('<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.5" fill="none" style="vertical-align:middle; margin-right:8px; display:inline-block; color:#dc2626;"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg> Alertes d\'intégrité non résolues'), $alertsSection) . '</div>'
+            . '  <div>' . Ui::section(View::html('<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.5" fill="none" style="vertical-align:middle; margin-right:8px; display:inline-block; color:#16a34a;"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg> Classement de Performance & Intégrité des employés'), $rankingSection) . '</div>'
             . '</div>'
             . '</div>'
             . '</div>';
@@ -101,18 +101,23 @@ final class Surveillance
     /**
      * Rendu des onglets de navigation du module.
      */
-    private static function renderNavTabs(string $activeTab, int $nbRecPending = 0): string
+    public static function renderNavTabs(string $activeTab, int $nbRecPending = 0): string
     {
-        $recLabel = '🤖 Recommandations IA';
+        $dashIcon = '<svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" style="vertical-align:middle; margin-right:6px; display:inline-block;"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>';
+        $recIcon = '<svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" style="vertical-align:middle; margin-right:6px; display:inline-block;"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/><line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="15" x2="23" y2="15"/><line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="15" x2="4" y2="15"/></svg>';
+        $configIcon = '<svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" style="vertical-align:middle; margin-right:6px; display:inline-block;"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>';
+        $linkIcon = '<svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" style="vertical-align:middle; margin-right:6px; display:inline-block;"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>';
+
+        $recLabel = $recIcon . ' Recommandations IA';
         if ($nbRecPending > 0) {
             $recLabel .= ' <span style="background:#ef4444; color:#fff; padding:2px 6px; border-radius:10px; font-size:0.75rem; font-weight:700;">' . $nbRecPending . '</span>';
         }
 
         $tabs = [
-            'dashboard' => ['label' => '🖥️ Dashboard', 'url' => 'surveillance'],
+            'dashboard' => ['label' => $dashIcon . ' Dashboard', 'url' => 'surveillance', 'is_html' => true],
             'recommandations' => ['label' => $recLabel, 'url' => 'surveillance/recommandations', 'is_html' => true],
-            'config' => ['label' => '⚙️ Configuration des Règles', 'url' => 'surveillance/config'],
-            'integrite' => ['label' => '🔗 Chaîne d\'Intégrité Audit', 'url' => 'surveillance/integrite'],
+            'config' => ['label' => $configIcon . ' Configuration des Règles', 'url' => 'surveillance/config', 'is_html' => true],
+            'integrite' => ['label' => $linkIcon . ' Chaîne d\'Intégrité Audit', 'url' => 'surveillance/integrite', 'is_html' => true],
         ];
 
         $html = '<div class="finea-tabs" style="display:flex; border-bottom:1px solid #e2e8f0; margin-bottom:1.5rem; gap:1rem; padding-bottom:0.5rem;">';
@@ -553,7 +558,7 @@ final class Surveillance
             'Activez/Désactivez les règles de détection et configurez les seuils de tolérance sans redéployer le code.',
             [
                 'eyebrow' => 'Surveillance DG',
-                'actions' => Ui::button('← Retour au Dashboard', ['href' => 'surveillance', 'variant' => 'secondary', 'class' => 'finea-button-sm'])
+                'actions' => Ui::button(View::html('<svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2.5" fill="none" style="vertical-align:middle; margin-right:4px;"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg> Retour au Dashboard'), ['href' => 'surveillance', 'variant' => 'secondary', 'class' => 'finea-button-sm'])
             ]
         );
 
@@ -636,7 +641,7 @@ final class Surveillance
             'Vérification en temps réel du scellement cryptographique du journal d\'audit (輕量級區塊鏈).',
             [
                 'eyebrow' => 'Sécurité ERP',
-                'actions' => Ui::button('← Retour au Dashboard', ['href' => 'surveillance', 'variant' => 'secondary', 'class' => 'finea-button-sm'])
+                'actions' => Ui::button(View::html('<svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2.5" fill="none" style="vertical-align:middle; margin-right:4px;"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg> Retour au Dashboard'), ['href' => 'surveillance', 'variant' => 'secondary', 'class' => 'finea-button-sm'])
             ]
         );
 
@@ -644,14 +649,14 @@ final class Surveillance
 
         $status = $result['valid']
             ? '<div style="background:#ecfdf5; border:1px solid #a7f3d0; color:#065f46; padding:1.5rem; border-radius:8px; display:flex; align-items:center; gap:1rem; margin-bottom:1.5rem;">'
-            . '  <span style="font-size:2rem;">✅</span>'
+            . '  ' . View::html('<svg viewBox="0 0 24 24" width="32" height="32" stroke="#059669" stroke-width="2.5" fill="none" style="flex-shrink:0;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>')
             . '  <div>'
             . '    <h3 style="margin:0; font-size:1.15rem;">Chaîne d\'audit intacte</h3>'
             . '    <p style="margin:0.25rem 0 0 0;">Toutes les entrées d\'audit sont validées cryptographiquement. Aucune altération détectée.</p>'
             . '  </div>'
             . '</div>'
             : '<div style="background:#fef2f2; border:1px solid #fca5a5; color:#991b1b; padding:1.5rem; border-radius:8px; display:flex; align-items:center; gap:1rem; margin-bottom:1.5rem;">'
-            . '  <span style="font-size:2rem;">🚨</span>'
+            . '  ' . View::html('<svg viewBox="0 0 24 24" width="32" height="32" stroke="#dc2626" stroke-width="2.5" fill="none" style="flex-shrink:0;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>')
             . '  <div>'
             . '    <h3 style="margin:0; font-size:1.15rem;">RUPTURE D\'INTÉGRITÉ DÉTECTÉE</h3>'
             . '    <p style="margin:0.25rem 0 0 0;">Une ou plusieurs entrées ont été modifiées ou supprimées a posteriori (directement dans la BDD).</p>'

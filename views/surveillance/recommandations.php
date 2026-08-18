@@ -17,17 +17,12 @@ ob_start();
             'File de validation des décisions importantes préconisées par les modèles de machine learning.',
             [
                 'eyebrow' => 'Surveillance DG',
-                'actions' => Ui::button('← Retour au Dashboard', ['href' => 'surveillance', 'variant' => 'secondary', 'class' => 'finea-button-sm'])
+                'actions' => Ui::button(View::html('<svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2.5" fill="none" style="vertical-align:middle; margin-right:4px;"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg> Retour au Dashboard'), ['href' => 'surveillance', 'variant' => 'secondary', 'class' => 'finea-button-sm'])
             ]
         ) ?>
 
         <!-- Navigation par onglets -->
-        <div class="finea-tabs" style="display:flex; border-bottom:1px solid #e2e8f0; margin-bottom:1.5rem; gap:1rem; padding-bottom:0.5rem;">
-            <a href="<?= View::url('surveillance') ?>" style="padding:0.5rem 1rem; text-decoration:none; font-size:0.95rem; color:#64748b; font-weight:500;">🖥️ Dashboard</a>
-            <a href="<?= View::url('surveillance/recommandations') ?>" style="padding:0.5rem 1rem; text-decoration:none; font-size:0.95rem; color:var(--module-accent); border-bottom:2px solid var(--module-accent); font-weight:700;">🤖 Recommandations IA</a>
-            <a href="<?= View::url('surveillance/config') ?>" style="padding:0.5rem 1rem; text-decoration:none; font-size:0.95rem; color:#64748b; font-weight:500;">⚙️ Configuration des Règles</a>
-            <a href="<?= View::url('surveillance/integrite') ?>" style="padding:0.5rem 1rem; text-decoration:none; font-size:0.95rem; color:#64748b; font-weight:500;">🔗 Chaîne d'Intégrité Audit</a>
-        </div>
+        <?= Surveillance::renderNavTabs('recommandations', count($recommandations)) ?>
 
         <style>
             .rec-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
