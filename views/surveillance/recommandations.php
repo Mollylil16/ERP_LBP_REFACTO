@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Helpers\View;
 use App\View\Components\Ui;
+use App\View\Components\Surveillance;
 
 /** @var \App\Support\ViewBag $viewData */ $viewData ??= \App\Support\ViewBag::from(get_defined_vars());
 /** @var array $recommandations */
