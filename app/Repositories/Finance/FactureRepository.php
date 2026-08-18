@@ -6,6 +6,7 @@ use App\Models\Finance\Facture;
 use App\Helpers\Auth;
 use App\Security\PermissionEntityRegistry;
 use App\Services\Shared\AuditLogService;
+use App\Services\Shared\IntegrityRuleEngine;
 use PDO;
 
 class FactureRepository
@@ -240,7 +241,18 @@ class FactureRepository
             $logStmt->execute($log);
         }
 
-        AuditLogService::log('update_invoice_locked', 'lbp_factures', $factureId, $oldRow, $newFields);
+        $auditId = AuditLogService::log('update_invoice_locked', 'lbp_factures', $factureId, $oldRow, $newFields);
+
+        // Règle anti-fraude : modification post-validation
+        IntegrityRuleEngine::evaluateModifPostValidation(
+            (int) Auth::id(),
+            'lbp_factures',
+            $factureId,
+            (string) ($oldRow['statut'] ?? ''),
+            $oldRow,
+            $newFields,
+            $auditId
+        );
 
         return true;
     }

@@ -12,6 +12,8 @@ use App\Helpers\Session;
 use App\Models\Database;
 use App\Repositories\Colisage\ColisageRepository;
 use App\Services\Colisage\ColisageService;
+use App\Services\Shared\AuditLogService;
+use App\Services\Shared\IntegrityRuleEngine;
 use App\Helpers\View;
 
 use App\View\Pages\Colisage\ColisageIndexPage;
@@ -206,6 +208,7 @@ final class ColisageController extends ColisageBaseController
             'type_expediteur' => $_POST['type_expediteur'] ?? 'export_aerien',
             'assurance_souscrite' => !empty($_POST['assurance_souscrite']) ? 1 : 0,
             'marchandises' => $marchandises,
+            'created_by' => Auth::id(),
         ];
 
         if ($trajet !== null) {
@@ -217,6 +220,17 @@ final class ColisageController extends ColisageBaseController
         }
 
         $newId = $this->service->registerParcel($registerData);
+
+        $auditId = AuditLogService::log('create_parcel', 'lbp_colis', $newId, null, $registerData);
+
+        // Règle anti-fraude : sous-déclaration de valeur/poids
+        IntegrityRuleEngine::evaluateSousDeclarationColis(
+            (int) Auth::id(),
+            $newId,
+            (float) ($registerData['valeur_declaree'] ?? 0),
+            (float) ($registerData['poids_total'] ?? 0),
+            $auditId
+        );
 
         if ($trajet !== null) {
             $userId = Auth::id();
@@ -246,6 +260,7 @@ final class ColisageController extends ColisageBaseController
         $factureRepo = new \App\Repositories\Finance\FactureRepository($db);
         try {
             $invoiceId = $factureRepo->createAutoInvoiceFromParcel($id, (int) Auth::id());
+            AuditLogService::log('auto_facturer_colis', 'lbp_factures', $invoiceId, null, ['colis_id' => $id]);
             Session::flash('success', 'Facture générée avec succès en 1 Clic !');
             header('Location: ' . View::url('finance/factures/' . $invoiceId));
             exit;
@@ -368,7 +383,14 @@ final class ColisageController extends ColisageBaseController
         }
 
         try {
+            $colisAvantSuppression = $this->service->getParcelDetails($id);
             $this->service->deleteParcel($id);
+            $auditId = AuditLogService::log('delete_parcel', 'lbp_colis', $id, $colisAvantSuppression, null);
+
+            // Règle anti-fraude : suppression en dehors des heures de bureau
+            IntegrityRuleEngine::evaluateSuppressionHorsHoraires(
+                (int) Auth::id(), 'lbp_colis', $id, $auditId
+            );
             Session::flash('success', 'Le colis a été supprimé définitivement.');
         } catch (\PDOException $e) {
             if ($e->getCode() === '23000') {

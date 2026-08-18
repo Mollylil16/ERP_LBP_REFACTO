@@ -5,8 +5,6 @@ declare(strict_types=1);
 use App\Helpers\View;
 use App\View\Components\Ui;
 
-/** @var \App\Support\ViewBag $viewData */
-$viewData ??= \App\Support\ViewBag::from(get_defined_vars());
 
 $header = Ui::pageHeader(
     'Charte d\'Utilisation Informatique & Traçabilité des Transactions',

@@ -218,9 +218,21 @@ final class PilotageDgDashboardRepository extends \App\Repositories\Shared\Modul
         $facturesModifByUser = [];
         $colisRatioByUser = [];
         $rapprochementByUser = [];
+        $scoresByUser = [];
 
         if (!empty($userIds)) {
             $userPlaceholders = implode(',', array_fill(0, count($userIds), '?'));
+
+            try {
+                $stmt = $this->pdo->prepare("
+                    SELECT user_id, score_global FROM lbp_scores_employes
+                    WHERE user_id IN ($userPlaceholders)
+                ");
+                $stmt->execute($userIds);
+                foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) ?: [] as $row) {
+                    $scoresByUser[(int) $row['user_id']] = (float) $row['score_global'];
+                }
+            } catch (Throwable $e) {}
 
             try {
                 $stmt = $this->pdo->prepare("
@@ -301,37 +313,41 @@ final class PilotageDgDashboardRepository extends \App\Repositories\Shared\Modul
             $rappro = $userId !== null ? ($rapprochementByUser[$userId] ?? null) : null;
 
             // Calcul du Score d'Intégrité & Performance (0 à 100 PTS)
-            $scoreIntegrite = 85;
-            if ($tauxPresence !== null) {
-                $scoreIntegrite += ($tauxPresence >= 95 ? 10 : ($tauxPresence >= 80 ? 5 : -15));
+            if ($userId !== null && isset($scoresByUser[$userId])) {
+                $scoreIntegrite = (int) $scoresByUser[$userId];
+            } else {
+                $scoreIntegrite = 85;
+                if ($tauxPresence !== null) {
+                    $scoreIntegrite += ($tauxPresence >= 95 ? 10 : ($tauxPresence >= 80 ? 5 : -15));
+                }
+                if ($progressionMoyenne !== null) {
+                    $scoreIntegrite += ($progressionMoyenne >= 80 ? 5 : -10);
+                }
+                if ($nbMesures > 0) {
+                    $scoreIntegrite -= ($nbMesures * 20);
+                }
+                if ($gps && ($gps['statut_presence'] ?? '') === 'hors_site') {
+                    $scoreIntegrite -= 15;
+                }
+                if ($ecartCaisse !== null) {
+                    $maxEcart = (float) $ecartCaisse['max_ecart'];
+                    $scoreIntegrite -= ($maxEcart >= 50000 ? 25 : ($maxEcart >= 10000 ? 15 : 5));
+                }
+                if ($nbModifsFactures > 0) {
+                    $scoreIntegrite -= 15;
+                }
+                if ($colisRatio !== null && $colisRatio['ratio_vs_moyenne'] < 85) {
+                    $ratio = $colisRatio['ratio_vs_moyenne'] / 100;
+                    $scoreIntegrite -= ($ratio < 0.50 ? 25 : ($ratio < 0.70 ? 15 : 5));
+                }
+                if ($rappro !== null && $rappro['maxEcartPhysique'] >= 5000) {
+                    $scoreIntegrite -= ($rappro['maxEcartPhysique'] >= 50000 ? 25 : ($rappro['maxEcartPhysique'] >= 10000 ? 15 : 5));
+                }
+                if ($rappro !== null && $rappro['maxEcartDeclare'] >= 5000) {
+                    $scoreIntegrite -= ($rappro['maxEcartDeclare'] >= 50000 ? 15 : ($rappro['maxEcartDeclare'] >= 10000 ? 10 : 5));
+                }
+                $scoreIntegrite = max(0, min(100, $scoreIntegrite));
             }
-            if ($progressionMoyenne !== null) {
-                $scoreIntegrite += ($progressionMoyenne >= 80 ? 5 : -10);
-            }
-            if ($nbMesures > 0) {
-                $scoreIntegrite -= ($nbMesures * 20);
-            }
-            if ($gps && ($gps['statut_presence'] ?? '') === 'hors_site') {
-                $scoreIntegrite -= 15;
-            }
-            if ($ecartCaisse !== null) {
-                $maxEcart = (float) $ecartCaisse['max_ecart'];
-                $scoreIntegrite -= ($maxEcart >= 50000 ? 25 : ($maxEcart >= 10000 ? 15 : 5));
-            }
-            if ($nbModifsFactures > 0) {
-                $scoreIntegrite -= 15;
-            }
-            if ($colisRatio !== null && $colisRatio['ratio_vs_moyenne'] < 85) {
-                $ratio = $colisRatio['ratio_vs_moyenne'] / 100;
-                $scoreIntegrite -= ($ratio < 0.50 ? 25 : ($ratio < 0.70 ? 15 : 5));
-            }
-            if ($rappro !== null && $rappro['maxEcartPhysique'] >= 5000) {
-                $scoreIntegrite -= ($rappro['maxEcartPhysique'] >= 50000 ? 25 : ($rappro['maxEcartPhysique'] >= 10000 ? 15 : 5));
-            }
-            if ($rappro !== null && $rappro['maxEcartDeclare'] >= 5000) {
-                $scoreIntegrite -= ($rappro['maxEcartDeclare'] >= 50000 ? 15 : ($rappro['maxEcartDeclare'] >= 10000 ? 10 : 5));
-            }
-            $scoreIntegrite = max(0, min(100, $scoreIntegrite));
 
             $emp['taux_presence'] = $tauxPresence;
             $emp['derniere_evaluation'] = $eval['overall_score'] ?? null;

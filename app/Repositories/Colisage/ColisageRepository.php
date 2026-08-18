@@ -204,12 +204,12 @@ class ColisageRepository
                 numero_tracking, expediteur_id, destinataire_id, poids_total, nombre_colis,
                 valeur_declaree, montant_total, montant_total_eur, devise,
                 agence_depart_id, agence_arrivee_id,
-                statut, type_expediteur, trafic, assurance_souscrite, montant_assurance, created_at
+                statut, type_expediteur, trafic, assurance_souscrite, montant_assurance, created_by, created_at
             ) VALUES (
                 :numero_tracking, :expediteur_id, :destinataire_id, :poids_total, :nombre_colis,
                 :valeur_declaree, :montant_total, :montant_total_eur, :devise,
                 :agence_depart_id, :agence_arrivee_id,
-                'enregistre', :type_expediteur, :trafic, :assurance_souscrite, :montant_assurance, NOW()
+                'enregistre', :type_expediteur, :trafic, :assurance_souscrite, :montant_assurance, :created_by, NOW()
             )
         ");
         $stmt->execute([
@@ -228,6 +228,7 @@ class ColisageRepository
             'trafic' => trim((string) ($data['trafic'] ?? '')),
             'assurance_souscrite' => $assuranceSouscrite,
             'montant_assurance' => $montantAssurance,
+            'created_by' => isset($data['created_by']) ? (int) $data['created_by'] : null,
         ]);
         return (int) $this->pdo->lastInsertId();
     }

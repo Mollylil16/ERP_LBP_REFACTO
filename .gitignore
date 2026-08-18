@@ -37,3 +37,16 @@ scratch/
 /public/uploads/*
 !/public/uploads/.gitkeep
 config/database.php
+
+# Python Virtual Environment and bytecode
+surveillance_ml/.venv/
+surveillance_ml/models/*.pkl
+surveillance_ml/__pycache__/
+surveillance_ml/models/__pycache__/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Zip files
+/*.zip

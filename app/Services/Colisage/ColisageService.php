@@ -11,6 +11,7 @@ use App\Repositories\Shared\NotificationRepository;
 use App\Services\Logistique\RayonService;
 use App\Services\Logistique\GardiennageService;
 use App\Services\Shared\NotificationService;
+use App\Services\Shared\AuditLogService;
 use App\Models\Database;
 
 final class ColisageService
@@ -335,6 +336,8 @@ final class ColisageService
                 }
             }
 
+            AuditLogService::log('withdraw_parcel', 'lbp_colis', $id, $colis, $data);
+
             $pdo->commit();
         } catch (\Throwable $e) {
             if ($pdo->inTransaction()) {
@@ -365,6 +368,14 @@ final class ColisageService
                 $note = 'Transfert inter-rayons' . ($commentaires ? ' : ' . $commentaires : '');
                 $this->rayonRepository->recordMouvement($parcelId, $newRayonId, 'DEPLACEMENT', null, $note);
             }
+
+            AuditLogService::log(
+                'transfer_parcel_rayon',
+                'lbp_colis',
+                $parcelId,
+                ['rayon_id' => $colis['rayon_id'] ?? null],
+                ['rayon_id' => $newRayonId, 'commentaires' => $commentaires]
+            );
 
             $pdo->commit();
             return true;

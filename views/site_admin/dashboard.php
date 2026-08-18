@@ -275,55 +275,39 @@ ob_start();
     </section>
 
     <!-- 4 Impactful KPI Cards -->
-    <div class="site-kpi-grid">
-        <div class="site-kpi-card">
-            <div class="site-kpi-card__top">
-                <div class="site-kpi-card__icon" style="background: #ecfdf5; color: #059669;">
-                    <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-                </div>
-                <span class="live-badge"><span class="live-pulse-dot"></span> EN DIRECT</span>
-            </div>
-            <div class="site-kpi-card__value"><?= (int)($summary['online_count'] ?? 0) ?></div>
-            <div class="site-kpi-card__label">Visiteurs en direct</div>
-            <div class="site-kpi-card__meta">Connectés les 15 dernières min</div>
-        </div>
-
-        <div class="site-kpi-card">
-            <div class="site-kpi-card__top">
-                <div class="site-kpi-card__icon" style="background: #eff6ff; color: #2563eb;">
-                    <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                </div>
-                <span style="font-size: 0.78rem; font-weight: 700; color: #2563eb; background: #eff6ff; padding: 3px 8px; border-radius: 12px;">AUJOURD'HUI</span>
-            </div>
-            <div class="site-kpi-card__value"><?= count($trackingSearches) ?></div>
-            <div class="site-kpi-card__label">Recherches Tracking Colis</div>
-            <div class="site-kpi-card__meta">Consultations par les clients</div>
-        </div>
-
-        <div class="site-kpi-card">
-            <div class="site-kpi-card__top">
-                <div class="site-kpi-card__icon" style="background: #fffbebf; color: #d97706;">
-                    <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/></svg>
-                </div>
-                <span style="font-size: 0.78rem; font-weight: 700; color: #d97706; background: #fffbebf; padding: 3px 8px; border-radius: 12px;">BANNIÈRES</span>
-            </div>
-            <div class="site-kpi-card__value">1</div>
-            <div class="site-kpi-card__label">Annonces & Soldes Actives</div>
-            <div class="site-kpi-card__meta">Offres de fret & promos en ligne</div>
-        </div>
-
-        <div class="site-kpi-card">
-            <div class="site-kpi-card__top">
-                <div class="site-kpi-card__icon" style="background: #f3e8ff; color: #9333ea;">
-                    <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                </div>
-                <span style="font-size: 0.78rem; font-weight: 700; color: #9333ea; background: #f3e8ff; padding: 3px 8px; border-radius: 12px;">MESSAGES</span>
-            </div>
-            <div class="site-kpi-card__value">0</div>
-            <div class="site-kpi-card__label">Demandes & Formulaires</div>
-            <div class="site-kpi-card__meta">Contacts clients enregistrés</div>
-        </div>
-    </div>
+    <?php
+    $kpiItems = [
+        [
+            'label' => 'Visiteurs en direct', 
+            'value' => (string) ($summary['online_count'] ?? 0), 
+            'meta' => 'Connectés les 15 dernières min', 
+            'tone' => 'success',
+            'href' => 'site-admin/analytics'
+        ],
+        [
+            'label' => 'Recherches Tracking Colis', 
+            'value' => (string) count($trackingSearches), 
+            'meta' => 'Consultations par les clients', 
+            'tone' => 'primary',
+            'href' => 'site-admin/analytics'
+        ],
+        [
+            'label' => 'Annonces & Soldes Actives', 
+            'value' => '1', 
+            'meta' => 'Offres de fret & promos en ligne', 
+            'tone' => 'warning',
+            'href' => 'site-admin/configuration#announcements'
+        ],
+        [
+            'label' => 'Demandes & Formulaires', 
+            'value' => '0', 
+            'meta' => 'Contacts clients enregistrés', 
+            'tone' => 'neutral',
+            'href' => 'site-admin/configuration'
+        ],
+    ];
+    echo \App\View\Components\Dashboard::kpis($kpiItems);
+    ?>
 
     <!-- Quick Operations Cards Grid -->
     <div style="margin-bottom: 12px; font-size: 1.1rem; font-weight: 800; color: #0f172a;">Opérations & Raccourcis Métier</div>

@@ -25,6 +25,7 @@ use App\Repositories\Finance\EtatJournalierRepository;
 use App\Repositories\Finance\DemandePaiementRepository;
 use App\Repositories\Finance\ComptabiliteRepository;
 use App\Services\Shared\AuditLogService;
+use App\Services\Shared\IntegrityRuleEngine;
 use App\Services\Shared\NotificationService;
 use App\Repositories\Shared\NotificationRepository;
 use PDO;
@@ -231,7 +232,10 @@ final class FinanceController extends FinanceBaseController
         $factureId = $this->factureRepo->create($facture);
 
         // Log d'audit
-        AuditLogService::log('create', 'lbp_factures', $factureId, null, (array) $facture);
+        $auditId = AuditLogService::log('create', 'lbp_factures', $factureId, null, (array) $facture);
+
+        // Règle anti-fraude : Cumul de rôles (violation de la séparation des tâches)
+        IntegrityRuleEngine::evaluateCumulRoles((int) Auth::id(), $factureId, 'create', $auditId);
 
         Session::flash('success', "La facture {$numeroFacture} a été générée avec succès.");
         header('Location: ' . View::url('finance/factures/' . $factureId));
@@ -389,7 +393,10 @@ final class FinanceController extends FinanceBaseController
             $this->comptabiliteRepo->createEcriture($ecriture);
 
             // Enregistrer log d'audit
-            AuditLogService::log('payment', 'lbp_factures', $facture->id, $oldFacture, (array) $facture);
+            $auditId = AuditLogService::log('payment', 'lbp_factures', $facture->id, $oldFacture, (array) $facture);
+
+            // Règle anti-fraude : Cumul de rôles (violation de la séparation des tâches)
+            IntegrityRuleEngine::evaluateCumulRoles((int) Auth::id(), $facture->id, 'payment', $auditId);
 
             $this->db->commit();
         } catch (\Exception $e) {

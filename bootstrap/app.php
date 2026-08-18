@@ -11,7 +11,9 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-define('BASE_PATH', dirname(__DIR__));
+if (!defined('BASE_PATH')) {
+    define('BASE_PATH', dirname(__DIR__));
+}
 
 spl_autoload_register(function (string $class): void {
 

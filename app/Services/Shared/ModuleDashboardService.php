@@ -371,7 +371,7 @@ final class ModuleDashboardService
                 ['key' => 'dashboard', 'label' => 'Vue Exécutive', 'icon' => 'DB', 'url' => '/pilotage-dg/dashboard', 'available' => true],
                 ['key' => 'personnel', 'label' => 'Supervision Personnel', 'icon' => 'RH', 'url' => '/pilotage-dg/personnel', 'available' => true],
                 ['key' => 'validations', 'label' => 'Centre de Validation', 'icon' => 'VAL', 'url' => '/pilotage-dg/validations', 'available' => true],
-                ['key' => 'anomalies', 'label' => 'Anomalies & Fraude', 'icon' => 'ALT', 'url' => '/pilotage-dg/anomalies', 'available' => true],
+                ['key' => 'anomalies', 'label' => 'Anomalies & Fraude', 'icon' => 'ALT', 'url' => '/surveillance', 'available' => true],
                 ['key' => 'audit', 'label' => 'Journal d\'Audit', 'icon' => 'AUD', 'url' => '/pilotage-dg/audit', 'available' => true],
             ];
         }

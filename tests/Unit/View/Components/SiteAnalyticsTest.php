@@ -20,7 +20,7 @@ final class SiteAnalyticsTest extends TestCase
             'visitors' => [],
         ]));
 
-        self::assertStringContainsString('Audience du site', $html);
+        self::assertStringContainsString('Audience Site Web', $html);
         self::assertStringContainsString('Activité des 14 derniers jours', $html);
     }
 }

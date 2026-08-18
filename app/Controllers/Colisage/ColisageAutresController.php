@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace App\Controllers\Colisage;
 
 use App\Middleware\AuthMiddleware;
+use App\Helpers\Auth;
 use App\Helpers\Csrf;
 use App\Helpers\Session;
 use App\Models\Database;
 use App\Repositories\Colisage\ColisageRepository;
 use App\Services\Colisage\ColisageService;
+use App\Services\Shared\AuditLogService;
 use App\Helpers\View;
 
 final class ColisageAutresController extends ColisageBaseController
@@ -220,7 +222,7 @@ final class ColisageAutresController extends ColisageBaseController
         // pas le champ 'nombre_colis' du formulaire (alimenté par un JS qui pouvait rester bloqué à 1).
         $totalNombreColis = array_sum(array_column($marchandises, 'nbre_colis'));
 
-        $newId = $this->service->registerParcel([
+        $registerData = [
             'expediteur_id' => $expediteurId,
             'destinataire_id' => $destinataireId,
             'poids_total' => (float) ($_POST['poids_total'] ?? 0.0),
@@ -233,7 +235,11 @@ final class ColisageAutresController extends ColisageBaseController
             'type_expediteur' => $type,
             'trafic' => $trafic,
             'marchandises' => $marchandises,
-        ]);
+            'created_by' => Auth::id(),
+        ];
+        $newId = $this->service->registerParcel($registerData);
+
+        AuditLogService::log('create_parcel_express', 'lbp_colis', $newId, null, $registerData);
 
         // Save trajet directly to database
         if ($trajet) {

@@ -2966,5 +2966,78 @@ class MigrationRunner
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
             ");
         }
+
+        // ── Module Surveillance v2 : enrichissements de schéma ──
+
+        // Ajouter user_agent au journal d'audit pour contexte enrichi
+        if ($this->schema->tableExists('lbp_audit_logs')) {
+            $this->addColumnIfMissing('lbp_audit_logs', 'user_agent', "VARCHAR(500) NULL");
+        }
+
+        // Ajouter parametres_json pour seuils configurables par règle
+        if ($this->schema->tableExists('lbp_regles_config')) {
+            $this->addColumnIfMissing('lbp_regles_config', 'parametres_json', "JSON NULL");
+            $this->addColumnIfMissing('lbp_regles_config', 'seuil_pourcentage', "DECIMAL(5,2) NULL");
+        }
+
+        // Enrichir la table d'alertes : traçabilité du traitement et lien vers audit_log
+        if ($this->schema->tableExists('lbp_alertes_integrite')) {
+            $this->addColumnIfMissing('lbp_alertes_integrite', 'traite_par', "INT NULL COMMENT 'user_id du DG qui a traité cette alerte'");
+            $this->addColumnIfMissing('lbp_alertes_integrite', 'audit_log_id', "BIGINT NULL COMMENT 'Lien vers l entrée audit_log déclencheuse'");
+        }
+
+        // Seed du rôle dg_surveillance pour le DG (user_id 28 d'après le dump de production)
+        try {
+            $this->pdo->exec("
+                INSERT IGNORE INTO lbp_user_roles (user_id, role) VALUES (28, 'dg_surveillance')
+            ");
+        } catch (Throwable $e) {
+            // Table ou user non encore présent : silencieux
+        }
+
+        // ── Phase 2 : Couche IA/ML de Surveillance ──
+
+        // Ajouter origine_decision à lbp_alertes_integrite
+        if ($this->schema->tableExists('lbp_alertes_integrite')) {
+            $this->addColumnIfMissing('lbp_alertes_integrite', 'origine_decision', "ENUM('ia_autonome', 'recommandation_ia_en_attente', 'validee_dg', 'regles_fixes') DEFAULT 'regles_fixes'");
+        }
+
+        // Table d'historique des scores ML
+        if (!$this->schema->tableExists('lbp_scores_ml_employes')) {
+            $this->pdo->exec("
+                CREATE TABLE lbp_scores_ml_employes (
+                    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                    user_id INT NOT NULL,
+                    score_anomalie DECIMAL(5,2) DEFAULT 0.00,
+                    score_derive DECIMAL(5,2) DEFAULT 0.00,
+                    score_supervise DECIMAL(5,2) NULL,
+                    score_final DECIMAL(5,2) DEFAULT 0.00,
+                    top_facteurs JSON NULL,
+                    version_modele VARCHAR(50) NOT NULL,
+                    date_calcul TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    INDEX idx_user (user_id),
+                    INDEX idx_date (date_calcul)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+            ");
+        }
+
+        // Table des recommandations générées par l'IA (gouvernance humaine)
+        if (!$this->schema->tableExists('lbp_recommandations_ia')) {
+            $this->pdo->exec("
+                CREATE TABLE lbp_recommandations_ia (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    user_id INT NOT NULL,
+                    action_recommandee VARCHAR(100) NOT NULL,
+                    statut ENUM('en_attente', 'approuvee', 'rejetee') DEFAULT 'en_attente',
+                    explication TEXT NULL,
+                    origine_decision ENUM('ia_autonome', 'recommandation_ia_en_attente', 'validee_dg') DEFAULT 'recommandation_ia_en_attente',
+                    traite_par INT NULL,
+                    traite_at TIMESTAMP NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    INDEX idx_user (user_id),
+                    INDEX idx_statut (statut)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+            ");
+        }
     }
 }

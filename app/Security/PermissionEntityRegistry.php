@@ -30,6 +30,7 @@ final class PermissionEntityRegistry
     public const CONSULTER_TOUTES_FACTURES_TOUTES_AGENCES = 'consulter_toutes_factures_toutes_agences';
     public const EXPORTER_COLISAGE_SANS_MONTANT = 'exporter_colisage_sans_montant';
     public const EXPORTER_FACTURATION_AVEC_MONTANT = 'exporter_facturation_avec_montant';
+    public const SURVEILLANCE_MODULE = 'surveillance_module';
 
     public static function all(): array
     {
@@ -171,6 +172,12 @@ final class PermissionEntityRegistry
                 'name' => 'Exporter la facturation (avec montant)',
                 'description' => 'Exporter la facturation et les états financiers filtrés avec montants.',
                 'sort_order' => 340,
+            ],
+            self::SURVEILLANCE_MODULE => [
+                'module' => 'Surveillance DG',
+                'name' => 'Accès Surveillance & Intégrité',
+                'description' => 'Accès restreint au module de pilotage et surveillance DG.',
+                'sort_order' => 400,
             ],
         ];
     }
