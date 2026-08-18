@@ -19,7 +19,8 @@ final class SurveillanceService
     {
         $alerts = $this->repository->getAlerts($filters);
         $employees = $this->repository->getEmployeesRanking();
-        $trend = $this->repository->getAlertsTrend($filters['user_id'] ?? null);
+        $userId = !empty($filters['user_id']) ? (int) $filters['user_id'] : null;
+        $trend = $this->repository->getAlertsTrend($userId);
         $rules = $this->repository->getRulesConfig();
 
         // Calculer les statistiques du dashboard
