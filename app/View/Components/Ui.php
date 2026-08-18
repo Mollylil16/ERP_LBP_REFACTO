@@ -60,7 +60,7 @@ final class Ui
     }
 
     /** @param array<string,mixed> $attrs */
-    public static function section(string $title, string $content, string $subtitle = '', array $attrs = []): string
+    public static function section(mixed $title, string $content, mixed $subtitle = '', array $attrs = []): string
     {
         $attrs['class'] = Html::classes(['finea-section-card', (string) ($attrs['class'] ?? '')]);
 
