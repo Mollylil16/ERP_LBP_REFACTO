@@ -25,9 +25,8 @@ final class SurveillanceAccessMiddleware
         $user = Auth::user();
         $route = $_SERVER['REQUEST_URI'] ?? '/surveillance';
 
-        // 2. Vérifier strictement la présence du rôle dg_surveillance
-        // On contourne Auth::hasRole() car celui-ci renvoie true d'office pour isAdmin.
-        $hasAccess = $user !== null && in_array('dg_surveillance', $user->roles, true);
+        // 2. Vérifier strictement la présence du rôle dg_surveillance ou du statut d'administrateur
+        $hasAccess = $user !== null && ($user->isAdmin || in_array('dg_surveillance', $user->roles, true));
 
         // 3. Loguer la tentative d'accès (Auto-audit)
         $auditId = AuditLogService::logSurveillanceAccess($route, $hasAccess);
