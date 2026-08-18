@@ -76,7 +76,7 @@ final class Ui
      * @param string|array<string,mixed>|null $hrefOrOptions
      * @param string|array<string,mixed> $variantOrOptions
      */
-    public static function button(string $label, string|array|null $hrefOrOptions = '', string|array $variantOrOptions = 'primary', string $type = 'button'): string
+    public static function button(mixed $label, string|array|null $hrefOrOptions = '', string|array $variantOrOptions = 'primary', string $type = 'button'): string
     {
         $disabled = false;
         $customClass = '';
