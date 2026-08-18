@@ -623,7 +623,7 @@ final class Surveillance
             $titleBadge = Ui::badge(strtoupper($r['gravite']), $badgeTone) . ' ' . ($isActive ? '🟢 Active' : '🔴 Désactivée');
 
             $html .= '<div style="margin-bottom:1.5rem;">' 
-                . Ui::section(View::e($r['titre']), $ruleContent, $titleBadge) 
+                . Ui::section(View::html($r['titre']), $ruleContent, View::html($titleBadge)) 
                 . '</div>';
         }
 
