@@ -52,6 +52,7 @@ final class SurveillanceController extends BaseController
             'moduleName' => 'Pilotage DG',
             'moduleCode' => 'pilotage-dg',
             'activeModule' => 'anomalies',
+            'additionalStyles' => ['css/finea-ui.css'],
             'stats' => $data['stats'],
             'alerts' => $data['alerts'],
             'employees' => $data['employees'],
@@ -84,6 +85,7 @@ final class SurveillanceController extends BaseController
             'moduleName' => 'Pilotage DG',
             'moduleCode' => 'pilotage-dg',
             'activeModule' => 'anomalies',
+            'additionalStyles' => ['css/finea-ui.css'],
             'alert' => $alert,
             'activeSubmenu' => 'alertes',
         ]);
@@ -145,6 +147,7 @@ final class SurveillanceController extends BaseController
             'moduleName' => 'Pilotage DG',
             'moduleCode' => 'pilotage-dg',
             'activeModule' => 'anomalies',
+            'additionalStyles' => ['css/finea-ui.css'],
             'profile' => $profile,
             'activeSubmenu' => 'employes',
         ]);
@@ -164,6 +167,7 @@ final class SurveillanceController extends BaseController
             'moduleName' => 'Pilotage DG',
             'moduleCode' => 'pilotage-dg',
             'activeModule' => 'anomalies',
+            'additionalStyles' => ['css/finea-ui.css'],
             'rules' => $rules,
             'activeSubmenu' => 'config',
         ]);
@@ -220,6 +224,7 @@ final class SurveillanceController extends BaseController
             'moduleName' => 'Pilotage DG',
             'moduleCode' => 'pilotage-dg',
             'activeModule' => 'anomalies',
+            'additionalStyles' => ['css/finea-ui.css'],
             'result' => $result,
             'activeSubmenu' => 'integrite',
         ]);
@@ -322,6 +327,7 @@ final class SurveillanceController extends BaseController
             'moduleName' => 'Pilotage DG',
             'moduleCode' => 'pilotage-dg',
             'activeModule' => 'anomalies',
+            'additionalStyles' => ['css/finea-ui.css'],
             'recommandations' => $recommandations,
             'activeSubmenu' => 'recommandations',
         ]);
