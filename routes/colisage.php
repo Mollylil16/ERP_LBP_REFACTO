@@ -51,6 +51,7 @@ $router->group('/colisage', function (Router $router): void {
 
     $router->get('/documents', [ColisageController::class, 'documents']);
     $router->get('/reporting', [ColisageController::class, 'reporting']);
+    $router->get('/guide', [ColisageController::class, 'userGuide']);
 
     // Rapports journaliers / mensuels par agence
     $router->get('/rapports', [RapportsController::class, 'journalier']);

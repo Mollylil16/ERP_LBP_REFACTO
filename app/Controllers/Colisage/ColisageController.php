@@ -879,4 +879,11 @@ final class ColisageController extends ColisageBaseController
             exit;
         }
     }
+
+    public function userGuide(): void
+    {
+        \App\Middleware\AuthMiddleware::check();
+
+        $this->colisageView('colisage/guide', 'Guide d\'Utilisation de la Saisie', 'guide_utilisation');
+    }
 }
