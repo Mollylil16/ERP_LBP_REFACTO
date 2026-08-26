@@ -234,6 +234,8 @@ final class ColisageAutresController extends ColisageBaseController
             'agence_arrivee_id' => !empty($_POST['agence_arrivee_id']) ? (int) $_POST['agence_arrivee_id'] : null,
             'type_expediteur' => $type,
             'trafic' => $trafic,
+            'assurance_souscrite' => !empty($_POST['assurance_souscrite']) ? 1 : 0,
+            'date_depart_prevue' => !empty($_POST['date_depart_prevue']) ? $_POST['date_depart_prevue'] : date('Y-m-d'),
             'marchandises' => $marchandises,
             'created_by' => Auth::id(),
         ];

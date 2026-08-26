@@ -207,13 +207,12 @@ class ColisageRepository
             INSERT INTO lbp_colis (
                 numero_tracking, expediteur_id, destinataire_id, poids_total, nombre_colis,
                 valeur_declaree, montant_total, montant_total_eur, devise,
-                agence_depart_id, agence_arrivee_id,
-                statut, type_expediteur, trafic, assurance_souscrite, montant_assurance, created_by, created_at
+                agence_depart_id, agence_arrivee_id,                statut, type_expediteur, trafic, assurance_souscrite, montant_assurance, date_depart_prevue, created_by, created_at
             ) VALUES (
                 :numero_tracking, :expediteur_id, :destinataire_id, :poids_total, :nombre_colis,
                 :valeur_declaree, :montant_total, :montant_total_eur, :devise,
                 :agence_depart_id, :agence_arrivee_id,
-                'enregistre', :type_expediteur, :trafic, :assurance_souscrite, :montant_assurance, :created_by, NOW()
+                'enregistre', :type_expediteur, :trafic, :assurance_souscrite, :montant_assurance, :date_depart_prevue, :created_by, NOW()
             )
         ");
         $stmt->execute([
@@ -228,10 +227,11 @@ class ColisageRepository
             'devise' => $devise,
             'agence_depart_id' => isset($data['agence_depart_id']) ? (int) $data['agence_depart_id'] : null,
             'agence_arrivee_id' => isset($data['agence_arrivee_id']) ? (int) $data['agence_arrivee_id'] : null,
-            'type_expediteur' => trim((string) $data['type_expediteur']),
-            'trafic' => trim((string) ($data['trafic'] ?? '')),
+            'type_expediteur' => isset($data['type_expediteur']) ? trim((string) $data['type_expediteur']) : null,
+            'trafic' => isset($data['trafic']) ? trim((string) $data['trafic']) : null,
             'assurance_souscrite' => $assuranceSouscrite,
             'montant_assurance' => $montantAssurance,
+            'date_depart_prevue' => !empty($data['date_depart_prevue']) ? $data['date_depart_prevue'] : date('Y-m-d'),
             'created_by' => isset($data['created_by']) ? (int) $data['created_by'] : null,
         ]);
         return (int) $this->pdo->lastInsertId();

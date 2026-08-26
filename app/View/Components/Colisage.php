@@ -227,6 +227,7 @@ final class Colisage
                 ['value' => 'USD', 'label' => 'US Dollar (USD)'],
             ], 'XOF', ['label' => 'Devise'])
             . Form::input('valeur_declaree', ['label' => 'Valeur déclarée (assurance/douane)', 'type' => 'number', 'step' => '1', 'placeholder' => 'Valeur déclarée par le client'])
+            . Form::input('date_depart_prevue', ['label' => 'Date de départ prévue', 'type' => 'date', 'value' => date('Y-m-d'), 'required' => true])
             . '<div style="grid-column: span 3; background: #f0fdf4; border: 1px solid #bbf7d0; padding: 0.8rem 1.2rem; border-radius: 8px; margin-top: 0.5rem;">'
             . Form::checkbox('assurance_souscrite', '1', false, ['label' => 'Souscrire à l\'Assurance Colis (+2% de la valeur déclarée — Couverture jusqu\'à 100% de la valeur)'])
             . '</div></div></div>'
@@ -1356,12 +1357,13 @@ final class Colisage
 
         $depAgency = Form::selectSearch('agence_depart_id', $siteOpts, '', ['label' => 'Agence de départ']);
         $arrAgency = Form::selectSearch('agence_arrivee_id', $siteOpts, '', ['label' => 'Agence d\'arrivée prévue']);
+        $dateDepart = Form::input('date_depart_prevue', ['label' => 'Date de départ prévue', 'type' => 'date', 'value' => date('Y-m-d')]);
 
         $colisGrid = '<div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:1rem;">'
             . $typeExp . $weight . $valeur
             . '</div>'
-            . '<div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:1rem; margin-top:1rem;">'
-            . $devise . $depAgency . $arrAgency
+            . '<div style="display:grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap:1rem; margin-top:1rem;">'
+            . $devise . $depAgency . $arrAgency . $dateDepart
             . '</div>';
 
         // Prep options for products dropdown (multi-select needs no default -- option)
@@ -1836,7 +1838,8 @@ final class Colisage
             . '<div>'
             . '<p><strong>Agence départ :</strong> ' . View::e($colis['agence_depart_name'] ?? 'Non spécifiée') . '</p>'
             . '<p><strong>Agence d\'arrivée :</strong> ' . View::e($colis['agence_arrivee_name'] ?? 'Non spécifiée') . '</p>'
-            . '<p><strong>Date d\'enregistrement :</strong> ' . View::e($colis['created_at']) . '</p>'
+            . '<p><strong>Date d\'enregistrement :</strong> ' . View::e(date('d/m/Y H:i', strtotime((string)$colis['created_at']))) . '</p>'
+            . '<p><strong>Date de départ prévue :</strong> <span style="font-weight:700; color:#0f766e;">' . View::e(!empty($colis['date_depart_prevue']) ? date('d/m/Y', strtotime((string)$colis['date_depart_prevue'])) : date('d/m/Y', strtotime((string)$colis['created_at']))) . '</span></p>'
             . '</div>'
             . '</div>';
 

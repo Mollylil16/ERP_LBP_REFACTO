@@ -153,18 +153,33 @@ $moduleIconKey = $moduleTheme['iconKey'] ?? strtolower((string) ($moduleCode ?? 
 
         if (!blocker) return; // Admins and DG are exempted
 
+        // Vérifier si la géolocalisation a déjà été validée récemment pendant cette session (30 minutes)
+        const lastValidated = sessionStorage.getItem('lbp_gps_validated');
+        const isValidated = lastValidated && (Date.now() - parseInt(lastValidated, 10) < 30 * 60 * 1000);
+
+        if (isValidated) {
+            // Masquer immédiatement le bloqueur pour permettre à l'utilisateur de travailler sans interruption
+            blocker.style.display = 'none';
+        }
+
         if (!("geolocation" in navigator)) {
-            status.innerHTML = "⚠️ Erreur : Votre navigateur ne supporte pas la géolocalisation. Veuillez utiliser un navigateur moderne (Chrome, Safari, Firefox).";
-            loader.style.display = 'none';
+            if (!isValidated) {
+                status.innerHTML = "⚠️ Erreur : Votre navigateur ne supporte pas la géolocalisation. Veuillez utiliser un navigateur moderne (Chrome, Safari, Firefox).";
+                loader.style.display = 'none';
+            }
             return;
         }
 
-        function requestLocation() {
-            loader.style.display = 'block';
-            retryBtn.style.display = 'none';
+        function requestLocation(isSilent) {
+            if (!isSilent) {
+                loader.style.display = 'block';
+                retryBtn.style.display = 'none';
+            }
             
             navigator.geolocation.getCurrentPosition(function(pos) {
-                status.innerHTML = "Position obtenue. Enregistrement de votre présence...";
+                if (!isSilent) {
+                    status.innerHTML = "Position obtenue. Enregistrement de votre présence...";
+                }
                 
                 fetch('<?= View::url('api/presence/ping-gps') ?>', {
                     method: 'POST',
@@ -178,17 +193,28 @@ $moduleIconKey = $moduleTheme['iconKey'] ?? strtolower((string) ($moduleCode ?? 
                 .then(res => res.json())
                 .then(data => {
                     if (data.success) {
+                        sessionStorage.setItem('lbp_gps_validated', Date.now().toString());
                         blocker.style.display = 'none';
                     } else {
-                        status.innerHTML = "⚠️ Erreur de validation : " + (data.message || "Erreur serveur");
-                        loader.style.display = 'none';
-                        retryBtn.style.display = 'inline-block';
+                        if (!isSilent) {
+                            status.innerHTML = "⚠️ Erreur de validation : " + (data.message || "Erreur serveur");
+                            loader.style.display = 'none';
+                            retryBtn.style.display = 'inline-block';
+                        } else {
+                            // Si la tentative silencieuse échoue, afficher l'écran de blocage avec l'erreur
+                            blocker.style.display = 'flex';
+                            status.innerHTML = "⚠️ Erreur de validation : " + (data.message || "Erreur serveur");
+                            loader.style.display = 'none';
+                            retryBtn.style.display = 'inline-block';
+                        }
                     }
                 })
                 .catch(err => {
-                    status.innerHTML = "⚠️ Erreur réseau lors de l'enregistrement de votre position.";
-                    loader.style.display = 'none';
-                    retryBtn.style.display = 'inline-block';
+                    if (!isSilent) {
+                        status.innerHTML = "⚠️ Erreur réseau lors de l'enregistrement de votre position.";
+                        loader.style.display = 'none';
+                        retryBtn.style.display = 'inline-block';
+                    }
                 });
             }, function(err) {
                 let msg = "Veuillez autoriser l'accès à la localisation dans votre navigateur.";
@@ -199,13 +225,18 @@ $moduleIconKey = $moduleTheme['iconKey'] ?? strtolower((string) ($moduleCode ?? 
                 } else if (err.code === err.TIMEOUT) {
                     msg = "La recherche de votre position a expiré. Veuillez réessayer.";
                 }
+                
+                // Si la géolocalisation est refusée/indisponible, forcer l'affichage du blocage et vider le cache
+                blocker.style.display = 'flex';
                 status.innerHTML = "⚠️ Accès refusé ou impossible :<br><br>" + msg;
                 loader.style.display = 'none';
                 retryBtn.style.display = 'inline-block';
+                sessionStorage.removeItem('lbp_gps_validated');
             }, { enableHighAccuracy: false, timeout: 15000, maximumAge: 0 });
         }
 
-        requestLocation();
+        // Lancer la demande (silencieuse si déjà validée dans la session)
+        requestLocation(isValidated);
     })();
     </script>
 </body>

@@ -1739,6 +1739,7 @@ class MigrationRunner
         $this->addColumnIfMissing('lbp_colis', 'statut_depart', "ENUM('NON_SPECIFIE', 'PARTI', 'RESTE') NOT NULL DEFAULT 'NON_SPECIFIE'");
         $this->addColumnIfMissing('lbp_colis', 'motif_reste', "VARCHAR(255) NULL");
         $this->addColumnIfMissing('lbp_colis', 'date_statut_depart', "DATETIME NULL");
+        $this->addColumnIfMissing('lbp_colis', 'date_depart_prevue', "DATE NULL");
 
         $this->pdo->exec("
             CREATE TABLE IF NOT EXISTS lbp_marchandises (
