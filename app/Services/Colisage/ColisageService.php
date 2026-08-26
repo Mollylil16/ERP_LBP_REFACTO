@@ -279,9 +279,10 @@ final class ColisageService
                                 $tracking,
                                 $userId
                             );
-                        }
                     }
+                }
             }
+        }
 
             // Update final montant_total for the colis based on the inserted marchandises
             $stmtSum = $pdo->prepare("SELECT SUM(total_ligne) FROM lbp_marchandises WHERE colis_id = ?");
