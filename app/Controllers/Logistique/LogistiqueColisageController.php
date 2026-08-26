@@ -157,8 +157,9 @@ final class LogistiqueColisageController extends LogistiqueBaseController
         $params = ['date' => $date];
 
         if ($agenceId > 0) {
-            $sql .= " AND (c.agence_depart_id = :agence_id OR c.agence_arrivee_id = :agence_id)";
-            $params['agence_id'] = $agenceId;
+            $sql .= " AND (c.agence_depart_id = :agence_id1 OR c.agence_arrivee_id = :agence_id2)";
+            $params['agence_id1'] = $agenceId;
+            $params['agence_id2'] = $agenceId;
         }
 
         $sql .= " ORDER BY c.created_at DESC";
