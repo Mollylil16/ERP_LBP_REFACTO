@@ -245,15 +245,23 @@ final class ColisageService
                     }
 
                     if ($customName !== '') {
-                        $existing = $this->repository->findProductByName($customName);
-                        if ($existing === null) {
-                            $this->repository->createProduct([
-                                'nom' => $customName,
-                                'prix_unitaire' => (float) ($m['custom_price'] ?? 0.0),
-                                'description' => 'Créé à la volée depuis colisage',
-                            ]);
+                        $parts = preg_split('/[,+]/', $customName);
+                        if ($parts !== false) {
+                            foreach ($parts as $part) {
+                                $cleanPart = trim($part);
+                                if ($cleanPart !== '') {
+                                    $existing = $this->repository->findProductByName($cleanPart);
+                                    if ($existing === null) {
+                                        $this->repository->createProduct([
+                                            'nom' => $cleanPart,
+                                            'prix_unitaire' => (float) ($m['custom_price'] ?? 0.0),
+                                            'description' => 'Créé à la volée depuis colisage',
+                                        ]);
+                                    }
+                                    $names[] = strtoupper($cleanPart);
+                                }
+                            }
                         }
-                        $names[] = strtoupper($customName);
                     }
 
                     $description = implode(' + ', array_unique($names));

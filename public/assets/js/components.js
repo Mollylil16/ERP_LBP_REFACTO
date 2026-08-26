@@ -4,7 +4,7 @@
     select.dataset.fineaEnhanced = "1";
     select.classList.add("finea-native-select");
 
-    const multiple = select.multiple || select.dataset.multiple === "1";
+    const multiple = select.hasAttribute("multiple") || select.multiple || select.dataset.multiple === "1";
     const placeholder =
       select.dataset.placeholder || "Rechercher et sélectionner...";
     const wrapper = document.createElement("div");

@@ -14,7 +14,7 @@
     select.dataset.enhancedSelect = 'true';
     select.classList.add('finea-select-native-hidden');
 
-    const multiple = select.multiple || select.dataset.multiple === 'true';
+    const multiple = select.hasAttribute('multiple') || select.multiple || select.dataset.multiple === 'true';
     const root = document.createElement('div');
     root.className = 'finea-select-search';
     root.dataset.name = select.name;
