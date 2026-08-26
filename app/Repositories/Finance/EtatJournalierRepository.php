@@ -166,7 +166,10 @@ class EtatJournalierRepository
         $stmt = $this->pdo->prepare("
             SELECT 
                 SUM(CASE WHEN p.devise = 'XOF' THEN p.montant ELSE 0 END) as encaisse_xof,
-                SUM(CASE WHEN p.devise = 'EUR' THEN p.montant ELSE 0 END) as encaisse_eur
+                SUM(CASE WHEN p.devise = 'EUR' THEN p.montant ELSE 0 END) as encaisse_eur,
+                SUM(CASE WHEN p.devise = 'XOF' AND (LOWER(COALESCE(p.mode, 'especes')) = 'especes' OR LOWER(COALESCE(p.mode, 'especes')) = '') THEN p.montant ELSE 0 END) as encaisse_especes_xof,
+                SUM(CASE WHEN p.devise = 'XOF' AND LOWER(COALESCE(p.mode, '')) IN ('wave', 'orange_money', 'mtn_momo', 'mobile_money', 'virement', 'carte') THEN p.montant ELSE 0 END) as encaisse_digital_xof,
+                SUM(CASE WHEN p.devise = 'XOF' AND LOWER(COALESCE(p.mode, '')) = 'cheque' THEN p.montant ELSE 0 END) as encaisse_cheque_xof
             FROM lbp_paiements p
             JOIN lbp_factures f ON p.facture_id = f.id
             WHERE f.agence_id = :agence_id AND DATE(p.date_paiement) = :date
@@ -175,6 +178,9 @@ class EtatJournalierRepository
         $payRow = $stmt->fetch() ?: [];
         $totalEncaisseXof = (float) ($payRow['encaisse_xof'] ?? 0.0);
         $totalEncaisseEur = (float) ($payRow['encaisse_eur'] ?? 0.0);
+        $encaisseEspecesXof = (float) ($payRow['encaisse_especes_xof'] ?? 0.0);
+        $encaisseDigitalXof = (float) ($payRow['encaisse_digital_xof'] ?? 0.0);
+        $encaisseChequeXof = (float) ($payRow['encaisse_cheque_xof'] ?? 0.0);
 
         // 4. Reste à payer des factures émises ce jour
         $stmt = $this->pdo->prepare("
@@ -196,9 +202,12 @@ class EtatJournalierRepository
             'total_facture_eur' => $totalFactureEur,
             'total_encaisse_xof' => $totalEncaisseXof,
             'total_encaisse_eur' => $totalEncaisseEur,
+            'encaisse_especes_xof' => $encaisseEspecesXof,
+            'encaisse_digital_xof' => $encaisseDigitalXof,
+            'encaisse_cheque_xof' => $encaisseChequeXof,
             'total_restant_du_xof' => $totalRestantDuXof,
             'total_restant_du_eur' => $totalRestantDuEur,
-            'solde_caisse_agence_xof' => $totalEncaisseXof, // Le solde physique de l'agence pour la journée est ce qui a été encaissé en espèces/etc.
+            'solde_caisse_agence_xof' => $totalEncaisseXof, // Le solde physique de l'agence pour la journée
             'solde_caisse_agence_eur' => $totalEncaisseEur,
         ];
     }

@@ -979,6 +979,118 @@ final class FinanceController extends FinanceBaseController
     }
 
     /**
+     * Export PDF du Bilan Global Consolidé Réseau de toutes les agences.
+     */
+    public function exportClotureGlobalPdf(): void
+    {
+        AuthMiddleware::check();
+        RoleMiddleware::check(['caissiere_principale', 'dg', 'comptable', 'superviseur_general', 'admin']);
+
+        $dateJour = date('Y-m-d');
+        $agences = $this->db->query("SELECT id, name FROM company_sites WHERE is_active = 1 ORDER BY name ASC")->fetchAll() ?: [];
+
+        $agenceRows = [];
+        $totalEncaisse = 0.0;
+        $totalFacture = 0.0;
+        $totalRestant = 0.0;
+        $totalEcart = 0.0;
+        $totalColis = 0;
+        $totalFacturesCnt = 0;
+        $agencesCloturees = 0;
+
+        foreach ($agences as $ag) {
+            $agId = (int) $ag['id'];
+            $existing = $this->etatRepo->findByAgenceAndDate($agId, $dateJour);
+            $live = $existing ? (array) $existing : $this->etatRepo->computeTotalsForDay($agId, $dateJour);
+
+            $statut = $existing ? $existing->statut : 'brouillon';
+            if ($statut === 'soumis' || $statut === 'consolide') {
+                $agencesCloturees++;
+            }
+
+            $enc = (float) ($live['totalEncaisseXof'] ?? $live['total_encaisse_xof'] ?? 0);
+            $fac = (float) ($live['totalFactureXof'] ?? $live['total_facture_xof'] ?? 0);
+            $rest = (float) ($live['totalRestantDuXof'] ?? $live['total_restant_du_xof'] ?? 0);
+            $ec = (float) ($live['ecartCaisse'] ?? $live['ecart_caisse'] ?? 0);
+            $cCnt = (int) ($live['nbColisEnregistres'] ?? $live['nb_colis'] ?? 0);
+            $fCnt = (int) ($live['nbFacturesEmises'] ?? $live['nb_factures'] ?? 0);
+
+            $totalEncaisse += $enc;
+            $totalFacture += $fac;
+            $totalRestant += $rest;
+            $totalEcart += $ec;
+            $totalColis += $cCnt;
+            $totalFacturesCnt += $fCnt;
+
+            $agenceRows[] = [
+                'agence_name' => $ag['name'],
+                'nb_colis' => $cCnt,
+                'nb_factures' => $fCnt,
+                'total_facture' => $fac,
+                'total_encaisse' => $enc,
+                'ecart' => $ec,
+                'statut' => $statut,
+                'heure_soumission' => !empty($live['dateSoumission']) ? date('H:i', strtotime($live['dateSoumission'])) : null,
+            ];
+        }
+
+        $summary = [
+            'total_encaisse' => $totalEncaisse,
+            'total_facture' => $totalFacture,
+            'total_restant' => $totalRestant,
+            'total_ecart' => $totalEcart,
+            'total_colis' => $totalColis,
+            'total_factures_cnt' => $totalFacturesCnt,
+            'agences_cloturees' => $agencesCloturees,
+            'total_agences' => count($agences),
+        ];
+
+        require BASE_PATH . '/views/finance/cloture_global_pdf.php';
+    }
+
+    /**
+     * Export PDF du Bordereau de Remise & Transfert de Caisse.
+     */
+    public function exportBordereauPdf(string $id): void
+    {
+        AuthMiddleware::check();
+
+        $id = (int) $id;
+        $reportObj = $this->etatRepo->findById($id);
+
+        if (!$reportObj) {
+            Session::flash('error', 'Point de caisse introuvable.');
+            header('Location: ' . View::url('finance/clotures'));
+            exit;
+        }
+
+        $report = (array) $reportObj;
+
+        // Nom de l'agence
+        $stmt = $this->db->prepare("SELECT name FROM company_sites WHERE id = :id LIMIT 1");
+        $stmt->execute(['id' => $report['agenceId']]);
+        $agenceName = $stmt->fetchColumn() ?: ('Agence #' . $report['agenceId']);
+
+        // Chef d'agence
+        $chefName = 'Caissière Agence';
+        if (!empty($report['chefAgenceId'])) {
+            $stmt = $this->db->prepare("SELECT full_name FROM users WHERE id = :id LIMIT 1");
+            $stmt->execute(['id' => $report['chefAgenceId']]);
+            $chefName = $stmt->fetchColumn() ?: 'Caissière Agence';
+        }
+
+        // Consolidateur
+        $consolideParName = 'Caissière Principale / Direction';
+        if (!empty($report['consolideParId'])) {
+            $stmt = $this->db->prepare("SELECT full_name FROM users WHERE id = :id LIMIT 1");
+            $stmt->execute(['id' => $report['consolideParId']]);
+            $consolideParName = $stmt->fetchColumn() ?: 'Caissière Principale';
+        }
+
+        require BASE_PATH . '/views/finance/bordereau_remise_pdf.php';
+    }
+
+    /**
      * Livre journal et balance comptable.
      */
     public function comptabilite(): void

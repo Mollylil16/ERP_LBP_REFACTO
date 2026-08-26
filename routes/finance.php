@@ -24,8 +24,10 @@ $router->group('/finance', function (Router $router): void {
 
     // Clôtures et Points de caisse
     $router->get('/clotures', [FinanceController::class, 'cloturesIndex']);
+    $router->get('/clotures/export-pdf-global', [FinanceController::class, 'exportClotureGlobalPdf']);
     $router->post('/clotures/soumettre', [FinanceController::class, 'clotureSoumettre']);
     $router->get('/clotures/{id}/export-pdf', [FinanceController::class, 'exportCloturePdf']);
+    $router->get('/clotures/{id}/bordereau-pdf', [FinanceController::class, 'exportBordereauPdf']);
     $router->post('/clotures/{id}/consolider', [FinanceController::class, 'clotureConsolider']);
 
     // Dépenses prestataires

@@ -696,19 +696,24 @@ final class Finance
         // 1. Selector dropdown for global roles (caissière principale, DG, etc.)
         $agenceSelector = '';
         if ($isGlobal && !empty($agences)) {
+            $globalPdfBtn = '<a href="' . View::url('finance/clotures/export-pdf-global') . '" target="_blank" style="padding:0.65rem 1.2rem; background:#0f172a; color:#fff; border-radius:8px; font-weight:700; text-decoration:none; display:inline-flex; align-items:center; gap:6px; font-size:0.85rem; whitespace:nowrap;">'
+                . '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg> Bilan Global Réseau (PDF)'
+                . '</a>';
+
             $agenceSelector = '<div style="background:#ffffff; border:1px solid #cbd5e1; border-radius:12px; padding:1.25rem 1.5rem; margin-bottom:1.5rem; display:flex; justify-content:space-between; align-items:center; box-shadow:0 4px 12px rgba(15,23,42,0.03);">'
                 . '<div style="display:flex; align-items:center; gap:0.75rem;">'
                 . '<span style="background:#f1f5f9; padding:0.6rem; border-radius:8px; display:inline-flex; color:#0f172a;"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg></span>'
                 . '<div><strong style="color:#0f172a; font-size:1.05rem;">Consulter la Caisse d\'une Agence en Temps Réel</strong><br><small style="color:#64748b;">Sélectionnez une agence pour visualiser ses encaissements et son solde en direct, même avant soumission.</small></div>'
                 . '</div>'
-                . '<div style="display:flex; align-items:center; gap:0.5rem;">'
-                . '<select onchange="window.location.href=\'' . View::url('finance/clotures') . '?agence_id=\' + this.value" style="padding:0.65rem 1.2rem; border:2px solid #0f172a; border-radius:8px; font-weight:700; color:#0f172a; background:#fff; cursor:pointer; min-width:280px; font-size:0.95rem;">'
+                . '<div style="display:flex; align-items:center; gap:0.75rem;">'
+                . '<select onchange="window.location.href=\'' . View::url('finance/clotures') . '?agence_id=\' + this.value" style="padding:0.65rem 1.2rem; border:2px solid #0f172a; border-radius:8px; font-weight:700; color:#0f172a; background:#fff; cursor:pointer; min-width:260px; font-size:0.95rem;">'
                 . '<option value="0"' . ($selectedAgenceId === 0 ? ' selected' : '') . '>-- Toutes les agences (Historique global) --</option>';
             foreach ($agences as $ag) {
                 $sel = $selectedAgenceId === (int) $ag['id'] ? ' selected' : '';
                 $agenceSelector .= '<option value="' . $ag['id'] . '"' . $sel . '>Agence ' . View::e($ag['name']) . '</option>';
             }
             $agenceSelector .= '</select>'
+                . $globalPdfBtn
                 . '</div>'
                 . '</div>';
         }
@@ -730,17 +735,27 @@ final class Finance
                 default => 'warning'
             };
 
+            $encEspeces = (float) ($activeReport['encaisseEspecesXof'] ?? $activeReport['encaisse_especes_xof'] ?? 0);
+            $encDigital = (float) ($activeReport['encaisseDigitalXof'] ?? $activeReport['encaisse_digital_xof'] ?? 0);
+            $encCheque = (float) ($activeReport['encaisseChequeXof'] ?? $activeReport['encaisse_cheque_xof'] ?? 0);
+
             $submissionForm = '<div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:1.5rem; margin-bottom:2rem; box-shadow:0 2px 10px rgba(0,0,0,0.02);">'
                 . '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">'
                 . '<h3 style="margin:0; font-size:1.15rem; color:#0f172a; font-weight:800;"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#2563eb" stroke-width="2.5" style="display:inline; margin-right:6px; vertical-align:-2px;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>Position de Caisse en Temps Réel du jour — ' . $agenceTitle . '</h3>'
                 . Ui::badge(strtoupper($statut === 'brouillon' ? 'Temps Réel (Non Soumis)' : $statut), $statutBadge)
                 . '</div>'
-                . '<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:1.25rem; background:#fff; padding:1.25rem; border-radius:10px; border:1px solid #cbd5e1; margin-bottom:1rem;">'
+                . '<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:1.25rem; background:#fff; padding:1.25rem; border-radius:10px 10px 0 0; border:1px solid #cbd5e1; border-bottom:none;">'
                 . '<div><small style="color:#64748b; font-weight:600;">Colis Saisis :</small><br><strong style="font-size:1.2rem; color:#0f172a;">' . $nbColis . ' colis</strong></div>'
                 . '<div><small style="color:#64748b; font-weight:600;">Factures Émises :</small><br><strong style="font-size:1.2rem; color:#0f172a;">' . $nbFactures . ' factures</strong></div>'
                 . '<div><small style="color:#64748b; font-weight:600;">Montant Facturé Total :</small><br><strong style="font-size:1.2rem; color:#0f172a;">' . number_format($totalFactureXof, 0, ',', ' ') . ' XOF</strong></div>'
                 . '<div><small style="color:#64748b; font-weight:600;">Solde Caisse Live (Encaissé) :</small><br><strong style="font-size:1.3rem; color:#16a34a;">' . number_format($totalEncaisseXof, 0, ',', ' ') . ' XOF</strong></div>'
                 . '<div><small style="color:#64748b; font-weight:600;">Reste à Recouvrir :</small><br><strong style="font-size:1.2rem; color:#dc2626;">' . number_format($totalRestantXof, 0, ',', ' ') . ' XOF</strong></div>'
+                . '</div>'
+                . '<div style="background:#f1f5f9; border:1px solid #cbd5e1; padding:0.75rem 1.25rem; font-size:0.82rem; color:#475569; display:flex; gap:1.5rem; flex-wrap:wrap; border-radius:0 0 10px 10px; margin-bottom:1rem;">'
+                . '<div><strong style="color:#0f172a;">Encaissements par Canal :</strong></div>'
+                . '<div><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#16a34a" stroke-width="2" style="display:inline; margin-right:3px; vertical-align:-2px;"><rect x="2" y="6" width="20" height="12" rx="2"></rect><circle cx="12" cy="12" r="3"></circle></svg> Espèces (Tiroir) : <strong style="color:#0f172a;">' . number_format($encEspeces > 0 ? $encEspeces : $totalEncaisseXof, 0, ',', ' ') . ' XOF</strong></div>'
+                . '<div><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#2563eb" stroke-width="2" style="display:inline; margin-right:3px; vertical-align:-2px;"><rect x="5" y="2" width="14" height="20" rx="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg> Mobile Money / Carte : <strong style="color:#0f172a;">' . number_format($encDigital, 0, ',', ' ') . ' XOF</strong></div>'
+                . '<div><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#d97706" stroke-width="2" style="display:inline; margin-right:3px; vertical-align:-2px;"><rect x="3" y="4" width="18" height="16" rx="2"></rect><line x1="7" y1="8" x2="17" y2="8"></line></svg> Chèques / Virements : <strong style="color:#0f172a;">' . number_format($encCheque, 0, ',', ' ') . ' XOF</strong></div>'
                 . '</div>';
 
             // Blind count submission form for local cashier / head cashier when brouillon
@@ -806,11 +821,15 @@ final class Finance
                 };
                 $badge = Ui::badge(strtoupper($r->statut), $badgeTone);
 
-                $pdfBtn = '<a href="' . View::url('finance/clotures/' . $r->id . '/export-pdf') . '" target="_blank" class="finea-button-sm" style="display:inline-flex; align-items:center; gap:4px; background:#f1f5f9; color:#0f172a; border:1px solid #cbd5e1; border-radius:6px; padding:4px 8px; font-weight:700; text-decoration:none; font-size:0.75rem; margin-right:4px;">'
-                    . '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg> PDF'
+                $pdfBtn = '<a href="' . View::url('finance/clotures/' . $r->id . '/export-pdf') . '" target="_blank" class="finea-button-sm" style="display:inline-flex; align-items:center; gap:4px; background:#f1f5f9; color:#0f172a; border:1px solid #cbd5e1; border-radius:6px; padding:4px 8px; font-weight:700; text-decoration:none; font-size:0.75rem; margin-right:4px;" title="PV de Clôture PV">'
+                    . '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg> PV'
                     . '</a>';
 
-                $actionsHtml = $pdfBtn;
+                $bordereauBtn = '<a href="' . View::url('finance/clotures/' . $r->id . '/bordereau-pdf') . '" target="_blank" class="finea-button-sm" style="display:inline-flex; align-items:center; gap:4px; background:#e2e8f0; color:#0f172a; border:1px solid #cbd5e1; border-radius:6px; padding:4px 8px; font-weight:700; text-decoration:none; font-size:0.75rem; margin-right:4px;" title="Bordereau de Décharge / Transfert de Caisse">'
+                    . '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h10z"></path></svg> Bordereau'
+                    . '</a>';
+
+                $actionsHtml = $pdfBtn . $bordereauBtn;
                 if ($r->statut === 'soumis' && Auth::hasRole(['caissiere_principale', 'dg'])) {
                     $actionsHtml .= '<form method="post" action="' . View::url('finance/clotures/' . $r->id . '/consolider') . '" class="js-protect-form" style="display:inline;">'
                         . Ui::button('Consolider', ['type' => 'submit', 'variant' => 'success', 'class' => 'finea-button-sm'])
