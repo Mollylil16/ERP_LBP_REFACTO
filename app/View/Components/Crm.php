@@ -232,7 +232,7 @@ final class Crm
             . '<div class="rh-form-grid-3">'
             . Form::input('name', ['label' => 'Nom complet / Raison sociale', 'required' => true, 'placeholder' => 'ex: Kouassi Jean'])
             . Form::input('phone', ['label' => 'Téléphone', 'placeholder' => '+225 07...'])
-            . Form::input('email', ['label' => 'Adresse email', 'type' => 'email', 'placeholder' => 'client@domaine.com'])
+            . Form::input('email', ['label' => 'Adresse email (Optionnel)', 'type' => 'email', 'placeholder' => 'client@domaine.com'])
             . Form::input('address', ['label' => 'Adresse / Ville', 'placeholder' => 'Abidjan Cocody'])
             . Form::select('type', [
                 ['value' => 'standard', 'label' => 'Particulier / Standard'],

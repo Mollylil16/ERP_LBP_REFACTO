@@ -32,15 +32,19 @@ class ColisageRepository
     /** @param array<string, mixed> $data */
     public function createClient(array $data): int
     {
+        $phone = isset($data['phone']) ? trim((string) $data['phone']) : '';
+        $email = isset($data['email']) ? trim((string) $data['email']) : '';
+        $address = isset($data['address']) ? trim((string) $data['address']) : '';
+
         $stmt = $this->pdo->prepare("
             INSERT INTO lbp_clients (name, phone, email, address, type, created_at)
             VALUES (:name, :phone, :email, :address, :type, NOW())
         ");
         $stmt->execute([
             'name' => trim((string) ($data['name'] ?? '')),
-            'phone' => isset($data['phone']) ? trim((string) $data['phone']) : null,
-            'email' => isset($data['email']) ? trim((string) $data['email']) : null,
-            'address' => isset($data['address']) ? trim((string) $data['address']) : null,
+            'phone' => $phone !== '' ? $phone : null,
+            'email' => $email !== '' ? $email : null,
+            'address' => $address !== '' ? $address : null,
             'type' => trim((string) ($data['type'] ?? 'standard')),
         ]);
         return (int) $this->pdo->lastInsertId();
@@ -295,7 +299,7 @@ class ColisageRepository
         $qteEmb = (int) ($data['qte_emballage'] ?? 1);
         $prixEmb = (float) ($data['prix_emballage'] ?? 0.0);
         $nbreColis = (int) ($data['nbre_colis'] ?? 1);
-        $totalLigne = round(($nbreColis * $poidsUnitaire * $prixKg) + ($qteEmb * $prixEmb), 2);
+        $totalLigne = round(($poidsUnitaire * $prixKg) + ($qteEmb * $prixEmb), 2);
 
         $stmt = $this->pdo->prepare("
             INSERT INTO lbp_marchandises (

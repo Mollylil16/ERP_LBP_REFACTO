@@ -183,7 +183,7 @@ final class Colisage
             . '<div class="rh-form-grid-3" style="margin-top:0.5rem;">'
             . Form::input('expediteur_name', ['label' => 'Nom complet', 'placeholder' => 'Ex: AICHA OUATTARA'])
             . Form::input('expediteur_phone', ['label' => 'Tél. Exp.', 'placeholder' => 'Ex: 0789665421'])
-            . Form::input('expediteur_email', ['label' => 'E-mail'])
+            . Form::input('expediteur_email', ['label' => 'E-mail (Optionnel)'])
             . Form::input('expediteur_address', ['label' => 'Adresse'])
             . '</div></div></div>'
             . '<div>'
@@ -194,7 +194,7 @@ final class Colisage
             . '<div class="rh-form-grid-3" style="margin-top:0.5rem;">'
             . Form::input('destinataire_name', ['label' => 'Nom complet', 'placeholder' => 'Ex: KOUAO YVES'])
             . Form::input('destinataire_phone', ['label' => 'Tél. Dest.', 'placeholder' => 'Ex: +33 178255886'])
-            . Form::input('destinataire_email', ['label' => 'E-mail'])
+            . Form::input('destinataire_email', ['label' => 'E-mail (Optionnel)'])
             . Form::input('destinataire_address', ['label' => 'Adresse'])
             . '</div></div></div></div></div>'
             . '<div class="rh-form-step-card">'
@@ -306,9 +306,9 @@ final class Colisage
             . '                const qty = parseInt(qtyInput.value) || 0;'
             . '                const weight = parseFloat(weightInput.value) || 0;'
             . '                const price = parseFloat(priceInput.value) || 0;'
-            . '                const total = weight * price * qty;'
+            . '                const total = weight * price;'
             . '                subtotal += total;'
-            . '                totalWeight += weight * qty;'
+            . '                totalWeight += weight;'
             . '                totalCount += qty;'
             . '                totalInput.innerText = Math.round(total).toLocaleString() + \' XOF\';'
             . '            }'
@@ -1311,7 +1311,7 @@ final class Colisage
             . '<div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem; margin-top:0.5rem;">'
             . Form::input('expediteur_name', ['label' => 'Nom Complet'])
             . Form::input('expediteur_phone', ['label' => 'Téléphone'])
-            . Form::input('expediteur_email', ['label' => 'E-mail'])
+            . Form::input('expediteur_email', ['label' => 'E-mail (Optionnel)'])
             . Form::input('expediteur_address', ['label' => 'Adresse'])
             . '</div>'
             . '</div>';
@@ -1323,7 +1323,7 @@ final class Colisage
             . '<div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem; margin-top:0.5rem;">'
             . Form::input('destinataire_name', ['label' => 'Nom Complet'])
             . Form::input('destinataire_phone', ['label' => 'Téléphone'])
-            . Form::input('destinataire_email', ['label' => 'E-mail'])
+            . Form::input('destinataire_email', ['label' => 'E-mail (Optionnel)'])
             . Form::input('destinataire_address', ['label' => 'Adresse'])
             . '</div>'
             . '</div>';
@@ -1491,7 +1491,7 @@ final class Colisage
             . '            const prixKg = parseFloat(row.querySelector(\'input[name="m_prix_kg[]"]\').value) || 0;'
             . '            const qteEmb = parseFloat(row.querySelector(\'input[name="m_qte_emballage[]"]\').value) || 0;'
             . '            const prixEmb = parseFloat(row.querySelector(\'input[name="m_prix_emballage[]"]\').value) || 0;'
-            . '            const lineTotal = (nbreColis * weight * prixKg) + (qteEmb * prixEmb);'
+            . '            const lineTotal = (weight * prixKg) + (qteEmb * prixEmb);'
             . '            grandTotal += lineTotal;'
             . '            const totalSpan = row.querySelector(".ligne-total");'
             . '            if (totalSpan) {'
@@ -1808,10 +1808,14 @@ final class Colisage
             ]
         );
 
+        $decimals = in_array(strtoupper((string)($colis['devise'] ?? 'XOF')), ['EUR', 'USD']) ? 2 : 0;
+        $formattedMontant = number_format((float) ($colis['montant_total'] ?? 0.0), $decimals, ',', ' ');
+
         $colisInfo = '<div style="display:grid; grid-template-columns: 1fr 1fr; gap: 2rem;">'
             . '<div>'
             . '<p><strong>N° Tracking :</strong> ' . View::e($colis['numero_tracking']) . '</p>'
             . '<p><strong>Poids total :</strong> ' . View::e((string) $colis['poids_total']) . ' kg</p>'
+            . '<p><strong>Montant total :</strong> <span style="font-weight: 800; color: #1e40af;">' . View::e($formattedMontant) . ' ' . View::e($colis['devise']) . '</span></p>'
             . '<p><strong>Valeur déclarée :</strong> ' . View::e(number_format((float) $colis['valeur_declaree'], 0, ',', ' ')) . ' ' . View::e($colis['devise']) . '</p>'
             . '<p><strong>Statut Assurance :</strong> ' . (!empty($colis['assurance_souscrite']) ? '<span style="background:#dcfce7; color:#15803d; font-weight:700; padding:2px 8px; border-radius:4px;">ASSURÉ (Prime: ' . number_format((float)($colis['montant_assurance'] ?? 0), 0, ',', ' ') . ' FCFA - Couverture: ' . number_format((float)$colis['valeur_declaree'], 0, ',', ' ') . ' FCFA)</span>' : '<span style="background:#f1f5f9; color:#64748b; font-weight:600; padding:2px 8px; border-radius:4px;">Non souscrite</span>') . '</p>'
             . '<p><strong>Catégorie Fret :</strong> ' . View::e(str_replace('_', ' ', $colis['type_expediteur'])) . '</p>'
