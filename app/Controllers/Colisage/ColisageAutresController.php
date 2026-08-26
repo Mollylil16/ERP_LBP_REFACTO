@@ -235,7 +235,8 @@ final class ColisageAutresController extends ColisageBaseController
             'type_expediteur' => $type,
             'trafic' => $trafic,
             'assurance_souscrite' => !empty($_POST['assurance_souscrite']) ? 1 : 0,
-            'date_depart_prevue' => !empty($_POST['date_depart_prevue']) ? $_POST['date_depart_prevue'] : date('Y-m-d'),
+            'date_depart_prevue' => !empty($_POST['date_depart_prevue']) ? $_POST['date_depart_prevue'] : (!empty($_POST['date_enregistrement']) ? $_POST['date_enregistrement'] : date('Y-m-d')),
+            'created_at' => !empty($_POST['date_enregistrement']) ? $_POST['date_enregistrement'] . ' ' . date('H:i:s') : (!empty($_POST['date_depart_prevue']) ? $_POST['date_depart_prevue'] . ' ' . date('H:i:s') : date('Y-m-d H:i:s')),
             'marchandises' => $marchandises,
             'created_by' => Auth::id(),
         ];

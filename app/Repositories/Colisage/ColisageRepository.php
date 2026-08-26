@@ -203,16 +203,21 @@ class ColisageRepository
         $assuranceSouscrite = !empty($data['assurance_souscrite']) ? 1 : 0;
         $montantAssurance = (float) ($data['montant_assurance'] ?? 0.0);
 
+        $createdAt = !empty($data['created_at']) ? (string) $data['created_at'] : date('Y-m-d H:i:s');
+        if (strlen($createdAt) === 10) {
+            $createdAt .= ' ' . date('H:i:s');
+        }
+
         $stmt = $this->pdo->prepare("
             INSERT INTO lbp_colis (
                 numero_tracking, expediteur_id, destinataire_id, poids_total, nombre_colis,
                 valeur_declaree, montant_total, montant_total_eur, devise,
-                agence_depart_id, agence_arrivee_id,                statut, type_expediteur, trafic, assurance_souscrite, montant_assurance, date_depart_prevue, created_by, created_at
+                agence_depart_id, agence_arrivee_id, statut, type_expediteur, trafic, assurance_souscrite, montant_assurance, date_depart_prevue, created_by, created_at
             ) VALUES (
                 :numero_tracking, :expediteur_id, :destinataire_id, :poids_total, :nombre_colis,
                 :valeur_declaree, :montant_total, :montant_total_eur, :devise,
                 :agence_depart_id, :agence_arrivee_id,
-                'enregistre', :type_expediteur, :trafic, :assurance_souscrite, :montant_assurance, :date_depart_prevue, :created_by, NOW()
+                'enregistre', :type_expediteur, :trafic, :assurance_souscrite, :montant_assurance, :date_depart_prevue, :created_by, :created_at
             )
         ");
         $stmt->execute([
@@ -233,6 +238,7 @@ class ColisageRepository
             'montant_assurance' => $montantAssurance,
             'date_depart_prevue' => !empty($data['date_depart_prevue']) ? $data['date_depart_prevue'] : date('Y-m-d'),
             'created_by' => isset($data['created_by']) ? (int) $data['created_by'] : null,
+            'created_at' => $createdAt,
         ]);
         return (int) $this->pdo->lastInsertId();
     }
