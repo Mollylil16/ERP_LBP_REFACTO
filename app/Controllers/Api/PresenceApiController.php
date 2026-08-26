@@ -41,12 +41,13 @@ final class PresenceApiController extends BaseController
         try {
             $pdo = Database::getConnection();
 
-            // Récupérer l'employé et son agence assignée
+            // Récupérer l'employé et son agence assignée via la relation users.rh_employee_id
             $stmt = $pdo->prepare("
                 SELECT e.id AS employee_id, e.site_id, s.name AS site_name, s.latitude AS site_lat, s.longitude AS site_lng
-                FROM rh_employees e
+                FROM users u
+                JOIN rh_employees e ON u.rh_employee_id = e.id
                 LEFT JOIN company_sites s ON e.site_id = s.id
-                WHERE e.user_id = :user_id OR e.id = :user_id
+                WHERE u.id = :user_id
                 LIMIT 1
             ");
             $stmt->execute(['user_id' => $userId]);
