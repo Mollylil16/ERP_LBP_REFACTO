@@ -1809,7 +1809,20 @@ final class Colisage
         );
 
         $decimals = in_array(strtoupper((string)($colis['devise'] ?? 'XOF')), ['EUR', 'USD']) ? 2 : 0;
-        $formattedMontant = number_format((float) ($colis['montant_total'] ?? 0.0), $decimals, ',', ' ');
+        
+        $totalMontant = 0.0;
+        if (!empty($colis['marchandises'])) {
+            foreach ($colis['marchandises'] as $m) {
+                $totalMontant += (float) ($m['total_ligne'] ?? 0.0);
+            }
+            if (!empty($colis['assurance_souscrite'])) {
+                $totalMontant += (float) ($colis['montant_assurance'] ?? 0.0);
+            }
+        } else {
+            $totalMontant = (float) ($colis['montant_total'] ?? 0.0);
+        }
+
+        $formattedMontant = number_format($totalMontant, $decimals, ',', ' ');
 
         $colisInfo = '<div style="display:grid; grid-template-columns: 1fr 1fr; gap: 2rem;">'
             . '<div>'

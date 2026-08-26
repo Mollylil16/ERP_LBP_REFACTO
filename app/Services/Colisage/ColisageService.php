@@ -281,8 +281,45 @@ final class ColisageService
                             );
                         }
                     }
-                }
             }
+
+            // Update final montant_total for the colis based on the inserted marchandises
+            $stmtSum = $pdo->prepare("SELECT SUM(total_ligne) FROM lbp_marchandises WHERE colis_id = ?");
+            $stmtSum->execute([$parcelId]);
+            $sumLines = (float) $stmtSum->fetchColumn();
+            
+            $finalMontant = $sumLines;
+            if (!empty($data['assurance_souscrite'])) {
+                $finalMontant += (float) ($data['montant_assurance'] ?? 0.0);
+            }
+            
+            // Calculate EUR conversion if devise is XOF
+            $finalMontantEur = null;
+            $devise = trim((string) ($data['devise'] ?? 'XOF'));
+            if ($devise === 'XOF' && $finalMontant > 0) {
+                $tauxChangeEur = 655.957; // fallback
+                try {
+                    $rateStmt = $pdo->query("SELECT setting_value FROM company_settings WHERE setting_key = 'taux_change_eur' LIMIT 1");
+                    if ($rateStmt) {
+                        $rateRow = $rateStmt->fetch(PDO::FETCH_ASSOC);
+                        if ($rateRow && is_numeric($rateRow['setting_value'])) {
+                            $tauxChangeEur = (float) $rateRow['setting_value'];
+                        }
+                    }
+                } catch (\Exception $e) {}
+                $finalMontantEur = round($finalMontant / $tauxChangeEur, 2);
+            } elseif ($devise === 'EUR' && $finalMontant > 0) {
+                $finalMontantEur = $finalMontant;
+            }
+            
+            $stmtUp = $pdo->prepare("
+                UPDATE lbp_colis 
+                SET montant_total = ?, 
+                    montant_total_eur = ?, 
+                    updated_at = NOW() 
+                WHERE id = ?
+            ");
+            $stmtUp->execute([$finalMontant, $finalMontantEur, $parcelId]);
 
             $pdo->commit();
 

@@ -6,8 +6,6 @@ use App\Helpers\View;
 
 /** @var array<string, mixed> $colis */
 
-$montantTotal = (float) ($colis['montant_total'] ?? $colis['valeur_declaree'] ?? 0);
-$montantEur = (float) ($colis['montant_total_eur'] ?? 0);
 $devise = $colis['devise'] ?? 'XOF';
 $traficLabel = $colis['trafic'] ?? 'Groupage Aérien';
 
@@ -15,6 +13,34 @@ $sousTotal = 0.0;
 if (!empty($colis['marchandises'])) {
     foreach ($colis['marchandises'] as $m) {
         $sousTotal += (float) ($m['total_ligne'] ?? 0);
+    }
+}
+
+$montantTotal = (float) ($colis['montant_total'] ?? 0.0);
+if ($montantTotal <= 0.0) {
+    $montantTotal = $sousTotal;
+    if (!empty($colis['assurance_souscrite'])) {
+        $montantTotal += (float) ($colis['montant_assurance'] ?? 0.0);
+    }
+}
+
+// Convert/fetch EUR amount
+$montantEur = (float) ($colis['montant_total_eur'] ?? 0.0);
+if ($montantEur <= 0.0 && $montantTotal > 0.0) {
+    if ($devise === 'XOF') {
+        $tauxChangeEur = 655.957; // fallback
+        try {
+            $rateStmt = $db->query("SELECT setting_value FROM company_settings WHERE setting_key = 'taux_change_eur' LIMIT 1");
+            if ($rateStmt) {
+                $rateRow = $rateStmt->fetch(PDO::FETCH_ASSOC);
+                if ($rateRow && is_numeric($rateRow['setting_value'])) {
+                    $tauxChangeEur = (float) $rateRow['setting_value'];
+                }
+            }
+        } catch (\Exception $e) {}
+        $montantEur = round($montantTotal / $tauxChangeEur, 2);
+    } elseif ($devise === 'EUR') {
+        $montantEur = $montantTotal;
     }
 }
 

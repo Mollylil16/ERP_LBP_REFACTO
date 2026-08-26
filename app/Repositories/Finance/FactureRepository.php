@@ -344,6 +344,17 @@ class FactureRepository
         $numFacture = $this->generateNextInvoiceNumber($agenceId);
         $userId = Auth::id() ?: $caissiereId;
 
+        $montantTotal = (float) $colis['montant_total'];
+        if ($montantTotal <= 0.0) {
+            $stmtMarch = $this->pdo->prepare("SELECT SUM(total_ligne) FROM lbp_marchandises WHERE colis_id = :colis_id");
+            $stmtMarch->execute(['colis_id' => $parcelId]);
+            $montantTotal = (float) $stmtMarch->fetchColumn();
+            
+            if (!empty($colis['assurance_souscrite'])) {
+                $montantTotal += (float) ($colis['montant_assurance'] ?? 0.0);
+            }
+        }
+
         $facture = new Facture(
             id: null,
             numeroFacture: $numFacture,
@@ -351,9 +362,9 @@ class FactureRepository
             clientId: (int) $colis['expediteur_id'],
             caissiereId: $caissiereId,
             agenceId: $agenceId,
-            montantTotal: (float) $colis['montant_total'],
+            montantTotal: $montantTotal,
             montantEncaisse: 0.0,
-            montantRestant: (float) $colis['montant_total'],
+            montantRestant: $montantTotal,
             devise: (string) ($colis['devise'] ?? 'XOF'),
             tauxChange: null,
             statut: 'emise',
