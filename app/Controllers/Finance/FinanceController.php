@@ -1292,6 +1292,8 @@ final class FinanceController extends FinanceBaseController
             $clientMap[$clientName]['total'] += $restant;
         }
 
+        $clientDetails = array_values($clientMap);
+
         $agingBuckets = [
             'b30' => $bucket30,
             'b60' => $bucket60,
