@@ -52,6 +52,14 @@ final class PresenceApiController extends BaseController
             $stmt->execute(['user_id' => $userId]);
             $emp = $stmt->fetch(PDO::FETCH_ASSOC);
 
+            if (!$emp) {
+                echo json_encode([
+                    'success' => true,
+                    'message' => 'Aucune fiche RH ou agence associée, présence GPS ignorée.'
+                ]);
+                return;
+            }
+
             $siteId = $emp['site_id'] ?? null;
             $employeeId = $emp['employee_id'] ?? null;
             $siteLat = isset($emp['site_lat']) ? (float) $emp['site_lat'] : null;
@@ -119,7 +127,11 @@ final class PresenceApiController extends BaseController
                 'message' => 'Géolocalisation de présence enregistrée avec succès'
             ]);
         } catch (Throwable $e) {
-            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+            echo json_encode([
+                'success' => false,
+                'message' => 'Erreur serveur : ' . $e->getMessage(),
+                'error' => $e->getMessage()
+            ]);
         }
     }
 
