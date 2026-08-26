@@ -302,7 +302,7 @@ final class ColisageService
                 try {
                     $rateStmt = $pdo->query("SELECT setting_value FROM company_settings WHERE setting_key = 'taux_change_eur' LIMIT 1");
                     if ($rateStmt) {
-                        $rateRow = $rateStmt->fetch(PDO::FETCH_ASSOC);
+                        $rateRow = $rateStmt->fetch(\PDO::FETCH_ASSOC);
                         if ($rateRow && is_numeric($rateRow['setting_value'])) {
                             $tauxChangeEur = (float) $rateRow['setting_value'];
                         }
