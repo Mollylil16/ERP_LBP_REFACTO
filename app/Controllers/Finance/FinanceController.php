@@ -766,11 +766,11 @@ final class FinanceController extends FinanceBaseController
      */
     public function clotureSoumettre(): void
     {
-        RoleMiddleware::check(['caissiere', 'chef_agence', 'dg']);
+        RoleMiddleware::check(['caissiere', 'chef_agence', 'caissiere_principale', 'dg']);
 
-        $agenceId = Auth::agenceId();
+        $agenceId = Auth::agenceId() ?? (!empty($_POST['agence_id']) ? (int) $_POST['agence_id'] : null);
         if ($agenceId === null) {
-            Session::flash('error', 'Vous n\'êtes affecté à aucune agence.');
+            Session::flash('error', 'Veuillez sélectionner l\'agence pour laquelle vous soumettez le point de caisse.');
             header('Location: ' . View::url('finance/clotures'));
             exit;
         }

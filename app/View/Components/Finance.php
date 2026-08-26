@@ -743,9 +743,14 @@ final class Finance
                 . '<div><small style="color:#64748b; font-weight:600;">Reste à Recouvrir :</small><br><strong style="font-size:1.2rem; color:#dc2626;">' . number_format($totalRestantXof, 0, ',', ' ') . ' XOF</strong></div>'
                 . '</div>';
 
-            // Blind count submission form for local cashier when brouillon
-            if (Auth::hasAnyRole(['caissiere', 'chef_agence']) && (int) Auth::agenceId() === (int) ($activeReport['agence_id'] ?? 0) && $statut === 'brouillon') {
+            // Blind count submission form for local cashier / head cashier when brouillon
+            $userAgId = Auth::agenceId();
+            $canSubmit = Auth::hasAnyRole(['caissiere', 'chef_agence', 'caissiere_principale']) &&
+                ($userAgId === null || (int) $userAgId === (int) ($activeReport['agence_id'] ?? 0)) &&
+                $statut === 'brouillon';
+            if ($canSubmit) {
                 $submissionForm .= '<form method="post" action="' . View::url('finance/clotures/soumettre') . '" class="js-protect-form" style="background:#fff; border:1px solid #cbd5e1; padding:1.5rem; border-radius:12px; margin-top:1rem; box-shadow: 0 4px 14px rgba(15,23,42,0.03);">'
+                    . Form::hidden('agence_id', (string) ($activeReport['agence_id'] ?? ''))
                     . '<h4 style="margin-bottom:0.5rem; font-size:1.1rem; font-weight:800; color:#0f172a;"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" style="display:inline; margin-right:6px; vertical-align:-2px;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>Rapprochement Financier & Comptage de Caisse à l\'Aveugle</h4>'
                     . '<p style="color:#64748b; font-size:0.85rem; margin-bottom:1.25rem;">Effectuez le décompte physique de vos billets et pièces en caisse sans vous fier au montant théorique du système.</p>'
                     
