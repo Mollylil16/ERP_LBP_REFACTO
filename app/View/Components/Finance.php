@@ -680,84 +680,105 @@ final class Finance
     /**
      * Point de caisse et états journaliers.
      */
-    public static function etatsJournaliersPage(array $reports, array $agences, ?array $activeReport = null): string
+    public static function etatsJournaliersPage(array $reports, array $agences, ?array $activeReport = null, int $selectedAgenceId = 0): string
     {
         $header = Ui::pageHeader(
-            'Points de Caisse',
-            'Saisie des états de caisse quotidiens d\'agence, soumissions à 15h et verrous de consolidation.',
+            'Points de Caisse & Suivi en Direct',
+            'Consultation de la caisse en temps réel de chaque agence, soumission des états journaliers et consolidation.',
             [
-                'eyebrow' => 'Daily Cash Closures',
+                'eyebrow' => 'Daily Cash Closures & Live Monitoring',
                 'class' => 'rh-hero-white',
             ]
         );
 
+        $isGlobal = Auth::hasAnyRole(['caissiere_principale', 'dg', 'comptable', 'superviseur_general', 'superviseur_regional', 'admin']);
+
+        // 1. Selector dropdown for global roles (caissière principale, DG, etc.)
+        $agenceSelector = '';
+        if ($isGlobal && !empty($agences)) {
+            $agenceSelector = '<div style="background:#ffffff; border:1px solid #cbd5e1; border-radius:12px; padding:1.25rem 1.5rem; margin-bottom:1.5rem; display:flex; justify-content:space-between; align-items:center; box-shadow:0 4px 12px rgba(15,23,42,0.03);">'
+                . '<div style="display:flex; align-items:center; gap:0.75rem;">'
+                . '<span style="background:#f1f5f9; padding:0.6rem; border-radius:8px; display:inline-flex; color:#0f172a;"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg></span>'
+                . '<div><strong style="color:#0f172a; font-size:1.05rem;">Consulter la Caisse d\'une Agence en Temps Réel</strong><br><small style="color:#64748b;">Sélectionnez une agence pour visualiser ses encaissements et son solde en direct, même avant soumission.</small></div>'
+                . '</div>'
+                . '<div style="display:flex; align-items:center; gap:0.5rem;">'
+                . '<select onchange="window.location.href=\'' . View::url('finance/clotures') . '?agence_id=\' + this.value" style="padding:0.65rem 1.2rem; border:2px solid #0f172a; border-radius:8px; font-weight:700; color:#0f172a; background:#fff; cursor:pointer; min-width:280px; font-size:0.95rem;">'
+                . '<option value="0"' . ($selectedAgenceId === 0 ? ' selected' : '') . '>-- Toutes les agences (Historique global) --</option>';
+            foreach ($agences as $ag) {
+                $sel = $selectedAgenceId === (int) $ag['id'] ? ' selected' : '';
+                $agenceSelector .= '<option value="' . $ag['id'] . '"' . $sel . '>Agence ' . View::e($ag['name']) . '</option>';
+            }
+            $agenceSelector .= '</select>'
+                . '</div>'
+                . '</div>';
+        }
+
+        // 2. Real-time Live Cash Box for active/selected agency
         $submissionForm = '';
-        if (Auth::hasAnyRole(['caissiere', 'chef_agence'])) {
-            $submissionForm = '<div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:1.5rem; margin-bottom:2rem;">'
-                . '<h3>Votre point de caisse du jour</h3>'
-                . '<p style="font-size:0.85rem; color:#64748b; margin-bottom:1.5rem;">Veuillez soumettre ou mettre à jour votre point de caisse avant 15h locales.</p>';
+        if ($activeReport) {
+            $agenceTitle = View::e($activeReport['agence_name'] ?? 'Votre Agence');
+            $statut = $activeReport['statut'] ?? 'brouillon';
+            $nbColis = (int) ($activeReport['nbColisEnregistres'] ?? $activeReport['nb_colis'] ?? 0);
+            $nbFactures = (int) ($activeReport['nbFacturesEmises'] ?? $activeReport['nb_factures'] ?? 0);
+            $totalFactureXof = (float) ($activeReport['totalFactureXof'] ?? $activeReport['total_facture_xof'] ?? 0);
+            $totalEncaisseXof = (float) ($activeReport['totalEncaisseXof'] ?? $activeReport['total_encaisse_xof'] ?? 0);
+            $totalRestantXof = (float) ($activeReport['totalRestantDuXof'] ?? $activeReport['total_restant_du_xof'] ?? 0);
 
-            if ($activeReport) {
-                $statut = $activeReport['statut'] ?? 'brouillon';
-                $totalFactureXof = (float) ($activeReport['totalFactureXof'] ?? $activeReport['total_facture_xof'] ?? 0);
-                $totalFactureEur = (float) ($activeReport['totalFactureEur'] ?? $activeReport['total_facture_eur'] ?? 0);
-                $totalEncaisseXof = (float) ($activeReport['totalEncaisseXof'] ?? $activeReport['total_encaisse_xof'] ?? 0);
-                $totalEncaisseEur = (float) ($activeReport['totalEncaisseEur'] ?? $activeReport['total_encaisse_eur'] ?? 0);
+            $statutBadge = match($statut) {
+                'consolide' => 'success',
+                'soumis' => 'primary',
+                default => 'warning'
+            };
 
-                $statutBadge = match($statut) {
-                    'consolide' => 'success',
-                    'soumis' => 'primary',
-                    default => 'warning'
-                };
-                $submissionForm .= '<div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:1.5rem; margin-bottom:1.5rem;">'
-                    . '<div><small style="color:#64748b;">Statut actuel :</small><br>' . Ui::badge(strtoupper($statut), $statutBadge) . '</div>'
-                    . '<div><small style="color:#64748b;">Totaux facturés :</small><br><strong>' . number_format($totalFactureXof, 2, ',', ' ') . ' XOF</strong> / <strong>' . number_format($totalFactureEur, 2, ',', ' ') . ' EUR</strong></div>'
-                    . '<div><small style="color:#64748b;">Totaux encaissés (solde caisse) :</small><br><strong style="color:#16a34a;">' . number_format($totalEncaisseXof, 2, ',', ' ') . ' XOF</strong> / <strong style="color:#16a34a;">' . number_format($totalEncaisseEur, 2, ',', ' ') . ' EUR</strong></div>'
-                    . '</div>';
+            $submissionForm = '<div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:1.5rem; margin-bottom:2rem; box-shadow:0 2px 10px rgba(0,0,0,0.02);">'
+                . '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">'
+                . '<h3 style="margin:0; font-size:1.15rem; color:#0f172a; font-weight:800;">📍 Position de Caisse en Temps Réel du jour — ' . $agenceTitle . '</h3>'
+                . Ui::badge(strtoupper($statut === 'brouillon' ? 'Temps Réel (Non Soumis)' : $statut), $statutBadge)
+                . '</div>'
+                . '<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:1.25rem; background:#fff; padding:1.25rem; border-radius:10px; border:1px solid #cbd5e1; margin-bottom:1rem;">'
+                . '<div><small style="color:#64748b; font-weight:600;">Colis Saisis :</small><br><strong style="font-size:1.2rem; color:#0f172a;">' . $nbColis . ' colis</strong></div>'
+                . '<div><small style="color:#64748b; font-weight:600;">Factures Émises :</small><br><strong style="font-size:1.2rem; color:#0f172a;">' . $nbFactures . ' factures</strong></div>'
+                . '<div><small style="color:#64748b; font-weight:600;">Montant Facturé Total :</small><br><strong style="font-size:1.2rem; color:#0f172a;">' . number_format($totalFactureXof, 0, ',', ' ') . ' XOF</strong></div>'
+                . '<div><small style="color:#64748b; font-weight:600;">💰 Solde Caisse Live (Encaissé) :</small><br><strong style="font-size:1.3rem; color:#16a34a;">' . number_format($totalEncaisseXof, 0, ',', ' ') . ' XOF</strong></div>'
+                . '<div><small style="color:#64748b; font-weight:600;">Reste à Recouvrir :</small><br><strong style="font-size:1.2rem; color:#dc2626;">' . number_format($totalRestantXof, 0, ',', ' ') . ' XOF</strong></div>'
+                . '</div>';
 
-                if ($statut === 'brouillon') {
-                    $submissionForm .= '<form method="post" action="' . View::url('finance/clotures/soumettre') . '" class="js-protect-form" style="background:#fff; border:1px solid #cbd5e1; padding:1.5rem; border-radius:12px; margin-top:1rem; box-shadow: 0 4px 14px rgba(15,23,42,0.03);">'
-                        . '<h4 style="margin-bottom:0.5rem; font-size:1.1rem; font-weight:800; color:#0f172a;">🔒 Rapprochement Financier & Comptage de Caisse à l\'Aveugle</h4>'
-                        . '<p style="color:#64748b; font-size:0.85rem; margin-bottom:1.25rem;">Effectuez le décompte physique de vos billets et pièces en caisse sans vous fier au montant théorique du système.</p>'
-                        
-                        // Denomination Counting Grid
-                        . '<div style="background:#f8fafc; border:1px solid #e2e8f0; padding:1.25rem; border-radius:10px; margin-bottom:1.25rem;">'
-                        . '<div style="font-size:0.8rem; font-weight:800; text-transform:uppercase; color:#0f172a; margin-bottom:0.75rem;">Grille de comptage par coupures (XOF)</div>'
-                        . '<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap:0.75rem;">'
-                        . '<div><label style="font-size:0.75rem; font-weight:700; color:#475569;">10 000 XOF</label><input type="number" min="0" class="b-cnt" data-val="10000" style="width:100%; padding:6px; border:1px solid #cbd5e1; border-radius:6px; font-weight:700;"></div>'
-                        . '<div><label style="font-size:0.75rem; font-weight:700; color:#475569;">5 000 XOF</label><input type="number" min="0" class="b-cnt" data-val="5000" style="width:100%; padding:6px; border:1px solid #cbd5e1; border-radius:6px; font-weight:700;"></div>'
-                        . '<div><label style="font-size:0.75rem; font-weight:700; color:#475569;">2 000 XOF</label><input type="number" min="0" class="b-cnt" data-val="2000" style="width:100%; padding:6px; border:1px solid #cbd5e1; border-radius:6px; font-weight:700;"></div>'
-                        . '<div><label style="font-size:0.75rem; font-weight:700; color:#475569;">1 000 XOF</label><input type="number" min="0" class="b-cnt" data-val="1000" style="width:100%; padding:6px; border:1px solid #cbd5e1; border-radius:6px; font-weight:700;"></div>'
-                        . '<div><label style="font-size:0.75rem; font-weight:700; color:#475569;">500 / Pièces</label><input type="number" min="0" class="b-cnt" data-val="500" style="width:100%; padding:6px; border:1px solid #cbd5e1; border-radius:6px; font-weight:700;"></div>'
-                        . '</div></div>'
+            // Blind count submission form for local cashier when brouillon
+            if (Auth::hasAnyRole(['caissiere', 'chef_agence']) && (int) Auth::agenceId() === (int) ($activeReport['agence_id'] ?? 0) && $statut === 'brouillon') {
+                $submissionForm .= '<form method="post" action="' . View::url('finance/clotures/soumettre') . '" class="js-protect-form" style="background:#fff; border:1px solid #cbd5e1; padding:1.5rem; border-radius:12px; margin-top:1rem; box-shadow: 0 4px 14px rgba(15,23,42,0.03);">'
+                    . '<h4 style="margin-bottom:0.5rem; font-size:1.1rem; font-weight:800; color:#0f172a;">🔒 Rapprochement Financier & Comptage de Caisse à l\'Aveugle</h4>'
+                    . '<p style="color:#64748b; font-size:0.85rem; margin-bottom:1.25rem;">Effectuez le décompte physique de vos billets et pièces en caisse sans vous fier au montant théorique du système.</p>'
+                    
+                    // Denomination Counting Grid
+                    . '<div style="background:#f8fafc; border:1px solid #e2e8f0; padding:1.25rem; border-radius:10px; margin-bottom:1.25rem;">'
+                    . '<div style="font-size:0.8rem; font-weight:800; text-transform:uppercase; color:#0f172a; margin-bottom:0.75rem;">Grille de comptage par coupures (XOF)</div>'
+                    . '<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap:0.75rem;">'
+                    . '<div><label style="font-size:0.75rem; font-weight:700; color:#475569;">10 000 XOF</label><input type="number" min="0" class="b-cnt" data-val="10000" style="width:100%; padding:6px; border:1px solid #cbd5e1; border-radius:6px; font-weight:700;"></div>'
+                    . '<div><label style="font-size:0.75rem; font-weight:700; color:#475569;">5 000 XOF</label><input type="number" min="0" class="b-cnt" data-val="5000" style="width:100%; padding:6px; border:1px solid #cbd5e1; border-radius:6px; font-weight:700;"></div>'
+                    . '<div><label style="font-size:0.75rem; font-weight:700; color:#475569;">2 000 XOF</label><input type="number" min="0" class="b-cnt" data-val="2000" style="width:100%; padding:6px; border:1px solid #cbd5e1; border-radius:6px; font-weight:700;"></div>'
+                    . '<div><label style="font-size:0.75rem; font-weight:700; color:#475569;">1 000 XOF</label><input type="number" min="0" class="b-cnt" data-val="1000" style="width:100%; padding:6px; border:1px solid #cbd5e1; border-radius:6px; font-weight:700;"></div>'
+                    . '<div><label style="font-size:0.75rem; font-weight:700; color:#475569;">500 / Pièces</label><input type="number" min="0" class="b-cnt" data-val="500" style="width:100%; padding:6px; border:1px solid #cbd5e1; border-radius:6px; font-weight:700;"></div>'
+                    . '</div></div>'
 
-                        . '<div style="display:grid; grid-template-columns: 1fr 1fr; gap:1.25rem;">'
-                        . Form::input('solde_physique_declare', ['label' => 'Total Physique Calculé (XOF)', 'type' => 'number', 'step' => '1', 'placeholder' => 'Calculé automatiquement ci-dessus', 'required' => true, 'id' => 'solde_physique_input'])
-                        . '<div style="background:#f1f5f9; padding:0.8rem; border-radius:8px; display:flex; flex-direction:column; justify-content:center;">'
-                        . '<small style="color:#64748b; font-weight:600;">Solde Théorique attendu (Blind Count) :</small>'
-                        . '<strong id="blind_theo_val" style="font-size:1.1rem; color:#1e293b;">•••••• XOF <button type="button" onclick="document.getElementById(\'blind_theo_val\').innerText=\'' . number_format($totalEncaisseXof, 0, ',', ' ') . ' XOF\'" style="border:none; background:none; color:#2563eb; font-size:0.75rem; cursor:pointer; text-decoration:underline;">Afficher</button></strong>'
-                        . '</div>'
-                        . '</div>'
-                        . '<div style="margin-top:1rem;">'
-                        . Form::input('explication_ecart', ['label' => 'Explication obligatoire en cas d\'écart de caisse (manquant/surplus > 5000 XOF)', 'placeholder' => 'Préciser les motifs de l\'écart éventuel (ex: monnaie en attente, justificatif)', 'id' => 'explication_ecart_input'])
-                        . '</div>'
-                        . '<div style="margin-top:1.25rem; display:flex; justify-content:flex-end;">'
-                        . Ui::button('🔒 Soumettre & Verrouiller la Caisse', ['type' => 'submit', 'variant' => 'accent'])
-                        . '</div>'
-                        . '<script>'
-                        . 'document.addEventListener("DOMContentLoaded", function() {'
-                        . 'var inputs = document.querySelectorAll(".b-cnt"); var soldeInput = document.getElementById("solde_physique_input");'
-                        . 'function calcTotal() { var sum = 0; inputs.forEach(function(i) { var count = parseInt(i.value) || 0; var mult = parseInt(i.dataset.val) || 0; sum += (count * mult); }); soldeInput.value = sum; }'
-                        . 'inputs.forEach(function(i) { i.addEventListener("input", calcTotal); }); });'
-                        . '</script>'
-                        . '</form>';
-                } else {
-                    $submissionForm .= '<p style="color:#16a34a; font-weight:600;"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" style="display:inline; margin-right:0.25rem;"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg> Point soumis et verrouillé.</p>';
-                }
-            } else {
-                $submissionForm .= '<form method="post" action="' . View::url('finance/clotures/soumettre') . '" class="js-protect-form">'
-                    . '<p style="color:#64748b; margin-bottom:1rem;">Aucun colis ou facture n\'a encore été enregistré aujourd\'hui pour votre agence. Soumettre un état à 0.</p>'
-                    . Ui::button('Initialiser et soumettre le point', ['type' => 'submit', 'variant' => 'accent'])
+                    . '<div style="display:grid; grid-template-columns: 1fr 1fr; gap:1.25rem;">'
+                    . Form::input('solde_physique_declare', ['label' => 'Total Physique Calculé (XOF)', 'type' => 'number', 'step' => '1', 'placeholder' => 'Calculé automatiquement ci-dessus', 'required' => true, 'id' => 'solde_physique_input'])
+                    . '<div style="background:#f1f5f9; padding:0.8rem; border-radius:8px; display:flex; flex-direction:column; justify-content:center;">'
+                    . '<small style="color:#64748b; font-weight:600;">Solde Théorique attendu (Blind Count) :</small>'
+                    . '<strong id="blind_theo_val" style="font-size:1.1rem; color:#1e293b;">•••••• XOF <button type="button" onclick="document.getElementById(\'blind_theo_val\').innerText=\'' . number_format($totalEncaisseXof, 0, ',', ' ') . ' XOF\'" style="border:none; background:none; color:#2563eb; font-size:0.75rem; cursor:pointer; text-decoration:underline;">Afficher</button></strong>'
+                    . '</div>'
+                    . '</div>'
+                    . '<div style="margin-top:1rem;">'
+                    . Form::input('explication_ecart', ['label' => 'Explication obligatoire en cas d\'écart de caisse (manquant/surplus > 5000 XOF)', 'placeholder' => 'Préciser les motifs de l\'écart éventuel (ex: monnaie en attente, justificatif)', 'id' => 'explication_ecart_input'])
+                    . '</div>'
+                    . '<div style="margin-top:1.25rem; display:flex; justify-content:flex-end;">'
+                    . Ui::button('🔒 Soumettre & Verrouiller la Caisse', ['type' => 'submit', 'variant' => 'accent'])
+                    . '</div>'
+                    . '<script>'
+                    . 'document.addEventListener("DOMContentLoaded", function() {'
+                    . 'var inputs = document.querySelectorAll(".b-cnt"); var soldeInput = document.getElementById("solde_physique_input");'
+                    . 'function calcTotal() { var sum = 0; inputs.forEach(function(i) { var count = parseInt(i.value) || 0; var mult = parseInt(i.dataset.val) || 0; sum += (count * mult); }); soldeInput.value = sum; }'
+                    . 'inputs.forEach(function(i) { i.addEventListener("input", calcTotal); }); });'
+                    . '</script>'
                     . '</form>';
             }
             $submissionForm .= '</div>';
@@ -841,6 +862,7 @@ final class Finance
         return '<div class="finea-shell">'
             . '<div class="finea-container">'
             . $header
+            . $agenceSelector
             . $submissionForm
             . '<div class="finea-section-card" style="margin-top: 1.5rem;">'
             . '<div class="finea-section-heading"><h2 class="finea-section-title">Historique des points de caisse</h2></div>'

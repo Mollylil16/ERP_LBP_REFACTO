@@ -709,41 +709,55 @@ final class FinanceController extends FinanceBaseController
      */
     public function cloturesIndex(): void
     {
-        RoleMiddleware::check(['caissiere', 'chef_agence', 'caissiere_principale', 'dg', 'comptable']);
+        RoleMiddleware::check(['caissiere', 'chef_agence', 'caissiere_principale', 'dg', 'comptable', 'superviseur_general', 'superviseur_regional', 'admin']);
 
-        $agenceId = Auth::agenceId();
+        $userAgenceId = Auth::agenceId();
         $dateJour = date('Y-m-d');
+        $isGlobalRole = Auth::hasAnyRole(['caissiere_principale', 'dg', 'comptable', 'superviseur_general', 'superviseur_regional', 'admin']);
 
-        if (Auth::hasAnyRole(['caissiere_principale', 'dg', 'comptable'])) {
-            $reports = $this->etatRepo->getEtatsGlobal();
+        $agences = $this->db->query("SELECT id, name FROM company_sites WHERE is_active = 1 ORDER BY name ASC")->fetchAll() ?: [];
+
+        $selectedAgenceId = isset($_GET['agence_id']) && $_GET['agence_id'] !== '' ? (int) $_GET['agence_id'] : ($userAgenceId ? (int) $userAgenceId : 0);
+
+        if ($isGlobalRole) {
+            $reports = $selectedAgenceId > 0 ? $this->etatRepo->getEtatsByAgence($selectedAgenceId) : $this->etatRepo->getEtatsGlobal();
         } else {
-            $reports = $this->etatRepo->getEtatsByAgence((int) $agenceId);
+            $selectedAgenceId = (int) $userAgenceId;
+            $reports = $this->etatRepo->getEtatsByAgence($selectedAgenceId);
         }
 
-        // Pour la caissière connectée, calculer en temps réel l'état du jour actuel
+        // Déterminer l'agence dont la caisse en direct est affichée
+        $targetAgenceId = $selectedAgenceId;
+        if ($targetAgenceId === 0 && !empty($agences)) {
+            $targetAgenceId = (int) $agences[0]['id'];
+        }
+
         $activeReport = null;
-        if ($agenceId !== null) {
-            $existing = $this->etatRepo->findByAgenceAndDate((int) $agenceId, $dateJour);
+        if ($targetAgenceId > 0) {
+            $existing = $this->etatRepo->findByAgenceAndDate($targetAgenceId, $dateJour);
             if ($existing) {
                 $activeReport = (array) $existing;
             } else {
-                // Calcul en direct pour affichage
-                $live = $this->etatRepo->computeTotalsForDay((int) $agenceId, $dateJour);
-                if ($live['nb_colis'] > 0 || $live['nb_factures'] > 0 || $live['total_encaisse_xof'] > 0) {
-                    $activeReport = $live + [
-                        'statut' => 'brouillon',
-                        'date_jour' => $dateJour,
-                    ];
-                }
+                // Calcul en direct pour affichage en temps réel
+                $live = $this->etatRepo->computeTotalsForDay($targetAgenceId, $dateJour);
+                $activeReport = $live + [
+                    'statut' => 'brouillon',
+                    'date_jour' => $dateJour,
+                    'agence_id' => $targetAgenceId,
+                ];
             }
-        }
 
-        $agences = $this->db->query("SELECT id, name FROM company_sites WHERE is_active = 1")->fetchAll() ?: [];
+            // Charger le nom de l'agence pour l'en-tête
+            $stmt = $this->db->prepare("SELECT name FROM company_sites WHERE id = :id LIMIT 1");
+            $stmt->execute(['id' => $targetAgenceId]);
+            $activeReport['agence_name'] = $stmt->fetchColumn() ?: ('Agence #' . $targetAgenceId);
+        }
 
         $this->financeView('finance/clotures/index', 'Points de Caisse', 'clotures', [
             'reports' => $reports,
             'agences' => $agences,
             'activeReport' => $activeReport,
+            'selectedAgenceId' => $selectedAgenceId,
         ]);
     }
 
