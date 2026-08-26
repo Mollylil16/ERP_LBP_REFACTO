@@ -162,6 +162,12 @@ final class ColisageController extends ColisageBaseController
             ]);
         }
 
+        if ($expediteurId <= 0 || $destinataireId <= 0) {
+            Session::flash('error', 'Veuillez sélectionner ou renseigner les informations complètes de l\'expéditeur et du destinataire.');
+            header('Location: ' . View::url($trajetCodePosted !== '' ? 'operation/' . $trajetCodePosted . '/saisir' : 'colisage/parcels/nouveau'));
+            exit;
+        }
+
         $marchandises = [];
         for ($idx = 0; $idx < 100; $idx++) {
             $prodIds = $_POST['m_product_id_' . $idx] ?? [];
