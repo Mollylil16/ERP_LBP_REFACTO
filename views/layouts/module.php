@@ -202,7 +202,7 @@ $moduleIconKey = $moduleTheme['iconKey'] ?? strtolower((string) ($moduleCode ?? 
                 status.innerHTML = "⚠️ Accès refusé ou impossible :<br><br>" + msg;
                 loader.style.display = 'none';
                 retryBtn.style.display = 'inline-block';
-            }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
+            }, { enableHighAccuracy: false, timeout: 15000, maximumAge: 0 });
         }
 
         requestLocation();
