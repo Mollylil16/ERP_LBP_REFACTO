@@ -232,18 +232,19 @@ final class ColisageService
                     $description = '';
 
                     $prodIds = !empty($m['product_ids']) ? (array) $m['product_ids'] : (!empty($m['product_id']) ? [$m['product_id']] : []);
+                    $customName = isset($m['custom_name']) ? trim((string) $m['custom_name']) : '';
+
+                    $names = [];
                     if (!empty($prodIds)) {
-                        $names = [];
                         foreach ($prodIds as $pid) {
                             $name = $this->repository->getProductNameById((int) $pid);
                             if ($name) {
                                 $names[] = $name;
                             }
                         }
-                        $description = implode(' + ', $names) ?: 'Produit Inconnu';
-                    } elseif (!empty($m['custom_name'])) {
-                        $customName = trim((string) $m['custom_name']);
-                        // Check if it already exists
+                    }
+
+                    if ($customName !== '') {
                         $existing = $this->repository->findProductByName($customName);
                         if ($existing === null) {
                             $this->repository->createProduct([
@@ -252,7 +253,12 @@ final class ColisageService
                                 'description' => 'Créé à la volée depuis colisage',
                             ]);
                         }
-                        $description = strtoupper($customName);
+                        $names[] = strtoupper($customName);
+                    }
+
+                    $description = implode(' + ', array_unique($names));
+                    if ($description === '') {
+                        $description = 'Produit Inconnu';
                     }
 
                     if ($description !== '') {

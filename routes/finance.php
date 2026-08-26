@@ -20,6 +20,7 @@ $router->group('/finance', function (Router $router): void {
     $router->get('/factures/{id}', [FinanceController::class, 'factureShow']);
     $router->post('/factures/{id}/encaisser', [FinanceController::class, 'factureEncaisser']);
     $router->post('/factures/{id}/relancer', [FinanceController::class, 'factureRelancer']);
+    $router->post('/factures/{id}/supprimer', [FinanceController::class, 'factureDelete']);
 
     // Clôtures et Points de caisse
     $router->get('/clotures', [FinanceController::class, 'cloturesIndex']);

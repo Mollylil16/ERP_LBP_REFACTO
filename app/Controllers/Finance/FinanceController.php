@@ -243,6 +243,45 @@ final class FinanceController extends FinanceBaseController
     }
 
     /**
+     * Suppression d'une facture — réservée aux rôles autorisés (Chef d'agence, Caissière principale, Assistant DG, DG, Admin).
+     */
+    public function factureDelete(string $id): void
+    {
+        RoleMiddleware::check(['chef_agence', 'caissiere_principale', 'assistant_dg', 'dg']);
+
+        if (!Csrf::verify($_POST['_csrf_token'] ?? null)) {
+            Session::flash('error', 'Session expirée ou requête invalide (CSRF). Veuillez réessayer.');
+            header('Location: ' . View::url('finance/factures'));
+            exit;
+        }
+
+        $id = (int) $id;
+        $facture = $this->factureRepo->findById($id);
+
+        if (!$facture) {
+            Session::flash('error', 'Facture introuvable.');
+            header('Location: ' . View::url('finance/factures'));
+            exit;
+        }
+
+        // Seul le DG ou l'Admin peut supprimer une facture déjà payée
+        if (in_array($facture->statut, ['payee', 'partiellement_payee']) && !Auth::hasRole('dg') && !Auth::isAdmin()) {
+            Session::flash('error', 'Cette facture est déjà encaissée. Seul le DG ou l\'administrateur peut la supprimer.');
+            header('Location: ' . View::url('finance/factures'));
+            exit;
+        }
+
+        $stmt = $this->db->prepare("DELETE FROM lbp_factures WHERE id = :id");
+        $stmt->execute(['id' => $id]);
+
+        AuditLogService::log('delete_invoice', 'lbp_factures', $id, (array) $facture, null);
+
+        Session::flash('success', "La facture {$facture->numeroFacture} a été supprimée avec succès.");
+        header('Location: ' . View::url('finance/factures'));
+        exit;
+    }
+
+    /**
      * Détails d'une facture.
      */
     public function factureShow(string $id): void

@@ -237,6 +237,13 @@ final class Finance
                     'class' => 'finea-button-sm'
                 ]);
 
+                if (\App\Helpers\Auth::hasAnyRole(['dg', 'chef_agence', 'caissiere_principale', 'assistant_dg']) || \App\Helpers\Auth::isAdmin()) {
+                    $actionsStr .= ' <form method="post" action="' . View::url('finance/factures/' . $f->id . '/supprimer') . '" style="display:inline;" onsubmit="return confirm(\'Êtes-vous sûr de vouloir supprimer cette facture ?\');">'
+                        . Form::hidden('_csrf_token', \App\Helpers\Csrf::token())
+                        . '<button type="submit" class="finea-button finea-button--danger finea-button-sm" style="margin-left:0.3rem;">Supprimer</button>'
+                        . '</form>';
+                }
+
                 $tauxStr = $f->tauxChange !== null && $f->devise !== 'XOF' ? ' <small style="color:#64748b;">(Taux: ' . number_format($f->tauxChange, 2, ',', '.') . ')</small>' : '';
 
                 $rows .= '<tr>'

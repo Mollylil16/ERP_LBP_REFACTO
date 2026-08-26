@@ -375,7 +375,7 @@ final class ColisageController extends ColisageBaseController
      */
     public function deleteParcel(int $id): void
     {
-        RoleMiddleware::check(['dg']);
+        RoleMiddleware::check(['chef_agence', 'caissiere_principale', 'assistant_dg', 'dg']);
 
         if (!Csrf::verify($_POST['_csrf_token'] ?? null)) {
             Session::flash('error', 'Session expirée ou requête invalide (CSRF). Veuillez réessayer.');
@@ -384,6 +384,24 @@ final class ColisageController extends ColisageBaseController
         }
 
         try {
+            $pdo = \App\Models\Database::getConnection();
+
+            // Supprimer la facture associée si elle existe et est impayée (ou si DG/Admin)
+            $stmtFacture = $pdo->prepare("SELECT id, numero_facture, statut FROM lbp_factures WHERE colis_id = :colis_id LIMIT 1");
+            $stmtFacture->execute(['colis_id' => $id]);
+            $facture = $stmtFacture->fetch(\PDO::FETCH_ASSOC);
+
+            if ($facture) {
+                if (in_array($facture['statut'], ['emise', 'brouillon', 'annulee']) || Auth::hasRole('dg') || Auth::isAdmin()) {
+                    $pdo->prepare("DELETE FROM lbp_factures WHERE id = :id")->execute(['id' => $facture['id']]);
+                    AuditLogService::log('delete_invoice_auto', 'lbp_factures', (int) $facture['id'], $facture, null);
+                } else {
+                    Session::flash('error', "La facture associée (" . $facture['numero_facture'] . ") est déjà entièrement ou partiellement payée. Seul le DG peut la supprimer.");
+                    header('Location: ' . View::url('colisage/parcels'));
+                    exit;
+                }
+            }
+
             $colisAvantSuppression = $this->service->getParcelDetails($id);
             $this->service->deleteParcel($id);
             $auditId = AuditLogService::log('delete_parcel', 'lbp_colis', $id, $colisAvantSuppression, null);
@@ -392,12 +410,12 @@ final class ColisageController extends ColisageBaseController
             IntegrityRuleEngine::evaluateSuppressionHorsHoraires(
                 (int) Auth::id(), 'lbp_colis', $id, $auditId
             );
-            Session::flash('success', 'Le colis a été supprimé définitivement.');
+            Session::flash('success', 'Le colis et sa facture associée ont été supprimés avec succès.');
         } catch (\PDOException $e) {
             if ($e->getCode() === '23000') {
-                Session::flash('error', "Ce colis ne peut pas être supprimé : il est référencé par une facture ou un autre enregistrement. Annulez d'abord la facture associée si nécessaire.");
+                Session::flash('error', "Ce colis ne peut pas être supprimé car d'autres enregistrements y sont liés.");
             } else {
-                Session::flash('error', 'Erreur lors de la suppression du colis.');
+                Session::flash('error', 'Erreur lors de la suppression du colis : ' . $e->getMessage());
             }
         }
 
