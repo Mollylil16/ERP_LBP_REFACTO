@@ -316,13 +316,32 @@ class FactureRepository
     public function generateNextInvoiceNumber(int $agenceId): string
     {
         $year = date('Y');
+        $prefix = sprintf("FA-%02d-%s-", $agenceId, $year);
+
         $stmt = $this->pdo->prepare("
-            SELECT COUNT(*) FROM lbp_factures 
-            WHERE agence_id = :agence_id AND YEAR(date_emission) = :year
+            SELECT MAX(CAST(SUBSTRING(numero_facture, LENGTH(:prefix) + 1) AS UNSIGNED))
+            FROM lbp_factures
+            WHERE numero_facture LIKE :prefix_like
         ");
-        $stmt->execute(['agence_id' => $agenceId, 'year' => $year]);
-        $count = (int) $stmt->fetchColumn() + 1;
-        return sprintf("FA-%02d-%s-%06d", $agenceId, $year, $count);
+        $stmt->execute([
+            'prefix' => $prefix,
+            'prefix_like' => $prefix . '%',
+        ]);
+
+        $maxSeq = (int) $stmt->fetchColumn();
+        $nextSeq = $maxSeq + 1;
+
+        do {
+            $candidate = sprintf("FA-%02d-%s-%06d", $agenceId, $year, $nextSeq);
+            $checkStmt = $this->pdo->prepare("SELECT COUNT(*) FROM lbp_factures WHERE numero_facture = :candidate");
+            $checkStmt->execute(['candidate' => $candidate]);
+            $exists = (int) $checkStmt->fetchColumn() > 0;
+            if ($exists) {
+                $nextSeq++;
+            }
+        } while ($exists);
+
+        return $candidate;
     }
 
     public function createAutoInvoiceFromParcel(int $parcelId, int $caissiereId = 1): int

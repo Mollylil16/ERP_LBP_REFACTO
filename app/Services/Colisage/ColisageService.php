@@ -338,6 +338,14 @@ final class ColisageService
 
             $pdo->commit();
 
+            // Auto-génération immédiate de la facture dans le module Finance pour que la caissière la retrouve instantanément
+            try {
+                $factureRepo = new \App\Repositories\Finance\FactureRepository($pdo);
+                $factureRepo->createAutoInvoiceFromParcel($parcelId, (int) ($data['created_by'] ?? 1));
+            } catch (\Throwable $e) {
+                error_log('[AUTO_INVOICE_CREATION_ERROR] ' . $e->getMessage());
+            }
+
             // Envoi des notifications e-mail si des adresses e-mail ont été renseignées
             if ($this->notificationService !== null) {
                 try {

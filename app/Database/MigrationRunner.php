@@ -2381,6 +2381,19 @@ class MigrationRunner
         if ($this->schema->tableExists('lbp_client_wallets')) {
             $this->addColumnIfMissing('lbp_client_wallets', 'client_id', "INT UNSIGNED NULL");
         }
+
+        if ($this->schema->tableExists('lbp_colis') && $this->schema->tableExists('lbp_factures')) {
+            try {
+                $factureRepo = new \App\Repositories\Finance\FactureRepository($this->pdo);
+                $stmt = $this->pdo->query("SELECT id FROM lbp_colis WHERE id NOT IN (SELECT colis_id FROM lbp_factures WHERE colis_id IS NOT NULL)");
+                $missingColisIds = $stmt ? $stmt->fetchAll(\PDO::FETCH_COLUMN) : [];
+                foreach ($missingColisIds as $cId) {
+                    try {
+                        $factureRepo->createAutoInvoiceFromParcel((int) $cId, 1);
+                    } catch (\Throwable $e) {}
+                }
+            } catch (\Throwable $e) {}
+        }
     }
 
     /**
