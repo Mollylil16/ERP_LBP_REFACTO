@@ -1241,6 +1241,10 @@ final class Colisage
                         . View::e($act['label'])
                         . '</a>';
                 }
+                $canEditParcel = (\App\Helpers\Auth::isAdmin() || \App\Helpers\Auth::hasRole('dg')) && !\App\Helpers\Auth::isAssistantDg();
+                if ($canEditParcel) {
+                    $actionsStr .= ' <a href="' . View::url('colisage/parcels/' . $p['id'] . '/modifier') . '" class="finea-button finea-button-sm" style="display:inline-flex; align-items:center; gap:4px; background:#2563eb; color:#ffffff; border:none; padding:6px 12px; border-radius:6px; font-weight:600; text-decoration:none; font-size:0.8rem;" title="Modifier ce colis"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg> Modifier</a>';
+                }
                 if ($canDelete) {
                     $actionsStr .= ' ' . Ui::deleteForm(
                         'colisage/parcels/' . $p['id'] . '/supprimer',
@@ -1816,6 +1820,91 @@ final class Colisage
             . '</div></div>';
     }
 
+    public static function parcelEditPage(array $colis, array $clients, array $products, array $trajets): string
+    {
+        $expOptions = [];
+        foreach ($clients as $c) {
+            $expOptions[] = [
+                'value' => (string) $c['id'],
+                'label' => $c['name'] . ' (' . ($c['phone'] ?? 'N/A') . ')'
+            ];
+        }
+
+        $destOptions = $expOptions;
+
+        $expSelect = Form::select('expediteur_id', 'Expéditeur', $expOptions, (string) ($colis['expediteur_id'] ?? ''), ['data-finea-select-search' => '1']);
+        $destSelect = Form::select('destinataire_id', 'Destinataire', $destOptions, (string) ($colis['destinataire_id'] ?? ''), ['data-finea-select-search' => '1']);
+
+        $weight = Form::input('poids_total', 'Poids total (kg)', (string) ($colis['poids_total'] ?? '0.00'), ['type' => 'number', 'step' => '0.01', 'min' => '0']);
+        $valeur = Form::input('valeur_declaree', 'Valeur déclarée (FCFA)', (string) ($colis['valeur_declaree'] ?? '0'), ['type' => 'number', 'step' => '1', 'min' => '0']);
+        $dateDepart = Form::input('date_depart_prevue', 'Date de départ prévue', (string) ($colis['date_depart_prevue'] ?? date('Y-m-d')), ['type' => 'date']);
+
+        $statutOptions = [
+            ['value' => 'enregistre', 'label' => 'Réceptionné / Enregistré'],
+            ['value' => 'en_preparation', 'label' => 'En préparation'],
+            ['value' => 'en_transit', 'label' => 'En transit (Groupé)'],
+            ['value' => 'arrive', 'label' => 'Arrivé à destination'],
+            ['value' => 'livre', 'label' => 'Livré'],
+            ['value' => 'retire', 'label' => 'Retiré par le client'],
+        ];
+        $statutSelect = Form::select('statut', 'Statut du Colis', $statutOptions, (string) ($colis['statut'] ?? 'enregistre'));
+
+        $marchandises = $colis['marchandises'] ?? [];
+        $rowsHtml = '';
+        $rowCount = max(count($marchandises), 5);
+
+        for ($i = 0; $i < $rowCount; $i++) {
+            $m = $marchandises[$i] ?? [];
+            $desc = $m['description'] ?? '';
+            $nbreColis = $m['nbre_colis'] ?? 1;
+            $emballage = $m['emballage'] ?? '';
+            $qteEmb = $m['qte_emballage'] ?? 1;
+            $prixEmb = $m['prix_emballage'] ?? 0.0;
+            $poids = $m['poids_unitaire'] ?? 0.0;
+            $prixKg = $m['prix_kg'] ?? 0.0;
+            $totalLigne = $m['total_ligne'] ?? 0.0;
+
+            $rowsHtml .= '<tr>'
+                . '<td style="text-align:center; font-weight:600;">' . ($i + 1) . '</td>'
+                . '<td>' . Form::rawInput('m_nbre_colis[]', (string)$nbreColis, ['type' => 'number', 'min' => '1']) . '</td>'
+                . '<td>' . Form::rawInput('m_custom_name[]', $desc, ['placeholder' => 'Description de la marchandise...']) . '</td>'
+                . '<td>' . self::emballageSelectHtml('m_emballage[]', $emballage) . '</td>'
+                . '<td>' . Form::rawInput('m_qte_emballage[]', (string)$qteEmb, ['type' => 'number', 'min' => '1']) . '</td>'
+                . '<td>' . Form::rawInput('m_prix_emballage[]', (string)$prixEmb, ['type' => 'number', 'step' => '0.01', 'min' => '0']) . '</td>'
+                . '<td>' . Form::rawInput('m_weight[]', (string)$poids, ['type' => 'number', 'step' => '0.01', 'min' => '0']) . '</td>'
+                . '<td>' . Form::rawInput('m_prix_kg[]', (string)$prixKg, ['type' => 'number', 'step' => '0.01', 'min' => '0']) . '</td>'
+                . '<td style="background:rgba(0,0,0,0.02); text-align:right; font-weight:600;"><span class="ligne-total">' . number_format((float)$totalLigne, 0, ',', ' ') . ' FCFA</span></td>'
+                . '</tr>';
+        }
+
+        $tableHtml = '<div class="finea-table-wrapper" style="margin-top:1rem;">'
+            . '<table class="finea-table">'
+            . '<thead><tr style="background:#1e3a5f; color:#fff;">'
+            . '<th>N°</th><th>Nbre Colis</th><th>Description</th><th>Emballage</th><th>Qté Emb.</th><th>Prix Emb.</th><th>Poids (kg)</th><th>Prix / Kg</th><th>Total</th>'
+            . '</tr></thead>'
+            . '<tbody>' . $rowsHtml . '</tbody>'
+            . '</table></div>';
+
+        $formContent = '<form method="post" action="' . View::url('colisage/parcels/' . $colis['id'] . '/modifier') . '">'
+            . Form::hidden('_csrf_token', \App\Helpers\Csrf::token())
+            . '<div style="display:grid; grid-template-columns: 1fr 1fr; gap:1.5rem;">'
+            . Ui::section('Acteurs du Colis', $expSelect . $destSelect)
+            . Ui::section('Paramètres & Statut', $weight . $valeur . $dateDepart . $statutSelect)
+            . '</div>'
+            . Ui::section('Lignes de Marchandises', $tableHtml)
+            . '<div style="display:flex; justify-content:flex-end; gap:1rem; margin-top:1.5rem;">'
+            . Ui::button('Annuler', ['href' => 'colisage/parcels/' . $colis['id'], 'variant' => 'secondary'])
+            . Ui::button('Enregistrer les modifications', ['type' => 'submit', 'variant' => 'accent'])
+            . '</div>'
+            . '</form>';
+
+        return Ui::pageCard(
+            'Modification du Colis ' . View::e($colis['numero_tracking']),
+            'Réservé à l\'Administration et à la Direction Générale — Révision de la fiche de colisage',
+            $formContent
+        );
+    }
+
     public static function showPage(array $colis): string
     {
         $badgeTone = match($colis['statut']) {
@@ -1834,6 +1923,9 @@ final class Colisage
             Ui::button('Étiquette Thermique', ['href' => 'colisage/parcels/' . $colis['id'] . '/etiquette', 'variant' => 'secondary', 'target' => '_blank']),
             Ui::button('Retour à la liste', ['href' => 'colisage/parcels', 'variant' => 'secondary']),
         ];
+        if ((\App\Helpers\Auth::isAdmin() || \App\Helpers\Auth::hasRole('dg')) && !\App\Helpers\Auth::isAssistantDg()) {
+            $headerActions[] = Ui::button('<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="margin-right:4px;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg> Modifier', ['href' => 'colisage/parcels/' . $colis['id'] . '/modifier', 'variant' => 'primary']);
+        }
         if ((\App\Helpers\Auth::isAdmin() || \App\Helpers\Auth::hasAnyRole(['dg', 'admin', 'chef_agence', 'caissiere_principale', 'superviseur_general'])) && !\App\Helpers\Auth::isAssistantDg()) {
             $headerActions[] = Ui::deleteForm(
                 'colisage/parcels/' . $colis['id'] . '/supprimer',

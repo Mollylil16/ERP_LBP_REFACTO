@@ -257,6 +257,72 @@ class ColisageRepository
         $stmt->execute(['id' => $id, 'status' => $status]);
     }
 
+    public function updateParcel(int $id, array $data): void
+    {
+        $montantTotal = (float) ($data['montant_total'] ?? 0.0);
+        $devise = isset($data['devise']) ? trim((string) $data['devise']) : 'XOF';
+        $montantEur = 0.0;
+        if ($devise === 'XOF' && $montantTotal > 0) {
+            $tauxChangeEur = 655.957;
+            try {
+                $rateStmt = $this->pdo->prepare("SELECT setting_value FROM app_settings WHERE setting_key = 'taux_eur_xof' LIMIT 1");
+                $rateStmt->execute();
+                $rateRow = $rateStmt->fetch(PDO::FETCH_ASSOC);
+                if ($rateRow && is_numeric($rateRow['setting_value'])) {
+                    $tauxChangeEur = (float) $rateRow['setting_value'];
+                }
+            } catch (\Exception $e) {}
+            $montantEur = round($montantTotal / $tauxChangeEur, 2);
+        } elseif ($devise === 'EUR' && $montantTotal > 0) {
+            $montantEur = $montantTotal;
+        }
+
+        $assuranceSouscrite = !empty($data['assurance_souscrite']) ? 1 : 0;
+        $montantAssurance = (float) ($data['montant_assurance'] ?? 0.0);
+
+        $stmt = $this->pdo->prepare("
+            UPDATE lbp_colis SET
+                expediteur_id = :expediteur_id,
+                destinataire_id = :destinataire_id,
+                poids_total = :poids_total,
+                nombre_colis = :nombre_colis,
+                valeur_declaree = :valeur_declaree,
+                montant_total = :montant_total,
+                montant_total_eur = :montant_total_eur,
+                assurance_souscrite = :assurance_souscrite,
+                montant_assurance = :montant_assurance,
+                date_depart_prevue = :date_depart_prevue,
+                statut = :statut,
+                updated_at = NOW()
+            WHERE id = :id
+        ");
+        $stmt->execute([
+            'id' => $id,
+            'expediteur_id' => (int) $data['expediteur_id'],
+            'destinataire_id' => (int) $data['destinataire_id'],
+            'poids_total' => (float) ($data['poids_total'] ?? 0.0),
+            'nombre_colis' => (int) ($data['nombre_colis'] ?? 1),
+            'valeur_declaree' => (float) ($data['valeur_declaree'] ?? 0.0),
+            'montant_total' => $montantTotal,
+            'montant_total_eur' => $montantEur,
+            'assurance_souscrite' => $assuranceSouscrite,
+            'montant_assurance' => $montantAssurance,
+            'date_depart_prevue' => !empty($data['date_depart_prevue']) ? $data['date_depart_prevue'] : date('Y-m-d'),
+            'statut' => !empty($data['statut']) ? trim((string) $data['statut']) : 'enregistre',
+        ]);
+
+        try {
+            $invStmt = $this->pdo->prepare("UPDATE lbp_factures SET montant_total = :montant, updated_at = NOW() WHERE colis_id = :colis_id");
+            $invStmt->execute(['montant' => $montantTotal, 'colis_id' => $id]);
+        } catch (\Exception $e) {}
+    }
+
+    public function deleteMarchandisesByParcelId(int $parcelId): void
+    {
+        $stmt = $this->pdo->prepare("DELETE FROM lbp_marchandises WHERE colis_id = :colis_id");
+        $stmt->execute(['colis_id' => $parcelId]);
+    }
+
     /**
      * Supprime physiquement un colis (Admin/DG uniquement, cf. RoleMiddleware côté contrôleur).
      * Les tables dépendantes (marchandises, tracking GPS, lignes d'inventaire, notifications)

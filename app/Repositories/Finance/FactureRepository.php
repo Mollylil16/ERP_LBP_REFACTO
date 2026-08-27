@@ -167,28 +167,15 @@ class FactureRepository
      */
     public function canModify(int $factureId, ?int $userId = null): bool
     {
-        if (Auth::isAdmin()) {
-            return true;
-        }
-
-        if (Auth::can(PermissionEntityRegistry::MODIFIER_FACTURE_APRES_CREATION)) {
-            return true;
-        }
-
-        if (Auth::isFacturationPrivileged()) {
-            return true;
-        }
-
-        // Sinon, si la facture est verrouillée (Locked), l'agent standard ne peut PAS modifier
-        $stmt = $this->pdo->prepare("SELECT locked FROM lbp_factures WHERE id = :id LIMIT 1");
-        $stmt->execute(['id' => $factureId]);
-        $locked = (int) $stmt->fetchColumn();
-
-        if ($locked === 1) {
+        if (Auth::isAssistantDg()) {
             return false;
         }
 
-        return true;
+        if (Auth::isAdmin() || Auth::hasRole('dg')) {
+            return true;
+        }
+
+        return false;
     }
 
     /**

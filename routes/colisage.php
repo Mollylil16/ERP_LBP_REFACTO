@@ -29,6 +29,8 @@ $router->group('/colisage', function (Router $router): void {
     $router->get('/parcels/{id}/etiquette', [ColisageController::class, 'printLabel']);
     $router->post('/parcels/{id}/retirer', [ColisageController::class, 'withdraw']);
     $router->post('/parcels/{id}/transferer', [ColisageController::class, 'transfer']);
+    $router->get('/parcels/{id}/modifier', [ColisageController::class, 'editParcel']);
+    $router->post('/parcels/{id}/modifier', [ColisageController::class, 'updateParcel']);
     $router->post('/parcels/{id}/supprimer', [ColisageController::class, 'deleteParcel']);
     $router->post('/parcels/{id}/statut-depart', [ColisageController::class, 'updateStatutDepart']);
 

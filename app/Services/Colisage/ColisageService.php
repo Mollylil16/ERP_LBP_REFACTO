@@ -360,6 +360,82 @@ final class ColisageService
     }
 
     /** @param array<string, mixed> $data */
+    public function updateParcel(int $parcelId, array $data): void
+    {
+        $pdo = Database::getConnection();
+        $pdo->beginTransaction();
+
+        try {
+            $this->repository->updateParcel($parcelId, $data);
+            $this->repository->deleteMarchandisesByParcelId($parcelId);
+
+            if (!empty($data['marchandises']) && is_array($data['marchandises'])) {
+                foreach ($data['marchandises'] as $m) {
+                    $prodIds = !empty($m['product_ids']) ? (array) $m['product_ids'] : (!empty($m['product_id']) ? [$m['product_id']] : []);
+                    $customName = isset($m['custom_name']) ? trim((string) $m['custom_name']) : '';
+
+                    $description = '';
+                    if ($customName !== '') {
+                        $description = mb_strtoupper($customName, 'UTF-8');
+                    } elseif (!empty($prodIds)) {
+                        $names = [];
+                        foreach ($prodIds as $pid) {
+                            $name = $this->repository->getProductNameById((int) $pid);
+                            if ($name) {
+                                $names[] = mb_strtoupper($name, 'UTF-8');
+                            }
+                        }
+                        $description = implode(' + ', array_unique($names));
+                    }
+
+                    if ($description === '') {
+                        $description = 'MARCHANDISES DIVERSES';
+                    }
+
+                    $embName = isset($m['emballage']) ? trim((string) $m['emballage']) : '';
+                    $qteEmb = (int) ($m['qte_emballage'] ?? 1);
+
+                    $this->repository->createMarchandise([
+                        'colis_id' => $parcelId,
+                        'description' => $description,
+                        'emballage' => $embName,
+                        'quantite' => (int) ($m['quantite'] ?? 1),
+                        'nbre_colis' => (int) ($m['nbre_colis'] ?? 1),
+                        'qte_emballage' => $qteEmb,
+                        'prix_emballage' => (float) ($m['prix_emballage'] ?? 0.0),
+                        'poids_unitaire' => (float) ($m['poids_unitaire'] ?? 0.0),
+                        'prix_kg' => (float) ($m['prix_kg'] ?? 0.0),
+                    ]);
+                }
+            }
+
+            $stmtSum = $pdo->prepare("SELECT SUM(total_ligne) FROM lbp_marchandises WHERE colis_id = ?");
+            $stmtSum->execute([$parcelId]);
+            $sumLines = (float) $stmtSum->fetchColumn();
+
+            $finalMontant = $sumLines;
+            if (!empty($data['assurance_souscrite'])) {
+                $finalMontant += (float) ($data['montant_assurance'] ?? 0.0);
+            }
+
+            $stmtUp = $pdo->prepare("UPDATE lbp_colis SET montant_total = ?, updated_at = NOW() WHERE id = ?");
+            $stmtUp->execute([$finalMontant, $parcelId]);
+
+            try {
+                $stmtInv = $pdo->prepare("UPDATE lbp_factures SET montant_total = ?, updated_at = NOW() WHERE colis_id = ?");
+                $stmtInv->execute([$finalMontant, $parcelId]);
+            } catch (\Throwable $e) {}
+
+            $pdo->commit();
+        } catch (\Throwable $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            throw $e;
+        }
+    }
+
+    /** @param array<string, mixed> $data */
     public function withdrawParcel(int $id, array $data): void
     {
         $frais = 0.0;

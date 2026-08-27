@@ -301,6 +301,128 @@ final class ColisageController extends ColisageBaseController
         }
     }
 
+    public function editParcel(int $id): void
+    {
+        AuthMiddleware::check();
+
+        if ((!Auth::isAdmin() && !Auth::hasRole('dg')) || Auth::isAssistantDg()) {
+            Session::flash('error', "Seuls l'Administrateur et le Directeur Général ont le droit de modifier un colis.");
+            header('Location: ' . View::url('colisage/parcels/' . $id));
+            exit;
+        }
+
+        $colis = $this->service->getParcelDetails($id);
+        if ($colis === null) {
+            Session::flash('error', 'Colis introuvable.');
+            header('Location: ' . View::url('colisage/parcels'));
+            exit;
+        }
+
+        $clients = $this->clientRepo->getAllActive();
+        $products = $this->repository->getAllProducts();
+        $trajets = $this->repository->getAllTrajets();
+
+        $this->colisageView('colisage/parcels/edit', 'Modifier le Colis ' . $colis['numero_tracking'], 'operations', [
+            'colis' => $colis,
+            'clients' => $clients,
+            'products' => $products,
+            'trajets' => $trajets,
+        ]);
+    }
+
+    public function updateParcel(int $id): void
+    {
+        AuthMiddleware::check();
+
+        if ((!Auth::isAdmin() && !Auth::hasRole('dg')) || Auth::isAssistantDg()) {
+            Session::flash('error', "Seuls l'Administrateur et le Directeur Général ont le droit de modifier un colis.");
+            header('Location: ' . View::url('colisage/parcels/' . $id));
+            exit;
+        }
+
+        if (!Csrf::verify($_POST['_csrf_token'] ?? null)) {
+            Session::flash('error', 'Session expirée ou requête invalide (CSRF). Veuillez réessayer.');
+            header('Location: ' . View::url('colisage/parcels/' . $id . '/modifier'));
+            exit;
+        }
+
+        $expediteurId = (int) ($_POST['expediteur_id'] ?? 0);
+        $destinataireId = (int) ($_POST['destinataire_id'] ?? 0);
+
+        if ($expediteurId <= 0 || $destinataireId <= 0) {
+            Session::flash('error', 'Veuillez sélectionner des clients valides pour l\'expéditeur et le destinataire.');
+            header('Location: ' . View::url('colisage/parcels/' . $id . '/modifier'));
+            exit;
+        }
+
+        $marchandises = [];
+        $maxRows = max(
+            count($_POST['m_custom_name'] ?? []),
+            count($_POST['m_weight'] ?? []),
+            count($_POST['m_nbre_colis'] ?? []),
+            50
+        );
+
+        for ($idx = 0; $idx < $maxRows; $idx++) {
+            $prodIds = $_POST['m_product_id_' . $idx] ?? [];
+            if (!is_array($prodIds)) {
+                $prodIds = [$prodIds];
+            }
+            if (empty($prodIds) && !empty($_POST['m_product_id'][$idx])) {
+                $prodIds = [$_POST['m_product_id'][$idx]];
+            }
+            $prodIds = array_filter($prodIds);
+            
+            $customName = trim((string) ($_POST['m_custom_name'][$idx] ?? ''));
+            $weight = (float) ($_POST['m_weight'][$idx] ?? 0.0);
+            $prixKg = (float) ($_POST['m_prix_kg'][$idx] ?? 0.0);
+            $emballage = trim((string) ($_POST['m_emballage'][$idx] ?? ''));
+            $nbreColis = (int) ($_POST['m_nbre_colis'][$idx] ?? 1);
+
+            if (!empty($prodIds) || $customName !== '' || $weight > 0 || $prixKg > 0 || $emballage !== '') {
+                $marchandises[] = [
+                    'product_id' => !empty($prodIds) ? (int) reset($prodIds) : null,
+                    'product_ids' => $prodIds,
+                    'custom_name' => $customName,
+                    'custom_price' => !empty($_POST['m_custom_price'][$idx]) ? (float) $_POST['m_custom_price'][$idx] : 0.0,
+                    'quantite' => (int) ($_POST['m_qty'][$idx] ?? 1),
+                    'nbre_colis' => $nbreColis > 0 ? $nbreColis : 1,
+                    'emballage' => $emballage !== '' ? $emballage : null,
+                    'qte_emballage' => (int) ($_POST['m_qte_emballage'][$idx] ?? 1),
+                    'prix_emballage' => (float) ($_POST['m_prix_emballage'][$idx] ?? 0.0),
+                    'poids_unitaire' => $weight,
+                    'prix_kg' => $prixKg,
+                ];
+            }
+        }
+
+        $totalNombreColis = array_sum(array_column($marchandises, 'nbre_colis'));
+
+        $updateData = [
+            'expediteur_id' => $expediteurId,
+            'destinataire_id' => $destinataireId,
+            'poids_total' => (float) ($_POST['poids_total'] ?? 0.0),
+            'nombre_colis' => $totalNombreColis > 0 ? $totalNombreColis : (int) ($_POST['nombre_colis'] ?? 1),
+            'valeur_declaree' => (float) ($_POST['valeur_declaree'] ?? 0.0),
+            'statut' => $_POST['statut'] ?? 'enregistre',
+            'assurance_souscrite' => !empty($_POST['assurance_souscrite']) ? 1 : 0,
+            'montant_assurance' => (float) ($_POST['montant_assurance'] ?? 0.0),
+            'date_depart_prevue' => $_POST['date_depart_prevue'] ?? date('Y-m-d'),
+            'marchandises' => $marchandises,
+        ];
+
+        try {
+            $this->service->updateParcel($id, $updateData);
+            AuditLogService::log('update_colis', 'lbp_colis', $id, null, ['user_id' => Auth::id()]);
+            Session::flash('success', 'Colis mis à jour avec succès par la Direction.');
+        } catch (\Exception $e) {
+            Session::flash('error', 'Erreur lors de la modification du colis : ' . $e->getMessage());
+        }
+
+        header('Location: ' . View::url('colisage/parcels/' . $id));
+        exit;
+    }
+
     public function show(int $id): void
     {
         AuthMiddleware::check();
