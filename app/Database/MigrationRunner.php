@@ -3077,5 +3077,39 @@ class MigrationRunner
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
             ");
         }
+
+        $this->fixSiakaDiarraAgencyAssignment();
+    }
+
+    private function fixSiakaDiarraAgencyAssignment(): void
+    {
+        try {
+            // Find agency ID for Dokui
+            $stmtDokui = $this->pdo->query("SELECT id FROM company_sites WHERE name LIKE '%Dokui%' OR code LIKE '%DOKUI%' LIMIT 1");
+            $dokuiId = $stmtDokui ? (int) $stmtDokui->fetchColumn() : 0;
+
+            if ($dokuiId > 0) {
+                // Update Siaka Diarra user profile to Dokui agency
+                $stmtUser = $this->pdo->prepare("
+                    UPDATE lbp_users
+                    SET agence_id = :dokui_id
+                    WHERE email LIKE '%siaka.diarra%' OR (first_name LIKE '%Siaka%' AND last_name LIKE '%Diarra%')
+                ");
+                $stmtUser->execute(['dokui_id' => $dokuiId]);
+
+                // Also update any parcels created by Siaka Diarra to have agence_depart_id = Dokui ID
+                $stmtFindUser = $this->pdo->query("SELECT id FROM lbp_users WHERE email LIKE '%siaka.diarra%' OR (first_name LIKE '%Siaka%' AND last_name LIKE '%Diarra%') LIMIT 1");
+                $siakaUserId = $stmtFindUser ? (int) $stmtFindUser->fetchColumn() : 0;
+
+                if ($siakaUserId > 0) {
+                    $stmtColis = $this->pdo->prepare("
+                        UPDATE lbp_colis
+                        SET agence_depart_id = :dokui_id
+                        WHERE created_by = :user_id AND (agence_depart_id IS NULL OR agence_depart_id != :dokui_id)
+                    ");
+                    $stmtColis->execute(['dokui_id' => $dokuiId, 'user_id' => $siakaUserId]);
+                }
+            }
+        } catch (\Throwable $e) {}
     }
 }
