@@ -3149,7 +3149,10 @@ class MigrationRunner
 
             $stmtFind = $this->pdo->query("
                 SELECT id FROM company_sites 
-                WHERE name IN ('Siege Abidjan', 'Agence Siege Abidjan', 'Agence San Pedro', 'San Pedro', 'Bureau international', 'Bureau International')
+                WHERE id IN (1, 2, 3)
+                   OR name LIKE '%Siege%'
+                   OR name LIKE '%San Pedro%'
+                   OR name LIKE '%Bureau%'
                    OR code IN ('ABJ-HQ', 'SPY', 'INTL')
             ");
             $unwantedIds = $stmtFind ? $stmtFind->fetchAll(PDO::FETCH_COLUMN) : [];
