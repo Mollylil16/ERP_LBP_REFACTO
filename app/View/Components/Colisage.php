@@ -2664,6 +2664,14 @@ final class Colisage
                 . '</p>';
         }
 
+        $sumColisFromLines = 0;
+        if (!empty($colis['marchandises']) && is_array($colis['marchandises'])) {
+            foreach ($colis['marchandises'] as $m) {
+                $sumColisFromLines += (int) ($m['nbre_colis'] ?? 1);
+            }
+        }
+        $displayNombreColis = $sumColisFromLines > 0 ? $sumColisFromLines : (int) ($colis['nombre_colis'] ?? 1);
+
         $html = '<div style="padding:0.5rem 0; margin-bottom:1rem; background:rgba(30,58,95,0.03); border-radius:4px;">'
             . '<p style="text-align:center; color:#1e3a5f; font-weight:700; font-size:0.85rem; text-transform:uppercase;">IMPRIMÉ SPÉCIFIQUE — Facture & Colisage</p>'
             . '</div>'
@@ -2675,7 +2683,7 @@ final class Colisage
             . '<h2 style="margin:0; font-size:1.4rem; letter-spacing:0.5px;">DÉTAILS COLIS&nbsp;&nbsp;' . View::e($colis['numero_tracking']) . '</h2>'
             . '</div>'
             . '<div style="text-align:center; margin-bottom:1rem;">'
-            . '<p style="color:#64748b; font-size:0.9rem;">Nombre total de colis : <strong>' . View::e((string) ($colis['nombre_colis'] ?? 1)) . '</strong></p>'
+            . '<p style="color:#64748b; font-size:0.9rem;">Nombre total de colis : <strong>' . View::e((string) $displayNombreColis) . '</strong></p>'
             . '</div>'
             . '<div style="display:grid; grid-template-columns:1fr 1fr; gap:2rem; padding:0.5rem 0;">'
             . '<div><table style="width:100%; border-collapse:collapse;">'

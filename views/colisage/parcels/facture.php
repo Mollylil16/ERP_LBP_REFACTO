@@ -460,8 +460,17 @@ $operatorName = \App\Helpers\Auth::user() ? \App\Helpers\Auth::user()->fullName 
             DÉTAILS COLIS &nbsp;&nbsp;<?= View::e($colis['numero_tracking']) ?>
         </div>
 
+        <?php
+        $sumColisFromLines = 0;
+        if (!empty($colis['marchandises']) && is_array($colis['marchandises'])) {
+            foreach ($colis['marchandises'] as $m) {
+                $sumColisFromLines += (int) ($m['nbre_colis'] ?? 1);
+            }
+        }
+        $displayNombreColis = $sumColisFromLines > 0 ? $sumColisFromLines : (int) ($colis['nombre_colis'] ?? 1);
+        ?>
         <div class="colis-count-bar">
-            Nombre total de colis : <?= View::e((string) ($colis['nombre_colis'] ?? 1)) ?>
+            Nombre total de colis : <?= View::e((string) $displayNombreColis) ?>
         </div>
 
         <!-- Main Info Grid -->

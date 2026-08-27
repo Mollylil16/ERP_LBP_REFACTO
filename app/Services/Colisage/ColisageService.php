@@ -410,17 +410,19 @@ final class ColisageService
                 }
             }
 
-            $stmtSum = $pdo->prepare("SELECT SUM(total_ligne) FROM lbp_marchandises WHERE colis_id = ?");
+            $stmtSum = $pdo->prepare("SELECT COALESCE(SUM(total_ligne), 0), COALESCE(SUM(nbre_colis), 1) FROM lbp_marchandises WHERE colis_id = ?");
             $stmtSum->execute([$parcelId]);
-            $sumLines = (float) $stmtSum->fetchColumn();
+            $rowSum = $stmtSum->fetch(\PDO::FETCH_NUM);
+            $sumLines = (float) ($rowSum[0] ?? 0.0);
+            $sumColis = max((int) ($rowSum[1] ?? 1), 1);
 
             $finalMontant = $sumLines;
             if (!empty($data['assurance_souscrite'])) {
                 $finalMontant += (float) ($data['montant_assurance'] ?? 0.0);
             }
 
-            $stmtUp = $pdo->prepare("UPDATE lbp_colis SET montant_total = ?, updated_at = NOW() WHERE id = ?");
-            $stmtUp->execute([$finalMontant, $parcelId]);
+            $stmtUp = $pdo->prepare("UPDATE lbp_colis SET montant_total = ?, nombre_colis = ?, updated_at = NOW() WHERE id = ?");
+            $stmtUp->execute([$finalMontant, $sumColis, $parcelId]);
 
             try {
                 $stmtInv = $pdo->prepare("UPDATE lbp_factures SET montant_total = ?, updated_at = NOW() WHERE colis_id = ?");

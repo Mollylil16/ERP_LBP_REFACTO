@@ -3125,6 +3125,16 @@ class MigrationRunner
                   AND (prix_kg IS NULL OR prix_kg = 0)
                   AND (total_ligne IS NULL OR total_ligne = 0)
             ");
+
+            $this->pdo->exec("
+                UPDATE lbp_colis c
+                INNER JOIN (
+                    SELECT colis_id, SUM(nbre_colis) AS total_nbre
+                    FROM lbp_marchandises
+                    GROUP BY colis_id
+                ) m ON c.id = m.colis_id
+                SET c.nombre_colis = m.total_nbre
+            ");
         } catch (\Throwable $e) {}
     }
 }
