@@ -35,7 +35,17 @@ final class ColisageController extends ColisageBaseController
             'q' => $_GET['q'] ?? '',
             'statut' => $_GET['statut'] ?? '',
             'type_expediteur' => $_GET['type_expediteur'] ?? '',
+            'agence_id' => $_GET['agence_id'] ?? '',
         ];
+
+        // Scope restriction : les utilisateurs locaux ne voient que leur agence (départ/arrivée)
+        $userAgId = Auth::agenceId();
+        $isGlobalRole = Auth::isAdmin() || Auth::hasAnyRole(['dg', 'assistant_dg', 'caissiere_principale', 'comptable', 'superviseur_general']);
+
+        if (!$isGlobalRole && $userAgId !== null && $userAgId > 0) {
+            $filters['agence_id'] = $userAgId;
+        }
+
         $page = max(1, (int) ($_GET['page'] ?? 1));
 
         $data = $this->service->listParcels($filters, $page);

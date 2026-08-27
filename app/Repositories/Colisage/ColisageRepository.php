@@ -90,6 +90,10 @@ class ColisageRepository
             $sql .= " AND c.type_expediteur = :type_expediteur";
             $params['type_expediteur'] = $filters['type_expediteur'];
         }
+        if (!empty($filters['agence_id'])) {
+            $sql .= " AND (c.agence_depart_id = :agence_id OR c.agence_arrivee_id = :agence_id)";
+            $params['agence_id'] = (int) $filters['agence_id'];
+        }
 
         $sql .= " ORDER BY c.created_at DESC LIMIT :limit OFFSET :offset";
         $stmt = $this->pdo->prepare($sql);
@@ -130,6 +134,10 @@ class ColisageRepository
         if (!empty($filters['type_expediteur'])) {
             $sql .= " AND c.type_expediteur = :type_expediteur";
             $params['type_expediteur'] = $filters['type_expediteur'];
+        }
+        if (!empty($filters['agence_id'])) {
+            $sql .= " AND (c.agence_depart_id = :agence_id OR c.agence_arrivee_id = :agence_id)";
+            $params['agence_id'] = (int) $filters['agence_id'];
         }
 
         $stmt = $this->pdo->prepare($sql);

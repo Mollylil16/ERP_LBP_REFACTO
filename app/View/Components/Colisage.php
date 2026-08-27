@@ -1139,7 +1139,16 @@ final class Colisage
             ['value' => 'import_maritime', 'label' => 'Import Maritime'],
         ], $page->filters['type_expediteur'] ?? '', ['label' => 'Catégorie Fret']);
 
-        $filterGrid = '<div class="rh-personnel-filter-grid">' . $q . $status . $type . '</div>';
+        $agenceOpts = [['value' => '', 'label' => 'Toutes les agences']];
+        foreach ($page->sites as $s) {
+            $agenceOpts[] = [
+                'value' => (string) ($s['id'] ?? ''),
+                'label' => 'Agence ' . ($s['name'] ?? '')
+            ];
+        }
+        $agenceField = Form::selectSearch('agence_id', $agenceOpts, $page->filters['agence_id'] ?? '', ['label' => 'Agence (Départ / Arrivée)']);
+
+        $filterGrid = '<div class="rh-personnel-filter-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:1rem;">' . $q . $status . $type . $agenceField . '</div>';
 
         $searchBtn = '<button type="submit" class="rh-filter-btn rh-filter-btn--primary" style="background: #0f172a; color: #ffffff; border: none; font-weight: 700; border-radius: 8px; padding: 10px 18px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px;">'
             . '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="16" height="16"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>'

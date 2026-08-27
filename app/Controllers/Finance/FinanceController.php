@@ -305,9 +305,16 @@ final class FinanceController extends FinanceBaseController
         $stmt->execute(['colis_id' => $facture->colisId]);
         $marchandises = $stmt->fetchAll() ?: [];
 
-        $stmtW = $this->db->prepare("SELECT solde_xof FROM lbp_client_wallets WHERE client_id = :c_id OR client_nom LIKE :c_name LIMIT 1");
-        $stmtW->execute(['c_id' => $facture->clientId, 'c_name' => '%' . $facture->clientId . '%']);
-        $clientWalletBalance = (float) ($stmtW->fetchColumn() ?: 0.0);
+        $clientName = trim((string)($client['name'] ?? ''));
+        $clientPhone = trim((string)($client['phone'] ?? ''));
+        $clientWalletBalance = 0.0;
+        if ($clientName !== '' || $clientPhone !== '') {
+            try {
+                $stmtW = $this->db->prepare("SELECT solde_xof FROM lbp_client_wallets WHERE (client_nom = :c_name AND :c_name != '') OR (telephone = :c_phone AND :c_phone != '') LIMIT 1");
+                $stmtW->execute(['c_name' => $clientName, 'c_phone' => $clientPhone]);
+                $clientWalletBalance = (float) ($stmtW->fetchColumn() ?: 0.0);
+            } catch (\Throwable $e) {}
+        }
 
         $paiements = $this->paiementRepo->findByFactureId($facture->id);
         $callbacks = $this->paiementRepo->findCallbacksByFactureId($facture->id);
@@ -470,9 +477,16 @@ final class FinanceController extends FinanceBaseController
             exit;
         }
 
+        $clientStmt = $this->db->prepare("SELECT name, phone FROM lbp_clients WHERE id = :id LIMIT 1");
+        $clientStmt->execute(['id' => $facture->clientId]);
+        $clientInfo = $clientStmt->fetch() ?: [];
+
+        $cName = trim((string)($clientInfo['name'] ?? ''));
+        $cPhone = trim((string)($clientInfo['phone'] ?? ''));
+
         $pdo = \App\Models\Database::getConnection();
-        $stmt = $pdo->prepare("SELECT * FROM lbp_client_wallets WHERE client_id = :c_id OR client_nom LIKE :c_name LIMIT 1");
-        $stmt->execute(['c_id' => $facture->clientId, 'c_name' => '%' . $facture->clientId . '%']);
+        $stmt = $pdo->prepare("SELECT * FROM lbp_client_wallets WHERE (client_nom = :c_name AND :c_name != '') OR (telephone = :c_phone AND :c_phone != '') LIMIT 1");
+        $stmt->execute(['c_name' => $cName, 'c_phone' => $cPhone]);
         $wallet = $stmt->fetch();
 
         if (!$wallet || (float)($wallet['solde_xof'] ?? 0) <= 0) {

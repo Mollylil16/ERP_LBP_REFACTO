@@ -2377,6 +2377,10 @@ class MigrationRunner
         if ($this->schema->tableExists('lbp_paiements')) {
             $this->addColumnIfMissing('lbp_paiements', 'mode_paiement', "ENUM('ESPECES', 'WAVE', 'ORANGE_MONEY', 'MTN_MOMO', 'CARTE', 'VIREMENT') NOT NULL DEFAULT 'ESPECES'");
         }
+
+        if ($this->schema->tableExists('lbp_client_wallets')) {
+            $this->addColumnIfMissing('lbp_client_wallets', 'client_id', "INT UNSIGNED NULL");
+        }
     }
 
     /**
