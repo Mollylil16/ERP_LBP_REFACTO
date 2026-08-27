@@ -54,6 +54,9 @@ final class SelectionPortailController extends BaseController
                 return Auth::user()?->isAdmin ?? false;
             }
             if ($module['key'] === 'rh') {
+                if (Auth::hasAnyRole(['dg', 'assistant_dg']) || Auth::isAdmin()) {
+                    return true;
+                }
                 $requirements = array_fill_keys(
                     PermissionEntityRegistry::codesForModule('Ressources humaines'),
                     PermissionAction::VIEW
@@ -61,6 +64,9 @@ final class SelectionPortailController extends BaseController
                 return Auth::canAny($requirements);
             }
             if ($module['key'] === 'call-center') {
+                if (Auth::hasAnyRole(['dg', 'assistant_dg']) || Auth::isAdmin()) {
+                    return true;
+                }
                 return Auth::can('call_center_view') || Auth::can('call_center_dg_view');
             }
             return true;

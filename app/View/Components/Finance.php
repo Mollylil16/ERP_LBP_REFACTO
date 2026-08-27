@@ -332,7 +332,7 @@ final class Finance
 
 
 
-                if (\App\Helpers\Auth::hasAnyRole(['dg', 'chef_agence', 'caissiere_principale', 'assistant_dg']) || \App\Helpers\Auth::isAdmin()) {
+                if ((\App\Helpers\Auth::hasAnyRole(['dg', 'chef_agence', 'caissiere_principale']) || \App\Helpers\Auth::isAdmin()) && !\App\Helpers\Auth::hasRole('assistant_dg')) {
                     $actionsStr .= ' <form method="post" action="' . View::url('finance/factures/' . $f->id . '/supprimer') . '" style="display:inline;" onsubmit="return confirm(\'Êtes-vous sûr de vouloir supprimer cette facture ?\');">'
                         . Form::hidden('_csrf_token', \App\Helpers\Csrf::token())
                         . '<button type="submit" class="finea-button finea-button--danger finea-button-sm" style="margin-left:0.3rem;">Supprimer</button>'

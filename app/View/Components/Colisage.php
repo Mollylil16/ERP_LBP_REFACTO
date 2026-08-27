@@ -1198,7 +1198,7 @@ final class Colisage
                 'Aucune fiche ne correspond aux critères sélectionnés.'
             );
         } else {
-            $canDelete = \App\Helpers\Auth::isAdmin() || \App\Helpers\Auth::hasRole('dg');
+            $canDelete = (\App\Helpers\Auth::isAdmin() || \App\Helpers\Auth::hasRole('dg')) && !\App\Helpers\Auth::hasRole('assistant_dg');
             $rows = '';
             foreach ($page->parcels as $p) {
                 $categoryBadge = match($p['type_expediteur']) {
@@ -1834,7 +1834,7 @@ final class Colisage
             Ui::button('Étiquette Thermique', ['href' => 'colisage/parcels/' . $colis['id'] . '/etiquette', 'variant' => 'secondary', 'target' => '_blank']),
             Ui::button('Retour à la liste', ['href' => 'colisage/parcels', 'variant' => 'secondary']),
         ];
-        if (\App\Helpers\Auth::isAdmin() || \App\Helpers\Auth::hasRole('dg')) {
+        if ((\App\Helpers\Auth::isAdmin() || \App\Helpers\Auth::hasRole('dg')) && !\App\Helpers\Auth::hasRole('assistant_dg')) {
             $headerActions[] = Ui::deleteForm(
                 'colisage/parcels/' . $colis['id'] . '/supprimer',
                 'Supprimer définitivement le colis ' . $colis['numero_tracking'] . ' ? Cette action est irréversible.',
