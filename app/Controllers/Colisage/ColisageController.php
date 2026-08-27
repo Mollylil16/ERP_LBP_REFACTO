@@ -318,9 +318,10 @@ final class ColisageController extends ColisageBaseController
             exit;
         }
 
-        $clients = $this->clientRepo->getAllActive();
-        $products = $this->repository->getAllProducts();
-        $trajets = $this->repository->getAllTrajets();
+        $clients = $this->service->listClients();
+        $colisRepo = new \App\Repositories\Colisage\ColisageRepository(Database::getConnection());
+        $products = $colisRepo->getAllProducts();
+        $trajets = $colisRepo->getAllTrajets();
 
         $this->colisageView('colisage/parcels/edit', 'Modifier le Colis ' . $colis['numero_tracking'], 'operations', [
             'colis' => $colis,
