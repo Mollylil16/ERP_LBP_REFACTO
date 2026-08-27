@@ -179,7 +179,14 @@ final class ColisageController extends ColisageBaseController
         }
 
         $marchandises = [];
-        for ($idx = 0; $idx < 100; $idx++) {
+        $maxRows = max(
+            count($_POST['m_custom_name'] ?? []),
+            count($_POST['m_weight'] ?? []),
+            count($_POST['m_nbre_colis'] ?? []),
+            50
+        );
+
+        for ($idx = 0; $idx < $maxRows; $idx++) {
             $prodIds = $_POST['m_product_id_' . $idx] ?? [];
             if (!is_array($prodIds)) {
                 $prodIds = [$prodIds];
@@ -189,20 +196,25 @@ final class ColisageController extends ColisageBaseController
             }
             $prodIds = array_filter($prodIds);
             
-            $customName = $_POST['m_custom_name'][$idx] ?? '';
-            if (!empty($prodIds) || !empty($customName)) {
+            $customName = trim((string) ($_POST['m_custom_name'][$idx] ?? ''));
+            $weight = (float) ($_POST['m_weight'][$idx] ?? 0.0);
+            $prixKg = (float) ($_POST['m_prix_kg'][$idx] ?? 0.0);
+            $emballage = trim((string) ($_POST['m_emballage'][$idx] ?? ''));
+            $nbreColis = (int) ($_POST['m_nbre_colis'][$idx] ?? 1);
+
+            if (!empty($prodIds) || $customName !== '' || $weight > 0 || $prixKg > 0 || $emballage !== '') {
                 $marchandises[] = [
                     'product_id' => !empty($prodIds) ? (int) reset($prodIds) : null,
                     'product_ids' => $prodIds,
                     'custom_name' => $customName,
                     'custom_price' => !empty($_POST['m_custom_price'][$idx]) ? (float) $_POST['m_custom_price'][$idx] : 0.0,
                     'quantite' => (int) ($_POST['m_qty'][$idx] ?? 1),
-                    'nbre_colis' => (int) ($_POST['m_nbre_colis'][$idx] ?? 1),
-                    'emballage' => $_POST['m_emballage'][$idx] ?? null,
+                    'nbre_colis' => $nbreColis > 0 ? $nbreColis : 1,
+                    'emballage' => $emballage !== '' ? $emballage : null,
                     'qte_emballage' => (int) ($_POST['m_qte_emballage'][$idx] ?? 1),
                     'prix_emballage' => (float) ($_POST['m_prix_emballage'][$idx] ?? 0.0),
-                    'poids_unitaire' => (float) ($_POST['m_weight'][$idx] ?? 0.0),
-                    'prix_kg' => (float) ($_POST['m_prix_kg'][$idx] ?? 0.0),
+                    'poids_unitaire' => $weight,
+                    'prix_kg' => $prixKg,
                 ];
             }
         }

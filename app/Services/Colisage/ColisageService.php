@@ -229,44 +229,36 @@ final class ColisageService
             // Save marchandises details if present
             if (!empty($data['marchandises']) && is_array($data['marchandises'])) {
                 foreach ($data['marchandises'] as $m) {
-                    $description = '';
-
                     $prodIds = !empty($m['product_ids']) ? (array) $m['product_ids'] : (!empty($m['product_id']) ? [$m['product_id']] : []);
                     $customName = isset($m['custom_name']) ? trim((string) $m['custom_name']) : '';
 
-                    $names = [];
-                    if (!empty($prodIds)) {
+                    $description = '';
+                    if ($customName !== '') {
+                        $description = mb_strtoupper($customName, 'UTF-8');
+                        // Enregistrer dans le référentiel produit si nouveau
+                        try {
+                            $existing = $this->repository->findProductByName($customName);
+                            if ($existing === null) {
+                                $this->repository->createProduct([
+                                    'nom' => $customName,
+                                    'prix_unitaire' => (float) ($m['custom_price'] ?? 0.0),
+                                    'description' => 'Créé à la volée depuis colisage',
+                                ]);
+                            }
+                        } catch (\Throwable $e) {}
+                    } elseif (!empty($prodIds)) {
+                        $names = [];
                         foreach ($prodIds as $pid) {
                             $name = $this->repository->getProductNameById((int) $pid);
                             if ($name) {
-                                $names[] = $name;
+                                $names[] = mb_strtoupper($name, 'UTF-8');
                             }
                         }
+                        $description = implode(' + ', array_unique($names));
                     }
 
-                    if ($customName !== '') {
-                        $parts = preg_split('/[,+]/', $customName);
-                        if ($parts !== false) {
-                            foreach ($parts as $part) {
-                                $cleanPart = trim($part);
-                                if ($cleanPart !== '') {
-                                    $existing = $this->repository->findProductByName($cleanPart);
-                                    if ($existing === null) {
-                                        $this->repository->createProduct([
-                                            'nom' => $cleanPart,
-                                            'prix_unitaire' => (float) ($m['custom_price'] ?? 0.0),
-                                            'description' => 'Créé à la volée depuis colisage',
-                                        ]);
-                                    }
-                                    $names[] = strtoupper($cleanPart);
-                                }
-                            }
-                        }
-                    }
-
-                    $description = implode(' + ', array_unique($names));
                     if ($description === '') {
-                        $description = 'Produit Inconnu';
+                        $description = 'MARCHANDISES DIVERSES';
                     }
 
                     if ($description !== '') {
