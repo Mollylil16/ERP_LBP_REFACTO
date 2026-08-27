@@ -722,10 +722,32 @@ class ColisageRepository
     }
 
     /**
-     * Compte les colis déjà numérotés au nouveau format court "CODE-SEQ" (ex: LB-FR-001),
-     * sans tenir compte de l'historique en ancien format "CODE-MMAA-SEQ" (ex: LB-FR-0726-001) :
-     * chaque code de trajet repart proprement à 001 avec ce nouveau format.
+     * Génère le prochain numéro de tracking unique (anti-collision) sous le format court "CODE-SEQ" (ex: LB-FR-001).
      */
+    public function generateNextTrackingNumber(string $code): string
+    {
+        $stmt = $this->pdo->prepare("
+            SELECT MAX(CAST(SUBSTRING_INDEX(numero_tracking, '-', -1) AS UNSIGNED))
+            FROM lbp_colis
+            WHERE numero_tracking LIKE :prefix
+        ");
+        $stmt->execute(['prefix' => $code . '-%']);
+        $maxSeq = (int) $stmt->fetchColumn();
+        $nextSeq = max($maxSeq + 1, 1);
+
+        do {
+            $tracking = $code . '-' . str_pad((string) $nextSeq, 3, '0', STR_PAD_LEFT);
+            $checkStmt = $this->pdo->prepare("SELECT COUNT(*) FROM lbp_colis WHERE numero_tracking = :tracking");
+            $checkStmt->execute(['tracking' => $tracking]);
+            $exists = ((int) $checkStmt->fetchColumn()) > 0;
+            if ($exists) {
+                $nextSeq++;
+            }
+        } while ($exists);
+
+        return $tracking;
+    }
+
     public function countParcelsWithNewFormatCode(string $code): int
     {
         $stmt = $this->pdo->prepare("SELECT COUNT(*) FROM lbp_colis WHERE numero_tracking REGEXP CONCAT('^', :code, '-[0-9]{3}$')");

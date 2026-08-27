@@ -162,8 +162,9 @@ final class ColisageService
 
         // Format court "CODE-SEQ" (ex: LB-FR-001), sans le segment mois/année de l'ancien
         // format ; la séquence repart à 001 pour chaque code sous ce nouveau format.
-        $seq = $this->repository->countParcelsWithNewFormatCode($code) + 1;
-        $data['numero_tracking'] = $code . '-' . str_pad((string) $seq, 3, '0', STR_PAD_LEFT);
+        if (empty($data['numero_tracking'])) {
+            $data['numero_tracking'] = $this->repository->generateNextTrackingNumber($code);
+        }
 
         // Determine trafic label from type_expediteur
         $traficMap = [
