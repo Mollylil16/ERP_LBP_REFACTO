@@ -552,6 +552,62 @@ final class FinanceController extends FinanceBaseController
     }
 
     /**
+     * Réinitialiser une facture (annuler tous les encaissements erronés et remettre la facture à l'état ÉMISE).
+     */
+    public function factureReinitialiser(string $id): void
+    {
+        RoleMiddleware::check(['caissiere', 'caissiere_principale', 'chef_agence', 'assistant_dg', 'dg']);
+
+        if (!Csrf::verify($_POST['_csrf_token'] ?? null)) {
+            Session::flash('error', 'Session expirée ou requête invalide (CSRF). Veuillez réessayer.');
+            header('Location: ' . View::url('finance/factures/' . $id));
+            exit;
+        }
+
+        $id = (int) $id;
+        $facture = $this->factureRepo->findById($id);
+
+        if (!$facture) {
+            Session::flash('error', 'Facture introuvable.');
+            header('Location: ' . View::url('finance/factures'));
+            exit;
+        }
+
+        if (!Auth::checkAgencyScope($facture->agenceId)) {
+            Session::flash('error', 'Accès refusé : Cette facture appartient à une autre agence.');
+            header('Location: ' . View::url('finance/factures'));
+            exit;
+        }
+
+        $oldFacture = (array) $facture;
+
+        $this->db->beginTransaction();
+        try {
+            // 1. Supprimer les paiements associés
+            $stmtP = $this->db->prepare("DELETE FROM lbp_paiements WHERE facture_id = :id");
+            $stmtP->execute(['id' => $id]);
+
+            // 2. Remettre la facture à zéro encaissement et statut 'emise'
+            $facture->montantEncaisse = 0.0;
+            $facture->montantRestant = $facture->montantTotal;
+            $facture->statut = 'emise';
+            $this->factureRepo->update($facture);
+
+            // 3. Traçabilité dans l'audit log
+            AuditLogService::log('reset_invoice_payments', 'lbp_factures', $id, $oldFacture, (array) $facture);
+
+            $this->db->commit();
+            Session::flash('success', "La facture N° {$facture->numeroFacture} a été réinitialisée avec succès à l'état ÉMISE. L'encaissement erroné a été annulé.");
+        } catch (\Throwable $e) {
+            $this->db->rollBack();
+            Session::flash('error', 'Erreur lors de la réinitialisation de la facture : ' . $e->getMessage());
+        }
+
+        header('Location: ' . View::url('finance/factures/' . $id));
+        exit;
+    }
+
+    /**
      * Envoyer un rappel de solde.
      */
     public function factureRelancer(string $id): void
