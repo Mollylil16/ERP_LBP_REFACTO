@@ -3111,5 +3111,20 @@ class MigrationRunner
                 }
             }
         } catch (\Throwable $e) {}
+
+        $this->cleanupEmptyDummyMarchandises();
+    }
+
+    private function cleanupEmptyDummyMarchandises(): void
+    {
+        try {
+            $this->pdo->exec("
+                DELETE FROM lbp_marchandises
+                WHERE description = 'MARCHANDISES DIVERSES'
+                  AND (poids_unitaire IS NULL OR poids_unitaire = 0)
+                  AND (prix_kg IS NULL OR prix_kg = 0)
+                  AND (total_ligne IS NULL OR total_ligne = 0)
+            ");
+        } catch (\Throwable $e) {}
     }
 }
