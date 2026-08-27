@@ -42,6 +42,7 @@ class MigrationRunner
         $this->migrateCrmClientsIntoLbpClients();
         $this->seedRealEmballagesCatalogue();
         $this->createIntegrityAndAntiFraudTables();
+        $this->deleteUnwantedAgencies();
     }
 
 
