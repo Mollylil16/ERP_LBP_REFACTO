@@ -88,7 +88,7 @@ final class Finance
             <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.2rem; flex-wrap: wrap; gap: 1rem;">
                 <div>
                     <span style="font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: #2563eb; background: #eff6ff; padding: 4px 10px; border-radius: 20px;">Analyse d\'Affluence & Encaissements</span>
-                    <h3 style="font-size: 1.25rem; font-weight: 800; color: #0f172a; margin-top: 0.4rem;">📊 Tendance des Encaissements (30 derniers jours)</h3>
+                    <h3 style="font-size: 1.25rem; font-weight: 800; color: #0f172a; margin-top: 0.4rem; display: flex; align-items: center; gap: 8px;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2.5"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg> Tendance des Encaissements (30 derniers jours)</h3>
                     <p style="color: #64748b; font-size: 0.88rem; margin-top: 0.2rem;">Comparatif visuel des flux Espèces vs Mobile Money pour repérer les jours de forte affluence.</p>
                 </div>
                 <div style="display: flex; gap: 1.5rem; align-items: center; background: #f8fafc; padding: 8px 16px; border-radius: 10px; border: 1px solid #e2e8f0;">
@@ -258,7 +258,7 @@ final class Finance
                 'eyebrow' => 'Invoicing & Receivables',
                 'class' => 'rh-hero-white',
                 'actions' => [
-                    '<form method="post" action="' . View::url('finance/factures/relancer-tout') . '" style="display:inline;" onsubmit="return confirm(\'Lancer la relance SMS / WhatsApp automatique pour toutes les factures impayées ?\');">' . Ui::button('📲 Relancer tous les impayés', ['type' => 'submit', 'variant' => 'secondary']) . '</form>',
+                    '<form method="post" action="' . View::url('finance/factures/relancer-tout') . '" style="display:inline;" onsubmit="return confirm(\'Lancer la relance SMS / WhatsApp automatique pour toutes les factures impayées ?\');">' . Ui::button('<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="margin-right:6px; vertical-align:-2px;"><path d="M22 2L11 13"></path><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg> Relancer tous les impayés', ['type' => 'submit', 'variant' => 'secondary']) . '</form>',
                     Ui::button('Créer une Facture', [
                         'href' => 'finance/factures/nouveau',
                         'variant' => 'accent',
@@ -508,10 +508,10 @@ final class Finance
             $waUrl2 = "https://api.whatsapp.com/send?phone=" . urlencode($clientPhone) . "&text=" . urlencode($waMsg2);
 
             $waButton = '<a href="' . $waUrl1 . '" target="_blank" style="padding:0.55rem 1rem; background:#25D366; color:#ffffff; font-weight:800; border-radius:8px; text-decoration:none; display:inline-flex; align-items:center; gap:6px; font-size:0.82rem; border:none; cursor:pointer; box-shadow:0 2px 8px rgba(37,211,102,0.3);">'
-                . '📱 WhatsApp Facture'
+                . '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="vertical-align:-2px;"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg> WhatsApp Facture'
                 . '</a> '
                 . '<a href="' . $waUrl2 . '" target="_blank" style="padding:0.55rem 1rem; background:#075e54; color:#ffffff; font-weight:800; border-radius:8px; text-decoration:none; display:inline-flex; align-items:center; gap:6px; font-size:0.82rem; border:none; cursor:pointer; box-shadow:0 2px 8px rgba(7,94,84,0.3);">'
-                . '🔔 Relance WhatsApp'
+                . '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="vertical-align:-2px;"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg> Relance WhatsApp'
                 . '</a>';
         }
 
@@ -524,7 +524,7 @@ final class Finance
                 'actions' => array_filter([
                     $badge,
                     $waButton,
-                    Ui::button('🖨️ Reçu Officiel (PDF)', ['href' => 'finance/factures/' . $facture->id . '/recu-pdf', 'variant' => 'primary', 'target' => '_blank']),
+                    Ui::button('<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="margin-right:5px; vertical-align:-2px;"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg> Reçu Officiel (PDF)', ['href' => 'finance/factures/' . $facture->id . '/recu-pdf', 'variant' => 'primary', 'target' => '_blank']),
                     Ui::button('Retour', ['href' => 'finance/factures', 'variant' => 'secondary'])
                 ])
             ]
@@ -548,10 +548,10 @@ final class Finance
         };
 
         $statusMessage = match($facture->statut) {
-            'payee' => '✅ FACTURE RÉGLÉE EN TOTALITÉ — Intégralité des montants encaissés (' . number_format($facture->montantTotal, 0, ',', ' ') . ' ' . $facture->devise . ').',
-            'partiellement_payee' => '⚠️ PAIEMENT PARTIEL EFFECTUÉ — Déjà encaissé : ' . number_format($facture->montantEncaisse, 0, ',', ' ') . ' ' . $facture->devise . ' | Reste dû : ' . number_format($facture->montantRestant, 0, ',', ' ') . ' ' . $facture->devise,
-            'en_retard' => '🚨 FACTURE EN RETARD — Le solde restant de ' . number_format($facture->montantRestant, 0, ',', ' ') . ' ' . $facture->devise . ' a dépassé sa date d\'échéance !',
-            default => 'ℹ️ FACTURE ÉMISE / IMPAYÉE — En attente d\'encaissement du solde total de ' . number_format($facture->montantRestant, 0, ',', ' ') . ' ' . $facture->devise . '.'
+            'payee' => '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" style="vertical-align:-4px; margin-right:6px;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg> FACTURE RÉGLÉE EN TOTALITÉ — Intégralité des montants encaissés (' . number_format($facture->montantTotal, 0, ',', ' ') . ' ' . $facture->devise . ').',
+            'partiellement_payee' => '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2.5" style="vertical-align:-4px; margin-right:6px;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg> PAIEMENT PARTIEL EFFECTUÉ — Déjà encaissé : ' . number_format($facture->montantEncaisse, 0, ',', ' ') . ' ' . $facture->devise . ' | Reste dû : ' . number_format($facture->montantRestant, 0, ',', ' ') . ' ' . $facture->devise,
+            'en_retard' => '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.5" style="vertical-align:-4px; margin-right:6px;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg> FACTURE EN RETARD — Le solde restant de ' . number_format($facture->montantRestant, 0, ',', ' ') . ' ' . $facture->devise . ' a dépassé sa date d\'échéance !',
+            default => '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2.5" style="vertical-align:-4px; margin-right:6px;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg> FACTURE ÉMISE / IMPAYÉE — En attente d\'encaissement du solde total de ' . number_format($facture->montantRestant, 0, ',', ' ') . ' ' . $facture->devise . '.'
         };
 
         $statusBanner = '<div style="background:' . $statusBannerBg . '; border:2px solid ' . $statusBannerColor . '; border-radius:12px; padding:1.2rem 1.5rem; margin-bottom:1.5rem; display:flex; justify-content:space-between; align-items:center;">'
@@ -709,8 +709,8 @@ final class Finance
                 . '<form method="post" action="' . View::url('finance/factures/' . $facture->id . '/relancer') . '" class="js-protect-form">'
                 . '<div style="display:flex; gap:0.5rem; align-items:center;">'
                 . Form::select('canal', [
-                    ['value' => 'sms', 'label' => '💬 SMS Pro'],
-                    ['value' => 'whatsapp', 'label' => '🟢 WhatsApp Business'],
+                    ['value' => 'sms', 'label' => 'SMS Pro'],
+                    ['value' => 'whatsapp', 'label' => 'WhatsApp Business'],
                     ['value' => 'email', 'label' => 'Courriel (Email)'],
                 ], 'whatsapp', ['required' => true])
                 . Ui::button('Envoyer le Rappel de Solde', ['type' => 'submit', 'variant' => 'primary'])
@@ -725,13 +725,15 @@ final class Finance
         if ($clientWalletBalance > 0 && $facture->montantRestant > 0 && $facture->statut !== 'payee') {
             $walletPayForm = '<form method="post" action="' . View::url('finance/factures/' . $facture->id . '/payer-portefeuille') . '" class="js-protect-form" style="background:#ecfdf5; border:2px solid #10b981; padding:1.25rem 1.5rem; border-radius:12px; margin-bottom:1.5rem; display:flex; justify-content:space-between; align-items:center; box-shadow:0 4px 12px rgba(16,185,129,0.1);">'
                 . '<div style="display:flex; align-items:center; gap:0.75rem;">'
-                . '<span style="font-size:1.8rem;">💳</span>'
+                . '<div style="width:42px; height:42px; border-radius:10px; background:rgba(16,185,129,0.15); display:flex; align-items:center; justify-content:center; flex-shrink:0;">'
+                . '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>'
+                . '</div>'
                 . '<div>'
                 . '<strong style="color:#065f46; font-size:1.05rem;">Solde Créditeur Disponible dans le Portefeuille Client !</strong><br>'
                 . '<span style="color:#047857; font-size:0.88rem;">Le client possède <strong>' . number_format($clientWalletBalance, 0, ',', ' ') . ' XOF</strong> dans son portefeuille. Cliquez pour imputer automatiquement le solde.</span>'
                 . '</div>'
                 . '</div>'
-                . Ui::button('⚡ Régler le solde via Portefeuille Client', ['type' => 'submit', 'variant' => 'success'])
+                . Ui::button('<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="margin-right:5px; vertical-align:-2px;"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg> Régler le solde via Portefeuille Client', ['type' => 'submit', 'variant' => 'success'])
                 . '</form>';
         }
 
@@ -973,9 +975,9 @@ final class Finance
             $lateAlert = '';
             if ((int)date('H') >= 18 && $statut === 'brouillon') {
                 $lateAlert = '<div style="background:#fef2f2; border:2px solid #ef4444; border-radius:12px; padding:1.2rem 1.5rem; margin-bottom:1.5rem; display:flex; align-items:center; gap:1rem; box-shadow:0 4px 12px rgba(239,68,68,0.12);">'
-                    . '<span style="font-size:2rem;">⏰</span>'
+                    . '<div style="width:48px; height:48px; border-radius:12px; background:rgba(239,68,68,0.15); display:flex; align-items:center; justify-content:center; flex-shrink:0;"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg></div>'
                     . '<div>'
-                    . '<strong style="color:#991b1b; font-size:1.1rem;">🚨 ALERTE CLÔTURE TARDIVE (Post 18h00)</strong><br>'
+                    . '<strong style="color:#991b1b; font-size:1.1rem;">ALERTE CLÔTURE TARDIVE (Post 18h00)</strong><br>'
                     . '<span style="color:#b91c1c; font-size:0.88rem;">Il est ' . date('H:i') . '. Le point de caisse du jour pour <strong>' . $agenceTitle . '</strong> n\'a pas encore été soumis. Veuillez procéder immédiatement au décompte des billets et verrouiller la caisse.</span>'
                     . '</div>'
                     . '</div>';
