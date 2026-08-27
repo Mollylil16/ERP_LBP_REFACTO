@@ -1848,19 +1848,15 @@ final class FinanceController extends FinanceBaseController
             exit;
         }
 
-        // Charger colis, client et marchandises pour les emballages
-        $stmt = $this->db->prepare("SELECT * FROM lbp_colis WHERE id = :id LIMIT 1");
-        $stmt->execute(['id' => $facture->colisId]);
-        $colis = $stmt->fetch() ?: [];
+        $colisService = new \App\Services\Colisage\ColisageService(new \App\Repositories\Colisage\ColisageRepository($this->db));
+        $colis = $colisService->getParcelDetails($facture->colisId);
 
-        $stmt = $this->db->prepare("SELECT * FROM lbp_clients WHERE id = :id LIMIT 1");
-        $stmt->execute(['id' => $facture->clientId]);
-        $client = $stmt->fetch() ?: [];
+        if (!$colis) {
+            Session::flash('error', 'Colis associé à cette facture introuvable.');
+            header('Location: ' . View::url('finance/factures'));
+            exit;
+        }
 
-        $stmt = $this->db->prepare("SELECT * FROM lbp_marchandises WHERE colis_id = :colis_id");
-        $stmt->execute(['colis_id' => $facture->colisId]);
-        $marchandises = $stmt->fetchAll() ?: [];
-
-        require BASE_PATH . '/views/finance/recu_pdf.php';
+        require BASE_PATH . '/views/colisage/parcels/facture.php';
     }
 }

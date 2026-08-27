@@ -568,6 +568,25 @@ $operatorName = \App\Helpers\Auth::user() ? \App\Helpers\Auth::user()->fullName 
                         <span style="font-size: 9.5px; font-weight: 600; color: #0284c7;">≈ <?= number_format($montantEur, 2, ',', '.') ?> €</span>
                     </td>
                 </tr>
+                <?php if ($facture): ?>
+                <tr>
+                    <td colspan="7" style="border: none;"></td>
+                    <td style="text-align: right; border: 1px solid #cbd5e1; background: #f0fdf4; font-weight: 700; color: #166534; font-size: 10px;">DÉJÀ ENCAISSÉ</td>
+                    <td style="text-align: right; border: 1px solid #cbd5e1; background: #f0fdf4; font-weight: 800; color: #166534; font-size: 11px;"><?= number_format($facture->montantEncaisse, 0, ',', '.') ?> FCFA</td>
+                </tr>
+                <tr>
+                    <td colspan="7" style="border: none;"></td>
+                    <td style="text-align: right; border: 1px solid #cbd5e1; background: #fef2f2; font-weight: 800; color: #991b1b; font-size: 10px;">RESTE À PAYER</td>
+                    <td style="text-align: right; border: 1px solid #cbd5e1; background: #fef2f2; font-weight: 900; color: #991b1b; font-size: 12px;"><?= number_format($facture->montantRestant, 0, ',', '.') ?> FCFA</td>
+                </tr>
+                <tr>
+                    <td colspan="7" style="border: none;"></td>
+                    <td style="text-align: right; border: 1px solid #cbd5e1; background: #f8fafc; font-weight: 700; font-size: 10px;">STATUT PAIEMENT</td>
+                    <td style="text-align: right; border: 1px solid #cbd5e1; background: #f8fafc; font-weight: 900; font-size: 10.5px; color: <?= $facture->statut === 'payee' ? '#15803d' : ($facture->statut === 'partiellement_payee' ? '#d97706' : '#2563eb') ?>;">
+                        <?= $facture->statut === 'payee' ? '✅ FACTURE PAYÉE' : ($facture->statut === 'partiellement_payee' ? '⚠️ PAYÉE PARTIELLEMENT' : 'ℹ️ FACTURE ÉMISE / IMPAYÉE') ?>
+                    </td>
+                </tr>
+                <?php endif; ?>
             </tfoot>
         </table>
 
