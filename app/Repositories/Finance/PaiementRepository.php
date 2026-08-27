@@ -80,15 +80,34 @@ class PaiementRepository
     {
         // Format: RE-AGENCEID-YEAR-COUNT
         $year = date('Y');
+        $prefix = sprintf("RE-%02d-%s-", $agenceId, $year);
+
+        // 1. Chercher le numéro max existant directement sur la table lbp_recus
         $stmt = $this->pdo->prepare("
-            SELECT COUNT(*) FROM lbp_recus r
-            JOIN lbp_paiements p ON r.paiement_id = p.id
-            JOIN lbp_factures f ON p.facture_id = f.id
-            WHERE f.agence_id = :agence_id AND YEAR(r.date_emission) = :year
+            SELECT MAX(CAST(SUBSTRING(numero_recu, LENGTH(:prefix) + 1) AS UNSIGNED))
+            FROM lbp_recus
+            WHERE numero_recu LIKE :prefix_like
         ");
-        $stmt->execute(['agence_id' => $agenceId, 'year' => $year]);
-        $count = (int) $stmt->fetchColumn() + 1;
-        return sprintf("RE-%02d-%s-%06d", $agenceId, $year, $count);
+        $stmt->execute([
+            'prefix' => $prefix,
+            'prefix_like' => $prefix . '%',
+        ]);
+
+        $maxSeq = (int) $stmt->fetchColumn();
+        $nextSeq = $maxSeq + 1;
+
+        // 2. Boucle de vérification anti-collision
+        do {
+            $candidate = sprintf("RE-%02d-%s-%06d", $agenceId, $year, $nextSeq);
+            $checkStmt = $this->pdo->prepare("SELECT COUNT(*) FROM lbp_recus WHERE numero_recu = :candidate");
+            $checkStmt->execute(['candidate' => $candidate]);
+            $exists = (int) $checkStmt->fetchColumn() > 0;
+            if ($exists) {
+                $nextSeq++;
+            }
+        } while ($exists);
+
+        return $candidate;
     }
 
     // -----------------------------------------------------
