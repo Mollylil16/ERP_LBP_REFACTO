@@ -1898,11 +1898,16 @@ final class Colisage
             . '</div>'
             . '</form>';
 
-        return Ui::pageCard(
-            'Modification du Colis ' . View::e($colis['numero_tracking']),
-            'Réservé à l\'Administration et à la Direction Générale — Révision de la fiche de colisage',
-            $formContent
+        $header = Ui::pageHeader(
+            'Modification du Colis ' . $colis['numero_tracking'],
+            'Réservé à l\'Administration et à la Direction Générale — Révision de la fiche de colisage'
         );
+
+        return '<div class="finea-shell">'
+            . '<div class="finea-container">'
+            . $header
+            . $formContent
+            . '</div></div>';
     }
 
     public static function showPage(array $colis): string
