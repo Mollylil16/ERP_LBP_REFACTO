@@ -3140,12 +3140,19 @@ class MigrationRunner
 
     private function deleteUnwantedAgencies(): void
     {
+        $fallbackId = 3403;
         try {
             $stmtFallback = $this->pdo->query("SELECT id FROM company_sites WHERE name LIKE '%Dokui%' OR code = 'ABO-DOK' LIMIT 1");
-            $fallbackId = $stmtFallback ? (int) $stmtFallback->fetchColumn() : 3403;
+            if ($stmtFallback) {
+                $fid = (int) $stmtFallback->fetchColumn();
+                if ($fid > 0) $fallbackId = $fid;
+            }
+        } catch (\Throwable $e) {}
 
-            $this->pdo->exec("SET FOREIGN_KEY_CHECKS = 0;");
+        try { $this->pdo->exec("SET FOREIGN_KEY_CHECKS = 0;"); } catch (\Throwable $e) {}
 
+        $unwantedIds = [1, 2, 3, 17044, 17045];
+        try {
             $stmtFind = $this->pdo->query("
                 SELECT id FROM company_sites 
                 WHERE id IN (1, 2, 3, 17044, 17045)
@@ -3154,21 +3161,24 @@ class MigrationRunner
                    OR name LIKE '%Bureau%'
                    OR code IN ('ABJ-HQ', 'SPY', 'INTL')
             ");
-            $unwantedIds = $stmtFind ? $stmtFind->fetchAll(PDO::FETCH_COLUMN) : [];
-
-            if (!empty($unwantedIds)) {
-                $inClause = implode(',', array_map('intval', $unwantedIds));
-
-                $this->pdo->exec("UPDATE lbp_users SET agence_id = {$fallbackId} WHERE agence_id IN ({$inClause})");
-                $this->pdo->exec("UPDATE lbp_colis SET agence_depart_id = {$fallbackId} WHERE agence_depart_id IN ({$inClause})");
-                $this->pdo->exec("UPDATE lbp_colis SET agence_arrivee_id = {$fallbackId} WHERE agence_arrivee_id IN ({$inClause})");
-                $this->pdo->exec("UPDATE lbp_factures SET agence_id = {$fallbackId} WHERE agence_id IN ({$inClause})");
-                $this->pdo->exec("UPDATE lbp_etats_journaliers SET agence_id = {$fallbackId} WHERE agence_id IN ({$inClause})");
-
-                $this->pdo->exec("DELETE FROM company_sites WHERE id IN ({$inClause})");
+            if ($stmtFind) {
+                $unwantedIds = array_unique(array_merge($unwantedIds, array_map('intval', $stmtFind->fetchAll(PDO::FETCH_COLUMN))));
             }
-
-            $this->pdo->exec("SET FOREIGN_KEY_CHECKS = 1;");
         } catch (\Throwable $e) {}
+
+        $inClause = implode(',', array_filter($unwantedIds));
+
+        if ($inClause !== '') {
+            try { $this->pdo->exec("UPDATE lbp_users SET agence_id = {$fallbackId} WHERE agence_id IN ({$inClause})"); } catch (\Throwable $e) {}
+            try { $this->pdo->exec("UPDATE lbp_colis SET agence_depart_id = {$fallbackId} WHERE agence_depart_id IN ({$inClause})"); } catch (\Throwable $e) {}
+            try { $this->pdo->exec("UPDATE lbp_colis SET agence_arrivee_id = {$fallbackId} WHERE agence_arrivee_id IN ({$inClause})"); } catch (\Throwable $e) {}
+            try { $this->pdo->exec("UPDATE lbp_factures SET agence_id = {$fallbackId} WHERE agence_id IN ({$inClause})"); } catch (\Throwable $e) {}
+
+            try {
+                $this->pdo->exec("DELETE FROM company_sites WHERE id IN ({$inClause}) OR name LIKE '%Siege%' OR name LIKE '%San Pedro%' OR name LIKE '%Bureau%' OR code IN ('ABJ-HQ', 'SPY', 'INTL')");
+            } catch (\Throwable $e) {}
+        }
+
+        try { $this->pdo->exec("SET FOREIGN_KEY_CHECKS = 1;"); } catch (\Throwable $e) {}
     }
 }
