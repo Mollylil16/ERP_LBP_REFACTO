@@ -3141,15 +3141,13 @@ class MigrationRunner
     {
         try {
             $stmtFallback = $this->pdo->query("SELECT id FROM company_sites WHERE name LIKE '%Dokui%' OR code = 'ABO-DOK' LIMIT 1");
-            $fallbackId = $stmtFallback ? (int) $stmtFallback->fetchColumn() : 0;
-            if ($fallbackId <= 0) {
-                $stmtFallback2 = $this->pdo->query("SELECT id FROM company_sites WHERE code NOT IN ('ABJ-HQ', 'SPY', 'INTL') LIMIT 1");
-                $fallbackId = $stmtFallback2 ? (int) $stmtFallback2->fetchColumn() : 3403;
-            }
+            $fallbackId = $stmtFallback ? (int) $stmtFallback->fetchColumn() : 3403;
+
+            $this->pdo->exec("SET FOREIGN_KEY_CHECKS = 0;");
 
             $stmtFind = $this->pdo->query("
                 SELECT id FROM company_sites 
-                WHERE id IN (1, 2, 3)
+                WHERE id IN (1, 2, 3, 17044, 17045)
                    OR name LIKE '%Siege%'
                    OR name LIKE '%San Pedro%'
                    OR name LIKE '%Bureau%'
@@ -3168,6 +3166,8 @@ class MigrationRunner
 
                 $this->pdo->exec("DELETE FROM company_sites WHERE id IN ({$inClause})");
             }
+
+            $this->pdo->exec("SET FOREIGN_KEY_CHECKS = 1;");
         } catch (\Throwable $e) {}
     }
 }
