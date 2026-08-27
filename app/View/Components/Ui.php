@@ -107,18 +107,21 @@ final class Ui
             $customClass,
         ]);
 
+        $labelContent = (is_string($label) && str_contains($label, '<')) ? $label : View::e((string) $label);
+
         if ($href !== '') {
-            return '<a class="' . View::e($class) . '" href="' . View::url(ltrim($href, '/')) . '">' . View::e($label) . '</a>';
+            $targetAttr = !empty($options['target']) ? ' target="' . View::e((string) $options['target']) . '"' : '';
+            return '<a class="' . View::e($class) . '" href="' . View::url(ltrim($href, '/')) . '"' . $targetAttr . '>' . $labelContent . '</a>';
         }
 
-        unset($options['href'], $options['variant'], $options['type'], $options['disabled'], $options['class']);
+        unset($options['href'], $options['variant'], $options['type'], $options['disabled'], $options['class'], $options['target']);
         $buttonAttrs = array_merge([
             'class' => $class,
             'type' => $type,
             'disabled' => $disabled,
         ], $options);
 
-        return '<button' . Html::attrs($buttonAttrs) . '>' . View::e($label) . '</button>';
+        return '<button' . Html::attrs($buttonAttrs) . '>' . $labelContent . '</button>';
     }
 
     /** @param array<string,mixed> $options */
