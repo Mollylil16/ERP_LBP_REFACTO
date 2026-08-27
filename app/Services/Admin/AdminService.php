@@ -138,6 +138,7 @@ class AdminService
         if ($id === $actorId && (!$data['is_admin'] || $data['status'] !== 'active')) {
             throw new RuntimeException('Vous ne pouvez pas retirer votre propre accès administrateur ni désactiver votre compte.');
         }
+        $data['agence_id'] = isset($input['agence_id']) && $input['agence_id'] !== '' ? (int) $input['agence_id'] : null;
         $this->users->updateFromAdmin($id, $data);
     }
 

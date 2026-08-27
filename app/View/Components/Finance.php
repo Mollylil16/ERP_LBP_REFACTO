@@ -381,7 +381,7 @@ final class Finance
     /**
      * Fiche d'une facture + encaissement.
      */
-    public static function factureShowPage(Facture $facture, array $paiements, array $callbacks, array $colis, array $client): string
+    public static function factureShowPage(Facture $facture, array $paiements, array $callbacks, array $colis, array $client, array $marchandises = [], float $clientWalletBalance = 0.0): string
     {
         $badgeTone = match($facture->statut) {
             'payee' => 'success',
@@ -392,19 +392,77 @@ final class Finance
         };
         $badge = Ui::badge(str_replace('_', ' ', ucfirst($facture->statut)), $badgeTone);
 
+        // Boutons WhatsApp Directs (Avis initial & Relance échéance)
+        $clientPhone = preg_replace('/[^0-9+]/', '', (string)($client['phone'] ?? ''));
+        $waButton = '';
+        if ($clientPhone !== '') {
+            $waMsg1 = "Bonjour " . ($client['name'] ?? 'Client') . ",\n"
+                . "Voici votre facture N° " . $facture->numeroFacture . " (LBP Logistics & Transit).\n"
+                . "• Montant Total : " . number_format($facture->montantTotal, 0, ',', ' ') . " " . $facture->devise . "\n"
+                . "• Déjà Encaissé : " . number_format($facture->montantEncaisse, 0, ',', ' ') . " " . $facture->devise . "\n"
+                . "• Reste à Payer : " . number_format($facture->montantRestant, 0, ',', ' ') . " " . $facture->devise . "\n"
+                . "Consultez et téléchargez votre reçu officiel PDF ici : " . View::url('finance/factures/' . $facture->id . '/recu-pdf');
+            
+            $waMsg2 = "⚠️ RAPPEL DE SOLDE — LBP Logistics & Transit\n"
+                . "Bonjour " . ($client['name'] ?? 'Client') . ",\n"
+                . "Nous vous rappelons que votre facture N° " . $facture->numeroFacture . " présente un solde restant dû de " . number_format($facture->montantRestant, 0, ',', ' ') . " " . $facture->devise . ".\n"
+                . "Échéance : " . ($facture->dateEcheanceSolde ?? 'À réception') . ".\n"
+                . "Merci d'effectuer le règlement afin d'éviter tout retard de livraison. Reçu PDF : " . View::url('finance/factures/' . $facture->id . '/recu-pdf');
+
+            $waUrl1 = "https://api.whatsapp.com/send?phone=" . urlencode($clientPhone) . "&text=" . urlencode($waMsg1);
+            $waUrl2 = "https://api.whatsapp.com/send?phone=" . urlencode($clientPhone) . "&text=" . urlencode($waMsg2);
+
+            $waButton = '<a href="' . $waUrl1 . '" target="_blank" style="padding:0.55rem 1rem; background:#25D366; color:#ffffff; font-weight:800; border-radius:8px; text-decoration:none; display:inline-flex; align-items:center; gap:6px; font-size:0.82rem; border:none; cursor:pointer; box-shadow:0 2px 8px rgba(37,211,102,0.3);">'
+                . '📱 WhatsApp Facture'
+                . '</a> '
+                . '<a href="' . $waUrl2 . '" target="_blank" style="padding:0.55rem 1rem; background:#075e54; color:#ffffff; font-weight:800; border-radius:8px; text-decoration:none; display:inline-flex; align-items:center; gap:6px; font-size:0.82rem; border:none; cursor:pointer; box-shadow:0 2px 8px rgba(7,94,84,0.3);">'
+                . '🔔 Relance WhatsApp'
+                . '</a>';
+        }
+
         $header = Ui::pageHeader(
             'Facture ' . $facture->numeroFacture,
             'Consultation, encaissement physique et suivi en temps réel.',
             [
                 'eyebrow' => 'Détails Facture',
                 'class' => 'rh-hero-white',
-                'actions' => [
+                'actions' => array_filter([
                     $badge,
+                    $waButton,
                     Ui::button('🖨️ Reçu Officiel (PDF)', ['href' => 'finance/factures/' . $facture->id . '/recu-pdf', 'variant' => 'primary', 'target' => '_blank']),
                     Ui::button('Retour', ['href' => 'finance/factures', 'variant' => 'secondary'])
-                ]
+                ])
             ]
         );
+
+        // Bandeau de Statut de Paiement Très Lisible
+        $statusBannerColor = match($facture->statut) {
+            'payee' => '#10b981',
+            'partiellement_payee' => '#f59e0b',
+            'emise' => '#3b82f6',
+            'en_retard' => '#ef4444',
+            default => '#64748b'
+        };
+
+        $statusBannerBg = match($facture->statut) {
+            'payee' => '#ecfdf5',
+            'partiellement_payee' => '#fffbeb',
+            'emise' => '#eff6ff',
+            'en_retard' => '#fef2f2',
+            default => '#f8fafc'
+        };
+
+        $statusMessage = match($facture->statut) {
+            'payee' => '✅ FACTURE RÉGLÉE EN TOTALITÉ — Intégralité des montants encaissés (' . number_format($facture->montantTotal, 0, ',', ' ') . ' ' . $facture->devise . ').',
+            'partiellement_payee' => '⚠️ PAIEMENT PARTIEL EFFECTUÉ — Déjà encaissé : ' . number_format($facture->montantEncaisse, 0, ',', ' ') . ' ' . $facture->devise . ' | Reste dû : ' . number_format($facture->montantRestant, 0, ',', ' ') . ' ' . $facture->devise,
+            'en_retard' => '🚨 FACTURE EN RETARD — Le solde restant de ' . number_format($facture->montantRestant, 0, ',', ' ') . ' ' . $facture->devise . ' a dépassé sa date d\'échéance !',
+            default => 'ℹ️ FACTURE ÉMISE / IMPAYÉE — En attente d\'encaissement du solde total de ' . number_format($facture->montantRestant, 0, ',', ' ') . ' ' . $facture->devise . '.'
+        };
+
+        $statusBanner = '<div style="background:' . $statusBannerBg . '; border:2px solid ' . $statusBannerColor . '; border-radius:12px; padding:1.2rem 1.5rem; margin-bottom:1.5rem; display:flex; justify-content:space-between; align-items:center;">'
+            . '<div style="font-weight:800; font-size:1.05rem; color:#0f172a;">' . $statusMessage . '</div>'
+            . '<div><strong style="font-size:1.3rem; color:' . $statusBannerColor . ';">' . number_format($facture->montantRestant, 0, ',', ' ') . ' ' . View::e($facture->devise) . '</strong><br><small style="color:#64748b;">Reste à payer</small></div>'
+            . '</div>';
 
         // Colonne 1: Infos générales de la facture
         $tauxStr = $facture->tauxChange !== null && $facture->devise !== 'XOF' ? '<p><strong>Taux de change figé :</strong> 1 EUR = ' . number_format($facture->tauxChange, 4, ',', '.') . ' FCFA</p>' : '';
@@ -425,16 +483,43 @@ final class Finance
         // Infos colis
         $colisInfo = '<div style="display:grid; grid-template-columns: 1fr 1fr; gap: 2rem;">'
             . '<div>'
-            . '<p><strong>Colis :</strong> ' . View::e($colis['numero_tracking']) . '</p>'
+            . '<p><strong>Colis :</strong> ' . View::e($colis['numero_tracking'] ?? '—') . '</p>'
             . '<p><strong>Description :</strong> ' . View::e($colis['description'] ?? '—') . '</p>'
-            . '<p><strong>Poids total :</strong> ' . View::e((string) $colis['poids_total']) . ' kg</p>'
+            . '<p><strong>Poids total :</strong> ' . View::e((string) ($colis['poids_total'] ?? 0)) . ' kg</p>'
             . '</div>'
             . '<div>'
-            . '<p><strong>Client :</strong> ' . View::e($client['name']) . '</p>'
+            . '<p><strong>Client :</strong> ' . View::e($client['name'] ?? '—') . '</p>'
             . '<p><strong>Téléphone client :</strong> ' . View::e($client['phone'] ?? '—') . '</p>'
             . '<p><strong>Adresse client :</strong> ' . View::e($client['address'] ?? '—') . '</p>'
             . '</div>'
             . '</div>';
+
+        // Tableau des Emballages & Marchandises
+        $marchandisesHtml = '';
+        if (!empty($marchandises)) {
+            $mRows = '';
+            foreach ($marchandises as $m) {
+                $embName = !empty($m['emballage']) ? $m['emballage'] : 'Carton / Propre emballage';
+                $qteEmb = (int) ($m['qte_emballage'] ?? 1);
+                $prixEmb = (float) ($m['prix_emballage'] ?? 0.0);
+                $totLigne = (float) ($m['total_ligne'] ?? 0.0);
+
+                $mRows .= '<tr>'
+                    . '<td><strong>' . View::e($m['produit_libelle'] ?? 'Marchandise') . '</strong></td>'
+                    . '<td><span class="finea-tag">' . View::e($embName) . '</span></td>'
+                    . '<td style="text-align:center;">' . View::e((string)$qteEmb) . '</td>'
+                    . '<td style="text-align:right;">' . ($prixEmb > 0 ? number_format($prixEmb, 0, ',', ' ') . ' XOF' : 'Inclus (0 XOF)') . '</td>'
+                    . '<td style="text-align:right; font-weight:700;">' . number_format($totLigne, 2, ',', ' ') . ' ' . View::e($facture->devise) . '</td>'
+                    . '</tr>';
+            }
+
+            $marchandisesHtml = '<div class="finea-table-wrapper" style="margin-top:0.5rem;">'
+                . '<table class="finea-table">'
+                . '<thead><tr><th>Produit</th><th>Type d\'Emballage</th><th style="text-align:center;">Qté Emballage</th><th style="text-align:right;">Prix Emballage</th><th style="text-align:right;">Sous-Total Ligne</th></tr></thead>'
+                . '<tbody>' . $mRows . '</tbody>'
+                . '</table>'
+                . '</div>';
+        }
 
         // Liste des encaissements physiques/comptant
         $payRows = '';
@@ -540,12 +625,62 @@ final class Finance
                 . '</div>';
         }
 
+        // Formulaire 1-clic de règlement par Portefeuille Client (si créditeur)
+        $walletPayForm = '';
+        if ($clientWalletBalance > 0 && $facture->montantRestant > 0 && $facture->statut !== 'payee') {
+            $walletPayForm = '<form method="post" action="' . View::url('finance/factures/' . $facture->id . '/payer-portefeuille') . '" class="js-protect-form" style="background:#ecfdf5; border:2px solid #10b981; padding:1.25rem 1.5rem; border-radius:12px; margin-bottom:1.5rem; display:flex; justify-content:space-between; align-items:center; box-shadow:0 4px 12px rgba(16,185,129,0.1);">'
+                . '<div style="display:flex; align-items:center; gap:0.75rem;">'
+                . '<span style="font-size:1.8rem;">💳</span>'
+                . '<div>'
+                . '<strong style="color:#065f46; font-size:1.05rem;">Solde Créditeur Disponible dans le Portefeuille Client !</strong><br>'
+                . '<span style="color:#047857; font-size:0.88rem;">Le client possède <strong>' . number_format($clientWalletBalance, 0, ',', ' ') . ' XOF</strong> dans son portefeuille. Cliquez pour imputer automatiquement le solde.</span>'
+                . '</div>'
+                . '</div>'
+                . Ui::button('⚡ Régler le solde via Portefeuille Client', ['type' => 'submit', 'variant' => 'success'])
+                . '</form>';
+        }
+
+        // Frise chronologique (Timeline) des paiements
+        $timelineSteps = '<div style="display:flex; align-items:flex-start; gap:12px; position:relative; padding-bottom:1.25rem; border-left:3px solid #2563eb; padding-left:18px; margin-left:10px;">'
+            . '<div style="position:absolute; left:-9px; top:2px; width:15px; height:15px; background:#2563eb; border-radius:50%;"></div>'
+            . '<div><strong style="color:#0f172a; font-size:0.95rem;">Émission de la Facture N° ' . View::e($facture->numeroFacture) . '</strong> <span style="color:#64748b; font-size:0.8rem;">(' . View::e($facture->dateEmission) . ')</span><br>'
+            . '<small style="color:#475569;">Montant initial de la facture : <strong>' . number_format($facture->montantTotal, 0, ',', ' ') . ' ' . View::e($facture->devise) . '</strong></small></div>'
+            . '</div>';
+
+        $cumulPaiements = 0.0;
+        if (!empty($paiements)) {
+            foreach ($paiements as $idx => $p) {
+                $cumulPaiements += $p->montant;
+                $resteApres = max(0.0, $facture->montantTotal - $cumulPaiements);
+                $stepColor = ($resteApres <= 0.01) ? '#10b981' : '#f59e0b';
+
+                $timelineSteps .= '<div style="display:flex; align-items:flex-start; gap:12px; position:relative; padding-bottom:1.25rem; border-left:3px solid ' . $stepColor . '; padding-left:18px; margin-left:10px;">'
+                    . '<div style="position:absolute; left:-9px; top:2px; width:15px; height:15px; background:' . $stepColor . '; border-radius:50%;"></div>'
+                    . '<div><strong style="color:#0f172a; font-size:0.95rem;">Acompte ' . ($idx + 1) . ' — Encaissement de ' . number_format($p->montant, 0, ',', ' ') . ' ' . View::e($p->devise) . '</strong> <span style="color:#64748b; font-size:0.8rem;">(' . View::e($p->datePaiement) . ')</span><br>'
+                    . '<small style="color:#475569;">Canal : <strong>' . View::e(strtoupper($p->mode)) . '</strong> | Solde restant dû : <strong style="color:' . ($resteApres <= 0.01 ? '#10b981' : '#dc2626') . ';">' . number_format($resteApres, 0, ',', ' ') . ' ' . View::e($facture->devise) . '</strong></small></div>'
+                    . '</div>';
+            }
+        }
+
+        if ($facture->statut === 'payee') {
+            $timelineSteps .= '<div style="display:flex; align-items:flex-start; gap:12px; position:relative; padding-left:18px; margin-left:10px;">'
+                . '<div style="position:absolute; left:-9px; top:2px; width:15px; height:15px; background:#10b981; border-radius:50%;"></div>'
+                . '<div><strong style="color:#065f46; font-size:0.95rem;">🎉 Facture Entièrement Soldée</strong><br><small style="color:#047857;">Aucun reliquat impayé sur cette facture.</small></div>'
+                . '</div>';
+        }
+
+        $timelineHtml = '<div style="background:#fff; border:1px solid #e2e8f0; border-radius:10px; padding:1.5rem; margin-top:0.5rem; box-shadow:0 2px 8px rgba(0,0,0,0.02);">' . $timelineSteps . '</div>';
+
         return '<div class="finea-shell">'
             . '<div class="finea-container">'
             . $header
+            . $statusBanner
+            . $walletPayForm
             . '<div style="display:grid; grid-template-columns:1fr; gap:1.5rem;">'
             . Ui::section('Informations Financières', $factureInfo)
             . Ui::section('Colis & Client Associés', $colisInfo)
+            . ($marchandisesHtml !== '' ? Ui::section('Types d\'Emballages & Marchandises Facturées', $marchandisesHtml) : '')
+            . Ui::section('Frise Chronologique des Paiements', $timelineHtml)
             . $qrCodeSection
             . Ui::section('Historique des Encaissements Physiques', $payTable)
             . Ui::section('Transactions et Webhooks Mobile Money', $callbackTable)
@@ -680,7 +815,7 @@ final class Finance
     /**
      * Point de caisse et états journaliers.
      */
-    public static function etatsJournaliersPage(array $reports, array $agences, ?array $activeReport = null, int $selectedAgenceId = 0): string
+    public static function etatsJournaliersPage(array $reports, array $agences, ?array $activeReport = null, int $selectedAgenceId = 0, array $filters = []): string
     {
         $header = Ui::pageHeader(
             'Points de Caisse & Suivi en Direct',
@@ -739,8 +874,20 @@ final class Finance
             $encDigital = (float) ($activeReport['encaisseDigitalXof'] ?? $activeReport['encaisse_digital_xof'] ?? 0);
             $encCheque = (float) ($activeReport['encaisseChequeXof'] ?? $activeReport['encaisse_cheque_xof'] ?? 0);
 
-            $submissionForm = '<div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:1.5rem; margin-bottom:2rem; box-shadow:0 2px 10px rgba(0,0,0,0.02);">'
-                . '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">'
+            // Alerte Clôture Tardive après 18h00
+            $lateAlert = '';
+            if ((int)date('H') >= 18 && $statut === 'brouillon') {
+                $lateAlert = '<div style="background:#fef2f2; border:2px solid #ef4444; border-radius:12px; padding:1.2rem 1.5rem; margin-bottom:1.5rem; display:flex; align-items:center; gap:1rem; box-shadow:0 4px 12px rgba(239,68,68,0.12);">'
+                    . '<span style="font-size:2rem;">⏰</span>'
+                    . '<div>'
+                    . '<strong style="color:#991b1b; font-size:1.1rem;">🚨 ALERTE CLÔTURE TARDIVE (Post 18h00)</strong><br>'
+                    . '<span style="color:#b91c1c; font-size:0.88rem;">Il est ' . date('H:i') . '. Le point de caisse du jour pour <strong>' . $agenceTitle . '</strong> n\'a pas encore été soumis. Veuillez procéder immédiatement au décompte des billets et verrouiller la caisse.</span>'
+                    . '</div>'
+                    . '</div>';
+            }
+
+            $submissionForm = $lateAlert . '<div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:1.5rem; margin-bottom:2rem; box-shadow:0 2px 10px rgba(0,0,0,0.02);">'
+                . '<div style="display:flex; justify-space-between; align-items:center; margin-bottom:1rem;">'
                 . '<h3 style="margin:0; font-size:1.15rem; color:#0f172a; font-weight:800;"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#2563eb" stroke-width="2.5" style="display:inline; margin-right:6px; vertical-align:-2px;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>Position de Caisse en Temps Réel du jour — ' . $agenceTitle . '</h3>'
                 . Ui::badge(strtoupper($statut === 'brouillon' ? 'Temps Réel (Non Soumis)' : $statut), $statutBadge)
                 . '</div>'
@@ -749,7 +896,7 @@ final class Finance
                 . '<div><small style="color:#64748b; font-weight:600;">Factures Émises :</small><br><strong style="font-size:1.2rem; color:#0f172a;">' . $nbFactures . ' factures</strong></div>'
                 . '<div><small style="color:#64748b; font-weight:600;">Montant Facturé Total :</small><br><strong style="font-size:1.2rem; color:#0f172a;">' . number_format($totalFactureXof, 0, ',', ' ') . ' XOF</strong></div>'
                 . '<div><small style="color:#64748b; font-weight:600;">Solde Caisse Live (Encaissé) :</small><br><strong style="font-size:1.3rem; color:#16a34a;">' . number_format($totalEncaisseXof, 0, ',', ' ') . ' XOF</strong></div>'
-                . '<div><small style="color:#64748b; font-weight:600;">Reste à Recouvrir :</small><br><strong style="font-size:1.2rem; color:#dc2626;">' . number_format($totalRestantXof, 0, ',', ' ') . ' XOF</strong></div>'
+                . '<div><small style="color:#64748b; font-weight:600;">Reste à Recouvrer :</small><br><strong style="font-size:1.2rem; color:#dc2626;">' . number_format($totalRestantXof, 0, ',', ' ') . ' XOF</strong></div>'
                 . '</div>'
                 . '<div style="background:#f1f5f9; border:1px solid #cbd5e1; padding:0.75rem 1.25rem; font-size:0.82rem; color:#475569; display:flex; gap:1.5rem; flex-wrap:wrap; border-radius:0 0 10px 10px; margin-bottom:1rem;">'
                 . '<div><strong style="color:#0f172a;">Encaissements par Canal :</strong></div>'
@@ -763,8 +910,9 @@ final class Finance
             $canSubmit = Auth::hasAnyRole(['caissiere', 'chef_agence', 'caissiere_principale']) &&
                 ($userAgId === null || (int) $userAgId === (int) ($activeReport['agence_id'] ?? 0)) &&
                 $statut === 'brouillon';
+
             if ($canSubmit) {
-                $submissionForm .= '<form method="post" action="' . View::url('finance/clotures/soumettre') . '" class="js-protect-form" style="background:#fff; border:1px solid #cbd5e1; padding:1.5rem; border-radius:12px; margin-top:1rem; box-shadow: 0 4px 14px rgba(15,23,42,0.03);">'
+                $submissionForm .= '<form method="post" action="' . View::url('finance/clotures/soumettre') . '" enctype="multipart/form-data" class="js-protect-form" style="background:#fff; border:1px solid #cbd5e1; padding:1.5rem; border-radius:12px; margin-top:1rem; box-shadow: 0 4px 14px rgba(15,23,42,0.03);">'
                     . Form::hidden('agence_id', (string) ($activeReport['agence_id'] ?? ''))
                     . '<h4 style="margin-bottom:0.5rem; font-size:1.1rem; font-weight:800; color:#0f172a;"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" style="display:inline; margin-right:6px; vertical-align:-2px;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>Rapprochement Financier & Comptage de Caisse à l\'Aveugle</h4>'
                     . '<p style="color:#64748b; font-size:0.85rem; margin-bottom:1.25rem;">Effectuez le décompte physique de vos billets et pièces en caisse sans vous fier au montant théorique du système.</p>'
@@ -787,8 +935,9 @@ final class Finance
                     . '<strong id="blind_theo_val" style="font-size:1.1rem; color:#1e293b;">•••••• XOF <button type="button" onclick="document.getElementById(\'blind_theo_val\').innerText=\'' . number_format($totalEncaisseXof, 0, ',', ' ') . ' XOF\'" style="border:none; background:none; color:#2563eb; font-size:0.75rem; cursor:pointer; text-decoration:underline;">Afficher</button></strong>'
                     . '</div>'
                     . '</div>'
-                    . '<div style="margin-top:1rem;">'
-                    . Form::input('explication_ecart', ['label' => 'Explication obligatoire en cas d\'écart de caisse (manquant/surplus > 5000 XOF)', 'placeholder' => 'Préciser les motifs de l\'écart éventuel (ex: monnaie en attente, justificatif)', 'id' => 'explication_ecart_input'])
+                    . '<div style="display:grid; grid-template-columns: 1fr 1fr; gap:1.25rem; margin-top:1rem;">'
+                    . Form::input('explication_ecart', ['label' => 'Explication de l\'écart éventuel (ex: monnaie en attente)', 'placeholder' => 'Préciser les motifs de l\'écart', 'id' => 'explication_ecart_input'])
+                    . Form::file('justificatif_ecart_file', ['label' => '📎 Pièce justificative d\'écart (Optionnel - Photo/PDF)', 'id' => 'justificatif_ecart_file'])
                     . '</div>'
                     . '<div style="margin-top:1.25rem; display:flex; justify-content:flex-end;">'
                     . Ui::button('Soumettre & Verrouiller la Caisse', ['type' => 'submit', 'variant' => 'accent'])
@@ -800,9 +949,34 @@ final class Finance
                     . 'inputs.forEach(function(i) { i.addEventListener("input", calcTotal); }); });'
                     . '</script>'
                     . '</form>';
+            } else if ($statut !== 'brouillon') {
+                $submissionForm .= '<div style="background:#ecfdf5; border:2px solid #10b981; border-radius:12px; padding:1.25rem 1.5rem; margin-top:1rem; display:flex; align-items:center; justify-content:space-between; box-shadow:0 4px 12px rgba(16,185,129,0.1);">'
+                    . '<div style="display:flex; align-items:center; gap:0.85rem;">'
+                    . '<span style="font-size:1.8rem;">✅</span>'
+                    . '<div>'
+                    . '<strong style="color:#065f46; font-size:1.1rem;">Point de Caisse du Jour Soumis avec Succès !</strong><br>'
+                    . '<span style="color:#047857; font-size:0.88rem;">Votre point d\'état de la journée du <strong>' . date('d/m/Y', strtotime($activeReport['date_jour'] ?? date('Y-m-d'))) . '</strong> a été transmis. Votre caisse est clôturée pour aujourd\'hui. La prochaine session s\'ouvrira demain.</span>'
+                    . '</div>'
+                    . '</div>'
+                    . (!empty($activeReport['id']) ? '<a href="' . View::url('finance/clotures/' . $activeReport['id'] . '/export-pdf') . '" target="_blank" style="padding:0.55rem 1.1rem; background:#059669; color:#fff; font-weight:800; border-radius:8px; text-decoration:none; font-size:0.85rem; whitespace:nowrap;">🖨️ Télécharger mon PV (PDF)</a>' : '')
+                    . '</div>';
             }
+
             $submissionForm .= '</div>';
         }
+
+        // Formulaire de Filtre d'Historique
+        $filterForm = '<form method="get" action="' . View::url('finance/clotures') . '" style="background:#ffffff; border:1px solid #cbd5e1; border-radius:12px; padding:1.25rem 1.5rem; margin-bottom:1.5rem; display:flex; gap:1rem; align-items:flex-end; flex-wrap:wrap; box-shadow:0 2px 8px rgba(0,0,0,0.02);">'
+            . ($selectedAgenceId > 0 ? Form::hidden('agence_id', (string) $selectedAgenceId) : '')
+            . '<div style="flex:1; min-width:140px;">' . Form::input('date_exacte', ['label' => '📅 Jour Précis', 'type' => 'date', 'value' => (string)($filters['date_exacte'] ?? '')]) . '</div>'
+            . '<div style="flex:1; min-width:140px;">' . Form::input('semaine', ['label' => '📆 Semaine', 'type' => 'week', 'value' => (string)($filters['semaine'] ?? '')]) . '</div>'
+            . '<div style="flex:1; min-width:140px;">' . Form::input('mois', ['label' => '🗓️ Mois', 'type' => 'month', 'value' => (string)($filters['mois'] ?? '')]) . '</div>'
+            . '<div style="flex:1; min-width:140px;">' . Form::select('statut', [['value' => '', 'label' => 'Tous les statuts'], ['value' => 'soumis', 'label' => 'Soumis'], ['value' => 'consolide', 'label' => 'Consolidé']], $filters['statut'] ?? '', ['label' => 'Statut']) . '</div>'
+            . '<div style="display:flex; gap:0.5rem;">'
+            . Ui::button('Filtrer', ['type' => 'submit', 'variant' => 'accent'])
+            . '<a href="' . View::url('finance/clotures') . ($selectedAgenceId > 0 ? '?agence_id=' . $selectedAgenceId : '') . '" class="finea-button finea-button--secondary">Effacer</a>'
+            . '</div>'
+            . '</form>';
 
         // Liste globale des états soumis (pour consolidateurs/caissière principale)
         $tableHtml = '';
@@ -890,6 +1064,7 @@ final class Finance
             . $submissionForm
             . '<div class="finea-section-card" style="margin-top: 1.5rem;">'
             . '<div class="finea-section-heading"><h2 class="finea-section-title">Historique des points de caisse</h2></div>'
+            . $filterForm
             . $tableHtml
             . '</div>'
             . '</div></div>';

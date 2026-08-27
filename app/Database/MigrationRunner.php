@@ -1576,6 +1576,25 @@ class MigrationRunner
         }
 
         $this->pdo->exec("UPDATE company_sites SET name = 'Paris 17 chemin des Vignes 93000 Bobigny', city = 'Bobigny' WHERE code = 'FRA' OR name = 'Agence France' OR name LIKE '%Agence France%'");
+
+        // Assignment for marquez.koffi@labelleporte.ci -> Agence Aéroport Port-Bouët Fret
+        try {
+            $stmtAg = $this->pdo->prepare("SELECT id FROM company_sites WHERE code = 'ABJ-FRET' OR name LIKE '%Aéroport%' LIMIT 1");
+            $stmtAg->execute();
+            $fretAgId = (int) $stmtAg->fetchColumn();
+
+            if ($fretAgId > 0) {
+                $stmtUsr = $this->pdo->prepare("SELECT id FROM users WHERE email LIKE '%marquez%' LIMIT 1");
+                $stmtUsr->execute();
+                $marquezId = (int) $stmtUsr->fetchColumn();
+
+                if ($marquezId > 0) {
+                    $this->pdo->exec("UPDATE users SET agence_id = {$fretAgId} WHERE id = {$marquezId}");
+                    $this->pdo->exec("INSERT IGNORE INTO lbp_user_roles (user_id, role) VALUES ({$marquezId}, 'chef_agence')");
+                    $this->pdo->exec("INSERT IGNORE INTO lbp_user_roles (user_id, role) VALUES ({$marquezId}, 'caissiere')");
+                }
+            }
+        } catch (\Throwable $e) {}
     }
 
     private function seedWebsiteContent(): void
@@ -2345,6 +2364,7 @@ class MigrationRunner
             $this->addColumnIfMissing('lbp_etats_journaliers', 'solde_physique_declare', "DECIMAL(15,2) NULL");
             $this->addColumnIfMissing('lbp_etats_journaliers', 'ecart_caisse', "DECIMAL(15,2) NOT NULL DEFAULT 0.00");
             $this->addColumnIfMissing('lbp_etats_journaliers', 'explication_ecart', "TEXT NULL");
+            $this->addColumnIfMissing('lbp_etats_journaliers', 'justificatif_url', "VARCHAR(255) NULL");
             $this->addColumnIfMissing('lbp_etats_journaliers', 'decompte_coupures_json', "TEXT NULL");
             $this->addColumnIfMissing('lbp_etats_journaliers', 'blind_count', "TINYINT(1) NOT NULL DEFAULT 1");
             $this->addColumnIfMissing('lbp_etats_journaliers', 'validation_superviseur_id', "INT NULL");

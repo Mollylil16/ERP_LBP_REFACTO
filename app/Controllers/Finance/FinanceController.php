@@ -313,6 +313,14 @@ final class FinanceController extends FinanceBaseController
         $stmt->execute(['id' => $facture->clientId]);
         $client = $stmt->fetch() ?: [];
 
+        $stmt = $this->db->prepare("SELECT * FROM lbp_marchandises WHERE colis_id = :colis_id");
+        $stmt->execute(['colis_id' => $facture->colisId]);
+        $marchandises = $stmt->fetchAll() ?: [];
+
+        $stmtW = $this->db->prepare("SELECT solde_xof FROM lbp_client_wallets WHERE client_id = :c_id OR client_nom LIKE :c_name LIMIT 1");
+        $stmtW->execute(['c_id' => $facture->clientId, 'c_name' => '%' . $facture->clientId . '%']);
+        $clientWalletBalance = (float) ($stmtW->fetchColumn() ?: 0.0);
+
         $paiements = $this->paiementRepo->findByFactureId($facture->id);
         $callbacks = $this->paiementRepo->findCallbacksByFactureId($facture->id);
 
@@ -322,6 +330,8 @@ final class FinanceController extends FinanceBaseController
             'callbacks' => $callbacks,
             'colis' => $colis,
             'client' => $client,
+            'marchandises' => $marchandises,
+            'clientWalletBalance' => $clientWalletBalance,
         ]);
     }
 
@@ -445,7 +455,96 @@ final class FinanceController extends FinanceBaseController
             exit;
         }
 
-        Session::flash('success', "Encaissement de " . number_format($montant, 2, ',', ' ') . " {$facture->devise} validé.");
+        Session::flash('success', "Encaissement de " . number_format($montant, 2, ',', ' ') . " {$facture->devise} enregistré avec succès.");
+        header('Location: ' . View::url('finance/factures/' . $id));
+        exit;
+    }
+
+    /**
+     * Imputation automatique d'un paiement depuis le portefeuille client.
+     */
+    public function facturePayerPortefeuille(string $id): void
+    {
+        RoleMiddleware::check(['caissiere', 'caissiere_principale', 'chef_agence', 'dg']);
+
+        $id = (int) $id;
+        $facture = $this->factureRepo->findById($id);
+
+        if (!$facture) {
+            Session::flash('error', 'Facture introuvable.');
+            header('Location: ' . View::url('finance/factures'));
+            exit;
+        }
+
+        if ($facture->statut === 'payee' || $facture->statut === 'annulee') {
+            Session::flash('error', 'Cette facture est déjà soldée ou annulée.');
+            header('Location: ' . View::url('finance/factures/' . $id));
+            exit;
+        }
+
+        $pdo = \App\Models\Database::getConnection();
+        $stmt = $pdo->prepare("SELECT * FROM lbp_client_wallets WHERE client_id = :c_id OR client_nom LIKE :c_name LIMIT 1");
+        $stmt->execute(['c_id' => $facture->clientId, 'c_name' => '%' . $facture->clientId . '%']);
+        $wallet = $stmt->fetch();
+
+        if (!$wallet || (float)($wallet['solde_xof'] ?? 0) <= 0) {
+            Session::flash('error', 'Le portefeuille du client ne dispose pas d\'un solde créditeur suffisant.');
+            header('Location: ' . View::url('finance/factures/' . $id));
+            exit;
+        }
+
+        $soldeDisponible = (float) $wallet['solde_xof'];
+        $montantAPayer = min($soldeDisponible, $facture->montantRestant);
+
+        $this->db->beginTransaction();
+        try {
+            // Déduire du portefeuille
+            $stmtDeduct = $pdo->prepare("UPDATE lbp_client_wallets SET solde_xof = solde_xof - :montant, updated_at = NOW() WHERE id = :id");
+            $stmtDeduct->execute(['montant' => $montantAPayer, 'id' => $wallet['id']]);
+
+            // Transaction de portefeuille
+            $stmtTx = $pdo->prepare("INSERT INTO lbp_client_wallet_transactions (wallet_id, type, montant_xof, mode_paiement, reference_transac, motif) VALUES (:wallet_id, 'DEBIT', :montant, 'Portefeuille Client', :ref, :motif)");
+            $stmtTx->execute([
+                'wallet_id' => $wallet['id'],
+                'montant' => $montantAPayer,
+                'ref' => $facture->numeroFacture,
+                'motif' => "Imputation automatique sur Facture N° {$facture->numeroFacture}",
+            ]);
+
+            // Enregistrer le paiement
+            $paiement = new Paiement(
+                id: null,
+                factureId: $facture->id,
+                caissiereId: Auth::id(),
+                montant: $montantAPayer,
+                devise: $facture->devise,
+                mode: 'portefeuille',
+                type: ($montantAPayer >= $facture->montantRestant) ? 'solde' : 'acompte'
+            );
+            $paiementId = $this->paiementRepo->create($paiement);
+
+            // Mettre à jour la facture
+            $oldFacture = (array) $facture;
+            $facture->montantEncaisse += $montantAPayer;
+            $facture->montantRestant = max(0.0, $facture->montantTotal - $facture->montantEncaisse);
+            if ($facture->montantRestant <= 0.01) {
+                $facture->statut = 'payee';
+                $facture->montantRestant = 0.0;
+            } else {
+                $facture->statut = 'partiellement_payee';
+            }
+
+            $this->factureRepo->update($facture);
+
+            AuditLogService::log('wallet_payment', 'lbp_factures', $facture->id, $oldFacture, (array) $facture);
+
+            $this->db->commit();
+            Session::flash('success', "Le montant de " . number_format($montantAPayer, 0, ',', ' ') . " XOF a été déduit du portefeuille client et imputé sur la facture.");
+        } catch (\Throwable $e) {
+            $this->db->rollBack();
+            Session::flash('error', 'Erreur lors du règlement via portefeuille : ' . $e->getMessage());
+        }
+
         header('Location: ' . View::url('finance/factures/' . $id));
         exit;
     }
@@ -719,11 +818,18 @@ final class FinanceController extends FinanceBaseController
 
         $selectedAgenceId = isset($_GET['agence_id']) && $_GET['agence_id'] !== '' ? (int) $_GET['agence_id'] : ($userAgenceId ? (int) $userAgenceId : 0);
 
+        $filters = [
+            'date_exacte' => $_GET['date_exacte'] ?? '',
+            'semaine' => $_GET['semaine'] ?? '',
+            'mois' => $_GET['mois'] ?? '',
+            'statut' => $_GET['statut'] ?? '',
+        ];
+
         if ($isGlobalRole) {
-            $reports = $selectedAgenceId > 0 ? $this->etatRepo->getEtatsByAgence($selectedAgenceId) : $this->etatRepo->getEtatsGlobal();
+            $reports = $selectedAgenceId > 0 ? $this->etatRepo->getEtatsByAgence($selectedAgenceId, $filters) : $this->etatRepo->getEtatsGlobal($filters);
         } else {
             $selectedAgenceId = (int) $userAgenceId;
-            $reports = $this->etatRepo->getEtatsByAgence($selectedAgenceId);
+            $reports = $this->etatRepo->getEtatsByAgence($selectedAgenceId, $filters);
         }
 
         // Déterminer l'agence dont la caisse en direct est affichée
@@ -758,6 +864,7 @@ final class FinanceController extends FinanceBaseController
             'agences' => $agences,
             'activeReport' => $activeReport,
             'selectedAgenceId' => $selectedAgenceId,
+            'filters' => $filters,
         ]);
     }
 
@@ -802,6 +909,22 @@ final class FinanceController extends FinanceBaseController
             exit;
         }
 
+        // Pièce justificative optionnelle pour l'écart de caisse
+        $justificatifUrl = null;
+        if (!empty($_FILES['justificatif_ecart_file']['name']) && $_FILES['justificatif_ecart_file']['error'] === UPLOAD_ERR_OK) {
+            $uploadDir = BASE_PATH . '/public/uploads/clotures/';
+            if (!is_dir($uploadDir)) {
+                mkdir($uploadDir, 0755, true);
+            }
+            $ext = strtolower(pathinfo($_FILES['justificatif_ecart_file']['name'], PATHINFO_EXTENSION));
+            if (in_array($ext, ['jpg', 'jpeg', 'png', 'pdf', 'doc', 'docx'], true)) {
+                $filename = 'justificatif_' . $agenceId . '_' . date('Ymd_His') . '.' . $ext;
+                if (move_uploaded_file($_FILES['justificatif_ecart_file']['tmp_name'], $uploadDir . $filename)) {
+                    $justificatifUrl = '/uploads/clotures/' . $filename;
+                }
+            }
+        }
+
         if ($existing) {
             $existing->nbColisEnregistres = $live['nb_colis'];
             $existing->nbFacturesEmises = $live['nb_factures'];
@@ -816,6 +939,9 @@ final class FinanceController extends FinanceBaseController
             $existing->soldePhysiqueDeclare = $soldePhysique;
             $existing->ecartCaisse = $ecart;
             $existing->explicationEcart = $explication !== '' ? $explication : null;
+            if ($justificatifUrl !== null) {
+                $existing->justificatifUrl = $justificatifUrl;
+            }
             $existing->statut = 'soumis';
             $existing->dateSoumission = date('Y-m-d H:i:s');
             $existing->chefAgenceId = Auth::id();
@@ -842,7 +968,8 @@ final class FinanceController extends FinanceBaseController
                 dateSoumission: date('Y-m-d H:i:s'),
                 soldePhysiqueDeclare: $soldePhysique,
                 ecartCaisse: $ecart,
-                explicationEcart: $explication !== '' ? $explication : null
+                explicationEcart: $explication !== '' ? $explication : null,
+                justificatifUrl: $justificatifUrl
             );
             $reportId = $this->etatRepo->create($etat);
         }
@@ -1662,6 +1789,19 @@ final class FinanceController extends FinanceBaseController
             header('Location: ' . View::url('finance/factures'));
             exit;
         }
+
+        // Charger colis, client et marchandises pour les emballages
+        $stmt = $this->db->prepare("SELECT * FROM lbp_colis WHERE id = :id LIMIT 1");
+        $stmt->execute(['id' => $facture->colisId]);
+        $colis = $stmt->fetch() ?: [];
+
+        $stmt = $this->db->prepare("SELECT * FROM lbp_clients WHERE id = :id LIMIT 1");
+        $stmt->execute(['id' => $facture->clientId]);
+        $client = $stmt->fetch() ?: [];
+
+        $stmt = $this->db->prepare("SELECT * FROM lbp_marchandises WHERE colis_id = :colis_id");
+        $stmt->execute(['colis_id' => $facture->colisId]);
+        $marchandises = $stmt->fetchAll() ?: [];
 
         require BASE_PATH . '/views/finance/recu_pdf.php';
     }

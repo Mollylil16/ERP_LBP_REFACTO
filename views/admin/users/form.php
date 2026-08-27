@@ -50,6 +50,16 @@ ob_start();
             <?= Ui::section('Profil RH associé', (string) ob_get_clean()) ?>
 
             <?php ob_start(); ?>
+            <?php
+            $agencesDb = \App\Models\Database::getConnection()->query("SELECT id, name FROM company_sites WHERE is_active = 1 ORDER BY name ASC")->fetchAll() ?: [];
+            $agenceOpts = [['value' => '', 'label' => '-- Sans agence spécifique (Toutes agences / Siège) --']];
+            foreach ($agencesDb as $ag) {
+                $agenceOpts[] = [
+                    'value' => (string) $ag['id'],
+                    'label' => 'Agence ' . $ag['name']
+                ];
+            }
+            ?>
             <div class="admin-form-grid">
                 <?= Form::input('password', [
                     'label' => $page->isEdit ? 'Nouveau mot de passe' : 'Mot de passe initial',
@@ -61,6 +71,7 @@ ob_start();
                         ? 'Laisser vide pour conserver le mot de passe actuel.'
                         : '8 caractères minimum.',
                 ]) ?>
+                <?= Form::select('agence_id', $agenceOpts, (string) ($page->user?->agenceId ?? ''), ['label' => 'Agence de rattachement LBP']) ?>
                 <div class="admin-switch admin-switch-card">
                     <?= Form::checkbox('is_admin', [
                         'label' => 'Profil administrateur',

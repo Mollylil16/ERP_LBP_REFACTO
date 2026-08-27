@@ -212,6 +212,7 @@ class UserRepository
             'phone' => $data['phone'],
             'status' => $data['status'],
             'is_admin' => $data['is_admin'] ? 1 : 0,
+            'agence_id' => !empty($data['agence_id']) ? (int) $data['agence_id'] : null,
         ];
         if ($data['password_hash'] !== null) {
             $passwordSql = ', password_hash = :password_hash';
@@ -225,6 +226,7 @@ class UserRepository
                 phone = :phone,
                 status = :status,
                 is_admin = :is_admin,
+                agence_id = :agence_id,
                 updated_at = NOW()
                 {$passwordSql}
             WHERE id = :id

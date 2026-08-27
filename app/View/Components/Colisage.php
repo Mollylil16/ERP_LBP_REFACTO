@@ -220,7 +220,15 @@ final class Colisage
             . Form::selectSearch('agence_depart_id', $siteOpts, '', ['label' => 'Agence de départ', 'required' => true])
             . Form::selectSearch('agence_arrivee_id', $siteOpts, '', ['label' => 'DESTINATION (agence d\'arrivée)', 'required' => true])
             . Form::input('nombre_colis', ['label' => 'Nombre total de colis', 'type' => 'number', 'min' => 1, 'value' => '1', 'required' => true])
-            . Form::input('poids_total', ['label' => 'Poids total (kg)', 'type' => 'number', 'step' => '0.01', 'required' => true])
+            . Form::input('poids_total', ['label' => 'Poids total (kg)', 'type' => 'number', 'step' => '0.01', 'required' => true, 'id' => 'poids_total_input'])
+            . '<div style="grid-column: span 3; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:0.8rem 1rem; margin-top:0.25rem;">'
+            . '<small style="font-weight:700; color:#334155;">📐 Calculateur de Poids Volumétrique (Norme IATA : L x l x h / 5000)</small>'
+            . '<div style="display:grid; grid-template-columns: 1fr 1fr 1fr 1.5fr; gap:0.75rem; margin-top:0.5rem;">'
+            . '<input type="number" step="0.1" placeholder="Long. L (cm)" id="dim_l" style="padding:6px; border:1px solid #cbd5e1; border-radius:6px; font-weight:600;">'
+            . '<input type="number" step="0.1" placeholder="Larg. l (cm)" id="dim_w" style="padding:6px; border:1px solid #cbd5e1; border-radius:6px; font-weight:600;">'
+            . '<input type="number" step="0.1" placeholder="Haut. h (cm)" id="dim_h" style="padding:6px; border:1px solid #cbd5e1; border-radius:6px; font-weight:600;">'
+            . '<div style="font-size:0.85rem; font-weight:700; color:#0f172a; display:flex; align-items:center;">Poids Vol. : <span id="vol_result" style="color:#2563eb; margin-left:6px;">0.00 kg</span></div>'
+            . '</div></div>'
             . Form::select('devise', [
                 ['value' => 'XOF', 'label' => 'Franc CFA (XOF / FCFA)'],
                 ['value' => 'EUR', 'label' => 'Euro (EUR)'],
@@ -270,6 +278,28 @@ final class Colisage
             . '        serviceSelector.addEventListener(\'change\', toggleTrajet);'
             . '        toggleTrajet();'
             . '    }'
+            . '    const dimL = document.getElementById(\'dim_l\');'
+            . '    const dimW = document.getElementById(\'dim_w\');'
+            . '    const dimH = document.getElementById(\'dim_h\');'
+            . '    const volResult = document.getElementById(\'vol_result\');'
+            . '    const poidsInput = document.getElementById(\'poids_total_input\');'
+            . '    function calcVolumetric() {'
+            . '        if (!dimL || !dimW || !dimH) return;'
+            . '        const l = parseFloat(dimL.value) || 0;'
+            . '        const w = parseFloat(dimW.value) || 0;'
+            . '        const h = parseFloat(dimH.value) || 0;'
+            . '        const vol = (l * w * h) / 5000;'
+            . '        if (volResult) volResult.innerText = vol.toFixed(2) + \' kg\';'
+            . '        if (vol > 0 && poidsInput) {'
+            . '            const real = parseFloat(poidsInput.value) || 0;'
+            . '            if (vol > real) {'
+            . '                poidsInput.value = vol.toFixed(2);'
+            . '            }'
+            . '        }'
+            . '    }'
+            . '    if (dimL) dimL.addEventListener(\'input\', calcVolumetric);'
+            . '    if (dimW) dimW.addEventListener(\'input\', calcVolumetric);'
+            . '    if (dimH) dimH.addEventListener(\'input\', calcVolumetric);'
             . '    const inputClientExp = document.querySelector(\'select[name="expediteur_id"]\');'
             . '    if (inputClientExp) {'
             . '        inputClientExp.addEventListener(\'change\', function() {'
@@ -1507,8 +1537,11 @@ final class Colisage
             . '        if (totalEurEl) {'
             . '            totalEurEl.textContent = "≈ " + new Intl.NumberFormat("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(grandTotalEur) + " €";'
             . '        }'
+            . '        const valDeclareeInput = document.querySelector(\'input[name="valeur_declaree"]\');'
+            . '        if (valDeclareeInput) valDeclareeInput.value = Math.round(grandTotal);'
             . '    }'
             . '    tbody.addEventListener("input", calculateTotals);'
+            . '    tbody.addEventListener("change", calculateTotals);'
             . '    tbody.addEventListener("change", function(e) {'
             . '        if (e.target && e.target.name === "m_emballage[]") {'
             . '            const row = e.target.closest("tr");'

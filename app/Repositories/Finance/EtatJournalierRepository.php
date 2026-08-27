@@ -36,13 +36,13 @@ class EtatJournalierRepository
                 agence_id, chef_agence_id, date_jour, nb_colis_enregistres, nb_factures_emises,
                 total_facture_xof, total_facture_eur, total_encaisse_xof, total_encaisse_eur,
                 total_restant_du_xof, total_restant_du_eur, solde_caisse_agence_xof, solde_caisse_agence_eur,
-                solde_physique_declare, ecart_caisse, explication_ecart, decompte_coupures_json, blind_count, validation_superviseur_id,
+                solde_physique_declare, ecart_caisse, explication_ecart, justificatif_url, decompte_coupures_json, blind_count, validation_superviseur_id,
                 statut, date_soumission, consolide_par_id, date_consolidation, created_at
             ) VALUES (
                 :agence_id, :chef_agence_id, :date_jour, :nb_colis_enregistres, :nb_factures_emises,
                 :total_facture_xof, :total_facture_eur, :total_encaisse_xof, :total_encaisse_eur,
                 :total_restant_du_xof, :total_restant_du_eur, :solde_caisse_agence_xof, :solde_caisse_agence_eur,
-                :solde_physique_declare, :ecart_caisse, :explication_ecart, :decompte_coupures_json, :blind_count, :validation_superviseur_id,
+                :solde_physique_declare, :ecart_caisse, :explication_ecart, :justificatif_url, :decompte_coupures_json, :blind_count, :validation_superviseur_id,
                 :statut, :date_soumission, :consolide_par_id, :date_consolidation, NOW()
             )
         ");
@@ -64,6 +64,7 @@ class EtatJournalierRepository
             'solde_physique_declare' => $etat->soldePhysiqueDeclare,
             'ecart_caisse' => $etat->ecartCaisse,
             'explication_ecart' => $etat->explicationEcart,
+            'justificatif_url' => $etat->justificatifUrl,
             'decompte_coupures_json' => $etat->decompteCoupuresJson,
             'blind_count' => $etat->blindCount ? 1 : 0,
             'validation_superviseur_id' => $etat->validationSuperviseurId,
@@ -117,26 +118,84 @@ class EtatJournalierRepository
         ]);
     }
 
-    public function getEtatsByAgence(int $agenceId): array
+    public function getEtatsByAgence(int $agenceId, array $filters = []): array
     {
-        $stmt = $this->pdo->prepare("
-            SELECT * FROM lbp_etats_journaliers 
-            WHERE agence_id = :agence_id 
-            ORDER BY date_jour DESC
-        ");
-        $stmt->execute(['agence_id' => $agenceId]);
+        $sql = "SELECT * FROM lbp_etats_journaliers WHERE agence_id = :agence_id";
+        $params = ['agence_id' => $agenceId];
+
+        if (!empty($filters['date_exacte'])) {
+            $sql .= " AND DATE(date_jour) = :date_exacte";
+            $params['date_exacte'] = $filters['date_exacte'];
+        }
+        if (!empty($filters['mois'])) {
+            $sql .= " AND DATE_FORMAT(date_jour, '%Y-%m') = :mois";
+            $params['mois'] = $filters['mois'];
+        }
+        if (!empty($filters['semaine'])) {
+            $sql .= " AND YEARWEEK(date_jour, 1) = YEARWEEK(:semaine, 1)";
+            $params['semaine'] = $filters['semaine'];
+        }
+        if (!empty($filters['statut'])) {
+            $sql .= " AND statut = :statut";
+            $params['statut'] = $filters['statut'];
+        }
+
+        $sql .= " ORDER BY date_jour DESC";
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($params);
         return array_map(fn($row) => $this->mapToEtatJournalier($row), $stmt->fetchAll() ?: []);
     }
 
-    public function getEtatsGlobal(): array
+    public function getEtatsGlobal(array $filters = []): array
     {
-        $stmt = $this->pdo->query("SELECT * FROM lbp_etats_journaliers ORDER BY date_jour DESC, agence_id ASC");
+        $sql = "SELECT * FROM lbp_etats_journaliers WHERE 1=1";
+        $params = [];
+
+        if (!empty($filters['agence_id'])) {
+            $sql .= " AND agence_id = :agence_id";
+            $params['agence_id'] = (int) $filters['agence_id'];
+        }
+        if (!empty($filters['date_exacte'])) {
+            $sql .= " AND DATE(date_jour) = :date_exacte";
+            $params['date_exacte'] = $filters['date_exacte'];
+        }
+        if (!empty($filters['mois'])) {
+            $sql .= " AND DATE_FORMAT(date_jour, '%Y-%m') = :mois";
+            $params['mois'] = $filters['mois'];
+        }
+        if (!empty($filters['semaine'])) {
+            $sql .= " AND YEARWEEK(date_jour, 1) = YEARWEEK(:semaine, 1)";
+            $params['semaine'] = $filters['semaine'];
+        }
+        if (!empty($filters['statut'])) {
+            $sql .= " AND statut = :statut";
+            $params['statut'] = $filters['statut'];
+        }
+
+        $sql .= " ORDER BY date_jour DESC, agence_id ASC";
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($params);
         return array_map(fn($row) => $this->mapToEtatJournalier($row), $stmt->fetchAll() ?: []);
     }
 
     /**
      * Calcule en temps réel les totaux d'une agence pour une journée donnée.
      */
+    public function getTrendDataForAgence(int $agenceId, int $days = 7): array
+    {
+        $stmt = $this->pdo->prepare("
+            SELECT DATE(date_jour) as date_j, 
+                   SUM(total_encaisse_xof) as total_encaisse,
+                   SUM(total_facture_xof) as total_facture
+            FROM lbp_etats_journaliers
+            WHERE agence_id = :agence_id AND date_jour >= DATE_SUB(CURDATE(), INTERVAL :days DAY)
+            GROUP BY DATE(date_jour)
+            ORDER BY date_j ASC
+        ");
+        $stmt->execute(['agence_id' => $agenceId, 'days' => $days]);
+        return $stmt->fetchAll() ?: [];
+    }
+
     public function computeTotalsForDay(int $agenceId, string $date): array
     {
         // 1. Tonnage/nb colis créés
@@ -238,6 +297,7 @@ class EtatJournalierRepository
             soldePhysiqueDeclare: isset($row['solde_physique_declare']) && is_numeric($row['solde_physique_declare']) ? (float) $row['solde_physique_declare'] : null,
             ecartCaisse: (float) ($row['ecart_caisse'] ?? 0.0),
             explicationEcart: $row['explication_ecart'] ?? null,
+            justificatifUrl: $row['justificatif_url'] ?? null,
             decompteCoupuresJson: $row['decompte_coupures_json'] ?? null,
             blindCount: !empty($row['blind_count']),
             validationSuperviseurId: isset($row['validation_superviseur_id']) && is_numeric($row['validation_superviseur_id']) ? (int) $row['validation_superviseur_id'] : null

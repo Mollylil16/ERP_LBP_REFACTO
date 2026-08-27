@@ -28,8 +28,21 @@ final class UserShowPage
         int $currentUserId,
     ) {
         $this->employee = $employee;
+        $agenceName = 'Toutes agences (Siège)';
+        if ($user->agenceId) {
+            try {
+                $stmt = \App\Models\Database::getConnection()->prepare("SELECT name FROM company_sites WHERE id = :id LIMIT 1");
+                $stmt->execute(['id' => $user->agenceId]);
+                $fetched = $stmt->fetchColumn();
+                if ($fetched) {
+                    $agenceName = 'Agence ' . $fetched;
+                }
+            } catch (\Throwable $e) {}
+        }
+
         $this->details = [
             'Identifiant' => '#' . (int) $user->id,
+            'Agence LBP' => $agenceName,
             'Profil RH' => $employee
                 ? (string) (($employee['employee_number'] ?? '') ?: ($employee['full_name'] ?? ''))
                 : 'Compte système',

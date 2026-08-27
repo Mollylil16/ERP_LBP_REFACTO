@@ -19,6 +19,7 @@ $router->group('/finance', function (Router $router): void {
     $router->post('/factures/relancer-tout', [FinanceController::class, 'factureRelancerTout']);
     $router->get('/factures/{id}', [FinanceController::class, 'factureShow']);
     $router->post('/factures/{id}/encaisser', [FinanceController::class, 'factureEncaisser']);
+    $router->post('/factures/{id}/payer-portefeuille', [FinanceController::class, 'facturePayerPortefeuille']);
     $router->post('/factures/{id}/relancer', [FinanceController::class, 'factureRelancer']);
     $router->post('/factures/{id}/supprimer', [FinanceController::class, 'factureDelete']);
 

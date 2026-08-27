@@ -28,6 +28,7 @@ class EtatJournalier
         public ?float $soldePhysiqueDeclare = null,
         public float $ecartCaisse = 0.0,
         public ?string $explicationEcart = null,
+        public ?string $justificatifUrl = null,
         public ?string $decompteCoupuresJson = null,
         public bool $blindCount = true,
         public ?int $validationSuperviseurId = null
