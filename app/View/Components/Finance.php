@@ -237,12 +237,7 @@ final class Finance
                     'class' => 'finea-button-sm'
                 ]);
 
-                if (in_array($f->statut, ['payee', 'partiellement_payee']) && \App\Helpers\Auth::hasAnyRole(['caissiere', 'chef_agence', 'caissiere_principale', 'assistant_dg', 'dg'])) {
-                    $actionsStr .= ' <form method="post" action="' . View::url('finance/factures/' . $f->id . '/reinitialiser') . '" style="display:inline;" onsubmit="return confirm(\'⚠️ Êtes-vous sûr de vouloir annuler l\\\'encaissement de la facture ' . View::e($f->numeroFacture) . ' et la remettre à l\\\'état ÉMISE ?\');">'
-                        . Form::hidden('_csrf_token', \App\Helpers\Csrf::token())
-                        . '<button type="submit" class="finea-button finea-button-sm" style="margin-left:0.3rem; background:#d97706; color:#fff; border:none;" title="Annuler l\'encaissement et remettre ÉMISE">↺ Remettre ÉMISE</button>'
-                        . '</form>';
-                }
+
 
                 if (\App\Helpers\Auth::hasAnyRole(['dg', 'chef_agence', 'caissiere_principale', 'assistant_dg']) || \App\Helpers\Auth::isAdmin()) {
                     $actionsStr .= ' <form method="post" action="' . View::url('finance/factures/' . $f->id . '/supprimer') . '" style="display:inline;" onsubmit="return confirm(\'Êtes-vous sûr de vouloir supprimer cette facture ?\');">'
@@ -466,18 +461,8 @@ final class Finance
             default => 'ℹ️ FACTURE ÉMISE / IMPAYÉE — En attente d\'encaissement du solde total de ' . number_format($facture->montantRestant, 0, ',', ' ') . ' ' . $facture->devise . '.'
         };
 
-        $resetAction = '';
-        if (in_array($facture->statut, ['payee', 'partiellement_payee']) && \App\Helpers\Auth::hasAnyRole(['caissiere', 'chef_agence', 'caissiere_principale', 'assistant_dg', 'dg'])) {
-            $resetAction = '<form method="post" action="' . View::url('finance/factures/' . $facture->id . '/reinitialiser') . '" style="display:inline-block; margin-top:0.4rem;" onsubmit="return confirm(\'⚠️ Êtes-vous sûr de vouloir annuler l\\\'encaissement erroné et remettre cette facture à l\\\'état ÉMISE ?\');">'
-                . Form::hidden('_csrf_token', \App\Helpers\Csrf::token())
-                . '<button type="submit" style="padding:0.45rem 0.9rem; background:#d97706; color:#ffffff; font-weight:700; border-radius:6px; border:none; cursor:pointer; font-size:0.8rem; display:inline-flex; align-items:center; gap:4px; box-shadow:0 2px 6px rgba(217,119,6,0.25);">'
-                . '↺ Erreur de saisie ? Remettre ÉMISE'
-                . '</button>'
-                . '</form>';
-        }
-
         $statusBanner = '<div style="background:' . $statusBannerBg . '; border:2px solid ' . $statusBannerColor . '; border-radius:12px; padding:1.2rem 1.5rem; margin-bottom:1.5rem; display:flex; justify-content:space-between; align-items:center;">'
-            . '<div><div style="font-weight:800; font-size:1.05rem; color:#0f172a;">' . $statusMessage . '</div>' . $resetAction . '</div>'
+            . '<div style="font-weight:800; font-size:1.05rem; color:#0f172a;">' . $statusMessage . '</div>'
             . '<div><strong style="font-size:1.3rem; color:' . $statusBannerColor . ';">' . number_format($facture->montantRestant, 0, ',', ' ') . ' ' . View::e($facture->devise) . '</strong><br><small style="color:#64748b;">Reste à payer</small></div>'
             . '</div>';
 
