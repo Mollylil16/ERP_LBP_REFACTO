@@ -406,7 +406,7 @@ final class ColisageController extends ColisageBaseController
     {
         RoleMiddleware::check(['chef_agence', 'caissiere_principale', 'assistant_dg', 'dg']);
 
-        if (Auth::hasRole('assistant_dg') && !Auth::isAdmin() && !Auth::hasRole('dg')) {
+        if (Auth::isAssistantDg()) {
             Session::flash('error', "Action non autorisée : L'Assistant DG dispose de la consultation globale mais ne peut pas effectuer de suppressions.");
             header('Location: ' . View::url('colisage/parcels'));
             exit;

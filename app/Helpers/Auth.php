@@ -82,6 +82,18 @@ class Auth
     }
 
     /**
+     * Vérifie si l'utilisateur est strictement Assistant DG (hors administrateur).
+     */
+    public static function isAssistantDg(): bool
+    {
+        $user = self::user();
+        if (!$user || $user->isAdmin) {
+            return false;
+        }
+        return in_array('assistant_dg', $user->roles, true);
+    }
+
+    /**
      * Vérifie si l'utilisateur connecté possède un rôle particulier (ou au moins un de la liste si un tableau est transmis).
      *
      * @param string|array<string> $role
