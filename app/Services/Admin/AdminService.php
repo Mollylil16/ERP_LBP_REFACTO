@@ -121,9 +121,10 @@ class AdminService
         $data['status'] = $user->status;
         $rhProfile = $user->rhEmployeeId ? $this->personnel->find((int) $user->rhEmployeeId) : null;
         if ($rhProfile) {
-            $data['full_name'] = (string) $rhProfile['full_name'];
-            $data['email'] = strtolower(trim((string) $rhProfile['email']));
-            $data['phone'] = $rhProfile['phone'] ?: null;
+            $data['full_name'] = !empty($rhProfile['full_name']) ? (string) $rhProfile['full_name'] : $user->fullName;
+            $rhEmail = strtolower(trim((string) ($rhProfile['email'] ?? '')));
+            $data['email'] = filter_var($rhEmail, FILTER_VALIDATE_EMAIL) ? $rhEmail : $user->email;
+            $data['phone'] = $rhProfile['phone'] ?: $user->phone;
             if (!filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
                 throw new RuntimeException('L’adresse email du profil RH est invalide.');
             }
