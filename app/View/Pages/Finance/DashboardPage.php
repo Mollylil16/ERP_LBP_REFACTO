@@ -28,25 +28,70 @@ final class DashboardPage
         array $recentEtats,
         public readonly array $trendData = []
     ) {
+        $tauxChange = (float) ($stats['taux_change_eur'] ?? 655.957);
+        if ($tauxChange <= 0) {
+            $tauxChange = 655.957;
+        }
+
+        $rawFactureXof = (float) ($stats['facture_xof'] ?? 0.0);
+        $rawFactureEur = (float) ($stats['facture_eur'] ?? 0.0);
+
+        $rawEncaisseXof = (float) ($stats['encaisse_xof'] ?? 0.0);
+        $rawEncaisseEur = (float) ($stats['encaisse_eur'] ?? 0.0);
+
+        $rawRestantXof = (float) ($stats['restant_xof'] ?? 0.0);
+        $rawRestantEur = (float) ($stats['restant_eur'] ?? 0.0);
+
+        $globalFactureXof = $rawFactureXof + ($rawFactureEur * $tauxChange);
+        $globalFactureEur = $rawFactureEur + ($rawFactureXof / $tauxChange);
+
+        $globalEncaisseXof = $rawEncaisseXof + ($rawEncaisseEur * $tauxChange);
+        $globalEncaisseEur = $rawEncaisseEur + ($rawEncaisseXof / $tauxChange);
+
+        $globalRestantXof = $rawRestantXof + ($rawRestantEur * $tauxChange);
+        $globalRestantEur = $rawRestantEur + ($rawRestantXof / $tauxChange);
+
+        $isEurAgency = !empty($stats['is_eur_agency']);
+
+        if ($isEurAgency) {
+            $factureMain = number_format($globalFactureEur, 2, ',', ' ') . ' EUR';
+            $factureMeta = '≈ ' . number_format($globalFactureXof, 0, ',', ' ') . ' FCFA';
+
+            $encaisseMain = number_format($globalEncaisseEur, 2, ',', ' ') . ' EUR';
+            $encaisseMeta = '≈ ' . number_format($globalEncaisseXof, 0, ',', ' ') . ' FCFA';
+
+            $restantMain = number_format($globalRestantEur, 2, ',', ' ') . ' EUR';
+            $restantMeta = '≈ ' . number_format($globalRestantXof, 0, ',', ' ') . ' FCFA';
+        } else {
+            $factureMain = number_format($globalFactureXof, 0, ',', ' ') . ' XOF';
+            $factureMeta = '≈ ' . number_format($globalFactureEur, 2, ',', ' ') . ' €';
+
+            $encaisseMain = number_format($globalEncaisseXof, 0, ',', ' ') . ' XOF';
+            $encaisseMeta = '≈ ' . number_format($globalEncaisseEur, 2, ',', ' ') . ' €';
+
+            $restantMain = number_format($globalRestantXof, 0, ',', ' ') . ' XOF';
+            $restantMeta = '≈ ' . number_format($globalRestantEur, 2, ',', ' ') . ' €';
+        }
+
         $this->kpis = [
             [
                 'label' => 'Total Facturé',
-                'value' => number_format($stats['facture_xof'] ?? 0, 0, ',', ' ') . ' XOF',
-                'meta' => number_format($stats['facture_eur'] ?? 0, 2, ',', ' ') . ' EUR',
+                'value' => $factureMain,
+                'meta' => $factureMeta,
                 'tone' => 'primary',
                 'href' => 'finance/factures'
             ],
             [
                 'label' => 'Fonds Encaissés',
-                'value' => number_format($stats['encaisse_xof'] ?? 0, 0, ',', ' ') . ' XOF',
-                'meta' => number_format($stats['encaisse_eur'] ?? 0, 2, ',', ' ') . ' EUR',
+                'value' => $encaisseMain,
+                'meta' => $encaisseMeta,
                 'tone' => 'success',
                 'href' => 'finance/factures'
             ],
             [
                 'label' => 'Reste à Recouvrer',
-                'value' => number_format($stats['restant_xof'] ?? 0, 0, ',', ' ') . ' XOF',
-                'meta' => number_format($stats['restant_eur'] ?? 0, 2, ',', ' ') . ' EUR',
+                'value' => $restantMain,
+                'meta' => $restantMeta,
                 'tone' => 'warning',
                 'href' => 'finance/factures'
             ],

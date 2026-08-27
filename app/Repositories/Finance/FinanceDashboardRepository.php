@@ -23,6 +23,18 @@ final class FinanceDashboardRepository extends \App\Repositories\Shared\ModuleDa
      */
     public function getFinanceStats(): array
     {
+        // Dynamic exchange rate
+        $tauxChange = 655.957;
+        try {
+            $stmtRate = $this->pdo->query("SELECT setting_value FROM company_settings WHERE setting_key = 'taux_change_eur' LIMIT 1");
+            if ($stmtRate) {
+                $val = $stmtRate->fetchColumn();
+                if (is_numeric($val) && (float)$val > 0) {
+                    $tauxChange = (float) $val;
+                }
+            }
+        } catch (\Throwable $e) {}
+
         // 1. Sum total facturé, encaissé et restant dû par devise
         $stmt = $this->pdo->query("
             SELECT devise,
@@ -42,6 +54,8 @@ final class FinanceDashboardRepository extends \App\Repositories\Shared\ModuleDa
             'encaisse_eur' => 0.0,
             'restant_xof' => 0.0,
             'restant_eur' => 0.0,
+            'taux_change_eur' => $tauxChange,
+            'is_eur_agency' => false,
         ];
 
         foreach ($factureTotals as $row) {
@@ -55,6 +69,19 @@ final class FinanceDashboardRepository extends \App\Repositories\Shared\ModuleDa
                 $kpis['encaisse_eur'] = (float) $row['total_encaisse'];
                 $kpis['restant_eur'] = (float) $row['total_restant'];
             }
+        }
+
+        // Check user agency currency
+        $userAgId = \App\Helpers\Auth::agenceId();
+        if ($userAgId !== null && $userAgId > 0) {
+            try {
+                $stmtAg = $this->pdo->prepare("SELECT code, country_code FROM company_sites WHERE id = :id LIMIT 1");
+                $stmtAg->execute(['id' => $userAgId]);
+                $ag = $stmtAg->fetch(PDO::FETCH_ASSOC);
+                if ($ag && (str_contains(strtoupper((string) $ag['code']), 'FR') || strtoupper((string) ($ag['country_code'] ?? '')) === 'FR')) {
+                    $kpis['is_eur_agency'] = true;
+                }
+            } catch (\Throwable $e) {}
         }
 
         // 2. Count pending supplier payouts
