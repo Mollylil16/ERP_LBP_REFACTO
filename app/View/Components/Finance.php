@@ -937,7 +937,7 @@ final class Finance
                     . '</div>'
                     . '<div style="display:grid; grid-template-columns: 1fr 1fr; gap:1.25rem; margin-top:1rem;">'
                     . Form::input('explication_ecart', ['label' => 'Explication de l\'écart éventuel (ex: monnaie en attente)', 'placeholder' => 'Préciser les motifs de l\'écart', 'id' => 'explication_ecart_input'])
-                    . Form::file('justificatif_ecart_file', ['label' => '📎 Pièce justificative d\'écart (Optionnel - Photo/PDF)', 'id' => 'justificatif_ecart_file'])
+                    . Form::input('justificatif_ecart_file', ['label' => '📎 Pièce justificative d\'écart (Optionnel - Photo/PDF)', 'type' => 'file', 'id' => 'justificatif_ecart_file'])
                     . '</div>'
                     . '<div style="margin-top:1.25rem; display:flex; justify-content:flex-end;">'
                     . Ui::button('Soumettre & Verrouiller la Caisse', ['type' => 'submit', 'variant' => 'accent'])

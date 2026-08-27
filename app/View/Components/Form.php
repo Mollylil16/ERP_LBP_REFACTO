@@ -50,6 +50,14 @@ final class Form
     }
 
     /** @param string|array<string,mixed> $labelOrOptions @param array<string,mixed> $attrs */
+    public static function file(string $name, string|array $labelOrOptions = [], mixed $value = '', array $attrs = []): string
+    {
+        [$label, $value, $attrs] = self::normalizeFieldArguments($labelOrOptions, $value, $attrs);
+        $attrs['type'] = 'file';
+        return self::input($name, $label, $value, $attrs);
+    }
+
+    /** @param string|array<string,mixed> $labelOrOptions @param array<string,mixed> $attrs */
     public static function textarea(string $name, string|array $labelOrOptions = [], mixed $value = '', array $attrs = []): string
     {
         [$label, $value, $attrs] = self::normalizeFieldArguments($labelOrOptions, $value, $attrs);

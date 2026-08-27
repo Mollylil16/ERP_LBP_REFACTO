@@ -70,31 +70,19 @@ final class FinanceController extends FinanceBaseController
             'agence_id' => $_GET['agence_id'] ?? '',
         ];
 
-        // Restriction de scope
-        if (!Auth::hasAnyRole(['caissiere_principale', 'superviseur_general', 'assistant_dg', 'dg', 'comptable'])) {
-            // Rôles locaux
-            if (Auth::hasRole('superviseur_regional')) {
-                // Doit filtrer par sa région. Pour simplifier, on récupère les agences de sa région
-                $user = Auth::user();
-                $regionId = $user->zoneRegionaleId;
-                if ($regionId !== null) {
-                    $stmt = $this->db->prepare("SELECT id FROM company_sites WHERE zone_regionale_id = :region_id");
-                    $stmt->execute(['region_id' => $regionId]);
-                    $siteIds = $stmt->fetchAll(PDO::FETCH_COLUMN) ?: [-1];
-                    $factures = [];
-                    foreach ($siteIds as $siteId) {
-                        $filters['agence_id'] = $siteId;
-                        $factures = array_merge($factures, $this->factureRepo->getFacturesGlobal($filters));
-                    }
-                } else {
-                    $factures = [];
-                }
-            } else {
-                // Agent local
-                $factures = $this->factureRepo->getFacturesByAgence((int) Auth::agenceId(), $filters);
-            }
+        // Restriction de scope : les utilisateurs locaux ne voient STRICTEMENT QUE les factures de leur agence
+        $userAgId = Auth::agenceId();
+        $isGlobalRole = Auth::isAdmin() || Auth::hasAnyRole(['caissiere_principale', 'superviseur_general', 'assistant_dg', 'dg', 'comptable']);
+
+        if (!$isGlobalRole && $userAgId !== null && $userAgId > 0) {
+            $filters['agence_id'] = $userAgId;
+            $factures = $this->factureRepo->getFacturesByAgence((int) $userAgId, $filters);
         } else {
-            $factures = $this->factureRepo->getFacturesGlobal($filters);
+            if (!empty($filters['agence_id'])) {
+                $factures = $this->factureRepo->getFacturesByAgence((int) $filters['agence_id'], $filters);
+            } else {
+                $factures = $this->factureRepo->getFacturesGlobal($filters);
+            }
         }
 
         // Hydrater les jointures colis et clients pour l'affichage
