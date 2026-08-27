@@ -1040,7 +1040,7 @@ final class Colisage
             . '<div class="finea-section-card-nested" style="background: rgba(249, 115, 22, 0.05); padding: 1rem; border: 1px solid rgba(249, 115, 22, 0.1); border-radius: 8px;">'
             . '<strong>Zone Aéroportuaire</strong><p style="margin-top: 0.5rem; font-size: 0.9rem; color: #475569;">Aéroport Port Bouët Fret</p></div>'
             . '<div class="finea-section-card-nested" style="background: rgba(249, 115, 22, 0.05); padding: 1rem; border: 1px solid rgba(249, 115, 22, 0.1); border-radius: 8px;">'
-            . '<strong>Côte d\'Ivoire (Abidjan)</strong><p style="margin-top: 0.5rem; font-size: 0.9rem; color: #475569;">Siege Abidjan, Abobo Dokui, Adjamé Pharmacie Latin</p></div>'
+            . '<strong>Côte d\'Ivoire (Abidjan)</strong><p style="margin-top: 0.5rem; font-size: 0.9rem; color: #475569;">Abobo Dokui, Adjamé Pharmacie Latin</p></div>'
             . '</div></div>';
     }
 

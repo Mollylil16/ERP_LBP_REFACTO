@@ -1563,9 +1563,6 @@ class MigrationRunner
     {
         $stmt = $this->pdo->prepare("INSERT IGNORE INTO company_sites (name, code, country, city, is_active) VALUES (:name, :code, :country, :city, 1)");
         foreach ([
-            ['Siege Abidjan','ABJ-HQ','Cote d Ivoire','Abidjan'],
-            ['Agence San Pedro','SPY','Cote d Ivoire','San Pedro'],
-            ['Bureau international','INTL','International', null],
             ['Paris 17 chemin des Vignes 93000 Bobigny','FRA','France','Bobigny'],
             ['Agence Sénégal','SEN','Sénégal','Dakar'],
             ['Aéroport Port Bouët Fret','ABJ-FRET','Cote d Ivoire','Abidjan'],
@@ -3135,6 +3132,39 @@ class MigrationRunner
                 ) m ON c.id = m.colis_id
                 SET c.nombre_colis = m.total_nbre
             ");
+        } catch (\Throwable $e) {}
+
+        $this->deleteUnwantedAgencies();
+    }
+
+    private function deleteUnwantedAgencies(): void
+    {
+        try {
+            $stmtFallback = $this->pdo->query("SELECT id FROM company_sites WHERE name LIKE '%Dokui%' OR code = 'ABO-DOK' LIMIT 1");
+            $fallbackId = $stmtFallback ? (int) $stmtFallback->fetchColumn() : 0;
+            if ($fallbackId <= 0) {
+                $stmtFallback2 = $this->pdo->query("SELECT id FROM company_sites WHERE code NOT IN ('ABJ-HQ', 'SPY', 'INTL') LIMIT 1");
+                $fallbackId = $stmtFallback2 ? (int) $stmtFallback2->fetchColumn() : 3403;
+            }
+
+            $stmtFind = $this->pdo->query("
+                SELECT id FROM company_sites 
+                WHERE name IN ('Siege Abidjan', 'Agence Siege Abidjan', 'Agence San Pedro', 'San Pedro', 'Bureau international', 'Bureau International')
+                   OR code IN ('ABJ-HQ', 'SPY', 'INTL')
+            ");
+            $unwantedIds = $stmtFind ? $stmtFind->fetchAll(PDO::FETCH_COLUMN) : [];
+
+            if (!empty($unwantedIds)) {
+                $inClause = implode(',', array_map('intval', $unwantedIds));
+
+                $this->pdo->exec("UPDATE lbp_users SET agence_id = {$fallbackId} WHERE agence_id IN ({$inClause})");
+                $this->pdo->exec("UPDATE lbp_colis SET agence_depart_id = {$fallbackId} WHERE agence_depart_id IN ({$inClause})");
+                $this->pdo->exec("UPDATE lbp_colis SET agence_arrivee_id = {$fallbackId} WHERE agence_arrivee_id IN ({$inClause})");
+                $this->pdo->exec("UPDATE lbp_factures SET agence_id = {$fallbackId} WHERE agence_id IN ({$inClause})");
+                $this->pdo->exec("UPDATE lbp_etats_journaliers SET agence_id = {$fallbackId} WHERE agence_id IN ({$inClause})");
+
+                $this->pdo->exec("DELETE FROM company_sites WHERE id IN ({$inClause})");
+            }
         } catch (\Throwable $e) {}
     }
 }
