@@ -47,4 +47,13 @@ final class FinanceDashboardService extends \App\Services\Shared\AbstractModuleD
     {
         return $this->financeRepository->getRecentEcritures($limit);
     }
+
+    /**
+     * Get encaissements trend data
+     * @return array<int, array<string, mixed>>
+     */
+    public function getEncaissementsTrendData(): array
+    {
+        return $this->financeRepository->getEncaissementsTrendData();
+    }
 }

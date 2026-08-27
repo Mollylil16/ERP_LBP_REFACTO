@@ -46,6 +46,7 @@ final class Finance
             'title' => 'Actions Financières',
             'class' => 'finea-section-card',
         ]);
+        $trendWidget = self::encaissementsTrendWidget($page->trendData);
 
         return $style
             . '<div class="finea-shell">'
@@ -54,6 +55,9 @@ final class Finance
             . '<div class="rh-dashboard-grid" style="margin-top: 2rem;">'
             . '<div class="rh-dashboard-main">'
             . $kpis
+            . '<div style="margin-top: 2rem;">'
+            . $trendWidget
+            . '</div>'
             . '<div style="margin-top: 2rem;">'
             . $recentFactures
             . '</div>'
@@ -68,6 +72,95 @@ final class Finance
             . '</div>'
             . '</div>'
             . '</div>';
+    }
+
+    public static function encaissementsTrendWidget(array $trendData = []): string
+    {
+        $labelsJson = json_encode(array_column($trendData, 'label'));
+        $especesJson = json_encode(array_column($trendData, 'especes'));
+        $mobileJson = json_encode(array_column($trendData, 'mobile'));
+
+        $totalEspeces = array_sum(array_column($trendData, 'especes'));
+        $totalMobile = array_sum(array_column($trendData, 'mobile'));
+
+        return '
+        <div class="finea-section-card" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 1.5rem; box-shadow: 0 4px 16px rgba(15,23,42,0.04);">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.2rem; flex-wrap: wrap; gap: 1rem;">
+                <div>
+                    <span style="font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: #2563eb; background: #eff6ff; padding: 4px 10px; border-radius: 20px;">Analyse d\'Affluence & Encaissements</span>
+                    <h3 style="font-size: 1.25rem; font-weight: 800; color: #0f172a; margin-top: 0.4rem;">📊 Tendance des Encaissements (30 derniers jours)</h3>
+                    <p style="color: #64748b; font-size: 0.88rem; margin-top: 0.2rem;">Comparatif visuel des flux Espèces vs Mobile Money pour repérer les jours de forte affluence.</p>
+                </div>
+                <div style="display: flex; gap: 1.5rem; align-items: center; background: #f8fafc; padding: 8px 16px; border-radius: 10px; border: 1px solid #e2e8f0;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="width: 12px; height: 12px; border-radius: 50%; background: #16a34a; display: inline-block;"></span>
+                        <span style="font-size: 0.85rem; font-weight: 700; color: #1e293b;">Espèces : <strong>' . number_format($totalEspeces, 0, ',', ' ') . ' F</strong></span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="width: 12px; height: 12px; border-radius: 50%; background: #0284c7; display: inline-block;"></span>
+                        <span style="font-size: 0.85rem; font-weight: 700; color: #1e293b;">Mobile Money & Banque : <strong>' . number_format($totalMobile, 0, ',', ' ') . ' F</strong></span>
+                    </div>
+                </div>
+            </div>
+
+            <div style="position: relative; height: 280px; width: 100%;">
+                <canvas id="financeTrendChartCanvas"></canvas>
+            </div>
+        </div>
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+        <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const ctx = document.getElementById("financeTrendChartCanvas");
+            if (!ctx) return;
+            new Chart(ctx, {
+                type: "bar",
+                data: {
+                    labels: ' . $labelsJson . ',
+                    datasets: [
+                        {
+                            label: "Espèces (FCFA)",
+                            data: ' . $especesJson . ',
+                            backgroundColor: "#16a34a",
+                            borderRadius: 6,
+                            stack: "Stack 0"
+                        },
+                        {
+                            label: "Mobile Money / Virement (FCFA)",
+                            data: ' . $mobileJson . ',
+                            backgroundColor: "#0284c7",
+                            borderRadius: 6,
+                            stack: "Stack 0"
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: "bottom" },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.dataset.label + ": " + new Intl.NumberFormat("fr-FR").format(context.raw) + " FCFA";
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: { grid: { display: false } },
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return new Intl.NumberFormat("fr-FR").format(value) + " F";
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        });
+        </script>';
     }
 
     public static function recentFactures(array $rows): string

@@ -127,4 +127,50 @@ final class FinanceDashboardRepository extends \App\Repositories\Shared\ModuleDa
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
     }
+    /**
+     * Get encaissements trend data for the last 30 days
+     * @return array<int, array<string, mixed>>
+     */
+    public function getEncaissementsTrendData(): array
+    {
+        $stmt = $this->pdo->query("
+            SELECT DATE(date_paiement) as date_p,
+                   mode_paiement,
+                   SUM(montant) as total
+            FROM lbp_paiements
+            WHERE date_paiement >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+            GROUP BY DATE(date_paiement), mode_paiement
+            ORDER BY date_p ASC
+        ");
+        $rows = $stmt ? $stmt->fetchAll(PDO::FETCH_ASSOC) : [];
+
+        // Structure graph dates for last 30 days
+        $trend = [];
+        for ($i = 29; $i >= 0; $i--) {
+            $dayStr = date('Y-m-d', strtotime("-{$i} days"));
+            $dayLabel = date('d/m', strtotime("-{$i} days"));
+            $trend[$dayStr] = [
+                'label' => $dayLabel,
+                'especes' => 0.0,
+                'mobile' => 0.0,
+                'total' => 0.0,
+            ];
+        }
+
+        foreach ($rows as $row) {
+            $d = $row['date_p'] ?? '';
+            if (isset($trend[$d])) {
+                $montant = (float) $row['total'];
+                $mode = strtoupper(trim((string)($row['mode_paiement'] ?? 'ESPECES')));
+                if (in_array($mode, ['ESPECES', 'CASH'], true)) {
+                    $trend[$d]['especes'] += $montant;
+                } else {
+                    $trend[$d]['mobile'] += $montant;
+                }
+                $trend[$d]['total'] += $montant;
+            }
+        }
+
+        return array_values($trend);
+    }
 }

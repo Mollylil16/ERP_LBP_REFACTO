@@ -25,7 +25,8 @@ final class DashboardPage
         public readonly array $stats,
         array $recentFactures,
         array $recentEcritures,
-        array $recentEtats
+        array $recentEtats,
+        public readonly array $trendData = []
     ) {
         $this->kpis = [
             [

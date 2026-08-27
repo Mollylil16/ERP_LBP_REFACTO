@@ -29,12 +29,14 @@ final class FinanceDashboardController extends FinanceBaseController
         $recentFactures = $this->service->getRecentFactures(5);
         $recentEtats = $this->service->getRecentEtats(5);
         $recentEcritures = $this->service->getRecentEcritures(5);
+        $trendData = $this->service->getEncaissementsTrendData();
 
         $page = new \App\View\Pages\Finance\DashboardPage(
             $stats,
             $recentFactures,
             $recentEcritures,
-            $recentEtats
+            $recentEtats,
+            $trendData
         );
 
         $this->financeView('finance/dashboard', 'Tableau de bord ' . (string) $module['label'], 'dashboard', [
