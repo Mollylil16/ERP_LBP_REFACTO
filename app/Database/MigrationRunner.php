@@ -3084,8 +3084,8 @@ class MigrationRunner
     private function fixSiakaDiarraAgencyAssignment(): void
     {
         try {
-            // Find agency ID for Dokui
-            $stmtDokui = $this->pdo->query("SELECT id FROM company_sites WHERE name LIKE '%Dokui%' OR code LIKE '%DOKUI%' LIMIT 1");
+            // Find agency ID for Dokui / Abobo Dokui
+            $stmtDokui = $this->pdo->query("SELECT id FROM company_sites WHERE name LIKE '%Dokui%' OR name LIKE '%Abobo%' OR code LIKE '%DOKUI%' OR code LIKE '%ABOBO%' LIMIT 1");
             $dokuiId = $stmtDokui ? (int) $stmtDokui->fetchColumn() : 0;
 
             if ($dokuiId > 0) {
