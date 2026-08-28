@@ -1,19 +1,23 @@
 <?php
 use App\Helpers\View;
 
-/** @var string $selectedDate */
+/** @var string $dateStart */
+/** @var string $dateEnd */
 /** @var string $agenceName */
 /** @var array<int, array<string, mixed>> $parcels */
 /** @var int $totalSaisies */
 /** @var int $totalNombreColis */
 /** @var float $totalPoids */
 
+$dateDisplay = ($dateStart === $dateEnd)
+    ? date('d/m/Y', strtotime($dateStart))
+    : 'du ' . date('d/m/Y', strtotime($dateStart)) . ' au ' . date('d/m/Y', strtotime($dateEnd));
 ?>
 <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Suivi Colisage Agence - <?= View::e($agenceName) ?> - <?= date('d/m/Y', strtotime($selectedDate)) ?></title>
+    <title>Suivi Colisage Agence - <?= View::e($agenceName) ?> - <?= View::e($dateDisplay) ?></title>
     <style>
         @page {
             size: A4 landscape;
@@ -131,7 +135,7 @@ use App\Helpers\View;
         </div>
         <div class="meta-info">
             <div><strong>Agence :</strong> <?= View::e($agenceName) ?></div>
-            <div><strong>Date sélectionnée :</strong> <?= date('d/m/Y', strtotime($selectedDate)) ?></div>
+            <div><strong>Période :</strong> <?= View::e($dateDisplay) ?></div>
             <div><strong>Date d'impression :</strong> <?= date('d/m/Y H:i') ?></div>
         </div>
     </div>
@@ -171,7 +175,7 @@ use App\Helpers\View;
             <?php if (empty($parcels)): ?>
                 <tr>
                     <td colspan="11" class="text-center" style="padding: 20px; color: #64748b;">
-                        Aucun colis enregistré le <?= date('d/m/Y', strtotime($selectedDate)) ?> pour cette sélection.
+                        Aucun colis enregistré <?= View::e($dateDisplay) ?> pour cette sélection.
                     </td>
                 </tr>
             <?php else: ?>

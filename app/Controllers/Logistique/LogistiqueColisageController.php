@@ -22,10 +22,7 @@ final class LogistiqueColisageController extends LogistiqueBaseController
     {
         AuthMiddleware::check();
 
-        $selectedDate = $_GET['date'] ?? date('Y-m-d');
-        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $selectedDate)) {
-            $selectedDate = date('Y-m-d');
-        }
+        [$period, $dateStart, $dateEnd] = $this->resolveDates();
 
         // Selected agence filter (default: current logged in user agence if set, else 0/all)
         $userAgenceId = $_SESSION['user']['agence_id'] ?? null;
@@ -35,8 +32,8 @@ final class LogistiqueColisageController extends LogistiqueBaseController
         $sitesStmt = $this->pdo->query("SELECT id, name, code, city FROM company_sites WHERE is_active = 1 ORDER BY name ASC");
         $sites = $sitesStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
-        // Fetch parcels for selected agence and date
-        $parcels = $this->fetchColisData($selectedAgenceId, $selectedDate);
+        // Fetch parcels for selected agence and date range
+        $parcels = $this->fetchColisData($selectedAgenceId, $dateStart, $dateEnd);
 
         // KPI aggregates (WITHOUT monetary values)
         $totalSaisies = count($parcels);
@@ -52,7 +49,9 @@ final class LogistiqueColisageController extends LogistiqueBaseController
 
         $this->logistiqueView('logistique/colisage', 'Suivi Colisage Agences', 'colisage', $module, [
             'sites' => $sites,
-            'selectedDate' => $selectedDate,
+            'period' => $period,
+            'dateStart' => $dateStart,
+            'dateEnd' => $dateEnd,
             'selectedAgenceId' => $selectedAgenceId,
             'parcels' => $parcels,
             'kpis' => [
@@ -67,13 +66,10 @@ final class LogistiqueColisageController extends LogistiqueBaseController
     {
         AuthMiddleware::check();
 
-        $selectedDate = $_GET['date'] ?? date('Y-m-d');
-        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $selectedDate)) {
-            $selectedDate = date('Y-m-d');
-        }
+        [$period, $dateStart, $dateEnd] = $this->resolveDates();
 
         $selectedAgenceId = isset($_GET['agence_id']) ? (int) $_GET['agence_id'] : 0;
-        $parcels = $this->fetchColisData($selectedAgenceId, $selectedDate);
+        $parcels = $this->fetchColisData($selectedAgenceId, $dateStart, $dateEnd);
 
         $agenceName = 'Toutes les agences';
         if ($selectedAgenceId > 0) {
@@ -93,13 +89,10 @@ final class LogistiqueColisageController extends LogistiqueBaseController
     {
         AuthMiddleware::check();
 
-        $selectedDate = $_GET['date'] ?? date('Y-m-d');
-        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $selectedDate)) {
-            $selectedDate = date('Y-m-d');
-        }
+        [$period, $dateStart, $dateEnd] = $this->resolveDates();
 
         $selectedAgenceId = isset($_GET['agence_id']) ? (int) $_GET['agence_id'] : 0;
-        $parcels = $this->fetchColisData($selectedAgenceId, $selectedDate);
+        $parcels = $this->fetchColisData($selectedAgenceId, $dateStart, $dateEnd);
 
         $agenceName = 'Toutes les agences';
         if ($selectedAgenceId > 0) {
@@ -108,7 +101,8 @@ final class LogistiqueColisageController extends LogistiqueBaseController
             $agenceName = $stmt->fetchColumn() ?: 'Agence #' . $selectedAgenceId;
         }
 
-        $filename = 'suivi_colisage_' . preg_replace('/[^a-zA-Z0-9_\-]/', '_', $agenceName) . '_' . $selectedDate . '.xls';
+        $dateSuffix = ($dateStart === $dateEnd) ? $dateStart : $dateStart . '_to_' . $dateEnd;
+        $filename = 'suivi_colisage_' . preg_replace('/[^a-zA-Z0-9_\-]/', '_', $agenceName) . '_' . $dateSuffix . '.xls';
 
         header('Content-Type: application/vnd.ms-excel; charset=utf-8');
         header('Content-Disposition: attachment; filename="' . $filename . '"');
@@ -119,11 +113,60 @@ final class LogistiqueColisageController extends LogistiqueBaseController
     }
 
     /**
+     * Resolves the start and end dates based on the period.
+     *
+     * @return array{0: string, 1: string, 2: string} [period, dateStart, dateEnd]
+     */
+    private function resolveDates(): array
+    {
+        $period = $_GET['period'] ?? 'today';
+        $dateStart = $_GET['date_start'] ?? null;
+        $dateEnd = $_GET['date_end'] ?? null;
+        $datePattern = '/^\d{4}-\d{2}-\d{2}$/';
+
+        if ($period !== 'custom' || empty($dateStart) || empty($dateEnd) || !preg_match($datePattern, $dateStart) || !preg_match($datePattern, $dateEnd)) {
+            $today = new \DateTime();
+            switch ($period) {
+                case 'yesterday':
+                    $yesterday = clone $today;
+                    $yesterday->modify('-1 day');
+                    $dateStart = $yesterday->format('Y-m-d');
+                    $dateEnd = $yesterday->format('Y-m-d');
+                    break;
+                case 'this_week':
+                    $startOfWeek = clone $today;
+                    $startOfWeek->setISODate((int)$today->format('o'), (int)$today->format('W'), 1); // Monday
+                    $endOfWeek = clone $startOfWeek;
+                    $endOfWeek->modify('+6 days'); // Sunday
+                    $dateStart = $startOfWeek->format('Y-m-d');
+                    $dateEnd = $endOfWeek->format('Y-m-d');
+                    break;
+                case 'this_month':
+                    $dateStart = $today->format('Y-m-01');
+                    $dateEnd = $today->format('Y-m-t');
+                    break;
+                case 'this_year':
+                    $dateStart = $today->format('Y-01-01');
+                    $dateEnd = $today->format('Y-12-31');
+                    break;
+                case 'today':
+                default:
+                    $dateStart = $today->format('Y-m-d');
+                    $dateEnd = $today->format('Y-m-d');
+                    $period = 'today';
+                    break;
+            }
+        }
+
+        return [$period, $dateStart, $dateEnd];
+    }
+
+    /**
      * Fetch parcels for logistique consultation (STRICTLY WITHOUT MONETARY AMOUNTS).
      *
      * @return array<int, array<string, mixed>>
      */
-    private function fetchColisData(int $agenceId, string $date): array
+    private function fetchColisData(int $agenceId, string $dateStart, string $dateEnd): array
     {
         $sql = "
             SELECT 
@@ -151,10 +194,13 @@ final class LogistiqueColisageController extends LogistiqueBaseController
             LEFT JOIN company_sites arr ON c.agence_arrivee_id = arr.id
             LEFT JOIN users u ON c.agent_groupage_id = u.id
             LEFT JOIN trajets t ON c.trajet_id = t.id
-            WHERE DATE(c.created_at) = :date
+            WHERE DATE(c.created_at) BETWEEN :date_start AND :date_end
         ";
 
-        $params = ['date' => $date];
+        $params = [
+            'date_start' => $dateStart,
+            'date_end' => $dateEnd,
+        ];
 
         if ($agenceId > 0) {
             $sql .= " AND (c.agence_depart_id = :agence_id1 OR c.agence_arrivee_id = :agence_id2)";

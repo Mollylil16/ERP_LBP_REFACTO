@@ -312,9 +312,14 @@ final class Logistique
      * @param array<int, array<string, mixed>> $parcels
      * @param array<string, mixed> $kpis
      */
-    public static function colisageSuiviPage(array $sites, string $selectedDate, int $selectedAgenceId, array $parcels, array $kpis): string
+    public static function colisageSuiviPage(array $sites, string $period, string $dateStart, string $dateEnd, int $selectedAgenceId, array $parcels, array $kpis): string
     {
-        $exportQuery = http_build_query(['agence_id' => $selectedAgenceId, 'date' => $selectedDate]);
+        $exportQuery = http_build_query([
+            'agence_id' => $selectedAgenceId,
+            'period' => $period,
+            'date_start' => $dateStart,
+            'date_end' => $dateEnd
+        ]);
 
         $header = Ui::pageHeader(
             'Suivi Colisage Agences',
@@ -334,9 +339,20 @@ final class Logistique
             $siteOpts[] = ['value' => (string) $s['id'], 'label' => $s['name'] . (!empty($s['code']) ? ' (' . $s['code'] . ')' : '')];
         }
 
-        $filterForm = '<form method="get" action="' . View::url('logistique/colisage') . '" class="rh-form-grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)) auto; align-items:end;">'
+        $periodOpts = [
+            ['value' => 'today', 'label' => "Aujourd'hui"],
+            ['value' => 'yesterday', 'label' => 'Hier'],
+            ['value' => 'this_week', 'label' => 'Cette semaine'],
+            ['value' => 'this_month', 'label' => 'Ce mois-ci'],
+            ['value' => 'this_year', 'label' => 'Cette année'],
+            ['value' => 'custom', 'label' => 'Période personnalisée'],
+        ];
+
+        $filterForm = '<form method="get" action="' . View::url('logistique/colisage') . '" class="rh-form-grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)) auto; align-items:end;">'
             . Form::select('agence_id', $siteOpts, (string) $selectedAgenceId, ['label' => 'Agence de saisie'])
-            . Form::input('date', ['label' => 'Date de saisie', 'type' => 'date', 'value' => $selectedDate])
+            . Form::select('period', $periodOpts, $period, ['label' => 'Période', 'id' => 'filter-period'])
+            . Form::input('date_start', ['label' => 'Date de début', 'type' => 'date', 'value' => $dateStart, 'id' => 'filter-date-start'])
+            . Form::input('date_end', ['label' => 'Date de fin', 'type' => 'date', 'value' => $dateEnd, 'id' => 'filter-date-end'])
             . '<div>' . Ui::button('Filtrer', ['type' => 'submit', 'variant' => 'primary']) . '</div>'
             . '</form>';
 
@@ -346,12 +362,82 @@ final class Logistique
             ['label' => 'Poids total (tonnage)', 'value' => number_format((float) ($kpis['totalPoids'] ?? 0), 2, ',', ' ') . ' kg', 'tone' => 'success'],
         ]);
 
+        $dateDisplay = ($dateStart === $dateEnd)
+            ? date('d/m/Y', strtotime($dateStart))
+            : 'du ' . date('d/m/Y', strtotime($dateStart)) . ' au ' . date('d/m/Y', strtotime($dateEnd));
+
         $tableHtml = self::colisageSuiviTable($parcels);
         $tableSection = Ui::section(
-            'Liste des colis enregistrés le ' . date('d/m/Y', strtotime($selectedDate)),
+            'Liste des colis enregistrés ' . $dateDisplay,
             $tableHtml,
             count($parcels) . ' entrée(s)'
         );
+
+        $jsScript = '<script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const periodSelect = document.getElementById("filter-period");
+            const dateStartInput = document.getElementById("filter-date-start");
+            const dateEndInput = document.getElementById("filter-date-end");
+
+            if (periodSelect && dateStartInput && dateEndInput) {
+                periodSelect.addEventListener("change", function() {
+                    const val = this.value;
+                    if (val === "custom") return;
+
+                    const today = new Date();
+                    let start = new Date();
+                    let end = new Date();
+
+                    const format = (d) => {
+                        const yyyy = d.getFullYear();
+                        const mm = String(d.getMonth() + 1).padStart(2, "0");
+                        const dd = String(d.getDate()).padStart(2, "0");
+                        return `${yyyy}-${mm}-${dd}`;
+                    };
+
+                    switch (val) {
+                        case "today":
+                            start = today;
+                            end = today;
+                            break;
+                        case "yesterday":
+                            const yesterday = new Date(today);
+                            yesterday.setDate(today.getDate() - 1);
+                            start = yesterday;
+                            end = yesterday;
+                            break;
+                        case "this_week":
+                            const day = today.getDay();
+                            const diff = today.getDate() - day + (day === 0 ? -6 : 1);
+                            const monday = new Date(today);
+                            monday.setDate(diff);
+                            const sunday = new Date(monday);
+                            sunday.setDate(monday.getDate() + 6);
+                            start = monday;
+                            end = sunday;
+                            break;
+                        case "this_month":
+                            start = new Date(today.getFullYear(), today.getMonth(), 1);
+                            end = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+                            break;
+                        case "this_year":
+                            start = new Date(today.getFullYear(), 0, 1);
+                            end = new Date(today.getFullYear(), 11, 31);
+                            break;
+                    }
+
+                    dateStartInput.value = format(start);
+                    dateEndInput.value = format(end);
+                });
+
+                const setCustom = () => {
+                    periodSelect.value = "custom";
+                };
+                dateStartInput.addEventListener("change", setCustom);
+                dateEndInput.addEventListener("change", setCustom);
+            }
+        });
+        </script>';
 
         return '<div class="finea-shell">'
             . '<div class="finea-container">'
@@ -360,7 +446,8 @@ final class Logistique
             . $kpisHtml
             . '<div style="margin-top: 1.5rem;">' . $tableSection . '</div>'
             . '</div>'
-            . '</div>';
+            . '</div>'
+            . $jsScript;
     }
 
     /** @param array<int, array<string, mixed>> $parcels */

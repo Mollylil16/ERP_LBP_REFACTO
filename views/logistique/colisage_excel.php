@@ -1,9 +1,14 @@
 <?php
 use App\Helpers\View;
 
-/** @var string $selectedDate */
+/** @var string $dateStart */
+/** @var string $dateEnd */
 /** @var string $agenceName */
 /** @var array<int, array<string, mixed>> $parcels */
+
+$dateDisplay = ($dateStart === $dateEnd) 
+    ? date('d/m/Y', strtotime($dateStart)) 
+    : 'du ' . date('d/m/Y', strtotime($dateStart)) . ' au ' . date('d/m/Y', strtotime($dateEnd));
 
 ?>
 <!DOCTYPE html>
@@ -30,7 +35,7 @@ use App\Helpers\View;
         <tr>
             <td colspan="10" class="meta">
                 <b>Agence :</b> <?= View::e($agenceName) ?> | 
-                <b>Date :</b> <?= date('d/m/Y', strtotime($selectedDate)) ?> | 
+                <b>Période :</b> <?= View::e($dateDisplay) ?> | 
                 <b>Généré le :</b> <?= date('d/m/Y H:i') ?>
             </td>
         </tr>
