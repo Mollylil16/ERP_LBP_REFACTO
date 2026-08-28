@@ -1838,10 +1838,17 @@ final class FinanceController extends FinanceBaseController
 
         $id = (int) $id;
         $facture = null;
-        $paiement = $this->paiementRepo->findById($id);
+        $uri = $_SERVER['REQUEST_URI'] ?? '';
 
-        if ($paiement && $paiement->factureId) {
-            $facture = $this->factureRepo->findById($paiement->factureId);
+        if (str_contains($uri, '/factures/')) {
+            $facture = $this->factureRepo->findById($id);
+        }
+
+        if (!$facture) {
+            $paiement = $this->paiementRepo->findById($id);
+            if ($paiement && $paiement->factureId) {
+                $facture = $this->factureRepo->findById($paiement->factureId);
+            }
         }
 
         if (!$facture) {
