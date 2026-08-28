@@ -5,4 +5,4 @@ use App\View\Components\Finance;
 /** @var \App\Support\ViewBag $viewData */ 
 $viewData ??= \App\Support\ViewBag::from(get_defined_vars());
 
-echo Finance::facturesTable($factures, $filters, $agences);
+echo Finance::facturesTable($factures, $filters, $agences, $pagination ?? []);

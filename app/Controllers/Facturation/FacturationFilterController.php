@@ -39,6 +39,7 @@ final class FacturationFilterController extends FacturationBaseController
         [$canSeeAllAgencies, $selectedAgenceId] = $this->resolveAgenceFilter();
 
         $selectedTrajet = trim((string) ($_GET['trajet'] ?? 'all'));
+        $searchQuery = trim((string) ($_GET['q'] ?? ''));
 
         // Build date range (handles cross-year periods)
         $startDate = sprintf('%04d-%02d-01 00:00:00', $startYear, $startMonth);
@@ -54,7 +55,7 @@ final class FacturationFilterController extends FacturationBaseController
         $trajets = $trajetsStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
         // Aggregate statistics over the WHOLE filtered range (not just the current page)
-        $agg = $this->aggregateFilteredFactures($startDate, $endDate, $selectedAgenceId, $selectedTrajet);
+        $agg = $this->aggregateFilteredFactures($startDate, $endDate, $selectedAgenceId, $selectedTrajet, $searchQuery);
         $totalCount = (int) $agg['total_count'];
 
         $perPage = 50;
@@ -62,7 +63,7 @@ final class FacturationFilterController extends FacturationBaseController
         $page = max(1, min($totalPages, (int) ($_GET['page'] ?? 1)));
         $offset = ($page - 1) * $perPage;
 
-        $results = $this->fetchFilteredFactures($startDate, $endDate, $selectedAgenceId, $selectedTrajet, $perPage, $offset);
+        $results = $this->fetchFilteredFactures($startDate, $endDate, $selectedAgenceId, $selectedTrajet, $searchQuery, $perPage, $offset);
 
         $this->renderView('facturation/filtre', [
             'pageTitle' => 'Recherche & Filtres Facturation',
@@ -72,6 +73,7 @@ final class FacturationFilterController extends FacturationBaseController
             'endYear' => $endYear,
             'selectedAgenceId' => $selectedAgenceId,
             'selectedTrajet' => $selectedTrajet,
+            'searchQuery' => $searchQuery,
             'canSeeAllAgencies' => $canSeeAllAgencies,
             'sites' => $sites,
             'trajets' => $trajets,
@@ -98,7 +100,7 @@ final class FacturationFilterController extends FacturationBaseController
         if (!Auth::isAdmin() && !Auth::isFacturationPrivileged() && !Auth::can(PermissionEntityRegistry::EXPORTER_FACTURATION_AVEC_MONTANT)) {
             Session::flash('error', "Vous n'avez pas l'autorisation d'exporter les données de facturation.");
             header('Location: ' . View::url('facturation/filtre'));
-            exit;
+            return;
         }
 
         $currentYear = (int) date('Y');
@@ -109,23 +111,28 @@ final class FacturationFilterController extends FacturationBaseController
         $endMonth = isset($_GET['end_month']) ? (int) $_GET['end_month'] : $currentMonth;
         $endYear = isset($_GET['end_year']) ? (int) $_GET['end_year'] : $currentYear;
 
-        [, $selectedAgenceId] = $this->resolveAgenceFilter();
+        [$canSeeAllAgencies, $selectedAgenceId] = $this->resolveAgenceFilter();
         $selectedTrajet = trim((string) ($_GET['trajet'] ?? 'all'));
+        $searchQuery = trim((string) ($_GET['q'] ?? ''));
 
         $startDate = sprintf('%04d-%02d-01 00:00:00', $startYear, $startMonth);
-        $lastDay = date('t', strtotime(sprintf('%04d-%02d-01', $endYear, $endMonth)));
-        $endDate = sprintf('%04d-%02d-%02d 23:59:59', $endYear, $endMonth, (int)$lastDay);
+        $lastDayOfEndMonth = date('t', strtotime(sprintf('%04d-%02d-01', $endYear, $endMonth)));
+        $endDate = sprintf('%04d-%02d-%02d 23:59:59', $endYear, $endMonth, (int)$lastDayOfEndMonth);
 
-        $results = $this->fetchFilteredFactures($startDate, $endDate, $selectedAgenceId, $selectedTrajet);
+        $results = $this->fetchFilteredFactures($startDate, $endDate, $selectedAgenceId, $selectedTrajet, $searchQuery);
+        $agg = $this->aggregateFilteredFactures($startDate, $endDate, $selectedAgenceId, $selectedTrajet, $searchQuery);
 
-        $agenceLabel = 'Toutes les agences';
-        if ($selectedAgenceId > 0) {
-            $stmt = $this->pdo->prepare("SELECT name FROM company_sites WHERE id = :id LIMIT 1");
-            $stmt->execute(['id' => $selectedAgenceId]);
-            $agenceLabel = $stmt->fetchColumn() ?: 'Agence #' . $selectedAgenceId;
-        }
-
-        require BASE_PATH . '/views/facturation/filtre_pdf.php';
+        $pdfService = new FacturationPdfExportService();
+        $pdfService->generateFilteredFacturesReport([
+            'results' => $results,
+            'kpis' => [
+                'totalCount' => (int) $agg['total_count'],
+                'totalMontantXof' => (float) $agg['total_montant'],
+                'totalPoids' => (float) $agg['total_poids'],
+                'totalColis' => (int) $agg['total_colis'],
+            ],
+            'period' => sprintf('%02d/%04d au %02d/%04d', $startMonth, $startYear, $endMonth, $endYear),
+        ]);
     }
 
     public function exportExcel(): void
@@ -135,7 +142,7 @@ final class FacturationFilterController extends FacturationBaseController
         if (!Auth::isAdmin() && !Auth::isFacturationPrivileged() && !Auth::can(PermissionEntityRegistry::EXPORTER_FACTURATION_AVEC_MONTANT)) {
             Session::flash('error', "Vous n'avez pas l'autorisation d'exporter les données de facturation.");
             header('Location: ' . View::url('facturation/filtre'));
-            exit;
+            return;
         }
 
         $currentYear = (int) date('Y');
@@ -146,30 +153,28 @@ final class FacturationFilterController extends FacturationBaseController
         $endMonth = isset($_GET['end_month']) ? (int) $_GET['end_month'] : $currentMonth;
         $endYear = isset($_GET['end_year']) ? (int) $_GET['end_year'] : $currentYear;
 
-        [, $selectedAgenceId] = $this->resolveAgenceFilter();
+        [$canSeeAllAgencies, $selectedAgenceId] = $this->resolveAgenceFilter();
         $selectedTrajet = trim((string) ($_GET['trajet'] ?? 'all'));
+        $searchQuery = trim((string) ($_GET['q'] ?? ''));
 
         $startDate = sprintf('%04d-%02d-01 00:00:00', $startYear, $startMonth);
-        $lastDay = date('t', strtotime(sprintf('%04d-%02d-01', $endYear, $endMonth)));
-        $endDate = sprintf('%04d-%02d-%02d 23:59:59', $endYear, $endMonth, (int)$lastDay);
+        $lastDayOfEndMonth = date('t', strtotime(sprintf('%04d-%02d-01', $endYear, $endMonth)));
+        $endDate = sprintf('%04d-%02d-%02d 23:59:59', $endYear, $endMonth, (int)$lastDayOfEndMonth);
 
-        $results = $this->fetchFilteredFactures($startDate, $endDate, $selectedAgenceId, $selectedTrajet);
+        $results = $this->fetchFilteredFactures($startDate, $endDate, $selectedAgenceId, $selectedTrajet, $searchQuery);
+        $agg = $this->aggregateFilteredFactures($startDate, $endDate, $selectedAgenceId, $selectedTrajet, $searchQuery);
 
-        $agenceLabel = 'Toutes les agences';
-        if ($selectedAgenceId > 0) {
-            $stmt = $this->pdo->prepare("SELECT name FROM company_sites WHERE id = :id LIMIT 1");
-            $stmt->execute(['id' => $selectedAgenceId]);
-            $agenceLabel = $stmt->fetchColumn() ?: 'Agence #' . $selectedAgenceId;
-        }
-
-        $filename = 'facturation_filtree_' . $startMonth . '_' . $startYear . '_a_' . $endMonth . '_' . $endYear . '.xls';
-
-        header('Content-Type: application/vnd.ms-excel; charset=utf-8');
-        header('Content-Disposition: attachment; filename="' . $filename . '"');
-        header('Cache-Control: max-age=0');
-
-        echo "\xEF\xBB\xBF"; // UTF-8 BOM
-        require BASE_PATH . '/views/facturation/filtre_excel.php';
+        $excelService = new FacturationExcelExportService();
+        $excelService->generateFilteredFacturesCsv([
+            'results' => $results,
+            'kpis' => [
+                'totalCount' => (int) $agg['total_count'],
+                'totalMontantXof' => (float) $agg['total_montant'],
+                'totalPoids' => (float) $agg['total_poids'],
+                'totalColis' => (int) $agg['total_colis'],
+            ],
+            'period' => sprintf('%02d/%04d au %02d/%04d', $startMonth, $startYear, $endMonth, $endYear),
+        ]);
     }
 
     /**
@@ -193,7 +198,7 @@ final class FacturationFilterController extends FacturationBaseController
     /**
      * @return array{0: string, 1: array<string, mixed>} [$whereClause, $params]
      */
-    private function buildFilterConditions(string $startDate, string $endDate, int $agenceId, string $trajetCode): array
+    private function buildFilterConditions(string $startDate, string $endDate, int $agenceId, string $trajetCode, string $searchQuery = ''): array
     {
         $conditions = ['f.date_emission >= :start_date', 'f.date_emission <= :end_date'];
         $params = [
@@ -212,6 +217,16 @@ final class FacturationFilterController extends FacturationBaseController
             $params['trajet_code2'] = $trajetCode;
         }
 
+        if ($searchQuery !== '') {
+            $conditions[] = '(f.numero_facture LIKE :q1 OR c.numero_tracking LIKE :q2 OR c.code_suivi LIKE :q3 OR cl.name LIKE :q4 OR cl.phone LIKE :q5)';
+            $like = '%' . $searchQuery . '%';
+            $params['q1'] = $like;
+            $params['q2'] = $like;
+            $params['q3'] = $like;
+            $params['q4'] = $like;
+            $params['q5'] = $like;
+        }
+
         return [implode(' AND ', $conditions), $params];
     }
 
@@ -220,9 +235,9 @@ final class FacturationFilterController extends FacturationBaseController
      *
      * @return array{total_count: int, total_montant: float, total_poids: float, total_colis: int}
      */
-    private function aggregateFilteredFactures(string $startDate, string $endDate, int $agenceId, string $trajetCode): array
+    private function aggregateFilteredFactures(string $startDate, string $endDate, int $agenceId, string $trajetCode, string $searchQuery = ''): array
     {
-        [$where, $params] = $this->buildFilterConditions($startDate, $endDate, $agenceId, $trajetCode);
+        [$where, $params] = $this->buildFilterConditions($startDate, $endDate, $agenceId, $trajetCode, $searchQuery);
 
         $sql = "
             SELECT
@@ -232,6 +247,7 @@ final class FacturationFilterController extends FacturationBaseController
                 COALESCE(SUM(c.nombre_colis), 0) AS total_colis
             FROM lbp_factures f
             JOIN lbp_colis c ON f.colis_id = c.id
+            LEFT JOIN lbp_clients cl ON f.client_id = cl.id
             LEFT JOIN trajets t ON COALESCE(f.trajet_id, c.trajet_id) = t.id
             WHERE {$where}
         ";
@@ -247,10 +263,11 @@ final class FacturationFilterController extends FacturationBaseController
         string $endDate,
         int $agenceId,
         string $trajetCode,
+        string $searchQuery = '',
         ?int $limit = null,
         ?int $offset = null
     ): array {
-        [$where, $params] = $this->buildFilterConditions($startDate, $endDate, $agenceId, $trajetCode);
+        [$where, $params] = $this->buildFilterConditions($startDate, $endDate, $agenceId, $trajetCode, $searchQuery);
 
         $sql = "
             SELECT

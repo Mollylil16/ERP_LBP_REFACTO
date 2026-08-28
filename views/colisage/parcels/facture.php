@@ -25,6 +25,7 @@ if ($montantTotal <= 0.0) {
 }
 
 // Convert/fetch EUR amount
+$db = \App\Models\Database::getConnection();
 $montantEur = (float) ($colis['montant_total_eur'] ?? 0.0);
 if ($montantEur <= 0.0 && $montantTotal > 0.0) {
     if ($devise === 'XOF') {
@@ -45,7 +46,6 @@ if ($montantEur <= 0.0 && $montantTotal > 0.0) {
 }
 
 // Fetch the associated invoice to get the payment link
-$db = \App\Models\Database::getConnection();
 $factureRepo = new \App\Repositories\Finance\FactureRepository($db);
 $facture = $factureRepo->findByColisId((int) $colis['id']);
 

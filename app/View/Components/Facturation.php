@@ -72,11 +72,12 @@ final class Facturation
         int $endYear,
         int $selectedAgenceId,
         string $selectedTrajet,
-        bool $canSeeAllAgencies,
-        array $sites,
-        array $trajets,
-        array $results,
-        array $kpis,
+        string $searchQuery = '',
+        bool $canSeeAllAgencies = true,
+        array $sites = [],
+        array $trajets = [],
+        array $results = [],
+        array $kpis = [],
         array $pagination = ['currentPage' => 1, 'totalPages' => 1, 'itemsPerPage' => 50, 'totalItems' => 0]
     ): string {
         $months = View::monthNames();
@@ -89,6 +90,7 @@ final class Facturation
             'end_year' => $endYear,
             'agence_id' => $selectedAgenceId,
             'trajet' => $selectedTrajet,
+            'q' => $searchQuery,
         ]);
 
         $header = Ui::pageHeader(
@@ -129,6 +131,12 @@ final class Facturation
             $trajetOpts[] = ['value' => $t['code'], 'label' => $t['code'] . ' — ' . $t['libelle'] . ' (' . strtoupper((string) $t['type_transport']) . ')'];
         }
 
+        $qInput = Form::input('q', [
+            'label' => 'Recherche (N° Colis / N° Facture / Client)',
+            'value' => $searchQuery,
+            'placeholder' => 'ex: LB-CI-020, FA-3403-2026-000019...',
+        ]);
+
         $filterForm = '<form method="get" action="' . View::url('facturation/filtre') . '" class="rh-form-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); align-items:end;">'
             . '<div><label class="rh-eyebrow" style="display:block; margin-bottom:0.35rem;">Période Début (Mois / Année)</label>'
             . '<div style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem;">'
@@ -142,6 +150,7 @@ final class Facturation
             . '</div></div>'
             . Form::select('agence_id', $agenceOpts, (string) $selectedAgenceId, ['label' => 'Agence d\'expédition', 'disabled' => !$canSeeAllAgencies])
             . Form::select('trajet', $trajetOpts, $selectedTrajet, ['label' => 'Trajet spécifique'])
+            . $qInput
             . '<div>' . Ui::button('Filtrer les factures', ['type' => 'submit', 'variant' => 'primary']) . '</div>'
             . '</form>';
 

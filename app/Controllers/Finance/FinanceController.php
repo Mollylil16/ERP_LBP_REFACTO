@@ -86,8 +86,18 @@ final class FinanceController extends FinanceBaseController
             $factures = $this->factureRepo->getFacturesGlobal($filters);
         }
 
+        // Pagination: 25 factures par page
+        $perPage = 25;
+        $page = max(1, (int) ($_GET['page'] ?? 1));
+        $totalItems = count($factures);
+        $totalPages = max(1, (int) ceil($totalItems / $perPage));
+        $page = min($page, $totalPages);
+        $offset = ($page - 1) * $perPage;
+
+        $pagedFactures = array_slice($factures, $offset, $perPage);
+
         // Hydrater les jointures colis et clients pour l'affichage
-        foreach ($factures as $f) {
+        foreach ($pagedFactures as $f) {
             $stmt = $this->db->prepare("SELECT numero_tracking FROM lbp_colis WHERE id = :id LIMIT 1");
             $stmt->execute(['id' => $f->colisId]);
             $f->colis_tracking = $stmt->fetchColumn() ?: '';
@@ -100,9 +110,15 @@ final class FinanceController extends FinanceBaseController
         $agences = $this->db->query("SELECT id, name FROM company_sites WHERE is_active = 1")->fetchAll() ?: [];
 
         $this->financeView('finance/factures/index', 'Gestion de la Facturation', 'factures', [
-            'factures' => $factures,
+            'factures' => $pagedFactures,
             'filters' => $filters,
             'agences' => $agences,
+            'pagination' => [
+                'currentPage' => $page,
+                'totalPages' => $totalPages,
+                'itemsPerPage' => $perPage,
+                'totalItems' => $totalItems,
+            ],
         ]);
     }
 

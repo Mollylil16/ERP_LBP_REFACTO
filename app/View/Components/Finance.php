@@ -249,7 +249,7 @@ final class Finance
     /**
      * Rendu de la liste des factures.
      */
-    public static function facturesTable(array $factures, array $filters = [], array $agences = []): string
+    public static function facturesTable(array $factures, array $filters = [], array $agences = [], array $pagination = []): string
     {
         $header = Ui::pageHeader(
             'Gestion de la Facturation',
@@ -269,9 +269,9 @@ final class Finance
 
         // Formulaire de filtre
         $q = Form::input('q', [
-            'label' => 'Recherche',
+            'label' => 'Recherche (N° Facture / Code Colis / Client)',
             'value' => (string) ($filters['q'] ?? ''),
-            'placeholder' => 'N° Facture, Client...',
+            'placeholder' => 'ex: LB-CI-020, FA-3403-2026-000019, Katy...',
         ]);
 
         $statusOpts = [
@@ -339,8 +339,6 @@ final class Finance
                     'class' => 'finea-button-sm'
                 ]);
 
-
-
                 $canEditInvoice = (\App\Helpers\Auth::isAdmin() || \App\Helpers\Auth::hasRole('dg')) && !\App\Helpers\Auth::isAssistantDg();
                 if ($canEditInvoice) {
                     $actionsStr .= ' <a href="' . View::url('facturation/factures/' . $f->id . '/modifier') . '" class="finea-button finea-button-sm" style="display:inline-flex; align-items:center; gap:4px; background:#2563eb; color:#ffffff; border:none; padding:6px 12px; border-radius:6px; font-weight:600; text-decoration:none; font-size:0.8rem;" title="Modifier cette facture"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg> Modifier</a>';
@@ -367,6 +365,32 @@ final class Finance
                     . '</tr>';
             }
 
+            $paginationHtml = '';
+            if (!empty($pagination) && ($pagination['totalPages'] ?? 1) > 1) {
+                $currentPage = (int) ($pagination['currentPage'] ?? 1);
+                $totalPages = (int) ($pagination['totalPages'] ?? 1);
+                $totalItems = (int) ($pagination['totalItems'] ?? 0);
+
+                $queryParams = $_GET;
+
+                $prevBtn = '';
+                if ($currentPage > 1) {
+                    $queryParams['page'] = $currentPage - 1;
+                    $prevBtn = '<a href="' . View::url('finance/factures?' . http_build_query($queryParams)) . '" class="finea-button finea-button--secondary finea-button-sm">« Précédent</a>';
+                }
+
+                $nextBtn = '';
+                if ($currentPage < $totalPages) {
+                    $queryParams['page'] = $currentPage + 1;
+                    $nextBtn = '<a href="' . View::url('finance/factures?' . http_build_query($queryParams)) . '" class="finea-button finea-button--secondary finea-button-sm">Suivant »</a>';
+                }
+
+                $paginationHtml = '<div style="display:flex; justify-content:space-between; align-items:center; margin-top:1.25rem; padding-top:1rem; border-top:1px solid #e2e8f0; font-size:0.88rem; color:#64748b;">'
+                    . '<div>Page <strong>' . $currentPage . '</strong> sur <strong>' . $totalPages . '</strong> (' . $totalItems . ' factures au total)</div>'
+                    . '<div style="display:flex; gap:0.5rem;">' . $prevBtn . $nextBtn . '</div>'
+                    . '</div>';
+            }
+
             $tableHtml = '<div class="finea-table-wrapper">'
                 . '<table class="finea-table">'
                 . '<thead>'
@@ -383,7 +407,8 @@ final class Finance
                 . '</thead>'
                 . '<tbody>' . $rows . '</tbody>'
                 . '</table>'
-                . '</div>';
+                . '</div>'
+                . $paginationHtml;
         }
 
         return '<div class="finea-shell">'

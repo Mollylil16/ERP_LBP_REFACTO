@@ -24,6 +24,7 @@ echo Facturation::filtrePage(
     $endYear,
     $selectedAgenceId,
     $selectedTrajet,
+    $searchQuery ?? '',
     $canSeeAllAgencies,
     $sites,
     $trajets,
