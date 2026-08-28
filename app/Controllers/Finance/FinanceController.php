@@ -64,25 +64,26 @@ final class FinanceController extends FinanceBaseController
     {
         RoleMiddleware::check(['caissiere', 'caissiere_principale', 'chef_agence', 'dg', 'comptable', 'superviseur_regional', 'superviseur_general']);
 
+        $userAgId = Auth::agenceId();
+        $selectedAgence = $_GET['agence_id'] ?? null;
+        $typeEnvoi = trim((string) ($_GET['type_envoi'] ?? ''));
+
         $filters = [
-            'q' => $_GET['q'] ?? '',
-            'statut' => $_GET['statut'] ?? '',
-            'agence_id' => $_GET['agence_id'] ?? '',
+            'q' => trim((string) ($_GET['q'] ?? '')),
+            'statut' => trim((string) ($_GET['statut'] ?? '')),
+            'agence_id' => $selectedAgence !== null ? (string)$selectedAgence : '',
+            'type_envoi' => $typeEnvoi,
         ];
 
-        // Restriction de scope : les utilisateurs locaux ne voient STRICTEMENT QUE les factures de leur agence
-        $userAgId = Auth::agenceId();
-        $isGlobalRole = Auth::isAdmin() || Auth::hasAnyRole(['caissiere_principale', 'superviseur_general', 'assistant_dg', 'dg', 'comptable']);
+        // Par défaut, si l'utilisateur est une caissière / caissière principale / chef d'agence et qu'aucun filtre d'agence n'est dans l'URL, limiter à son agence
+        if ($selectedAgence === null && $userAgId !== null && $userAgId > 0) {
+            $filters['agence_id'] = (string) $userAgId;
+        }
 
-        if (!$isGlobalRole && $userAgId !== null && $userAgId > 0) {
-            $filters['agence_id'] = $userAgId;
-            $factures = $this->factureRepo->getFacturesByAgence((int) $userAgId, $filters);
+        if (!empty($filters['agence_id']) && $filters['agence_id'] !== 'all' && (int)$filters['agence_id'] > 0) {
+            $factures = $this->factureRepo->getFacturesByAgence((int) $filters['agence_id'], $filters);
         } else {
-            if (!empty($filters['agence_id'])) {
-                $factures = $this->factureRepo->getFacturesByAgence((int) $filters['agence_id'], $filters);
-            } else {
-                $factures = $this->factureRepo->getFacturesGlobal($filters);
-            }
+            $factures = $this->factureRepo->getFacturesGlobal($filters);
         }
 
         // Hydrater les jointures colis et clients pour l'affichage

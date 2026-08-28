@@ -259,6 +259,13 @@ class FactureRepository
             $params['q1'] = $like;
             $params['q2'] = $like;
         }
+        if (($filters['type_envoi'] ?? '') !== '') {
+            $conditions[] = '(colis_id IN (SELECT id FROM lbp_colis WHERE numero_tracking LIKE :type1 OR trajet LIKE :type2) OR numero_facture LIKE :type3)';
+            $typeLike = '%' . trim($filters['type_envoi']) . '%';
+            $params['type1'] = $typeLike;
+            $params['type2'] = $typeLike;
+            $params['type3'] = $typeLike;
+        }
 
         $where = 'WHERE ' . implode(' AND ', $conditions);
         $stmt = $this->pdo->prepare("
@@ -275,7 +282,7 @@ class FactureRepository
         $conditions = [];
         $params = [];
 
-        if (($filters['agence_id'] ?? '') !== '' && (int)$filters['agence_id'] > 0) {
+        if (($filters['agence_id'] ?? '') !== '' && $filters['agence_id'] !== 'all' && (int)$filters['agence_id'] > 0) {
             $conditions[] = 'agence_id = :agence_id';
             $params['agence_id'] = (int)$filters['agence_id'];
         }
@@ -288,6 +295,13 @@ class FactureRepository
             $like = '%' . $filters['q'] . '%';
             $params['q1'] = $like;
             $params['q2'] = $like;
+        }
+        if (($filters['type_envoi'] ?? '') !== '') {
+            $conditions[] = '(colis_id IN (SELECT id FROM lbp_colis WHERE numero_tracking LIKE :type1 OR trajet LIKE :type2) OR numero_facture LIKE :type3)';
+            $typeLike = '%' . trim($filters['type_envoi']) . '%';
+            $params['type1'] = $typeLike;
+            $params['type2'] = $typeLike;
+            $params['type3'] = $typeLike;
         }
 
         $where = $conditions ? 'WHERE ' . implode(' AND ', $conditions) : '';

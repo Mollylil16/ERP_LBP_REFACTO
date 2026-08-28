@@ -284,13 +284,22 @@ final class Finance
         ];
         $status = Form::selectSearch('statut', $statusOpts, $filters['statut'] ?? '', ['label' => 'Statut']);
 
-        $agenceOpts = [['value' => '', 'label' => 'Toutes les agences']];
+        $typeOpts = [
+            ['value' => '', 'label' => 'Tous les types d\'envoi'],
+            ['value' => 'CA-CI', 'label' => 'CA-CI (Cargo Aérien CIV)'],
+            ['value' => 'LB-CI', 'label' => 'LB-CI (Maritime Express CIV)'],
+            ['value' => 'LB-FR', 'label' => 'LB-FR (France Express)'],
+            ['value' => 'LB-SN', 'label' => 'LB-SN (Sénégal)'],
+        ];
+        $typeEnvoiSelect = Form::selectSearch('type_envoi', $typeOpts, $filters['type_envoi'] ?? '', ['label' => 'Type d\'envoi']);
+
+        $agenceOpts = [['value' => 'all', 'label' => 'Toutes les agences']];
         foreach ($agences as $a) {
             $agenceOpts[] = ['value' => (string) $a['id'], 'label' => $a['name']];
         }
         $agenceSelect = Form::selectSearch('agence_id', $agenceOpts, $filters['agence_id'] ?? '', ['label' => 'Agence']);
 
-        $filterGrid = '<div class="rh-personnel-filter-grid">' . $q . $status . $agenceSelect . '</div>';
+        $filterGrid = '<div class="rh-personnel-filter-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem;">' . $q . $status . $typeEnvoiSelect . $agenceSelect . '</div>';
 
         $searchBtn = '<button type="submit" class="rh-filter-btn rh-filter-btn--primary">'
             . '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="rh-btn-icon"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>'
@@ -1006,6 +1015,43 @@ final class Finance
                 . '<div><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#2563eb" stroke-width="2" style="display:inline; margin-right:3px; vertical-align:-2px;"><rect x="5" y="2" width="14" height="20" rx="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg> Mobile Money / Carte : <strong style="color:#0f172a;">' . number_format($encDigital, 0, ',', ' ') . ' XOF</strong></div>'
                 . '<div><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#d97706" stroke-width="2" style="display:inline; margin-right:3px; vertical-align:-2px;"><rect x="3" y="4" width="18" height="16" rx="2"></rect><line x1="7" y1="8" x2="17" y2="8"></line></svg> Chèques / Virements : <strong style="color:#0f172a;">' . number_format($encCheque, 0, ',', ' ') . ' XOF</strong></div>'
                 . '</div>';
+
+            // Ventilation des encaissements par type d'envoi (LB-CI, CA-CI, LB-FR, etc.)
+            $breakdownList = $activeReport['breakdown_by_type'] ?? [];
+            if (!empty($breakdownList) && is_array($breakdownList)) {
+                $rowsType = '';
+                foreach ($breakdownList as $b) {
+                    $cType = View::e((string) ($b['code_type'] ?? 'DIVERS'));
+                    $nbF = (int) ($b['nb_factures'] ?? 0);
+                    $totF = number_format((float) ($b['total_facture'] ?? 0), 0, ',', ' ');
+                    $totE = number_format((float) ($b['total_encaisse'] ?? 0), 0, ',', ' ');
+
+                    $rowsType .= '<tr style="border-bottom:1px solid #e2e8f0;">'
+                        . '<td style="padding:8px 12px; font-weight:800; color:#1e3a5f;">' . $cType . '</td>'
+                        . '<td style="padding:8px 12px; text-align:center; font-weight:600;">' . $nbF . '</td>'
+                        . '<td style="padding:8px 12px; text-align:right; font-weight:600; color:#0f172a;">' . $totF . ' XOF</td>'
+                        . '<td style="padding:8px 12px; text-align:right; font-weight:800; color:#16a34a;">' . $totE . ' XOF</td>'
+                        . '</tr>';
+                }
+
+                $submissionForm .= '<div style="background:#ffffff; border:1px solid #cbd5e1; border-radius:10px; padding:1.25rem; margin-bottom:1.5rem; box-shadow:0 2px 8px rgba(15,23,42,0.02);">'
+                    . '<h4 style="margin:0 0 0.75rem 0; font-size:0.9rem; font-weight:800; color:#0f172a; text-transform:uppercase; letter-spacing:0.5px; display:flex; align-items:center; gap:6px;">'
+                    . '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#2563eb" stroke-width="2.5"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>'
+                    . 'Ventilation des Envois par Type (Fenêtre 15h–15h)'
+                    . '</h4>'
+                    . '<table style="width:100%; border-collapse:collapse; font-size:0.88rem;">'
+                    . '<thead>'
+                    . '<tr style="background:#f8fafc; border-bottom:2px solid #cbd5e1; text-align:left; color:#475569; font-weight:700;">'
+                    . '<th style="padding:8px 12px;">Type d\'envoi</th>'
+                    . '<th style="padding:8px 12px; text-align:center;">Factures</th>'
+                    . '<th style="padding:8px 12px; text-align:right;">Montant Facturé</th>'
+                    . '<th style="padding:8px 12px; text-align:right;">Montant Encaissé</th>'
+                    . '</tr>'
+                    . '</thead>'
+                    . '<tbody>' . $rowsType . '</tbody>'
+                    . '</table>'
+                    . '</div>';
+            }
 
             // Blind count submission form for local cashier / head cashier when brouillon
             $userAgId = Auth::agenceId();

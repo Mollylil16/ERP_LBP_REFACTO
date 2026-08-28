@@ -198,30 +198,60 @@ class EtatJournalierRepository
 
     public function computeTotalsForDay(int $agenceId, string $date): array
     {
-        // 1. Tonnage/nb colis créés
+        // Window 15h00-15h00: La journée de caisse pour $date va de (Jour-1 15:00:01) jusqu'à (Jour 15:00:00)
+        $windowStart = date('Y-m-d 15:00:01', strtotime($date . ' -1 day'));
+        $windowEnd = date('Y-m-d 15:00:00', strtotime($date));
+
+        // 1. Tonnage/nb colis créés dans la fenêtre 15h-15h
         $stmt = $this->pdo->prepare("
             SELECT COUNT(*) FROM lbp_colis 
-            WHERE agence_depart_id = :agence_id AND DATE(created_at) = :date
+            WHERE agence_depart_id = :agence_id AND created_at > :start AND created_at <= :end
         ");
-        $stmt->execute(['agence_id' => $agenceId, 'date' => $date]);
+        $stmt->execute(['agence_id' => $agenceId, 'start' => $windowStart, 'end' => $windowEnd]);
         $nbColis = (int) $stmt->fetchColumn();
 
-        // 2. Factures émises
+        // Fallback si aucun colis dans la fenêtre (support pour les données enregistrées sans heure précise)
+        if ($nbColis === 0) {
+            $stmt = $this->pdo->prepare("
+                SELECT COUNT(*) FROM lbp_colis 
+                WHERE agence_depart_id = :agence_id AND DATE(created_at) = :date
+            ");
+            $stmt->execute(['agence_id' => $agenceId, 'date' => $date]);
+            $nbColis = (int) $stmt->fetchColumn();
+        }
+
+        // 2. Factures émises dans la fenêtre 15h-15h
         $stmt = $this->pdo->prepare("
             SELECT 
                 COUNT(*) as nb_factures,
                 SUM(CASE WHEN devise = 'XOF' THEN montant_total ELSE 0 END) as total_xof,
                 SUM(CASE WHEN devise = 'EUR' THEN montant_total ELSE 0 END) as total_eur
             FROM lbp_factures
-            WHERE agence_id = :agence_id AND DATE(date_emission) = :date
+            WHERE agence_id = :agence_id AND date_emission > :start AND date_emission <= :end
         ");
-        $stmt->execute(['agence_id' => $agenceId, 'date' => $date]);
+        $stmt->execute(['agence_id' => $agenceId, 'start' => $windowStart, 'end' => $windowEnd]);
         $facRow = $stmt->fetch() ?: [];
         $nbFactures = (int) ($facRow['nb_factures'] ?? 0);
         $totalFactureXof = (float) ($facRow['total_xof'] ?? 0.0);
         $totalFactureEur = (float) ($facRow['total_eur'] ?? 0.0);
 
-        // 3. Encaissements réalisés ce jour (peu importe la date d'émission de la facture)
+        if ($nbFactures === 0) {
+            $stmt = $this->pdo->prepare("
+                SELECT 
+                    COUNT(*) as nb_factures,
+                    SUM(CASE WHEN devise = 'XOF' THEN montant_total ELSE 0 END) as total_xof,
+                    SUM(CASE WHEN devise = 'EUR' THEN montant_total ELSE 0 END) as total_eur
+                FROM lbp_factures
+                WHERE agence_id = :agence_id AND DATE(date_emission) = :date
+            ");
+            $stmt->execute(['agence_id' => $agenceId, 'date' => $date]);
+            $facRow = $stmt->fetch() ?: [];
+            $nbFactures = (int) ($facRow['nb_factures'] ?? 0);
+            $totalFactureXof = (float) ($facRow['total_xof'] ?? 0.0);
+            $totalFactureEur = (float) ($facRow['total_eur'] ?? 0.0);
+        }
+
+        // 3. Encaissements réalisés dans la fenêtre 15h-15h
         $stmt = $this->pdo->prepare("
             SELECT 
                 SUM(CASE WHEN p.devise = 'XOF' THEN p.montant ELSE 0 END) as encaisse_xof,
@@ -231,9 +261,9 @@ class EtatJournalierRepository
                 SUM(CASE WHEN p.devise = 'XOF' AND LOWER(COALESCE(p.mode, '')) = 'cheque' THEN p.montant ELSE 0 END) as encaisse_cheque_xof
             FROM lbp_paiements p
             JOIN lbp_factures f ON p.facture_id = f.id
-            WHERE f.agence_id = :agence_id AND DATE(p.date_paiement) = :date
+            WHERE f.agence_id = :agence_id AND p.date_paiement > :start AND p.date_paiement <= :end
         ");
-        $stmt->execute(['agence_id' => $agenceId, 'date' => $date]);
+        $stmt->execute(['agence_id' => $agenceId, 'start' => $windowStart, 'end' => $windowEnd]);
         $payRow = $stmt->fetch() ?: [];
         $totalEncaisseXof = (float) ($payRow['encaisse_xof'] ?? 0.0);
         $totalEncaisseEur = (float) ($payRow['encaisse_eur'] ?? 0.0);
@@ -241,18 +271,78 @@ class EtatJournalierRepository
         $encaisseDigitalXof = (float) ($payRow['encaisse_digital_xof'] ?? 0.0);
         $encaisseChequeXof = (float) ($payRow['encaisse_cheque_xof'] ?? 0.0);
 
+        if ($totalEncaisseXof <= 0 && $totalEncaisseEur <= 0) {
+            $stmt = $this->pdo->prepare("
+                SELECT 
+                    SUM(CASE WHEN p.devise = 'XOF' THEN p.montant ELSE 0 END) as encaisse_xof,
+                    SUM(CASE WHEN p.devise = 'EUR' THEN p.montant ELSE 0 END) as encaisse_eur,
+                    SUM(CASE WHEN p.devise = 'XOF' AND (LOWER(COALESCE(p.mode, 'especes')) = 'especes' OR LOWER(COALESCE(p.mode, 'especes')) = '') THEN p.montant ELSE 0 END) as encaisse_especes_xof,
+                    SUM(CASE WHEN p.devise = 'XOF' AND LOWER(COALESCE(p.mode, '')) IN ('wave', 'orange_money', 'mtn_momo', 'mobile_money', 'virement', 'carte') THEN p.montant ELSE 0 END) as encaisse_digital_xof,
+                    SUM(CASE WHEN p.devise = 'XOF' AND LOWER(COALESCE(p.mode, '')) = 'cheque' THEN p.montant ELSE 0 END) as encaisse_cheque_xof
+                FROM lbp_paiements p
+                JOIN lbp_factures f ON p.facture_id = f.id
+                WHERE f.agence_id = :agence_id AND DATE(p.date_paiement) = :date
+            ");
+            $stmt->execute(['agence_id' => $agenceId, 'date' => $date]);
+            $payRow = $stmt->fetch() ?: [];
+            $totalEncaisseXof = (float) ($payRow['encaisse_xof'] ?? 0.0);
+            $totalEncaisseEur = (float) ($payRow['encaisse_eur'] ?? 0.0);
+            $encaisseEspecesXof = (float) ($payRow['encaisse_especes_xof'] ?? 0.0);
+            $encaisseDigitalXof = (float) ($payRow['encaisse_digital_xof'] ?? 0.0);
+            $encaisseChequeXof = (float) ($payRow['encaisse_cheque_xof'] ?? 0.0);
+        }
+
         // 4. Reste à payer des factures émises ce jour
         $stmt = $this->pdo->prepare("
             SELECT 
                 SUM(CASE WHEN devise = 'XOF' THEN montant_restant ELSE 0 END) as restant_xof,
                 SUM(CASE WHEN devise = 'EUR' THEN montant_restant ELSE 0 END) as restant_eur
             FROM lbp_factures
-            WHERE agence_id = :agence_id AND DATE(date_emission) = :date
+            WHERE agence_id = :agence_id AND date_emission > :start AND date_emission <= :end
         ");
-        $stmt->execute(['agence_id' => $agenceId, 'date' => $date]);
+        $stmt->execute(['agence_id' => $agenceId, 'start' => $windowStart, 'end' => $windowEnd]);
         $restRow = $stmt->fetch() ?: [];
         $totalRestantDuXof = (float) ($restRow['restant_xof'] ?? 0.0);
         $totalRestantDuEur = (float) ($restRow['restant_eur'] ?? 0.0);
+
+        // 5. Ventilation par type d'envoi (LB-CI, CA-CI, LB-FR, LB-SN, etc.)
+        $stmtType = $this->pdo->prepare("
+            SELECT 
+                UPPER(COALESCE(
+                    NULLIF(SUBSTRING_INDEX(c.numero_tracking, '-', 2), ''),
+                    NULLIF(SUBSTRING_INDEX(c.trajet, ' ', 1), ''),
+                    'AUTRES'
+                )) as code_type,
+                COUNT(f.id) as nb_factures,
+                SUM(f.montant_total) as total_facture,
+                SUM(f.montant_encaisse) as total_encaisse
+            FROM lbp_factures f
+            JOIN lbp_colis c ON f.colis_id = c.id
+            WHERE f.agence_id = :agence_id AND f.date_emission > :start AND f.date_emission <= :end
+            GROUP BY code_type
+        ");
+        $stmtType->execute(['agence_id' => $agenceId, 'start' => $windowStart, 'end' => $windowEnd]);
+        $breakdownByType = $stmtType->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+        if (empty($breakdownByType)) {
+            $stmtType = $this->pdo->prepare("
+                SELECT 
+                    UPPER(COALESCE(
+                        NULLIF(SUBSTRING_INDEX(c.numero_tracking, '-', 2), ''),
+                        NULLIF(SUBSTRING_INDEX(c.trajet, ' ', 1), ''),
+                        'AUTRES'
+                    )) as code_type,
+                    COUNT(f.id) as nb_factures,
+                    SUM(f.montant_total) as total_facture,
+                    SUM(f.montant_encaisse) as total_encaisse
+                FROM lbp_factures f
+                JOIN lbp_colis c ON f.colis_id = c.id
+                WHERE f.agence_id = :agence_id AND DATE(f.date_emission) = :date
+                GROUP BY code_type
+            ");
+            $stmtType->execute(['agence_id' => $agenceId, 'date' => $date]);
+            $breakdownByType = $stmtType->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        }
 
         return [
             'nb_colis' => $nbColis,
@@ -266,8 +356,9 @@ class EtatJournalierRepository
             'encaisse_cheque_xof' => $encaisseChequeXof,
             'total_restant_du_xof' => $totalRestantDuXof,
             'total_restant_du_eur' => $totalRestantDuEur,
-            'solde_caisse_agence_xof' => $totalEncaisseXof, // Le solde physique de l'agence pour la journée
+            'solde_caisse_agence_xof' => $totalEncaisseXof,
             'solde_caisse_agence_eur' => $totalEncaisseEur,
+            'breakdown_by_type' => $breakdownByType,
         ];
     }
 
