@@ -218,13 +218,12 @@ final class FacturationFilterController extends FacturationBaseController
         }
 
         if ($searchQuery !== '') {
-            $conditions[] = '(f.numero_facture LIKE :q1 OR c.numero_tracking LIKE :q2 OR c.code_suivi LIKE :q3 OR cl.name LIKE :q4 OR cl.phone LIKE :q5)';
+            $conditions[] = '(f.numero_facture LIKE :q1 OR c.numero_tracking LIKE :q2 OR cl.name LIKE :q3 OR cl.phone LIKE :q4)';
             $like = '%' . $searchQuery . '%';
             $params['q1'] = $like;
             $params['q2'] = $like;
             $params['q3'] = $like;
             $params['q4'] = $like;
-            $params['q5'] = $like;
         }
 
         return [implode(' AND ', $conditions), $params];

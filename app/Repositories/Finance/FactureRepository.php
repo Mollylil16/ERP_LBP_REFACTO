@@ -254,13 +254,12 @@ class FactureRepository
             $params['statut'] = $filters['statut'];
         }
         if (($filters['q'] ?? '') !== '') {
-            $conditions[] = '(numero_facture LIKE :q1 OR colis_id IN (SELECT id FROM lbp_colis WHERE numero_tracking LIKE :q2 OR code_suivi LIKE :q3) OR client_id IN (SELECT id FROM lbp_clients WHERE name LIKE :q4 OR phone LIKE :q5))';
+            $conditions[] = '(numero_facture LIKE :q1 OR colis_id IN (SELECT id FROM lbp_colis WHERE numero_tracking LIKE :q2) OR client_id IN (SELECT id FROM lbp_clients WHERE name LIKE :q3 OR phone LIKE :q4))';
             $like = '%' . trim($filters['q']) . '%';
             $params['q1'] = $like;
             $params['q2'] = $like;
             $params['q3'] = $like;
             $params['q4'] = $like;
-            $params['q5'] = $like;
         }
         if (($filters['type_envoi'] ?? '') !== '') {
             $conditions[] = '(colis_id IN (SELECT id FROM lbp_colis WHERE numero_tracking LIKE :type1 OR trajet LIKE :type2) OR numero_facture LIKE :type3)';
@@ -294,13 +293,12 @@ class FactureRepository
             $params['statut'] = $filters['statut'];
         }
         if (($filters['q'] ?? '') !== '') {
-            $conditions[] = '(numero_facture LIKE :q1 OR colis_id IN (SELECT id FROM lbp_colis WHERE numero_tracking LIKE :q2 OR code_suivi LIKE :q3) OR client_id IN (SELECT id FROM lbp_clients WHERE name LIKE :q4 OR phone LIKE :q5))';
+            $conditions[] = '(numero_facture LIKE :q1 OR colis_id IN (SELECT id FROM lbp_colis WHERE numero_tracking LIKE :q2) OR client_id IN (SELECT id FROM lbp_clients WHERE name LIKE :q3 OR phone LIKE :q4))';
             $like = '%' . trim($filters['q']) . '%';
             $params['q1'] = $like;
             $params['q2'] = $like;
             $params['q3'] = $like;
             $params['q4'] = $like;
-            $params['q5'] = $like;
         }
         if (($filters['type_envoi'] ?? '') !== '') {
             $conditions[] = '(colis_id IN (SELECT id FROM lbp_colis WHERE numero_tracking LIKE :type1 OR trajet LIKE :type2) OR numero_facture LIKE :type3)';
