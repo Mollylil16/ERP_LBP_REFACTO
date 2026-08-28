@@ -887,6 +887,7 @@ final class FinanceController extends FinanceBaseController
             'date_exacte' => $_GET['date_exacte'] ?? '',
             'semaine' => $_GET['semaine'] ?? '',
             'mois' => $_GET['mois'] ?? '',
+            'annee' => $_GET['annee'] ?? '',
             'statut' => $_GET['statut'] ?? '',
         ];
 
@@ -897,23 +898,28 @@ final class FinanceController extends FinanceBaseController
             $reports = $this->etatRepo->getEtatsByAgence($selectedAgenceId, $filters);
         }
 
-        // Déterminer l'agence dont la caisse en direct est affichée
+        // Déterminer l'agence et la date dont la caisse est affichée
         $targetAgenceId = $selectedAgenceId;
         if ($targetAgenceId === 0 && !empty($agences)) {
             $targetAgenceId = (int) $agences[0]['id'];
         }
 
+        $targetDate = !empty($filters['date_exacte']) ? $filters['date_exacte'] : date('Y-m-d');
+
         $activeReport = null;
         if ($targetAgenceId > 0) {
-            $existing = $this->etatRepo->findByAgenceAndDate($targetAgenceId, $dateJour);
+            $existing = $this->etatRepo->findByAgenceAndDate($targetAgenceId, $targetDate);
+            $live = $this->etatRepo->computeTotalsForDay($targetAgenceId, $targetDate);
             if ($existing) {
                 $activeReport = (array) $existing;
+                $activeReport['breakdown_by_type'] = $live['breakdown_by_type'] ?? [];
+                $activeReport['encaisseEspecesXof'] = $live['encaisse_especes_xof'] ?? 0;
+                $activeReport['encaisseDigitalXof'] = $live['encaisse_digital_xof'] ?? 0;
+                $activeReport['encaisseChequeXof'] = $live['encaisse_cheque_xof'] ?? 0;
             } else {
-                // Calcul en direct pour affichage en temps réel
-                $live = $this->etatRepo->computeTotalsForDay($targetAgenceId, $dateJour);
                 $activeReport = $live + [
                     'statut' => 'brouillon',
-                    'date_jour' => $dateJour,
+                    'date_jour' => $targetDate,
                     'agence_id' => $targetAgenceId,
                 ];
             }

@@ -1119,6 +1119,7 @@ final class Finance
             . '<div style="flex:1; min-width:140px;">' . Form::input('date_exacte', ['label' => '📅 Jour Précis', 'type' => 'date', 'value' => (string)($filters['date_exacte'] ?? '')]) . '</div>'
             . '<div style="flex:1; min-width:140px;">' . Form::input('semaine', ['label' => '📆 Semaine', 'type' => 'week', 'value' => (string)($filters['semaine'] ?? '')]) . '</div>'
             . '<div style="flex:1; min-width:140px;">' . Form::input('mois', ['label' => '🗓️ Mois', 'type' => 'month', 'value' => (string)($filters['mois'] ?? '')]) . '</div>'
+            . '<div style="flex:1; min-width:120px;">' . Form::input('annee', ['label' => '🗓️ Année', 'type' => 'number', 'min' => '2020', 'max' => '2030', 'placeholder' => '2026', 'value' => (string)($filters['annee'] ?? '')]) . '</div>'
             . '<div style="flex:1; min-width:140px;">' . Form::select('statut', [['value' => '', 'label' => 'Tous les statuts'], ['value' => 'soumis', 'label' => 'Soumis'], ['value' => 'consolide', 'label' => 'Consolidé']], $filters['statut'] ?? '', ['label' => 'Statut']) . '</div>'
             . '<div style="display:flex; gap:0.5rem;">'
             . Ui::button('Filtrer', ['type' => 'submit', 'variant' => 'accent'])
@@ -1172,8 +1173,10 @@ final class Finance
                     $ecartTone
                 );
 
+                $dateLink = '<a href="' . View::url('finance/clotures') . '?agence_id=' . $r->agenceId . '&date_exacte=' . urlencode($r->dateJour) . '" style="color:#2563eb; font-weight:800; text-decoration:underline;" title="Consulter la position et ventilation de ce jour">' . View::e($r->dateJour) . '</a>';
+
                 $rows .= '<tr>'
-                    . '<td>' . View::e($r->dateJour) . '</td>'
+                    . '<td>' . $dateLink . '</td>'
                     . '<td><strong>' . View::e($agenceName) . '</strong></td>'
                     . '<td>' . View::e($r->nbColisEnregistres) . ' / ' . View::e($r->nbFacturesEmises) . '</td>'
                     . '<td style="text-align:right;">' . View::e(number_format($r->totalFactureXof, 2, ',', ' ')) . ' XOF<br><span style="color:#64748b; font-size:0.8rem;">' . View::e(number_format($r->totalFactureEur, 2, ',', ' ')) . ' EUR</span></td>'
