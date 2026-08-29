@@ -213,9 +213,18 @@ class ColisageRepository
         $assuranceSouscrite = !empty($data['assurance_souscrite']) ? 1 : 0;
         $montantAssurance = (float) ($data['montant_assurance'] ?? 0.0);
 
-        $createdAt = !empty($data['created_at']) ? (string) $data['created_at'] : date('Y-m-d H:i:s');
-        if (strlen($createdAt) === 10) {
-            $createdAt .= ' ' . date('H:i:s');
+        $createdAt = !empty($data['created_at']) ? (string) $data['created_at'] : null;
+        if (empty($createdAt)) {
+            $now = new \DateTime('now', new \DateTimeZone('Africa/Abidjan'));
+            $cutoff = new \DateTime($now->format('Y-m-d') . ' 15:00:00', new \DateTimeZone('Africa/Abidjan'));
+            if ($now > $cutoff) {
+                $now->modify('+1 day');
+            }
+            $createdAt = $now->format('Y-m-d H:i:s');
+        } else {
+            if (strlen($createdAt) === 10) {
+                $createdAt .= ' ' . date('H:i:s');
+            }
         }
 
         $stmt = $this->pdo->prepare("

@@ -41,6 +41,16 @@ class FactureRepository
     {
         $currentUserId = Auth::id() ?: $facture->createdBy ?: $facture->caissiereId;
 
+        $dateEmission = $facture->dateEmission;
+        if (empty($dateEmission)) {
+            $now = new \DateTime('now', new \DateTimeZone('Africa/Abidjan'));
+            $cutoff = new \DateTime($now->format('Y-m-d') . ' 15:00:00', new \DateTimeZone('Africa/Abidjan'));
+            if ($now > $cutoff) {
+                $now->modify('+1 day');
+            }
+            $dateEmission = $now->format('Y-m-d H:i:s');
+        }
+
         $stmt = $this->pdo->prepare("
             INSERT INTO lbp_factures (
                 numero_facture, colis_id, client_id, caissiere_id, agence_id,
@@ -50,7 +60,7 @@ class FactureRepository
             ) VALUES (
                 :numero_facture, :colis_id, :client_id, :caissiere_id, :agence_id,
                 :montant_total, :montant_encaisse, :montant_restant, :devise, :taux_change,
-                :statut, :qr_code_paiement, :date_expiration_qr, :date_echeance_solde, NOW(),
+                :statut, :qr_code_paiement, :date_expiration_qr, :date_echeance_solde, :date_emission,
                 :trajet_id, :agent_id, :created_by, :locked, NOW()
             )
         ");
@@ -70,6 +80,7 @@ class FactureRepository
             'qr_code_paiement' => $facture->qrCodePaiement,
             'date_expiration_qr' => $facture->dateExpirationQr,
             'date_echeance_solde' => $facture->dateEcheanceSolde,
+            'date_emission' => $dateEmission,
             'trajet_id' => $facture->trajetId,
             'agent_id' => $facture->agentId ?: $currentUserId,
             'created_by' => $currentUserId,
@@ -394,6 +405,7 @@ class FactureRepository
             statut: 'emise',
             qrCodePaiement: null,
             dateExpirationQr: date('Y-m-d H:i:s', strtotime('+7 days')),
+            dateEmission: $colis['created_at'],
             dateEcheanceSolde: date('Y-m-d H:i:s', strtotime('+7 days')),
             trajetId: !empty($colis['trajet_id']) ? (int) $colis['trajet_id'] : null,
             agentId: !empty($colis['agent_groupage_id']) ? (int) $colis['agent_groupage_id'] : $userId,

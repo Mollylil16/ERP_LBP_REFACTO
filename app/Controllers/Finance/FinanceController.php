@@ -932,6 +932,7 @@ final class FinanceController extends FinanceBaseController
                 $activeReport['encaisseEspecesXof'] = $live['encaisse_especes_xof'] ?? 0;
                 $activeReport['encaisseDigitalXof'] = $live['encaisse_digital_xof'] ?? 0;
                 $activeReport['encaisseChequeXof'] = $live['encaisse_cheque_xof'] ?? 0;
+                $activeReport['invoices_details'] = $live['invoices_details'] ?? [];
             } else {
                 $activeReport = $live + [
                     'statut' => 'brouillon',

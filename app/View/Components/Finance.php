@@ -1078,6 +1078,49 @@ final class Finance
                     . '</div>';
             }
 
+            // Liste détaillée des factures du jour pour traçabilité (qui a facturé, à quelle heure, combien, nb colis)
+            $invoicesDetails = $activeReport['invoices_details'] ?? [];
+            if (!empty($invoicesDetails) && is_array($invoicesDetails)) {
+                $rowsDetails = '';
+                foreach ($invoicesDetails as $inf) {
+                    $heure = date('H:i', strtotime((string)$inf['date_emission']));
+                    $rowsDetails .= '<tr style="border-bottom:1px solid #e2e8f0;">'
+                        . '<td style="padding:8px 12px; font-weight:700;"><a href="' . View::url('finance/factures/' . $inf['id']) . '" style="color:#2563eb; text-decoration:underline;">' . View::e($inf['numero_facture']) . '</a></td>'
+                        . '<td style="padding:8px 12px; font-weight:600;">' . View::e($inf['numero_tracking']) . '</td>'
+                        . '<td style="padding:8px 12px;">' . View::e($inf['client_name']) . '</td>'
+                        . '<td style="padding:8px 12px; text-align:center; font-weight:700;">' . (int)$inf['nombre_colis'] . '</td>'
+                        . '<td style="padding:8px 12px; text-align:right; font-weight:700; color:#0f172a;">' . number_format((float)$inf['montant_total'], 0, ',', ' ') . ' XOF</td>'
+                        . '<td style="padding:8px 12px; text-align:right; font-weight:700; color:#16a34a;">' . number_format((float)$inf['montant_encaisse'], 0, ',', ' ') . ' XOF</td>'
+                        . '<td style="padding:8px 12px; color:#475569; font-weight:600;">' . $heure . '</td>'
+                        . '<td style="padding:8px 12px; font-weight:700; color:#1e293b;">' . View::e($inf['agent_name']) . '</td>'
+                        . '</tr>';
+                }
+
+                $submissionForm .= '<div style="background:#ffffff; border:1px solid #cbd5e1; border-radius:10px; padding:1.25rem; margin-bottom:1.5rem; box-shadow:0 2px 8px rgba(15,23,42,0.02);">'
+                    . '<h4 style="margin:0 0 0.75rem 0; font-size:0.9rem; font-weight:800; color:#0f172a; text-transform:uppercase; letter-spacing:0.5px; display:flex; align-items:center; gap:6px;">'
+                    . '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#2563eb" stroke-width="2.5"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M12 6v6l4 2"/></svg>'
+                    . 'Journal des Opérations & Traçabilité de Facturation (Fenêtre 15h–15h)'
+                    . '</h4>'
+                    . '<div style="max-height: 400px; overflow-y: auto;">'
+                    . '<table style="width:100%; border-collapse:collapse; font-size:0.82rem;">'
+                    . '<thead>'
+                    . '<tr style="background:#f8fafc; border-bottom:2px solid #cbd5e1; text-align:left; color:#475569; font-weight:700; position: sticky; top: 0; z-index: 10;">'
+                    . '<th style="padding:8px 12px; background:#f8fafc;">N° Facture</th>'
+                    . '<th style="padding:8px 12px; background:#f8fafc;">N° Tracking</th>'
+                    . '<th style="padding:8px 12px; background:#f8fafc;">Client</th>'
+                    . '<th style="padding:8px 12px; text-align:center; background:#f8fafc;">Colis</th>'
+                    . '<th style="padding:8px 12px; text-align:right; background:#f8fafc;">Montant Facturé</th>'
+                    . '<th style="padding:8px 12px; text-align:right; background:#f8fafc;">Montant Encaissé</th>'
+                    . '<th style="padding:8px 12px; background:#f8fafc;">Heure</th>'
+                    . '<th style="padding:8px 12px; background:#f8fafc;">Agent de Saisie</th>'
+                    . '</tr>'
+                    . '</thead>'
+                    . '<tbody>' . ($rowsDetails !== '' ? $rowsDetails : '<tr><td colspan="8" style="padding:15px; text-align:center; color:#64748b;">Aucune facture émise sur cette période.</td></tr>') . '</tbody>'
+                    . '</table>'
+                    . '</div>'
+                    . '</div>';
+            }
+
             // Blind count submission form for local cashier / head cashier when brouillon
             $userAgId = Auth::agenceId();
             $canSubmit = Auth::hasAnyRole(['caissiere', 'chef_agence', 'caissiere_principale']) &&

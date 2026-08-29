@@ -279,6 +279,28 @@ class EtatJournalierRepository
         $stmtType->execute(['agence_id' => $agenceId, 'date1' => $date, 'date2' => $date]);
         $breakdownByType = $stmtType->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
+        // Fetch detailed invoice records for daily operations traceability
+        $stmtDetails = $this->pdo->prepare("
+            SELECT 
+                f.id,
+                f.numero_facture,
+                f.montant_total,
+                f.montant_encaisse,
+                f.date_emission,
+                c.numero_tracking,
+                c.nombre_colis,
+                cl.name AS client_name,
+                COALESCE(u.full_name, 'Agent') AS agent_name
+            FROM lbp_factures f
+            JOIN lbp_colis c ON f.colis_id = c.id
+            JOIN lbp_clients cl ON f.client_id = cl.id
+            LEFT JOIN users u ON f.created_by = u.id
+            WHERE f.agence_id = :agence_id AND DATE(f.date_emission) = :date
+            ORDER BY f.date_emission DESC
+        ");
+        $stmtDetails->execute(['agence_id' => $agenceId, 'date' => $date]);
+        $invoicesDetails = $stmtDetails->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
         return [
             'nb_colis' => $nbColis,
             'nb_factures' => $nbFactures,
@@ -294,6 +316,7 @@ class EtatJournalierRepository
             'solde_caisse_agence_xof' => $totalEncaisseXof,
             'solde_caisse_agence_eur' => $totalEncaisseEur,
             'breakdown_by_type' => $breakdownByType,
+            'invoices_details' => $invoicesDetails,
         ];
     }
 

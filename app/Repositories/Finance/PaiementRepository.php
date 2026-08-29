@@ -28,9 +28,19 @@ class PaiementRepository
 
     public function create(Paiement $paiement): int
     {
+        $datePaiement = $paiement->datePaiement;
+        if (empty($datePaiement)) {
+            $now = new \DateTime('now', new \DateTimeZone('Africa/Abidjan'));
+            $cutoff = new \DateTime($now->format('Y-m-d') . ' 15:00:00', new \DateTimeZone('Africa/Abidjan'));
+            if ($now > $cutoff) {
+                $now->modify('+1 day');
+            }
+            $datePaiement = $now->format('Y-m-d H:i:s');
+        }
+
         $stmt = $this->pdo->prepare("
             INSERT INTO lbp_paiements (facture_id, caissiere_id, montant, devise, mode, type, date_paiement)
-            VALUES (:facture_id, :caissiere_id, :montant, :devise, :mode, :type, NOW())
+            VALUES (:facture_id, :caissiere_id, :montant, :devise, :mode, :type, :date_paiement)
         ");
         $stmt->execute([
             'facture_id' => $paiement->factureId,
@@ -39,6 +49,7 @@ class PaiementRepository
             'devise' => $paiement->devise,
             'mode' => $paiement->mode,
             'type' => $paiement->type,
+            'date_paiement' => $datePaiement,
         ]);
         return (int) $this->pdo->lastInsertId();
     }
