@@ -157,6 +157,20 @@ final class Admin
             . '<tbody>' . $body . '</tbody></table></div>';
     }
 
+    public static function rolesCheckboxGrid(array $availableRoles, array $assignedRoles): string
+    {
+        $html = '<div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; margin-top: 10px;">';
+        foreach ($availableRoles as $code => $label) {
+            $isChecked = in_array($code, $assignedRoles, true);
+            $html .= '<label style="display:flex; align-items:center; gap:10px; background:#f8fafc; padding:10px 14px; border:1px solid #e2e8f0; border-radius:8px; cursor:pointer; font-weight:600; font-size:0.9rem; transition:all 0.15s ease;">'
+                . '<input type="checkbox" name="roles[]" value="' . View::e($code) . '"' . ($isChecked ? ' checked' : '') . ' style="width:18px; height:18px; accent-color:#0f172a; cursor:pointer;">'
+                . '<span>' . View::e($label) . '</span>'
+                . '</label>';
+        }
+        $html .= '</div>';
+        return $html;
+    }
+
     public static function permissionToolbar(bool $allowAll = false): string
     {
         $actions = Ui::button('Tout retirer', [

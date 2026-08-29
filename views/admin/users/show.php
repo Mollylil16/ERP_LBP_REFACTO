@@ -29,8 +29,21 @@ ob_start();
             ]
         ) ?>
 
+        <?php
+        $rolesList = '';
+        if (!empty($page->user->roles)) {
+            $avail = \App\Services\Admin\AdminService::AVAILABLE_ROLES;
+            foreach ($page->user->roles as $r) {
+                $lbl = $avail[$r] ?? $r;
+                $rolesList .= '<span style="background:#0f172a; color:#fff; font-weight:700; padding:4px 12px; border-radius:16px; font-size:0.85rem; display:inline-block; margin-right:6px; margin-bottom:6px;">' . \App\Helpers\View::e($lbl) . '</span>';
+            }
+        } else {
+            $rolesList = '<span style="color:#94a3b8; font-style:italic;">Aucun rôle fonctionnel spécifique attribué</span>';
+        }
+        ?>
+
         <div class="admin-profile-grid">
-            <?= Ui::section('Informations générales', Admin::detailList($page->details)) ?>
+            <?= Ui::section('Informations générales', Admin::detailList($page->details) . '<div style="margin-top:1.25rem;"><strong>Rôles attribués :</strong><div style="margin-top:6px;">' . $rolesList . '</div></div>') ?>
             <?= Ui::section(
                 'Permissions effectives',
                 Admin::permissionSummary($page->user, $page->grantedPermissions),

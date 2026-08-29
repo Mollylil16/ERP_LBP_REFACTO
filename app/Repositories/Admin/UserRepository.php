@@ -252,6 +252,29 @@ class UserRepository
         $stmt->execute(['status' => 'active', 'id' => $id]);
     }
 
+    public function getRoles(int $userId): array
+    {
+        $stmt = $this->pdo->prepare('SELECT role FROM lbp_user_roles WHERE user_id = :user_id');
+        $stmt->execute(['user_id' => $userId]);
+        return $stmt->fetchAll(PDO::FETCH_COLUMN) ?: [];
+    }
+
+    public function setRoles(int $userId, array $roles): void
+    {
+        $delete = $this->pdo->prepare('DELETE FROM lbp_user_roles WHERE user_id = :user_id');
+        $delete->execute(['user_id' => $userId]);
+
+        if (!empty($roles)) {
+            $insert = $this->pdo->prepare('INSERT INTO lbp_user_roles (user_id, role) VALUES (:user_id, :role)');
+            foreach ($roles as $role) {
+                $role = trim((string) $role);
+                if ($role !== '') {
+                    $insert->execute(['user_id' => $userId, 'role' => $role]);
+                }
+            }
+        }
+    }
+
     /**
      * Transforme une ligne SQL en objet User.
      */

@@ -13,6 +13,19 @@ use RuntimeException;
 
 class AdminService
 {
+    public const AVAILABLE_ROLES = [
+        'dg'                   => 'Directeur Général',
+        'assistant_dg'         => 'Assistant DG',
+        'chef_agence'          => 'Chef d\'Agence',
+        'caissiere_principale' => 'Caissière Principale',
+        'caissiere'            => 'Caissière',
+        'comptable'            => 'Comptable',
+        'superviseur_general'  => 'Superviseur Général',
+        'superviseur_regional' => 'Superviseur Régional',
+        'agent_enregistrement' => 'Agent d\'Enregistrement',
+        'agent_groupage'       => 'Agent Groupage',
+    ];
+
     public function __construct(
         private UserRepository $users,
         private PermissionRepository $permissions,
@@ -119,6 +132,10 @@ class AdminService
         $user = $this->requireUser($id);
         $data = $this->validateAccountSettings($input, false);
         $data['status'] = $user->status;
+
+        // Fix: read agence_id BEFORE any RH sync to preserve the submitted value
+        $data['agence_id'] = isset($input['agence_id']) && $input['agence_id'] !== '' ? (int) $input['agence_id'] : null;
+
         $rhProfile = $user->rhEmployeeId ? $this->personnel->find((int) $user->rhEmployeeId) : null;
         if ($rhProfile) {
             $data['full_name'] = !empty($rhProfile['full_name']) ? (string) $rhProfile['full_name'] : $user->fullName;
@@ -139,8 +156,20 @@ class AdminService
         if ($id === $actorId && (!$data['is_admin'] || $data['status'] !== 'active')) {
             throw new RuntimeException('Vous ne pouvez pas retirer votre propre accès administrateur ni désactiver votre compte.');
         }
-        $data['agence_id'] = isset($input['agence_id']) && $input['agence_id'] !== '' ? (int) $input['agence_id'] : null;
         $this->users->updateFromAdmin($id, $data);
+
+        // Fix: save permissions on update (was only done on create before)
+        if (!$data['is_admin'] && isset($input['permissions'])) {
+            $this->replacePermissions($id, $input);
+        }
+
+        // Save functional roles
+        $submittedRoles = is_array($input['roles'] ?? null) ? $input['roles'] : [];
+        $allowedRoles = array_keys(self::AVAILABLE_ROLES);
+        $roles = array_values(array_filter($submittedRoles, fn($r) => in_array($r, $allowedRoles, true)));
+        $this->users->setRoles($id, $roles);
+
+        Auth::reset();
     }
 
     public function setUserActive(int $id, bool $active, int $actorId): void
@@ -191,11 +220,11 @@ class AdminService
     private function validateAccountSettings(array $input, bool $passwordRequired): array
     {
         $password = (string) ($input['password'] ?? '');
-        if ($passwordRequired && strlen($password) < 8) {
-            throw new RuntimeException('Le mot de passe doit contenir au moins 8 caractères.');
+        if ($passwordRequired && strlen($password) < 7) {
+            throw new RuntimeException('Le mot de passe doit contenir au moins 7 caractères.');
         }
-        if (!$passwordRequired && $password !== '' && strlen($password) < 8) {
-            throw new RuntimeException('Le nouveau mot de passe doit contenir au moins 8 caractères.');
+        if (!$passwordRequired && $password !== '' && strlen($password) < 7) {
+            throw new RuntimeException('Le nouveau mot de passe doit contenir au moins 7 caractères.');
         }
 
         return [

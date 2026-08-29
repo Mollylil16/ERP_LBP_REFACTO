@@ -62,14 +62,14 @@ ob_start();
             ?>
             <div class="admin-form-grid">
                 <?= Form::input('password', [
-                    'label' => $page->isEdit ? 'Nouveau mot de passe' : 'Mot de passe initial',
+                    'label' => $page->isEdit ? 'Nouveau mot de passe (optionnel)' : 'Mot de passe initial',
                     'type' => 'password',
-                    'minlength' => 8,
+                    'minlength' => 7,
                     'required' => !$page->isEdit,
                     'autocomplete' => 'new-password',
                     'hint' => $page->isEdit
                         ? 'Laisser vide pour conserver le mot de passe actuel.'
-                        : '8 caractères minimum.',
+                        : '7 caractères minimum (ex: lbp2026).',
                 ]) ?>
                 <?= Form::select('agence_id', $agenceOpts, (string) ($page->user?->agenceId ?? ''), ['label' => 'Agence de rattachement LBP']) ?>
                 <div class="admin-switch admin-switch-card">
@@ -83,10 +83,16 @@ ob_start();
             </div>
             <?= Ui::section('Paramètres du compte', (string) ob_get_clean()) ?>
 
-            <?php if (!$page->isEdit && $page->canSubmit): ?>
+            <?= Ui::section(
+                'Rôles Fonctionnels & Accès applicatifs',
+                '<p style="color:#64748b; margin-top:-0.5rem; margin-bottom:1rem; font-size:0.9rem;">Cochez les rôles à attribuer à cet utilisateur pour lui donner accès aux fonctionnalités correspondantes (Caisse, Validation, Groupage...).</p>'
+                . Admin::rolesCheckboxGrid($page->availableRoles, $page->assignedRoles)
+            ) ?>
+
+            <?php if ($page->canSubmit): ?>
                 <?= Ui::section(
-                    'Permissions initiales',
-                    Admin::permissionToolbar() . Admin::permissionTable($page->permissions),
+                    'Permissions Habilitations (CRUD par entité)',
+                    Admin::permissionToolbar(true) . Admin::permissionTable($page->permissions, $page->isEdit),
                     '',
                     ['data-initial-permissions' => true]
                 ) ?>

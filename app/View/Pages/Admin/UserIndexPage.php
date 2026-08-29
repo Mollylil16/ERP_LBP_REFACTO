@@ -34,7 +34,11 @@ final class UserIndexPage
                     : 'Compte système',
                 'email' => $user->email,
                 'phone' => $user->phone ?? '',
-                'profile' => $user->isAdmin ? 'Administrateur' : 'Utilisateur',
+                'profile' => $user->isAdmin
+                    ? 'Administrateur'
+                    : (!empty($user->roles)
+                        ? implode(', ', array_map(fn($r) => \App\Services\Admin\AdminService::AVAILABLE_ROLES[$r] ?? $r, $user->roles))
+                        : 'Utilisateur'),
                 'is_admin' => $user->isAdmin,
                 'status' => ucfirst($user->status),
                 'status_tone' => $user->status === 'active' ? 'ok' : 'warning',

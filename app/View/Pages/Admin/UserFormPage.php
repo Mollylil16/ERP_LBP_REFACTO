@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\View\Pages\Admin;
 
 use App\Models\User;
+use App\Services\Admin\AdminService;
 
 final class UserFormPage
 {
@@ -14,6 +15,8 @@ final class UserFormPage
     public readonly array $employeeOptions;
     /** @var array<int,array<string,mixed>> */
     public readonly array $permissions;
+    public readonly array $assignedRoles;
+    public readonly array $availableRoles;
     public readonly bool $isEdit;
     public readonly bool $canSubmit;
 
@@ -30,9 +33,13 @@ final class UserFormPage
         array $permissions,
         public readonly string $action,
         public readonly string $submitLabel,
+        array $assignedRoles = [],
+        ?array $availableRoles = null
     ) {
         $this->employee = $employee;
         $this->permissions = $permissions;
+        $this->assignedRoles = $assignedRoles ?: ($user?->roles ?? []);
+        $this->availableRoles = $availableRoles ?? AdminService::AVAILABLE_ROLES;
         $this->isEdit = $user !== null;
         $this->employeeOptions = array_merge(
             [['value' => '', 'label' => 'Sélectionner un collaborateur']],
