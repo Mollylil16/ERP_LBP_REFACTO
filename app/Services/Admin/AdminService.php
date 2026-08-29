@@ -102,6 +102,8 @@ class AdminService
             throw new RuntimeException('L’adresse email du profil RH est déjà utilisée.');
         }
 
+        $agenceId = isset($input['agence_id']) && $input['agence_id'] !== '' ? (int) $input['agence_id'] : null;
+
         $this->pdo->beginTransaction();
         try {
             $id = $this->users->create(new User(
@@ -113,10 +115,18 @@ class AdminService
                 status: 'active',
                 isAdmin: $data['is_admin'],
                 rhEmployeeId: $employeeId,
+                agenceId: $agenceId,
             ));
             if (!$data['is_admin']) {
                 $this->replacePermissions($id, $input);
             }
+
+            // Save functional roles
+            $submittedRoles = is_array($input['roles'] ?? null) ? $input['roles'] : [];
+            $allowedRoles = array_keys(self::AVAILABLE_ROLES);
+            $roles = array_values(array_filter($submittedRoles, fn($r) => in_array($r, $allowedRoles, true)));
+            $this->users->setRoles($id, $roles);
+
             $this->pdo->commit();
             return $id;
         } catch (\Throwable $e) {

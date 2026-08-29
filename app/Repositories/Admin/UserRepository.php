@@ -93,6 +93,7 @@ class UserRepository
                 status,
                 is_admin,
                 rh_employee_id,
+                agence_id,
                 created_at
             ) VALUES (
                 :full_name,
@@ -102,6 +103,7 @@ class UserRepository
                 :status,
                 :is_admin,
                 :rh_employee_id,
+                :agence_id,
                 NOW()
             )
         ");
@@ -114,6 +116,7 @@ class UserRepository
             'status' => $user->status,
             'is_admin' => $user->isAdmin ? 1 : 0,
             'rh_employee_id' => $user->rhEmployeeId,
+            'agence_id' => $user->agenceId,
         ]);
 
         return (int) $this->pdo->lastInsertId();
