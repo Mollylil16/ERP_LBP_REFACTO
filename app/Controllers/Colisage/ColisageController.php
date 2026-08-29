@@ -563,6 +563,70 @@ final class ColisageController extends ColisageBaseController
             $this->service->deleteParcel($id);
             $auditId = AuditLogService::log('delete_parcel', 'lbp_colis', $id, $colisAvantSuppression, null);
 
+            // Reséquençage automatique des colis suivants
+            if ($colisAvantSuppression && !empty($colisAvantSuppression['numero_tracking'])) {
+                $tracking = $colisAvantSuppression['numero_tracking'];
+                $parts = explode('-', $tracking);
+                if (count($parts) >= 2) {
+                    $sequenceStr = array_pop($parts);
+                    $prefix = implode('-', $parts);
+                    $sequence = (int) $sequenceStr;
+
+                    if ($sequence > 0) {
+                        $stmtC = $pdo->prepare("SELECT id, numero_tracking FROM lbp_colis WHERE numero_tracking LIKE :prefix ORDER BY id ASC");
+                        $stmtC->execute(['prefix' => $prefix . '-%']);
+                        $colisList = $stmtC->fetchAll(\PDO::FETCH_ASSOC);
+
+                        foreach ($colisList as $c) {
+                            $cParts = explode('-', $c['numero_tracking']);
+                            $cSeqStr = array_pop($cParts);
+                            $cSeq = (int) $cSeqStr;
+                            if ($cSeq > $sequence) {
+                                $newSeq = $cSeq - 1;
+                                $paddingLen = strlen($cSeqStr);
+                                $newSeqStr = str_pad((string)$newSeq, $paddingLen, '0', STR_PAD_LEFT);
+                                $newTracking = implode('-', $cParts) . '-' . $newSeqStr;
+
+                                $upStmt = $pdo->prepare("UPDATE lbp_colis SET numero_tracking = :new_track WHERE id = :id");
+                                $upStmt->execute(['new_track' => $newTracking, 'id' => $c['id']]);
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Reséquençage automatique des factures suivantes
+            if ($facture && !empty($facture['numero_facture'])) {
+                $numFacture = $facture['numero_facture'];
+                $fParts = explode('-', $numFacture);
+                if (count($fParts) >= 4) {
+                    $fSeqStr = array_pop($fParts);
+                    $fPrefix = implode('-', $fParts);
+                    $fSequence = (int) $fSeqStr;
+
+                    if ($fSequence > 0) {
+                        $stmtF = $pdo->prepare("SELECT id, numero_facture FROM lbp_factures WHERE numero_facture LIKE :prefix ORDER BY id ASC");
+                        $stmtF->execute(['prefix' => $fPrefix . '-%']);
+                        $facturesList = $stmtF->fetchAll(\PDO::FETCH_ASSOC);
+
+                        foreach ($facturesList as $f) {
+                            $cfParts = explode('-', $f['numero_facture']);
+                            $cfSeqStr = array_pop($cfParts);
+                            $cfSeq = (int) $cfSeqStr;
+                            if ($cfSeq > $fSequence) {
+                                $newFSeq = $cfSeq - 1;
+                                $fPaddingLen = strlen($cfSeqStr);
+                                $newFSeqStr = str_pad((string)$newFSeq, $fPaddingLen, '0', STR_PAD_LEFT);
+                                $newFactureNum = implode('-', $cfParts) . '-' . $newFSeqStr;
+
+                                $upFStmt = $pdo->prepare("UPDATE lbp_factures SET numero_facture = :new_num WHERE id = :id");
+                                $upFStmt->execute(['new_num' => $newFactureNum, 'id' => $f['id']]);
+                            }
+                        }
+                    }
+                }
+            }
+
             // Règle anti-fraude : suppression en dehors des heures de bureau
             IntegrityRuleEngine::evaluateSuppressionHorsHoraires(
                 (int) Auth::id(), 'lbp_colis', $id, $auditId
