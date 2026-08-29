@@ -39,7 +39,7 @@ try {
 
     $detail = sprintf(
         '%s: %s dans %s:%d',
-        $exception::class,
+        get_class($exception),
         $exception->getMessage(),
         $exception->getFile(),
         $exception->getLine()

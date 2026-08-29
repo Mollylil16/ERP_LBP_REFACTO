@@ -15,49 +15,57 @@ class PermissionRepository
      */
     public function entities(): array
     {
-        $rows = $this->pdo->query("
-            SELECT *
-            FROM permission_entities
-            WHERE is_active = 1
-            ORDER BY sort_order, module, name
-        ")->fetchAll() ?: [];
+        try {
+            $rows = $this->pdo->query("
+                SELECT *
+                FROM permission_entities
+                WHERE is_active = 1
+                ORDER BY sort_order, module, name
+            ")->fetchAll() ?: [];
 
-        return array_map(
-            static fn(array $row): PermissionEntity => new PermissionEntity(
-                id: (int) $row['id'],
-                code: (string) $row['code'],
-                module: (string) $row['module'],
-                name: (string) $row['name'],
-                description: $row['description'] ?? null,
-                sortOrder: (int) $row['sort_order'],
-                isActive: (bool) $row['is_active'],
-            ),
-            $rows
-        );
+            return array_map(
+                static fn(array $row): PermissionEntity => new PermissionEntity(
+                    id: (int) $row['id'],
+                    code: (string) $row['code'],
+                    module: (string) $row['module'],
+                    name: (string) $row['name'],
+                    description: $row['description'] ?? null,
+                    sortOrder: (int) $row['sort_order'],
+                    isActive: (bool) $row['is_active'],
+                ),
+                $rows
+            );
+        } catch (\Throwable $e) {
+            return [];
+        }
     }
 
     public function forUser(int $userId): array
     {
-        $stmt = $this->pdo->prepare("
-            SELECT
-                e.id AS entity_id,
-                e.code,
-                e.module,
-                e.name,
-                e.description,
-                COALESCE(p.can_view, 0) AS can_view,
-                COALESCE(p.can_create, 0) AS can_create,
-                COALESCE(p.can_update, 0) AS can_update,
-                COALESCE(p.can_delete, 0) AS can_delete
-            FROM permission_entities e
-            LEFT JOIN user_permissions p
-                ON p.entity_id = e.id
-                AND p.user_id = :user_id
-            WHERE e.is_active = 1
-            ORDER BY e.sort_order, e.module, e.name
-        ");
-        $stmt->execute(['user_id' => $userId]);
-        return $stmt->fetchAll() ?: [];
+        try {
+            $stmt = $this->pdo->prepare("
+                SELECT
+                    e.id AS entity_id,
+                    e.code,
+                    e.module,
+                    e.name,
+                    e.description,
+                    COALESCE(p.can_view, 0) AS can_view,
+                    COALESCE(p.can_create, 0) AS can_create,
+                    COALESCE(p.can_update, 0) AS can_update,
+                    COALESCE(p.can_delete, 0) AS can_delete
+                FROM permission_entities e
+                LEFT JOIN user_permissions p
+                    ON p.entity_id = e.id
+                    AND p.user_id = :user_id
+                WHERE e.is_active = 1
+                ORDER BY e.sort_order, e.module, e.name
+            ");
+            $stmt->execute(['user_id' => $userId]);
+            return $stmt->fetchAll() ?: [];
+        } catch (\Throwable $e) {
+            return [];
+        }
     }
 
     public function replaceForUser(int $userId, array $permissions): void
@@ -107,35 +115,43 @@ class PermissionRepository
 
     public function matrix(): array
     {
-        $users = $this->pdo->query("
-            SELECT id, full_name, email, status, is_admin
-            FROM users
-            ORDER BY is_admin DESC, full_name
-        ")->fetchAll() ?: [];
+        try {
+            $users = $this->pdo->query("
+                SELECT id, full_name, email, status, is_admin
+                FROM users
+                ORDER BY is_admin DESC, full_name
+            ")->fetchAll() ?: [];
 
-        foreach ($users as &$user) {
-            $user['permissions'] = [];
-            if ((bool) $user['is_admin']) {
-                continue;
+            foreach ($users as &$user) {
+                $user['permissions'] = [];
+                if ((bool) $user['is_admin']) {
+                    continue;
+                }
+                foreach ($this->forUser((int) $user['id']) as $permission) {
+                    $user['permissions'][(string) $permission['code']] = $permission;
+                }
             }
-            foreach ($this->forUser((int) $user['id']) as $permission) {
-                $user['permissions'][(string) $permission['code']] = $permission;
-            }
+            unset($user);
+
+            return $users;
+        } catch (\Throwable $e) {
+            return [];
         }
-        unset($user);
-
-        return $users;
     }
 
     public function grantedCount(): int
     {
-        return (int) $this->pdo->query("
-            SELECT COUNT(*)
-            FROM user_permissions p
-            INNER JOIN permission_entities e ON e.id = p.entity_id
-            WHERE e.is_active = 1
-              AND (p.can_view = 1 OR p.can_create = 1 OR p.can_update = 1 OR p.can_delete = 1)
-        ")->fetchColumn();
+        try {
+            return (int) $this->pdo->query("
+                SELECT COUNT(*)
+                FROM user_permissions p
+                INNER JOIN permission_entities e ON e.id = p.entity_id
+                WHERE e.is_active = 1
+                  AND (p.can_view = 1 OR p.can_create = 1 OR p.can_update = 1 OR p.can_delete = 1)
+            ")->fetchColumn();
+        } catch (\Throwable $e) {
+            return 0;
+        }
     }
 
     public function allows(int $userId, string $entityCode, string $action): bool
