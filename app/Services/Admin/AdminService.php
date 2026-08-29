@@ -52,10 +52,16 @@ class AdminService
         if (!in_array($profile, ['', 'admin', 'user'], true)) {
             $profile = '';
         }
+        $role = trim((string) ($query['role'] ?? ''));
+        if (!array_key_exists($role, self::AVAILABLE_ROLES)) {
+            $role = '';
+        }
+
         $filters = [
             'q' => trim((string) ($query['q'] ?? '')),
             'status' => $status,
             'profile' => $profile,
+            'role' => $role,
         ];
 
         return [
@@ -71,6 +77,7 @@ class AdminService
             'user' => $user,
             'employee' => $user->rhEmployeeId ? $this->personnel->find((int) $user->rhEmployeeId) : null,
             'permissions' => $this->permissions->forUser($id),
+            'auditLogs' => $this->getUserAuditLogs($id),
         ];
     }
 
@@ -79,27 +86,45 @@ class AdminService
         return [
             'employees' => $this->personnel->availableForUserAccount(),
             'permissions' => $this->permissions->forUser(0),
+            'allUsers' => $this->users->allSimple(),
         ];
     }
 
     public function createUser(array $input): int
     {
         $employeeId = (int) ($input['rh_employee_id'] ?? 0);
-        $employee = $this->personnel->findForUserAccount($employeeId);
-        if (!$employee) {
-            throw new RuntimeException('Le profil RH sélectionné est invalide ou possède déjà un compte.');
-        }
-        if (trim((string) ($employee['email'] ?? '')) === '') {
-            throw new RuntimeException('Le profil RH doit disposer d’une adresse email avant la création du compte.');
+        if ($employeeId > 0) {
+            $employee = $this->personnel->findForUserAccount($employeeId);
+            if (!$employee) {
+                throw new RuntimeException('Le profil RH sélectionné est invalide ou possède déjà un compte.');
+            }
+            if (trim((string) ($employee['email'] ?? '')) === '') {
+                throw new RuntimeException('Le profil RH doit disposer d’une adresse email avant la création du compte.');
+            }
+            $fullName = (string) $employee['full_name'];
+            $email = strtolower(trim((string) $employee['email']));
+            $phone = $employee['phone'] ?: null;
+        } else {
+            // Mode Secours : Création directe par l'administrateur sans profil RH préalable
+            $fullName = trim((string) ($input['full_name'] ?? ''));
+            $email = strtolower(trim((string) ($input['email'] ?? '')));
+            $phone = trim((string) ($input['phone'] ?? '')) ?: null;
+            $employeeId = null;
+
+            if ($fullName === '') {
+                throw new RuntimeException('Le nom complet est obligatoire pour la création directe d’un compte.');
+            }
+            if ($email === '') {
+                throw new RuntimeException('L’adresse email est obligatoire pour la création directe d’un compte.');
+            }
         }
 
         $data = $this->validateAccountSettings($input, true);
-        $email = strtolower(trim((string) $employee['email']));
         if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            throw new RuntimeException('L’adresse email du profil RH est invalide.');
+            throw new RuntimeException('L’adresse email saisie est invalide.');
         }
         if ($this->users->emailExists($email)) {
-            throw new RuntimeException('L’adresse email du profil RH est déjà utilisée.');
+            throw new RuntimeException('L’adresse email est déjà utilisée par un autre compte.');
         }
 
         $agenceId = isset($input['agence_id']) && $input['agence_id'] !== '' ? (int) $input['agence_id'] : null;
@@ -108,15 +133,16 @@ class AdminService
         try {
             $id = $this->users->create(new User(
                 id: null,
-                fullName: (string) $employee['full_name'],
+                fullName: $fullName,
                 email: $email,
-                phone: $employee['phone'] ?: null,
+                phone: $phone,
                 passwordHash: (string) $data['password_hash'],
                 status: 'active',
                 isAdmin: $data['is_admin'],
                 rhEmployeeId: $employeeId,
                 agenceId: $agenceId,
             ));
+
             if (!$data['is_admin']) {
                 $this->replacePermissions($id, $input);
             }
@@ -134,6 +160,40 @@ class AdminService
                 $this->pdo->rollBack();
             }
             throw $e;
+        }
+    }
+
+    public function resetPassword(int $userId): void
+    {
+        $this->requireUser($userId);
+        $defaultHash = password_hash('lbp2026', PASSWORD_DEFAULT);
+        $this->users->updatePassword($userId, $defaultHash);
+    }
+
+    public function bulkSetStatus(array $userIds, bool $active, int $actorId): void
+    {
+        foreach ($userIds as $userId) {
+            $userId = (int) $userId;
+            if ($userId > 0 && $userId !== $actorId) {
+                $this->setUserActive($userId, $active, $actorId);
+            }
+        }
+    }
+
+    public function getUserAuditLogs(int $userId): array
+    {
+        try {
+            $stmt = $this->pdo->prepare("
+                SELECT al.*, COALESCE(u.full_name, 'Système') AS user_name
+                FROM audit_log al
+                LEFT JOIN users u ON al.user_id = u.id
+                WHERE (al.table_name = 'users' AND al.record_id = :user_id)
+                   OR (al.user_id = :user_id2)
+                ORDER BY al.created_at DESC
+                LIMIT 15
+            ");
+            $stmt->execute(['user_id' => $userId, 'user_id2' => $userId]);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
         }
     }
 

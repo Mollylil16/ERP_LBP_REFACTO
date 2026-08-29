@@ -149,6 +149,45 @@ final class AdminUserController extends AdminBaseController
         $this->redirect('/admin/users/' . (int) $id);
     }
 
+    public function resetPassword(string $id): void
+    {
+        $this->guardWrite();
+        try {
+            $this->service->resetPassword((int) $id);
+            Session::flash('success', 'Le mot de passe a été réinitialisé à "lbp2026" avec succès.');
+        } catch (RuntimeException $e) {
+            Session::flash('error', $e->getMessage());
+        }
+        $this->redirect('/admin/users/' . (int) $id);
+    }
+
+    public function bulkStatus(): void
+    {
+        $this->guardWrite();
+        $action = (string) ($_POST['bulk_action'] ?? '');
+        $userIds = is_array($_POST['user_ids'] ?? null) ? $_POST['user_ids'] : [];
+
+        if (empty($userIds)) {
+            Session::flash('error', 'Veuillez sélectionner au moins un utilisateur.');
+            $this->redirect('/admin/users');
+            return;
+        }
+
+        try {
+            if ($action === 'activate') {
+                $this->service->bulkSetStatus($userIds, true, (int) Auth::id());
+                Session::flash('success', count($userIds) . ' compte(s) activé(s) avec succès.');
+            } elseif ($action === 'deactivate') {
+                $this->service->bulkSetStatus($userIds, false, (int) Auth::id());
+                Session::flash('success', count($userIds) . ' compte(s) désactivé(s) avec succès.');
+            }
+        } catch (RuntimeException $e) {
+            Session::flash('error', $e->getMessage());
+        }
+
+        $this->redirect('/admin/users');
+    }
+
     private function guardWrite(): void
     {
         AdminMiddleware::check();

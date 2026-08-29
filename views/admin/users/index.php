@@ -25,8 +25,14 @@ ob_start();
             ]
         ) ?>
 
+        <?php
+        $roleOpts = [['value' => '', 'label' => 'Tous les rôles applicatifs']];
+        foreach (\App\Services\Admin\AdminService::AVAILABLE_ROLES as $code => $lbl) {
+            $roleOpts[] = ['value' => $code, 'label' => $lbl];
+        }
+        ?>
         <form class="finea-filter-card" method="get" action="<?= View::url('admin/users') ?>">
-            <div class="finea-filter-grid">
+            <div class="finea-filter-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
                 <?= Form::input('q', [
                     'label' => 'Recherche',
                     'value' => $page->filters['q'] ?? '',
@@ -43,6 +49,7 @@ ob_start();
                     ['value' => 'admin', 'label' => 'Administrateurs'],
                     ['value' => 'user', 'label' => 'Utilisateurs'],
                 ], $page->filters['profile'] ?? '', ['label' => 'Profil']) ?>
+                <?= Form::selectSearch('role', $roleOpts, $page->filters['role'] ?? '', ['label' => 'Rôle applicatif']) ?>
                 <div class="finea-actions">
                     <?= Ui::button('Filtrer', ['variant' => 'primary', 'type' => 'submit']) ?>
                     <?= Ui::button('Réinitialiser', ['href' => 'admin/users', 'variant' => 'secondary']) ?>

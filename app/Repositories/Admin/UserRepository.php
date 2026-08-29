@@ -144,6 +144,10 @@ class UserRepository
         } elseif (($filters['profile'] ?? '') === 'user') {
             $conditions[] = 'is_admin = 0';
         }
+        if (($filters['role'] ?? '') !== '') {
+            $conditions[] = 'id IN (SELECT user_id FROM lbp_user_roles WHERE role = :role)';
+            $params['role'] = $filters['role'];
+        }
 
         $where = $conditions ? 'WHERE ' . implode(' AND ', $conditions) : '';
         $count = $this->pdo->prepare("SELECT COUNT(*) FROM users {$where}");
@@ -171,6 +175,21 @@ class UserRepository
             'perPage' => $perPage,
             'totalPages' => max(1, (int) ceil($total / $perPage)),
         ];
+    }
+
+    public function allSimple(): array
+    {
+        $stmt = $this->pdo->query("SELECT id, full_name, email, is_admin FROM users ORDER BY full_name ASC");
+        $users = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        $permRepo = new PermissionRepository($this->pdo);
+
+        foreach ($users as &$u) {
+            $u['roles'] = $this->getRoles((int) $u['id']);
+            $u['permissions'] = $permRepo->forUser((int) $u['id']);
+        }
+        unset($u);
+
+        return $users;
     }
 
     public function statistics(): array

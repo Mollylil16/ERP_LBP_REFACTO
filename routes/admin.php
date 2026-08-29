@@ -25,11 +25,13 @@ $router->group('/admin', function (Router $router): void {
         $router->get('/', [AdminUserController::class, 'index']);
         $router->get('/nouveau', [AdminUserController::class, 'create']);
         $router->post('/', [AdminUserController::class, 'store']);
+        $router->post('/bulk-status', [AdminUserController::class, 'bulkStatus']);
         $router->get('/{id}', [AdminUserController::class, 'show']);
         $router->get('/{id}/modifier', [AdminUserController::class, 'edit']);
         $router->post('/{id}/modifier', [AdminUserController::class, 'update']);
         $router->post('/{id}/desactiver', [AdminUserController::class, 'deactivate']);
         $router->post('/{id}/activer', [AdminUserController::class, 'activate']);
+        $router->post('/{id}/reset-password', [AdminUserController::class, 'resetPassword']);
         $router->get('/{id}/permissions', [AdminPermissionController::class, 'edit']);
         $router->post('/{id}/permissions', [AdminPermissionController::class, 'update']);
     });
