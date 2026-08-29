@@ -2,6 +2,9 @@
 
 declare(strict_types=1);
 
+// Configuration du fuseau horaire par défaut (GMT pour la Côte d'Ivoire)
+date_default_timezone_set('Africa/Abidjan');
+
 use App\Database\MigrationRunner;
 use App\Models\Database;
 use App\Repositories\Admin\UserRepository;
