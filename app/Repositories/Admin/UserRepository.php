@@ -12,7 +12,29 @@ use PDO;
  */
 class UserRepository
 {
-    public function __construct(private PDO $pdo) {}
+    public function __construct(private PDO $pdo)
+    {
+        $this->ensureRolesTableExists();
+    }
+
+    private function ensureRolesTableExists(): void
+    {
+        try {
+            $this->pdo->exec("
+                CREATE TABLE IF NOT EXISTS lbp_user_roles (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    user_id INT NOT NULL,
+                    role VARCHAR(64) NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE KEY uq_user_role (user_id, role),
+                    KEY idx_user_id (user_id),
+                    KEY idx_role (role)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+            ");
+        } catch (\Throwable $e) {
+            // Silence if table creation fails due to privileges
+        }
+    }
 
     /**
      * Recherche un utilisateur par son adresse email.
@@ -308,7 +330,9 @@ class UserRepository
             $stmt = $this->pdo->prepare("SELECT role FROM lbp_user_roles WHERE user_id = :user_id");
             $stmt->execute(['user_id' => $userId]);
             $roles = $stmt->fetchAll(PDO::FETCH_COLUMN) ?: [];
-        } catch (\Exception $e) {}
+        } catch (\Throwable $e) {
+            $roles = [];
+        }
 
         return new User(
             id: $userId,

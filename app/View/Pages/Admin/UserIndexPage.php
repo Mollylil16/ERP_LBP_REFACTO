@@ -6,6 +6,7 @@ namespace App\View\Pages\Admin;
 
 use App\Helpers\View;
 use App\Models\User;
+use App\Services\Admin\AdminService;
 
 final class UserIndexPage
 {
@@ -36,8 +37,8 @@ final class UserIndexPage
                 'phone' => $user->phone ?? '',
                 'profile' => $user->isAdmin
                     ? 'Administrateur'
-                    : (!empty($user->roles)
-                        ? implode(', ', array_map(fn($r) => \App\Services\Admin\AdminService::AVAILABLE_ROLES[$r] ?? $r, $user->roles))
+                    : (!empty($user->roles) && is_array($user->roles)
+                        ? implode(', ', array_map(static fn($r) => AdminService::AVAILABLE_ROLES[(string)$r] ?? (string)$r, $user->roles))
                         : 'Utilisateur'),
                 'is_admin' => $user->isAdmin,
                 'status' => ucfirst($user->status),
