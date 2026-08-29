@@ -51,19 +51,7 @@ ob_start();
             ) ?>
         </div>
 
-        <!-- Section Sécurité & Réinitialisation Mot de Passe -->
-        <div style="background:#ffffff; border:1px solid #cbd5e1; border-radius:12px; padding:1.25rem 1.5rem; margin-top:1.5rem; display:flex; justify-content:space-between; align-items:center; box-shadow:0 2px 8px rgba(15,23,42,0.03);">
-            <div>
-                <strong style="color:#0f172a; font-size:1.05rem; display:block;">Réinitialisation d'Urgence du Mot de Passe</strong>
-                <small style="color:#64748b;">Réinitialise instantanément le mot de passe de cet utilisateur à la valeur par défaut : <code style="background:#f1f5f9; padding:2px 6px; border-radius:4px; font-weight:bold; color:#2563eb;">lbp2026</code></small>
-            </div>
-            <form method="post" action="<?= View::url('admin/users/' . (int) $page->user->id . '/reset-password') ?>" onsubmit="return confirm('Êtes-vous sûr de vouloir réinitialiser le mot de passe de cet utilisateur à lbp2026 ?');">
-                <?= \App\Helpers\Csrf::input() ?>
-                <button type="submit" style="background:#0f172a; color:#ffffff; border:none; padding:0.6rem 1.2rem; border-radius:8px; font-weight:700; cursor:pointer; font-size:0.88rem; display:inline-flex; align-items:center; gap:6px;">
-                    🔑 Réinitialiser (lbp2026)
-                </button>
-            </form>
-        </div>
+        <?= Admin::passwordResetCard($page) ?>
 
         <?php if ($page->canChangeAccess): ?>
             <div style="margin-top:1.5rem;">
