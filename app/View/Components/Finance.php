@@ -285,13 +285,22 @@ final class Finance
         $status = Form::selectSearch('statut', $statusOpts, $filters['statut'] ?? '', ['label' => 'Statut']);
 
         $typeOpts = [
-            ['value' => '', 'label' => 'Tous les types d\'envoi'],
-            ['value' => 'CA-CI', 'label' => 'CA-CI (Cargo Aérien CIV)'],
-            ['value' => 'LB-CI', 'label' => 'LB-CI (Maritime Express CIV)'],
-            ['value' => 'LB-FR', 'label' => 'LB-FR (France Express)'],
-            ['value' => 'LB-SN', 'label' => 'LB-SN (Sénégal)'],
+            ['value' => '', 'label' => 'Toutes les catégories d\'envoi'],
+            ['value' => 'LB-CI', 'label' => 'LB-CI — Maritime Express CIV'],
+            ['value' => 'LB-FR', 'label' => 'LB-FR — France Express'],
+            ['value' => 'S-FR', 'label' => 'S-FR — Sénégal à France'],
+            ['value' => 'S-CI', 'label' => 'S-CI — Sénégal à Côte d\'Ivoire'],
+            ['value' => 'LB-CA', 'label' => 'LB-CA — Canada Express'],
+            ['value' => 'F-SN', 'label' => 'F-SN — Fret Sénégal'],
+            ['value' => 'DHL', 'label' => 'DHL — Partenaire DHL Express'],
+            ['value' => 'CA-CI', 'label' => 'CA-CI — Cargo Aérien CIV'],
+            ['value' => 'CA-FR', 'label' => 'CA-FR — Cargo Aérien France'],
+            ['value' => 'CA-SN', 'label' => 'CA-SN — Cargo Aérien Sénégal'],
+            ['value' => 'CA-IS', 'label' => 'CA-IS — Cargo Aérien Italie / Suisse'],
+            ['value' => 'CA-IC', 'label' => 'CA-IC — Cargo Aérien Inter-Capitales'],
+            ['value' => 'CA-CC', 'label' => 'CA-CC — Cargo Aérien Commercial (Chyna)'],
         ];
-        $typeEnvoiSelect = Form::selectSearch('type_envoi', $typeOpts, $filters['type_envoi'] ?? '', ['label' => 'Type d\'envoi']);
+        $typeEnvoiSelect = Form::selectSearch('type_envoi', $typeOpts, $filters['type_envoi'] ?? '', ['label' => 'Catégorie de Code']);
 
         $agenceOpts = [['value' => 'all', 'label' => 'Toutes les agences']];
         foreach ($agences as $a) {
@@ -312,7 +321,19 @@ final class Finance
             . '</a>';
 
         $filterActions = '<div class="rh-personnel-filter-actions">' . $searchBtn . $resetBtn . '</div>';
-        $form = '<form method="get" action="' . View::url('finance/factures') . '" class="rh-personnel-filters">' . $filterGrid . $filterActions . '</form>';
+
+        // Barre de filtres rapides par catégorie de code (LB-CI, LB-FR, S-FR, S-CI, LB-CA, F-SN, DHL, CA-CI, CA-FR, CA-SN, CA-IS, CA-IC, CA-CC)
+        $categoriesList = ['LB-CI', 'LB-FR', 'S-FR', 'S-CI', 'LB-CA', 'F-SN', 'DHL', 'CA-CI', 'CA-FR', 'CA-SN', 'CA-IS', 'CA-IC', 'CA-CC'];
+        $catPills = '<div style="margin-top:1rem; padding-top:0.75rem; border-top:1px dashed #cbd5e1; display:flex; align-items:center; gap:6px; flex-wrap:wrap;">'
+            . '<span style="font-size:0.8rem; font-weight:700; color:#475569; margin-right:4px;">Catégories :</span>';
+        foreach ($categoriesList as $catCode) {
+            $activeStyle = (($filters['type_envoi'] ?? '') === $catCode) ? 'background:#2563eb; color:#ffffff; font-weight:800; border-color:#2563eb;' : 'background:#f1f5f9; color:#334155; border-color:#cbd5e1;';
+            $urlCat = View::url('finance/factures') . '?type_envoi=' . urlencode($catCode) . (isset($filters['statut']) && $filters['statut'] !== '' ? '&statut=' . urlencode($filters['statut']) : '');
+            $catPills .= '<a href="' . $urlCat . '" style="padding:3px 10px; border-radius:20px; font-size:0.78rem; text-decoration:none; border:1px solid; transition:all 0.15s; ' . $activeStyle . '">' . $catCode . '</a>';
+        }
+        $catPills .= '</div>';
+
+        $form = '<form method="get" action="' . View::url('finance/factures') . '" class="rh-personnel-filters">' . $filterGrid . $filterActions . $catPills . '</form>';
 
         // Tableau
         $tableHtml = '';
@@ -1053,13 +1074,13 @@ final class Finance
             $encDigital = (float) ($activeReport['encaisseDigitalXof'] ?? $activeReport['encaisse_digital_xof'] ?? 0);
             $encCheque = (float) ($activeReport['encaisseChequeXof'] ?? $activeReport['encaisse_cheque_xof'] ?? 0);
 
-            // Alerte Clôture Tardive après 18h00
+            // Alerte Clôture Tardive après 15h00
             $lateAlert = '';
-            if ((int)date('H') >= 18 && $statut === 'brouillon') {
+            if ((int)date('H') >= 15 && $statut === 'brouillon') {
                 $lateAlert = '<div style="background:#fef2f2; border:2px solid #ef4444; border-radius:12px; padding:1.2rem 1.5rem; margin-bottom:1.5rem; display:flex; align-items:center; gap:1rem; box-shadow:0 4px 12px rgba(239,68,68,0.12);">'
                     . '<div style="width:48px; height:48px; border-radius:12px; background:rgba(239,68,68,0.15); display:flex; align-items:center; justify-content:center; flex-shrink:0;"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg></div>'
                     . '<div>'
-                    . '<strong style="color:#991b1b; font-size:1.1rem;">ALERTE CLÔTURE TARDIVE (Post 18h00)</strong><br>'
+                    . '<strong style="color:#991b1b; font-size:1.1rem;">ALERTE CLÔTURE TARDIVE (Post 15h00)</strong><br>'
                     . '<span style="color:#b91c1c; font-size:0.88rem;">Il est ' . date('H:i') . '. Le point de caisse du jour pour <strong>' . $agenceTitle . '</strong> n\'a pas encore été soumis. Veuillez procéder immédiatement au décompte des billets et verrouiller la caisse.</span>'
                     . '</div>'
                     . '</div>';
