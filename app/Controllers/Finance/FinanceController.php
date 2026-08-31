@@ -1718,6 +1718,23 @@ final class FinanceController extends FinanceBaseController
     }
 
     /**
+     * Export PDF de la synthèse des 13 catégories (Codes Payés vs Non Payés).
+     */
+    public function exportCategoriesPdf(): void
+    {
+        AuthMiddleware::check();
+        RoleMiddleware::check(['caissiere', 'caissiere_principale', 'chef_agence', 'dg', 'comptable', 'superviseur_regional', 'superviseur_general']);
+
+        $filters = [
+            'agence_id' => $_GET['agence_id'] ?? '',
+            'q' => $_GET['q'] ?? '',
+        ];
+
+        $stats = $this->factureRepo->getCategoryStats($filters);
+        require BASE_PATH . '/views/finance/categories_pdf.php';
+    }
+
+    /**
      * Export PDF du point de caisse d'une agence spécifique (temps réel / brouillon / soumis).
      */
     public function exportClotureAgencePdf(): void

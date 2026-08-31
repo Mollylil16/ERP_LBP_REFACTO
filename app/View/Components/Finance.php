@@ -310,10 +310,16 @@ final class Finance
                 . '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg> Exporter Synthèse Catégories (CSV)'
                 . '</a>';
 
+            $exportPdfBtn = '<a href="' . View::url('finance/factures/export-categories-pdf') . '" style="padding:0.45rem 0.95rem; background:#2563eb; color:#fff; font-weight:700; border-radius:8px; text-decoration:none; font-size:0.82rem; display:inline-flex; align-items:center; gap:6px;" target="_blank">'
+                . '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg> Exporter Synthèse Catégories (PDF)'
+                . '</a>';
+
+            $chartIcon = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#2563eb" stroke-width="2.5" style="display:inline; margin-right:8px; vertical-align:-3px;"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>';
+
             $matrixHtml = '<div style="background:#ffffff; border:1px solid #cbd5e1; border-radius:14px; padding:1.25rem; margin-bottom:1.5rem; box-shadow:0 4px 12px rgba(15,23,42,0.03);">'
                 . '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:0.5rem;">'
-                . '<div><h3 style="margin:0; font-weight:800; color:#0f172a; font-size:1.1rem;">📊 Synthèse & Recouvrement par Catégorie de Code (13 Codes)</h3><small style="color:#64748b;">Suivi des factures payées vs créances non payées par type d\'envoi.</small></div>'
-                . $exportCsvBtn
+                . '<div><h3 style="margin:0; font-weight:800; color:#0f172a; font-size:1.1rem;">' . $chartIcon . 'Synthèse & Recouvrement par Catégorie de Code (13 Codes)</h3><small style="color:#64748b;">Suivi des factures payées vs créances non payées par type d\'envoi.</small></div>'
+                . '<div style="display:flex; gap:0.5rem;">' . $exportCsvBtn . $exportPdfBtn . '</div>'
                 . '</div>'
                 . '<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap:1rem;">'
                 . $cards
@@ -1147,7 +1153,7 @@ final class Finance
                 . '<h3 style="margin:0; font-size:1.15rem; color:#0f172a; font-weight:800;"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#2563eb" stroke-width="2.5" style="display:inline; margin-right:6px; vertical-align:-2px;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>Position de Caisse en Temps Réel du jour — ' . $agenceTitle . '</h3>'
                 . '<div style="display:flex; align-items:center; gap:0.6rem;">'
                 . '<a href="' . $livePdfUrl . '" target="_blank" style="padding:0.45rem 0.95rem; background:#2563eb; color:#fff; font-weight:700; border-radius:8px; text-decoration:none; font-size:0.82rem; display:inline-flex; align-items:center; gap:6px; whitespace:nowrap; box-shadow:0 2px 6px rgba(37,99,235,0.2);">'
-                . '🖨️ PDF de la Journée'
+                . '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:inline; margin-right:2px;"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg> PDF de la Journée'
                 . '</a>'
                 . Ui::badge(strtoupper($statut === 'brouillon' ? 'Temps Réel (Non Soumis)' : $statut), $statutBadge)
                 . '</div>'
