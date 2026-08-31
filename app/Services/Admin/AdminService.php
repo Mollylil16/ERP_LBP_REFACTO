@@ -24,6 +24,16 @@ class AdminService
         'superviseur_regional' => 'Superviseur Régional',
         'agent_enregistrement' => 'Agent d\'Enregistrement',
         'agent_groupage'       => 'Agent Groupage',
+        'rh'                   => 'Ressources Humaines (RH)',
+        'rh_agent'             => 'Agent RH',
+        'rh_manager'           => 'Manager RH',
+        'rh_responsable'       => 'Responsable RH',
+        'rh_employee'          => 'Employé RH',
+        'agent'                => 'Agent Polyvalent',
+        'agent_transit'        => 'Agent Transit',
+        'transit'              => 'Opérateur Transit',
+        'transitaire'          => 'Transitaire',
+        'admin'                => 'Administrateur Système',
     ];
 
     public function __construct(
@@ -194,6 +204,8 @@ class AdminService
             ");
             $stmt->execute(['user_id' => $userId, 'user_id2' => $userId]);
             return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        } catch (\Throwable $e) {
+            return [];
         }
     }
 

@@ -88,35 +88,49 @@ foreach ($rhRoles as $role) {
 }
 
 // 4. Attribution des permissions granulaires dans user_permissions
-$pdo->exec("
-    CREATE TABLE IF NOT EXISTS user_permissions (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        user_id INT NOT NULL,
-        entity VARCHAR(64) NOT NULL,
-        can_read TINYINT(1) DEFAULT 1,
-        can_write TINYINT(1) DEFAULT 1,
-        can_delete TINYINT(1) DEFAULT 1,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        UNIQUE KEY uq_user_entity (user_id, entity)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-");
-
-$rhEntities = [
+$rhCodes = [
     'rh_employees', 'rh_employee_history', 'rh_employee_mutations',
     'rh_exit_reasons', 'rh_functions', 'rh_services', 'rh_statuses',
     'pointage', 'contrats', 'cycle_vie', 'conges', 'payroll'
 ];
 
 echo "\n[*] Attribution des privilèges CRUD sur les entités RH dans user_permissions...\n";
-$stmtPerm = $pdo->prepare("
-    INSERT INTO user_permissions (user_id, entity, can_read, can_write, can_delete)
-    VALUES (?, ?, 1, 1, 1)
-    ON DUPLICATE KEY UPDATE can_read = 1, can_write = 1, can_delete = 1
-");
 
-foreach ($rhEntities as $entity) {
-    $stmtPerm->execute([$userId, $entity]);
-    echo "    [+] Privilège complet (READ/WRITE/DELETE) sur : {$entity}\n";
+// A. Si user_permissions possède la colonne entity_id
+try {
+    $stmtEntityId = $pdo->prepare("SELECT id, code FROM permission_entities WHERE code = ?");
+    $stmtInsertPerm = $pdo->prepare("
+        INSERT INTO user_permissions (user_id, entity_id, can_view, can_create, can_update, can_delete)
+        VALUES (?, ?, 1, 1, 1, 1)
+        ON DUPLICATE KEY UPDATE can_view = 1, can_create = 1, can_update = 1, can_delete = 1
+    ");
+
+    foreach ($rhCodes as $code) {
+        $stmtEntityId->execute([$code]);
+        $entId = $stmtEntityId->fetchColumn();
+        if ($entId) {
+            $stmtInsertPerm->execute([$userId, (int)$entId]);
+            echo "    [+] Privilège par entity_id ({$code} -> ID {$entId}) accordé.\n";
+        }
+    }
+} catch (\Throwable $e) {
+    // Ignorer si le schéma est en mode legacy entity varchar
+}
+
+// B. Mode secours entity varchar
+try {
+    $stmtLegacyPerm = $pdo->prepare("
+        INSERT INTO user_permissions (user_id, entity, can_read, can_write, can_delete)
+        VALUES (?, ?, 1, 1, 1)
+        ON DUPLICATE KEY UPDATE can_read = 1, can_write = 1, can_delete = 1
+    ");
+
+    foreach ($rhCodes as $code) {
+        $stmtLegacyPerm->execute([$userId, $code]);
+        echo "    [+] Privilège par entity code ({$code}) accordé.\n";
+    }
+} catch (\Throwable $e) {
+    // Ignorer si la colonne entity varchar n'existe plus
 }
 
 // 5. Validation finale

@@ -126,7 +126,7 @@ class UserRepository
                 :is_admin,
                 :rh_employee_id,
                 :agence_id,
-                NOW()
+                :created_at
             )
         ");
 
@@ -139,6 +139,7 @@ class UserRepository
             'is_admin' => $user->isAdmin ? 1 : 0,
             'rh_employee_id' => $user->rhEmployeeId,
             'agence_id' => $user->agenceId,
+            'created_at' => date('Y-m-d H:i:s'),
         ]);
 
         return (int) $this->pdo->lastInsertId();
