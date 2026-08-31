@@ -329,6 +329,54 @@ class FactureRepository
         return array_map(fn($row) => $this->mapToFacture($row), $stmt->fetchAll(PDO::FETCH_ASSOC) ?: []);
     }
 
+    public function getCategoryStats(array $filters = []): array
+    {
+        $categories = ['LB-CI', 'LB-FR', 'S-FR', 'S-CI', 'LB-CA', 'F-SN', 'DHL', 'CA-CI', 'CA-FR', 'CA-SN', 'CA-IS', 'CA-IC', 'CA-CC'];
+        $results = [];
+
+        $allFactures = $this->getFacturesGlobal(array_merge($filters, ['type_envoi' => '']));
+
+        foreach ($categories as $cat) {
+            $catFactures = array_filter($allFactures, function($f) use ($cat) {
+                return (str_contains((string)$f->numeroFacture, $cat) || str_contains((string)($f->colis_tracking ?? ''), $cat));
+            });
+
+            $totalCount = count($catFactures);
+            $totalMontant = 0.0;
+            $montantPaye = 0.0;
+            $montantNonPaye = 0.0;
+            $countPaye = 0;
+            $countNonPaye = 0;
+
+            foreach ($catFactures as $f) {
+                $totalMontant += (float)$f->montantTotal;
+                $montantPaye += (float)$f->montantEncaisse;
+                $montantNonPaye += (float)$f->montantRestant;
+
+                if ($f->statut === 'payee') {
+                    $countPaye++;
+                } elseif (in_array($f->statut, ['emise', 'partiellement_payee', 'en_retard'], true)) {
+                    $countNonPaye++;
+                }
+            }
+
+            $tauxRecouvrement = $totalMontant > 0 ? round(($montantPaye / $totalMontant) * 100, 1) : 0.0;
+
+            $results[$cat] = [
+                'code' => $cat,
+                'total_count' => $totalCount,
+                'total_montant' => $totalMontant,
+                'montant_paye' => $montantPaye,
+                'montant_non_paye' => $montantNonPaye,
+                'count_paye' => $countPaye,
+                'count_non_paye' => $countNonPaye,
+                'taux_recouvrement' => $tauxRecouvrement,
+            ];
+        }
+
+        return $results;
+    }
+
     public function generateNextInvoiceNumber(int $agenceId): string
     {
         $year = date('Y');

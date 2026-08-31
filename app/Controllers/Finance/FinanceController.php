@@ -108,11 +108,13 @@ final class FinanceController extends FinanceBaseController
         }
 
         $agences = $this->db->query("SELECT id, name FROM company_sites WHERE is_active = 1")->fetchAll() ?: [];
+        $categoryStats = $this->factureRepo->getCategoryStats($filters);
 
         $this->financeView('finance/factures/index', 'Gestion de la Facturation', 'factures', [
             'factures' => $pagedFactures,
             'filters' => $filters,
             'agences' => $agences,
+            'categoryStats' => $categoryStats,
             'pagination' => [
                 'currentPage' => $page,
                 'totalPages' => $totalPages,
@@ -1665,6 +1667,51 @@ final class FinanceController extends FinanceBaseController
 
             fclose($output);
         }
+        if (PHP_SAPI !== 'cli') {
+            exit;
+        }
+    }
+
+    /**
+     * Export CSV de la synthèse des 13 catégories (Codes Payés vs Non Payés).
+     */
+    public function exportCategoriesCsv(): void
+    {
+        RoleMiddleware::check(['caissiere', 'caissiere_principale', 'chef_agence', 'dg', 'comptable', 'superviseur_regional', 'superviseur_general']);
+
+        $filters = [
+            'agence_id' => $_GET['agence_id'] ?? '',
+            'q' => $_GET['q'] ?? '',
+        ];
+
+        $stats = $this->factureRepo->getCategoryStats($filters);
+        $filename = 'export_synthese_categories_' . date('Ymd_His') . '.csv';
+
+        header('Content-Type: text/csv; charset=utf-8');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        header('Cache-Control: max-age=0');
+
+        $output = fopen('php://output', 'w');
+        if ($output) {
+            fwrite($output, "\xEF\xBB\xBF");
+            fputcsv($output, ['Catégorie de Code', 'Nombre Total Factures', 'Montant Total (XOF)', 'Factures Payées (Comptage)', 'Montant Payé (XOF)', 'Factures Non Payées (Comptage)', 'Montant Non Payé / Créances (XOF)', 'Taux de Recouvrement (%)'], ';');
+
+            foreach ($stats as $cat => $st) {
+                fputcsv($output, [
+                    $st['code'],
+                    $st['total_count'],
+                    number_format($st['total_montant'], 2, '.', ''),
+                    $st['count_paye'],
+                    number_format($st['montant_paye'], 2, '.', ''),
+                    $st['count_non_paye'],
+                    number_format($st['montant_non_paye'], 2, '.', ''),
+                    $st['taux_recouvrement'] . '%',
+                ], ';');
+            }
+
+            fclose($output);
+        }
+
         if (PHP_SAPI !== 'cli') {
             exit;
         }

@@ -249,7 +249,7 @@ final class Finance
     /**
      * Rendu de la liste des factures.
      */
-    public static function facturesTable(array $factures, array $filters = [], array $agences = [], array $pagination = []): string
+    public static function facturesTable(array $factures, array $filters = [], array $agences = [], array $pagination = [], array $categoryStats = []): string
     {
         $header = Ui::pageHeader(
             'Gestion de la Facturation',
@@ -266,6 +266,60 @@ final class Finance
                 ]
             ]
         );
+
+        // Matrice analytique des 13 catégories (Codes payés vs non payés)
+        $matrixHtml = '';
+        if (!empty($categoryStats)) {
+            $cards = '';
+            foreach ($categoryStats as $cat => $st) {
+                $taux = (float) $st['taux_recouvrement'];
+                $barColor = $taux >= 80 ? '#16a34a' : ($taux >= 50 ? '#d97706' : '#dc2626');
+                $isFiltered = (($filters['type_envoi'] ?? '') === $cat);
+                $cardBorder = $isFiltered ? 'border:2px solid #2563eb; background:#eff6ff;' : 'border:1px solid #e2e8f0; background:#ffffff;';
+
+                $urlCatNonPaye = View::url('finance/factures') . '?type_envoi=' . urlencode($cat) . '&statut=emise';
+
+                $cards .= '<div style="' . $cardBorder . ' border-radius:12px; padding:1rem; box-shadow:0 2px 6px rgba(0,0,0,0.02); display:flex; flex-direction:column; justify-content:space-between;">'
+                    . '<div>'
+                    . '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">'
+                    . '<strong style="font-size:1rem; color:#0f172a; font-family:monospace;">' . View::e($cat) . '</strong>'
+                    . '<span style="font-size:0.75rem; font-weight:700; color:#64748b;">' . $st['total_count'] . ' factures</span>'
+                    . '</div>'
+                    . '<div style="font-size:0.82rem; margin-bottom:0.3rem;">'
+                    . '<span style="color:#16a34a; font-weight:700;">Payé: ' . number_format($st['montant_paye'], 0, ',', ' ') . ' XOF</span> '
+                    . '<small style="color:#64748b;">(' . $st['count_paye'] . ')</small>'
+                    . '</div>'
+                    . '<div style="font-size:0.82rem; margin-bottom:0.6rem;">'
+                    . '<span style="color:#dc2626; font-weight:700;">Non Payé: ' . number_format($st['montant_non_paye'], 0, ',', ' ') . ' XOF</span> '
+                    . '<small style="color:#64748b;">(' . $st['count_non_paye'] . ')</small>'
+                    . '</div>'
+                    . '</div>'
+                    . '<div>'
+                    . '<div style="background:#e2e8f0; border-radius:4px; height:6px; overflow:hidden; margin-bottom:0.4rem;">'
+                    . '<div style="background:' . $barColor . '; width:' . min(100, $taux) . '%; height:100%;"></div>'
+                    . '</div>'
+                    . '<div style="display:flex; justify-content:space-between; align-items:center; font-size:0.75rem;">'
+                    . '<span style="font-weight:800; color:' . $barColor . ';">' . $taux . '% recouvré</span>'
+                    . '<a href="' . $urlCatNonPaye . '" style="color:#2563eb; font-weight:700; text-decoration:none;">Non Payés »</a>'
+                    . '</div>'
+                    . '</div>'
+                    . '</div>';
+            }
+
+            $exportCsvBtn = '<a href="' . View::url('finance/factures/export-categories-csv') . '" style="padding:0.45rem 0.95rem; background:#0f172a; color:#fff; font-weight:700; border-radius:8px; text-decoration:none; font-size:0.82rem; display:inline-flex; align-items:center; gap:6px;" target="_blank">'
+                . '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg> Exporter Synthèse Catégories (CSV)'
+                . '</a>';
+
+            $matrixHtml = '<div style="background:#ffffff; border:1px solid #cbd5e1; border-radius:14px; padding:1.25rem; margin-bottom:1.5rem; box-shadow:0 4px 12px rgba(15,23,42,0.03);">'
+                . '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:0.5rem;">'
+                . '<div><h3 style="margin:0; font-weight:800; color:#0f172a; font-size:1.1rem;">📊 Synthèse & Recouvrement par Catégorie de Code (13 Codes)</h3><small style="color:#64748b;">Suivi des factures payées vs créances non payées par type d\'envoi.</small></div>'
+                . $exportCsvBtn
+                . '</div>'
+                . '<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap:1rem;">'
+                . $cards
+                . '</div>'
+                . '</div>';
+        }
 
         // Formulaire de filtre
         $q = Form::input('q', [
@@ -435,6 +489,7 @@ final class Finance
         return '<div class="finea-shell">'
             . '<div class="finea-container">'
             . $header
+            . $matrixHtml
             . $form
             . '<div class="finea-section-card" style="margin-top: 1.5rem;">'
             . $tableHtml

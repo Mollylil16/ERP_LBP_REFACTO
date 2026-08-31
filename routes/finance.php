@@ -14,6 +14,7 @@ $router->group('/finance', function (Router $router): void {
 
     // Factures
     $router->get('/factures', [FinanceController::class, 'facturesIndex']);
+    $router->get('/factures/export-categories-csv', [FinanceController::class, 'exportCategoriesCsv']);
     $router->get('/factures/nouveau', [FinanceController::class, 'factureCreate']);
     $router->post('/factures/enregistrer', [FinanceController::class, 'factureStore']);
     $router->post('/factures/relancer-tout', [FinanceController::class, 'factureRelancerTout']);
