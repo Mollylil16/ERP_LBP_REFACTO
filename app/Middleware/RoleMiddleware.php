@@ -46,7 +46,9 @@ class RoleMiddleware
             } else {
                 header('Location: ' . $baseUrl . '/selection_portail');
             }
-            exit;
+            if (PHP_SAPI !== 'cli') {
+                exit;
+            }
         }
     }
 }

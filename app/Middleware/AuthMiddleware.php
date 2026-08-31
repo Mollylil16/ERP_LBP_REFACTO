@@ -35,6 +35,8 @@ class AuthMiddleware
         $config = require BASE_PATH . '/config/app.php';
 
         header('Location: ' . rtrim($config['url'], '/') . '/' . ltrim($path, '/'));
-        exit;
+        if (PHP_SAPI !== 'cli') {
+            exit;
+        }
     }
 }

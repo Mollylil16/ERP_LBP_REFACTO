@@ -1310,7 +1310,7 @@ final class FinanceController extends FinanceBaseController
      */
     public function comptabilite(): void
     {
-        RoleMiddleware::check(['comptable', 'dg']);
+        RoleMiddleware::check(['comptable', 'dg', 'superviseur_general']);
 
         $filters = [
             'journal' => $_GET['journal'] ?? '',
@@ -1327,6 +1327,151 @@ final class FinanceController extends FinanceBaseController
             'accounts' => $accounts,
             'filters' => $filters,
         ]);
+    }
+
+    /**
+     * Enregistrer une écriture manuelle (Opérations Diverses / OD).
+     */
+    public function ecritureManuelleStore(): void
+    {
+        RoleMiddleware::check(['comptable', 'dg']);
+
+        $dateEcriture = trim((string) ($_POST['date_ecriture'] ?? date('Y-m-d')));
+        $journal = trim((string) ($_POST['journal'] ?? 'OD'));
+        $compteDebit = trim((string) ($_POST['compte_debit'] ?? ''));
+        $compteCredit = trim((string) ($_POST['compte_credit'] ?? ''));
+        $montant = (float) ($_POST['montant'] ?? 0.0);
+        $libelle = trim((string) ($_POST['libelle'] ?? ''));
+        $pieceRef = trim((string) ($_POST['piece_justificative_id'] ?? ''));
+
+        if ($compteDebit === '' || $compteCredit === '' || $montant <= 0 || $libelle === '') {
+            Session::flash('error', 'Veuillez remplir tous les champs obligatoires (comptes, montant et libellé).');
+            header('Location: ' . View::url('finance/comptabilite'));
+            exit;
+        }
+
+        if ($compteDebit === $compteCredit) {
+            Session::flash('error', 'Le compte débiteur et le compte créditeur doivent être différents.');
+            header('Location: ' . View::url('finance/comptabilite'));
+            exit;
+        }
+
+        $ecriture = new EcritureComptable(
+            id: null,
+            dateEcriture: $dateEcriture,
+            journal: $journal,
+            compteDebit: $compteDebit,
+            compteCredit: $compteCredit,
+            montant: $montant,
+            devise: 'XOF',
+            tauxChange: null,
+            pieceJustificativeId: $pieceRef !== '' ? $pieceRef : 'OD-' . date('Ymd-His'),
+            libelle: $libelle
+        );
+
+        $this->comptabiliteRepo->createEcriture($ecriture);
+        AuditLogService::log('create_manual_entry', 'lbp_ecritures_comptables', 0, null, (array) $ecriture);
+
+        Session::flash('success', 'Écriture manuelle (OD) enregistrée avec succès.');
+        header('Location: ' . View::url('finance/comptabilite'));
+        exit;
+    }
+
+    /**
+     * Lettrage des écritures sélectionnées.
+     */
+    public function lettrer(): void
+    {
+        RoleMiddleware::check(['comptable', 'dg']);
+
+        $ids = $_POST['ids'] ?? [];
+        $code = trim((string) ($_POST['code'] ?? ''));
+
+        if (!is_array($ids) || $ids === [] || $code === '') {
+            Session::flash('error', 'Veuillez sélectionner au moins une écriture et indiquer un code de lettrage.');
+            header('Location: ' . View::url('finance/comptabilite'));
+            exit;
+        }
+
+        $this->comptabiliteRepo->lettrerEcritures($ids, $code);
+        Session::flash('success', "Les écritures sélectionnées ont été lettrées avec le code '{$code}'.");
+        header('Location: ' . View::url('finance/comptabilite'));
+        exit;
+    }
+
+    /**
+     * Contre-passation d'une écriture comptable.
+     */
+    public function contrePasser(string $id): void
+    {
+        RoleMiddleware::check(['comptable', 'dg']);
+
+        $id = (int) $id;
+        $motif = trim((string) ($_POST['motif'] ?? 'Annulation/Erreur de saisie'));
+
+        try {
+            $newId = $this->comptabiliteRepo->contrePasserEcriture($id, $motif);
+            Session::flash('success', "L'écriture #{$id} a été contre-passée avec succès (Nouvelle écriture d'annulation #{$newId}).");
+        } catch (\Throwable $e) {
+            Session::flash('error', "Erreur lors de la contre-passation : " . $e->getMessage());
+        }
+
+        header('Location: ' . View::url('finance/comptabilite'));
+        exit;
+    }
+
+    /**
+     * Balance des comptes (Balance générale).
+     */
+    public function balanceComptes(): void
+    {
+        RoleMiddleware::check(['comptable', 'dg', 'superviseur_general']);
+
+        $filters = [
+            'date_debut' => $_GET['date_debut'] ?? '',
+            'date_fin' => $_GET['date_fin'] ?? '',
+        ];
+
+        $balance = $this->comptabiliteRepo->getBalanceDesComptes($filters);
+
+        $this->financeView('finance/balance_comptes/index', 'Balance des Comptes', 'balance_comptes', [
+            'balance' => $balance,
+            'filters' => $filters,
+        ]);
+    }
+
+    /**
+     * Plan comptable (Index & Création).
+     */
+    public function planComptableIndex(): void
+    {
+        RoleMiddleware::check(['comptable', 'dg', 'superviseur_general']);
+
+        $plan = $this->comptabiliteRepo->getPlanComptable();
+
+        $this->financeView('finance/plan_comptable/index', 'Plan Comptable SYSCOHADA', 'plan_comptable', [
+            'plan' => $plan,
+        ]);
+    }
+
+    public function planComptableStore(): void
+    {
+        RoleMiddleware::check(['comptable', 'dg']);
+
+        $code = trim((string) ($_POST['code'] ?? ''));
+        $libelle = trim((string) ($_POST['libelle'] ?? ''));
+        $classe = (int) ($_POST['classe'] ?? 6);
+
+        if ($code === '' || $libelle === '') {
+            Session::flash('error', 'Le numéro de compte et l\'intitulé sont obligatoires.');
+            header('Location: ' . View::url('finance/plan-comptable'));
+            exit;
+        }
+
+        $this->comptabiliteRepo->addCompteComptable($code, $libelle, $classe);
+        Session::flash('success', "Le compte {$code} - {$libelle} a été ajouté au plan comptable.");
+        header('Location: ' . View::url('finance/plan-comptable'));
+        exit;
     }
 
     /**
@@ -1481,9 +1626,16 @@ final class FinanceController extends FinanceBaseController
      */
     public function exportSyscohada(): void
     {
-        RoleMiddleware::check(['comptable', 'dg']);
+        RoleMiddleware::check(['comptable', 'dg', 'superviseur_general']);
 
-        $ecritures = $this->comptabiliteRepo->getEcritures([]);
+        $filters = [
+            'journal' => $_GET['journal'] ?? '',
+            'compte' => $_GET['compte'] ?? '',
+            'date_debut' => $_GET['date_debut'] ?? '',
+            'date_fin' => $_GET['date_fin'] ?? '',
+        ];
+
+        $ecritures = $this->comptabiliteRepo->getEcritures($filters);
 
         $filename = 'export_ecritures_syscohada_' . date('Ymd_His') . '.csv';
 
@@ -1513,7 +1665,86 @@ final class FinanceController extends FinanceBaseController
 
             fclose($output);
         }
-        exit;
+        if (PHP_SAPI !== 'cli') {
+            exit;
+        }
+    }
+
+    /**
+     * Export PDF du point de caisse d'une agence spécifique (temps réel / brouillon / soumis).
+     */
+    public function exportClotureAgencePdf(): void
+    {
+        AuthMiddleware::check();
+
+        $userAgenceId = Auth::user()?->agenceId ?? 0;
+        $isGlobal = Auth::hasRole(['caissiere_principale', 'dg', 'comptable', 'superviseur_general']);
+
+        $agenceId = isset($_GET['agence_id']) && $_GET['agence_id'] !== '' ? (int) $_GET['agence_id'] : ($userAgenceId ? (int) $userAgenceId : 0);
+        $dateJour = !empty($_GET['date']) ? trim((string) $_GET['date']) : date('Y-m-d');
+
+        if ($agenceId <= 0) {
+            Session::flash('error', 'Agence non spécifiée.');
+            header('Location: ' . View::url('finance/clotures'));
+            exit;
+        }
+
+        if (!$isGlobal && (int) $userAgenceId !== $agenceId) {
+            Session::flash('error', 'Accès non autorisé au point de caisse d\'une autre agence.');
+            header('Location: ' . View::url('finance/clotures'));
+            exit;
+        }
+
+        $existing = $this->etatRepo->findByAgenceAndDate($agenceId, $dateJour);
+        if ($existing) {
+            $report = $existing;
+        } else {
+            $live = $this->etatRepo->computeTotalsForDay($agenceId, $dateJour);
+            $report = new EtatJournalier(
+                id: null,
+                agenceId: $agenceId,
+                chefAgenceId: Auth::id(),
+                dateJour: $dateJour,
+                nbColisEnregistres: (int) ($live['nb_colis'] ?? 0),
+                nbFacturesEmises: (int) ($live['nb_factures'] ?? 0),
+                totalFactureXof: (float) ($live['total_facture_xof'] ?? 0),
+                totalFactureEur: (float) ($live['total_facture_eur'] ?? 0),
+                totalEncaisseXof: (float) ($live['total_encaisse_xof'] ?? 0),
+                totalEncaisseEur: (float) ($live['total_encaisse_eur'] ?? 0),
+                totalRestantDuXof: (float) ($live['total_restant_du_xof'] ?? 0),
+                totalRestantDuEur: (float) ($live['total_restant_du_eur'] ?? 0),
+                soldeCaisseAgenceXof: (float) ($live['solde_caisse_agence_xof'] ?? 0),
+                soldeCaisseAgenceEur: (float) ($live['solde_caisse_agence_eur'] ?? 0),
+                statut: 'brouillon',
+                dateSoumission: null,
+                soldePhysiqueDeclare: null,
+                ecartCaisse: 0.0,
+                explicationEcart: null
+            );
+        }
+
+        // Nom de l'agence
+        $stmt = $this->db->prepare("SELECT name FROM company_sites WHERE id = :id LIMIT 1");
+        $stmt->execute(['id' => $report->agenceId]);
+        $agenceName = $stmt->fetchColumn() ?: 'Agence #' . $report->agenceId;
+
+        // Nom du Chef / Caissier
+        $chefName = 'Caissier';
+        if ($report->chefAgenceId) {
+            $stmt = $this->db->prepare("SELECT full_name FROM users WHERE id = :id LIMIT 1");
+            $stmt->execute(['id' => $report->chefAgenceId]);
+            $chefName = $stmt->fetchColumn() ?: 'Chef d\'Agence';
+        }
+
+        // Nom du Consolidateur
+        $consolideParName = 'En attente';
+        if ($report->consolideParId) {
+            $stmt = $this->db->prepare("SELECT full_name FROM users WHERE id = :id LIMIT 1");
+            $stmt->execute(['id' => $report->consolideParId]);
+            $consolideParName = $stmt->fetchColumn() ?: 'Caissière Principale';
+        }
+
+        require BASE_PATH . '/views/finance/cloture_pdf.php';
     }
 
     public function exportRentabilitePdf(): void
@@ -1853,6 +2084,22 @@ final class FinanceController extends FinanceBaseController
                 'totalDecaissementsPrevus' => $totalDecaissementsPrevus,
                 'soldeTrésorerieEstime' => $soldeTrésorerieEstime,
             ]
+        );
+    }
+
+    public function guideIndex(): void
+    {
+        RoleMiddleware::check(['caissiere', 'caissiere_principale', 'chef_agence', 'dg', 'comptable', 'superviseur_regional', 'superviseur_general']);
+
+        $dashService = new \App\Services\Shared\ModuleDashboardService();
+        $module = $dashService->dashboard('finance');
+
+        $this->financeView(
+            'finance/guide/index',
+            'Guide Interactif & Formation Finance & Comptabilité - LBP',
+            'guide',
+            $module,
+            []
         );
     }
 

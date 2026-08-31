@@ -340,7 +340,10 @@ final class ModuleDashboardService
                 ['key' => 'tresorerie', 'label' => 'Trésorerie & Cashflow', 'icon' => 'TS', 'url' => '/finance/tresorerie', 'available' => true, 'group' => 'Trésorerie & Banque'],
                 ['key' => 'rentabilite', 'label' => 'Rentabilité (P&L)', 'icon' => 'PL', 'url' => '/finance/rentabilite', 'available' => true, 'group' => 'Analyse & Comptabilité'],
                 ['key' => 'balance_agee', 'label' => 'Balance Âgée', 'icon' => 'BAG', 'url' => '/finance/balance-agee', 'available' => true, 'group' => 'Analyse & Comptabilité'],
-                ['key' => 'comptabilite', 'label' => 'Comptabilité', 'icon' => 'CPT', 'url' => '/finance/comptabilite', 'available' => true, 'group' => 'Analyse & Comptabilité'],
+                ['key' => 'balance_comptes', 'label' => 'Balance des Comptes', 'icon' => 'BAL', 'url' => '/finance/balance-comptes', 'available' => true, 'group' => 'Analyse & Comptabilité'],
+                ['key' => 'comptabilite', 'label' => 'Livre Journal', 'icon' => 'CPT', 'url' => '/finance/comptabilite', 'available' => true, 'group' => 'Analyse & Comptabilité'],
+                ['key' => 'plan_comptable', 'label' => 'Plan Comptable', 'icon' => 'SYS', 'url' => '/finance/plan-comptable', 'available' => true, 'group' => 'Analyse & Comptabilité'],
+                ['key' => 'guide', 'label' => '📖 Guide & Formation', 'icon' => 'HLP', 'url' => '/finance/guide', 'available' => true, 'group' => 'Aide'],
             ];
         }
 

@@ -36,10 +36,14 @@ spl_autoload_register(function (string $class): void {
     }
 });
 
-$pdo = Database::getConnection();
+try {
+    $pdo = Database::getConnection();
 
-$migrationRunner = new MigrationRunner($pdo);
-$migrationRunner->run();
+    $migrationRunner = new MigrationRunner($pdo);
+    $migrationRunner->run();
 
-$adminSeeder = new AdminSeederService(new UserRepository($pdo));
-$adminSeeder->seed();
+    $adminSeeder = new AdminSeederService(new UserRepository($pdo));
+    $adminSeeder->seed();
+} catch (\Throwable $e) {
+    error_log('[ERP LBP Bootstrap Warning] ' . $e->getMessage());
+}

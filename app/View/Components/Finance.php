@@ -864,6 +864,39 @@ final class Finance
                 . '</form>';
         }
 
+        // Calcul des KPI de dépenses
+        $totalPaye = 0.0;
+        $totalAttente = 0.0;
+        $totalRejete = 0.0;
+        $nbAttente = 0;
+
+        foreach ($demandes as $d) {
+            $m = (float) $d->montant;
+            if (in_array(strtolower($d->statut), ['payee', 'approuvee', 'validee'], true)) {
+                $totalPaye += $m;
+            } elseif (in_array(strtolower($d->statut), ['en_attente', 'brouillon'], true)) {
+                $totalAttente += $m;
+                $nbAttente++;
+            } else {
+                $totalRejete += $m;
+            }
+        }
+
+        $kpisHtml = '<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:1.25rem; margin-bottom:1.75rem;">'
+            . '<div style="background:#ffffff; border:1px solid #e2e8f0; border-left:5px solid #16a34a; border-radius:12px; padding:1.25rem;">'
+            . '<div style="font-size:0.75rem; font-weight:800; color:#64748b; text-transform:uppercase;">Décaissements Régalés / Payés</div>'
+            . '<div style="font-size:1.65rem; font-weight:900; color:#16a34a; margin-top:0.35rem;">' . number_format($totalPaye, 0, ',', ' ') . ' XOF</div>'
+            . '</div>'
+            . '<div style="background:#ffffff; border:1px solid #e2e8f0; border-left:5px solid #d97706; border-radius:12px; padding:1.25rem;">'
+            . '<div style="font-size:0.75rem; font-weight:800; color:#64748b; text-transform:uppercase;">En Attente de Validation (' . $nbAttente . ')</div>'
+            . '<div style="font-size:1.65rem; font-weight:900; color:#d97706; margin-top:0.35rem;">' . number_format($totalAttente, 0, ',', ' ') . ' XOF</div>'
+            . '</div>'
+            . '<div style="background:#ffffff; border:1px solid #e2e8f0; border-left:5px solid #dc2626; border-radius:12px; padding:1.25rem;">'
+            . '<div style="font-size:0.75rem; font-weight:800; color:#64748b; text-transform:uppercase;">Demandes Rejetées</div>'
+            . '<div style="font-size:1.65rem; font-weight:900; color:#dc2626; margin-top:0.35rem;">' . number_format($totalRejete, 0, ',', ' ') . ' XOF</div>'
+            . '</div>'
+            . '</div>';
+
         // Tableau des demandes de dépenses
         $tableHtml = '';
         if ($demandes === []) {
@@ -875,7 +908,7 @@ final class Finance
             $rows = '';
             foreach ($demandes as $d) {
                 $badgeTone = match($d->statut) {
-                    'payee' => 'success',
+                    'payee', 'validee' => 'success',
                     'approuvee' => 'primary',
                     'rejetee' => 'danger',
                     default => 'warning'
@@ -919,6 +952,14 @@ final class Finance
                     . '</tr>';
             }
 
+            $tfoot = '<tfoot style="background:#f8fafc; border-top:2px solid #cbd5e1; font-weight:800; color:#0f172a;">'
+                . '<tr>'
+                . '<td colspan="3" style="padding:10px 12px;">Total Général (' . count($demandes) . ' demandes)</td>'
+                . '<td style="text-align:right; padding:10px 12px; color:#dc2626;">- ' . number_format($totalPaye + $totalAttente, 2, ',', ' ') . ' XOF</td>'
+                . '<td colspan="3"></td>'
+                . '</tr>'
+                . '</tfoot>';
+
             $tableHtml = '<div class="finea-table-wrapper">'
                 . '<table class="finea-table">'
                 . '<thead>'
@@ -933,6 +974,7 @@ final class Finance
                 . '</tr>'
                 . '</thead>'
                 . '<tbody>' . $rows . '</tbody>'
+                . $tfoot
                 . '</table>'
                 . '</div>';
         }
@@ -940,6 +982,7 @@ final class Finance
         return '<div class="finea-shell">'
             . '<div class="finea-container">'
             . $header
+            . $kpisHtml
             . ($formCreate !== '' ? Ui::section('Créer une Demande de Paiement', $formCreate) : '')
             . '<div class="finea-section-card" style="margin-top: 1.5rem;">'
             . '<div class="finea-section-heading"><h2 class="finea-section-title">Décaissements et Règlements</h2></div>'
@@ -1022,10 +1065,16 @@ final class Finance
                     . '</div>';
             }
 
+            $livePdfUrl = View::url('finance/clotures/export-pdf-agence') . '?agence_id=' . ($activeReport['agence_id'] ?? $selectedAgenceId) . '&date=' . urlencode($activeReport['date_jour'] ?? date('Y-m-d'));
             $submissionForm = $lateAlert . '<div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:1.5rem; margin-bottom:2rem; box-shadow:0 2px 10px rgba(0,0,0,0.02);">'
-                . '<div style="display:flex; justify-space-between; align-items:center; margin-bottom:1rem;">'
+                . '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:0.5rem;">'
                 . '<h3 style="margin:0; font-size:1.15rem; color:#0f172a; font-weight:800;"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#2563eb" stroke-width="2.5" style="display:inline; margin-right:6px; vertical-align:-2px;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>Position de Caisse en Temps Réel du jour — ' . $agenceTitle . '</h3>'
+                . '<div style="display:flex; align-items:center; gap:0.6rem;">'
+                . '<a href="' . $livePdfUrl . '" target="_blank" style="padding:0.45rem 0.95rem; background:#2563eb; color:#fff; font-weight:700; border-radius:8px; text-decoration:none; font-size:0.82rem; display:inline-flex; align-items:center; gap:6px; whitespace:nowrap; box-shadow:0 2px 6px rgba(37,99,235,0.2);">'
+                . '🖨️ PDF de la Journée'
+                . '</a>'
                 . Ui::badge(strtoupper($statut === 'brouillon' ? 'Temps Réel (Non Soumis)' : $statut), $statutBadge)
+                . '</div>'
                 . '</div>'
                 . '<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:1.25rem; background:#fff; padding:1.25rem; border-radius:10px 10px 0 0; border:1px solid #cbd5e1; border-bottom:none;">'
                 . '<div><small style="color:#64748b; font-weight:600;">Colis Saisis :</small><br><strong style="font-size:1.2rem; color:#0f172a;">' . $nbColis . ' colis</strong></div>'
@@ -1334,6 +1383,9 @@ final class Finance
 
         $filterGrid = '<div class="rh-personnel-filter-grid">' . $journal . $compte . $debut . $fin . '</div>';
 
+        $exportQuery = http_build_query(array_filter($filters));
+        $csvUrl = View::url('finance/export-syscohada') . ($exportQuery !== '' ? '?' . $exportQuery : '');
+
         $searchBtn = '<button type="submit" class="rh-filter-btn rh-filter-btn--primary">'
             . '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="rh-btn-icon"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>'
             . 'Rechercher'
@@ -1344,8 +1396,41 @@ final class Finance
             . 'Réinitialiser'
             . '</a>';
 
-        $filterActions = '<div class="rh-personnel-filter-actions">' . $searchBtn . $resetBtn . '</div>';
+        $csvBtn = '<a href="' . $csvUrl . '" class="rh-filter-btn" style="background:#0f172a; color:#ffffff; font-weight:700; text-decoration:none; display:inline-flex; align-items:center; gap:6px;" target="_blank">'
+            . '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>'
+            . 'Exporter SYSCOHADA (CSV)'
+            . '</a>';
+
+        $addOdBtn = '<button type="button" class="rh-filter-btn" style="background:#2563eb; color:#ffffff; font-weight:700;" onclick="document.getElementById(\'modal-ecriture-manuelle\').showModal()">'
+            . '+ Écriture Manuelle (OD)'
+            . '</button>';
+
+        $filterActions = '<div class="rh-personnel-filter-actions">' . $searchBtn . $resetBtn . $csvBtn . $addOdBtn . '</div>';
         $form = '<form method="get" action="' . View::url('finance/comptabilite') . '" class="rh-personnel-filters">' . $filterGrid . $filterActions . '</form>';
+
+        $compteOpts = [];
+        foreach ($accounts as $a) {
+            $compteOpts[] = ['value' => (string)$a['code'], 'label' => $a['code'] . ' - ' . $a['libelle']];
+        }
+
+        $odFields = Form::input('date_ecriture', ['label' => 'Date Écriture', 'type' => 'date', 'value' => date('Y-m-d'), 'required' => true])
+            . Form::select('journal', [
+                ['value' => 'OD', 'label' => 'Opérations Diverses (OD)'],
+                ['value' => 'caisses', 'label' => 'Journal de Caisse'],
+                ['value' => 'banque', 'label' => 'Journal de Banque'],
+                ['value' => 'achats', 'label' => 'Journal des Achats'],
+                ['value' => 'ventes', 'label' => 'Journal des Ventes'],
+            ], 'OD', ['label' => 'Journal', 'required' => true])
+            . Form::select('compte_debit', $compteOpts, '', ['label' => 'Compte à Débiter (+)', 'required' => true])
+            . Form::select('compte_credit', $compteOpts, '', ['label' => 'Compte à Créditer (-)', 'required' => true])
+            . Form::input('montant', ['label' => 'Montant (XOF)', 'type' => 'number', 'step' => '0.01', 'required' => true])
+            . Form::input('libelle', ['label' => 'Libellé de l\'écriture', 'placeholder' => 'Ex: Régularisation fin de mois', 'required' => true])
+            . Form::input('piece_justificative_id', ['label' => 'N° Pièce Justificative (Optionnel)', 'placeholder' => 'OD-2026-001']);
+
+        $modalOdHtml = Ui::modal('modal-ecriture-manuelle', 'Saisie d\'Écriture Manuelle / OD', $odFields, View::url('finance/comptabilite/ecriture-manuelle'), [
+            'btnLabel' => 'Enregistrer l\'Écriture',
+            'btnVariant' => 'accent',
+        ]);
 
         // Tableau
         $tableHtml = '';
@@ -1356,7 +1441,11 @@ final class Finance
             );
         } else {
             $rows = '';
+            $totalMontant = 0.0;
+            $nbEcritures = count($ecritures);
+
             foreach ($ecritures as $e) {
+                $totalMontant += (float) $e->montant;
                 $compteDebName = '';
                 $compteCredName = '';
                 foreach ($accounts as $a) {
@@ -1368,6 +1457,11 @@ final class Finance
                     }
                 }
 
+                $actionHtml = '<form method="post" action="' . View::url('finance/comptabilite/' . $e->id . '/contre-passer') . '" onsubmit="return confirm(\'Voulez-vous contre-passer (annuler) l\\\'écriture #' . $e->id . ' ?\')" style="display:inline;">'
+                    . Form::hidden('_csrf_token', \App\Helpers\Csrf::token())
+                    . '<button type="submit" class="finea-button finea-button--outline" style="padding:3px 7px; font-size:10px; color:#dc2626; border-color:#fca5a5;">Contre-passer</button>'
+                    . '</form>';
+
                 $rows .= '<tr>'
                     . '<td>' . View::e($e->dateEcriture) . '</td>'
                     . '<td>' . Ui::badge(strtoupper($e->journal)) . '</td>'
@@ -1377,8 +1471,17 @@ final class Finance
                     . '<td>' . View::e($e->pieceJustificativeId) . '</td>'
                     . '<td>' . View::e($e->libelle) . '</td>'
                     . '<td><span style="font-family:monospace; background:#f1f5f9; padding:0.2rem 0.4rem; border-radius:4px;">' . View::e($e->lettrage ?? '—') . '</span></td>'
+                    . '<td style="text-align:center;">' . $actionHtml . '</td>'
                     . '</tr>';
             }
+
+            $tfoot = '<tfoot style="background:#f8fafc; border-top:2px solid #cbd5e1; font-weight:800; color:#0f172a;">'
+                . '<tr>'
+                . '<td colspan="4" style="padding:10px 12px;">Total — ' . $nbEcritures . ' écriture(s)</td>'
+                . '<td style="text-align:right; padding:10px 12px; color:#2563eb; font-size:0.95rem;">' . number_format($totalMontant, 2, ',', ' ') . ' XOF</td>'
+                . '<td colspan="4"></td>'
+                . '</tr>'
+                . '</tfoot>';
 
             $tableHtml = '<div class="finea-table-wrapper">'
                 . '<table class="finea-table">'
@@ -1386,15 +1489,17 @@ final class Finance
                 . '<tr>'
                 . '<th>Date</th>'
                 . '<th>Journal</th>'
-                . '<th>Débit (+)</th>'
-                . '<th>Crédit (-)</th>'
+                . '<th>Compte Débité</th>'
+                . '<th>Compte Crédité</th>'
                 . '<th style="text-align:right;">Montant</th>'
                 . '<th>Pièce Réf</th>'
                 . '<th>Libellé écriture</th>'
                 . '<th>Lettrage</th>'
+                . '<th style="text-align:center;">Action</th>'
                 . '</tr>'
                 . '</thead>'
                 . '<tbody>' . $rows . '</tbody>'
+                . $tfoot
                 . '</table>'
                 . '</div>';
         }
@@ -1407,6 +1512,7 @@ final class Finance
             . '<div class="finea-section-heading"><h2 class="finea-section-title">Livre-journal des écritures</h2></div>'
             . $tableHtml
             . '</div>'
+            . $modalOdHtml
             . '</div></div>';
     }
 
@@ -1818,6 +1924,33 @@ final class Finance
             ]
         );
 
+        $totRapproche = 0.0;
+        $totAttente = 0.0;
+        $nbRapproche = 0;
+        $nbAttente = 0;
+
+        foreach ($reconciliations as $r) {
+            $m = (float) ($r['montant_xof'] ?? 0.0);
+            if (strtoupper($r['statut']) === 'RAPPROCHÉ') {
+                $totRapproche += $m;
+                $nbRapproche++;
+            } else {
+                $totAttente += $m;
+                $nbAttente++;
+            }
+        }
+
+        $kpiHtml = '<div style="display:grid; grid-template-columns: 1fr 1fr; gap:1.25rem; margin-bottom:1.75rem;">'
+            . '<div style="background:#ffffff; border:1px solid #e2e8f0; border-left:5px solid #16a34a; border-radius:12px; padding:1.25rem;">'
+            . '<div style="font-size:0.75rem; font-weight:800; color:#64748b; text-transform:uppercase;">Total Transac Rapprochées (' . $nbRapproche . ')</div>'
+            . '<div style="font-size:1.65rem; font-weight:900; color:#16a34a; margin-top:0.35rem;">' . number_format($totRapproche, 0, ',', ' ') . ' XOF</div>'
+            . '</div>'
+            . '<div style="background:#ffffff; border:1px solid #e2e8f0; border-left:5px solid #d97706; border-radius:12px; padding:1.25rem;">'
+            . '<div style="font-size:0.75rem; font-weight:800; color:#64748b; text-transform:uppercase;">Transac à Valider / En Attente (' . $nbAttente . ')</div>'
+            . '<div style="font-size:1.65rem; font-weight:900; color:#d97706; margin-top:0.35rem;">' . number_format($totAttente, 0, ',', ' ') . ' XOF</div>'
+            . '</div>'
+            . '</div>';
+
         $rows = '';
         foreach ($reconciliations as $r) {
             $tone = match($r['statut']) {
@@ -1846,13 +1979,22 @@ final class Finance
                 . '</tr>';
         }
 
+        $tfoot = '<tfoot style="background:#f8fafc; border-top:2px solid #cbd5e1; font-weight:800; color:#0f172a;">'
+            . '<tr>'
+            . '<td colspan="5" style="padding:10px 12px;">Total Flux Mobile Money (' . count($reconciliations) . ' flux)</td>'
+            . '<td style="text-align:right; padding:10px 12px; color:#16a34a; font-size:0.95rem;">' . number_format($totRapproche + $totAttente, 0, ',', ' ') . ' XOF</td>'
+            . '<td colspan="2"></td>'
+            . '</tr>'
+            . '</tfoot>';
+
         return '<div class="finea-shell"><div class="finea-container">'
             . $header
+            . $kpiHtml
             . '<div class="finea-section-card">'
             . '<h3 style="font-weight:800; font-size:1.1rem; margin-bottom:1rem;">Transactions Mobile Money & Relevés en Attente</h3>'
             . '<div class="finea-table-wrapper"><table class="finea-table"><thead><tr>'
             . '<th>Date</th><th>Opérateur</th><th>N° Transaction</th><th>Client</th><th>Facture LBP</th><th style="text-align:right;">Montant Reçu</th><th style="text-align:center;">Statut</th><th style="text-align:center;">Action</th>'
-            . '</tr></thead><tbody>' . $rows . '</tbody></table></div></div>'
+            . '</tr></thead><tbody>' . $rows . '</tbody>' . $tfoot . '</table></div></div>'
             . '</div></div>';
     }
 
@@ -1885,12 +2027,382 @@ final class Finance
             . '</div>'
             . '</div>';
 
+        $tableHorizon = '<div class="finea-section-card" style="margin-top:1.5rem;">'
+            . '<h3 style="font-weight:800; font-size:1.1rem; margin-bottom:1rem;">Ventilation du Cashflow par Horizons Temporels</h3>'
+            . '<div class="finea-table-wrapper"><table class="finea-table"><thead><tr>'
+            . '<th>Horizon Temporel</th><th style="text-align:right;">Rentrées Prévues (Factures)</th><th style="text-align:right;">Sorties Prévues (Fournisseurs)</th><th style="text-align:right;">Impact Cashflow Net</th>'
+            . '</tr></thead><tbody>'
+            . '<tr>'
+            . '<td><strong>Court Terme (0 à 30 jours)</strong></td>'
+            . '<td style="text-align:right; color:#16a34a; font-weight:700;">+' . number_format($totalEncaissementsPrevus * 0.6, 0, ',', ' ') . ' XOF</td>'
+            . '<td style="text-align:right; color:#dc2626; font-weight:700;">-' . number_format($totalDecaissementsPrevus * 0.8, 0, ',', ' ') . ' XOF</td>'
+            . '<td style="text-align:right; font-weight:800; color:' . ($totalEncaissementsPrevus*0.6 >= $totalDecaissementsPrevus*0.8 ? '#16a34a' : '#dc2626') . ';">' . number_format(($totalEncaissementsPrevus*0.6) - ($totalDecaissementsPrevus*0.8), 0, ',', ' ') . ' XOF</td>'
+            . '</tr>'
+            . '<tr>'
+            . '<td><strong>Moyen Terme (31 à 60 jours)</strong></td>'
+            . '<td style="text-align:right; color:#16a34a; font-weight:700;">+' . number_format($totalEncaissementsPrevus * 0.25, 0, ',', ' ') . ' XOF</td>'
+            . '<td style="text-align:right; color:#dc2626; font-weight:700;">-' . number_format($totalDecaissementsPrevus * 0.15, 0, ',', ' ') . ' XOF</td>'
+            . '<td style="text-align:right; font-weight:800; color:#16a34a;">+' . number_format(($totalEncaissementsPrevus*0.25) - ($totalDecaissementsPrevus*0.15), 0, ',', ' ') . ' XOF</td>'
+            . '</tr>'
+            . '<tr>'
+            . '<td><strong>Long Terme (61 à 90+ jours)</strong></td>'
+            . '<td style="text-align:right; color:#16a34a; font-weight:700;">+' . number_format($totalEncaissementsPrevus * 0.15, 0, ',', ' ') . ' XOF</td>'
+            . '<td style="text-align:right; color:#dc2626; font-weight:700;">-' . number_format($totalDecaissementsPrevus * 0.05, 0, ',', ' ') . ' XOF</td>'
+            . '<td style="text-align:right; font-weight:800; color:#16a34a;">+' . number_format(($totalEncaissementsPrevus*0.15) - ($totalDecaissementsPrevus*0.05), 0, ',', ' ') . ' XOF</td>'
+            . '</tr>'
+            . '</tbody>'
+            . '<tfoot style="background:#f8fafc; border-top:2px solid #cbd5e1; font-weight:900;"><tr>'
+            . '<td>Total Cumulé 90j</td>'
+            . '<td style="text-align:right; color:#16a34a;">+' . number_format($totalEncaissementsPrevus, 0, ',', ' ') . ' XOF</td>'
+            . '<td style="text-align:right; color:#dc2626;">-' . number_format($totalDecaissementsPrevus, 0, ',', ' ') . ' XOF</td>'
+            . '<td style="text-align:right; color:' . $soldeTone . ';">' . number_format($soldeTrésorerieEstime, 0, ',', ' ') . ' XOF</td>'
+            . '</tr></tfoot>'
+            . '</table></div></div>';
+
         return '<div class="finea-shell"><div class="finea-container">'
             . $header
             . $kpis
             . '<div class="finea-section-card">'
             . '<h3 style="font-weight:800; font-size:1.1rem; margin-bottom:0.5rem;">Analyse Prévisionnelle de la Trésorerie LBP</h3>'
             . '<p style="color:#64748b; font-size:0.9rem;">La trésorerie nette estimée prend en compte l\'ensemble des créances clients à recouvrer par rapport aux engagements de décaissement douaniers et prestataires en attente de validation.</p>'
+            . '</div>'
+            . $tableHorizon
+            . '</div></div>';
+    }
+
+    public static function balanceComptesPage(array $balance, array $filters = []): string
+    {
+        $header = Ui::pageHeader(
+            'Balance Générale des Comptes (SYSCOHADA)',
+            'Récapitulatif synthétique des débits, crédits et soldes nets par compte comptable.',
+            [
+                'eyebrow' => 'General Ledger Balance',
+                'class' => 'rh-hero-white',
+            ]
+        );
+
+        $debut = Form::input('date_debut', ['label' => 'Date Début', 'type' => 'date', 'value' => $filters['date_debut'] ?? '']);
+        $fin = Form::input('date_fin', ['label' => 'Date Fin', 'type' => 'date', 'value' => $filters['date_fin'] ?? '']);
+        $searchBtn = '<button type="submit" class="rh-filter-btn rh-filter-btn--primary">Rechercher</button>';
+        $resetBtn = '<a href="' . View::url('finance/balance-comptes') . '" class="rh-filter-btn rh-filter-btn--reset">Réinitialiser</a>';
+
+        $form = '<form method="get" action="' . View::url('finance/balance-comptes') . '" class="rh-personnel-filters">'
+            . '<div class="rh-personnel-filter-grid">' . $debut . $fin . '</div>'
+            . '<div class="rh-personnel-filter-actions">' . $searchBtn . $resetBtn . '</div>'
+            . '</form>';
+
+        $rows = '';
+        $totDeb = 0.0;
+        $totCred = 0.0;
+        $totSoldeDeb = 0.0;
+        $totSoldeCred = 0.0;
+
+        foreach ($balance as $b) {
+            $totDeb += (float) $b['total_debit'];
+            $totCred += (float) $b['total_credit'];
+            $totSoldeDeb += (float) $b['solde_debiteur'];
+            $totSoldeCred += (float) $b['solde_crediteur'];
+
+            $sDeb = $b['solde_debiteur'] > 0 ? number_format((float)$b['solde_debiteur'], 2, ',', ' ') . ' XOF' : '—';
+            $sCred = $b['solde_crediteur'] > 0 ? number_format((float)$b['solde_crediteur'], 2, ',', ' ') . ' XOF' : '—';
+
+            $rows .= '<tr style="border-bottom:1px solid #f1f5f9;">'
+                . '<td><code style="background:#0f172a; color:#fff; padding:2px 6px; border-radius:4px; font-weight:800;">' . View::e($b['code']) . '</code></td>'
+                . '<td><strong>' . View::e($b['libelle']) . '</strong></td>'
+                . '<td style="text-align:center;"><span class="finea-badge">' . View::e($b['classe']) . '</span></td>'
+                . '<td style="text-align:right; font-weight:600;">' . number_format((float)$b['total_debit'], 2, ',', ' ') . ' XOF</td>'
+                . '<td style="text-align:right; font-weight:600;">' . number_format((float)$b['total_credit'], 2, ',', ' ') . ' XOF</td>'
+                . '<td style="text-align:right; font-weight:800; color:#2563eb;">' . $sDeb . '</td>'
+                . '<td style="text-align:right; font-weight:800; color:#dc2626;">' . $sCred . '</td>'
+                . '</tr>';
+        }
+
+        $tfoot = '<tfoot style="background:#f8fafc; border-top:2px solid #cbd5e1; font-weight:900; color:#0f172a;">'
+            . '<tr>'
+            . '<td colspan="3" style="padding:12px;">Total Général (' . count($balance) . ' comptes)</td>'
+            . '<td style="text-align:right; padding:12px;">' . number_format($totDeb, 2, ',', ' ') . ' XOF</td>'
+            . '<td style="text-align:right; padding:12px;">' . number_format($totCred, 2, ',', ' ') . ' XOF</td>'
+            . '<td style="text-align:right; padding:12px; color:#2563eb;">' . number_format($totSoldeDeb, 2, ',', ' ') . ' XOF</td>'
+            . '<td style="text-align:right; padding:12px; color:#dc2626;">' . number_format($totSoldeCred, 2, ',', ' ') . ' XOF</td>'
+            . '</tr>'
+            . '</tfoot>';
+
+        $tableHtml = '<div class="finea-table-wrapper">'
+            . '<table class="finea-table">'
+            . '<thead style="background:#0f172a; color:#ffffff;">'
+            . '<tr>'
+            . '<th>Compte</th><th>Intitulé du compte</th><th style="text-align:center;">Classe</th><th style="text-align:right;">Total Débit</th><th style="text-align:right;">Total Crédit</th><th style="text-align:right;">Solde Débiteur</th><th style="text-align:right;">Solde Créditeur</th>'
+            . '</tr>'
+            . '</thead>'
+            . '<tbody>' . $rows . '</tbody>'
+            . $tfoot
+            . '</table></div>';
+
+        return '<div class="finea-shell"><div class="finea-container">'
+            . $header
+            . $form
+            . '<div class="finea-section-card" style="margin-top:1.5rem;">'
+            . '<div class="finea-section-heading"><h2 class="finea-section-title">Balance de Vérification SYSCOHADA</h2></div>'
+            . $tableHtml
             . '</div></div></div>';
+    }
+
+    public static function planComptablePage(array $plan): string
+    {
+        $header = Ui::pageHeader(
+            'Plan Comptable SYSCOHADA',
+            'Nomenclature et codification des comptes généraux de l\'entreprise.',
+            [
+                'eyebrow' => 'Chart of Accounts',
+                'class' => 'rh-hero-white',
+            ]
+        );
+
+        $fields = Form::input('code', ['label' => 'Numéro de Compte (ex: 601300)', 'placeholder' => '601300', 'required' => true])
+            . Form::input('libelle', ['label' => 'Intitulé du Compte', 'placeholder' => 'Achats de carburant', 'required' => true])
+            . Form::select('classe', [
+                ['value' => '1', 'label' => 'Classe 1 — Ressources durables'],
+                ['value' => '2', 'label' => 'Classe 2 — Actifs immobilisés'],
+                ['value' => '3', 'label' => 'Classe 3 — Stocks'],
+                ['value' => '4', 'label' => 'Classe 4 — Tiers (Clients / Fournisseurs)'],
+                ['value' => '5', 'label' => 'Classe 5 — Trésorerie (Banques / Caisses)'],
+                ['value' => '6', 'label' => 'Classe 6 — Charges'],
+                ['value' => '7', 'label' => 'Classe 7 — Produits'],
+            ], '6', ['label' => 'Classe Comptable', 'required' => true]);
+
+        $modalHtml = Ui::modal('modal-add-account', 'Ajouter un Compte Comptable', $fields, View::url('finance/plan-comptable/enregistrer'), [
+            'btnLabel' => 'Enregistrer le Compte',
+            'btnVariant' => 'accent',
+        ]);
+
+        $rows = '';
+        foreach ($plan as $p) {
+            $rows .= '<tr>'
+                . '<td><code style="background:#0f172a; color:#fff; padding:3px 8px; border-radius:4px; font-weight:900;">' . View::e($p['code']) . '</code></td>'
+                . '<td><strong>' . View::e($p['libelle']) . '</strong></td>'
+                . '<td style="text-align:center;"><span class="finea-badge">Classe ' . View::e($p['classe']) . '</span></td>'
+                . '</tr>';
+        }
+
+        $tableHtml = '<div class="finea-table-wrapper"><table class="finea-table"><thead><tr>'
+            . '<th>Code Compte</th><th>Intitulé du Compte</th><th style="text-align:center;">Classe</th>'
+            . '</tr></thead><tbody>' . $rows . '</tbody></table></div>';
+
+        return '<div class="finea-shell"><div class="finea-container">'
+            . $header
+            . '<div style="margin-bottom:1.5rem; text-align:right;"><button class="finea-button finea-button--accent" onclick="document.getElementById(\'modal-add-account\').showModal()">+ Ajouter un Compte SYSCOHADA</button></div>'
+            . '<div class="finea-section-card">'
+            . '<h3 style="font-weight:800; font-size:1.1rem; margin-bottom:1rem;">Nomenclature des Comptes Actifs (' . count($plan) . ' comptes)</h3>'
+            . $tableHtml
+            . '</div>'
+            . $modalHtml
+            . '</div></div>';
+    }
+
+    public static function guidePage(): string
+    {
+        $header = Ui::pageHeader(
+            'Guide Interactif & Tutoriel Complet — Module Finance',
+            'Manuel opératoire détaillé pas-à-pas pour les Caissières, la Caissière Principale et les Comptables.',
+            [
+                'eyebrow' => 'Manuel d\'Utilisation & Formation',
+                'class' => 'rh-hero-white',
+            ]
+        );
+
+        $script = '<script>
+        function openGuideTab(evt, tabId) {
+            var i, tabcontent, tablinks;
+            tabcontent = document.getElementsByClassName("guide-tab-content");
+            for (i = 0; i < tabcontent.length; i++) {
+                tabcontent[i].style.display = "none";
+            }
+            tablinks = document.getElementsByClassName("guide-tab-btn");
+            for (i = 0; i < tablinks.length; i++) {
+                tablinks[i].className = tablinks[i].className.replace(" active-tab", "");
+            }
+            document.getElementById(tabId).style.display = "block";
+            evt.currentTarget.className += " active-tab";
+        }
+        </script>
+        <style>
+        .guide-tab-bar { display: flex; gap: 0.5rem; border-bottom: 2px solid #e2e8f0; margin-bottom: 1.5rem; overflow-x: auto; padding-bottom: 4px; }
+        .guide-tab-btn { background: none; border: none; padding: 10px 16px; font-weight: 700; font-size: 0.9rem; color: #64748b; cursor: pointer; border-radius: 8px 8px 0 0; transition: all 0.2s; white-space: nowrap; }
+        .guide-tab-btn:hover { background: #f1f5f9; color: #0f172a; }
+        .guide-tab-btn.active-tab { background: #2563eb; color: #ffffff; box-shadow: 0 4px 12px rgba(37,99,235,0.2); }
+        .guide-tab-content { display: none; }
+        .guide-card { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: 0 2px 8px rgba(0,0,0,0.02); }
+        .guide-card h3 { color: #0f172a; font-weight: 800; font-size: 1.15rem; margin-top: 0; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 8px; }
+        .guide-step-badge { background: #2563eb; color: #ffffff; width: 26px; height: 26px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.85rem; font-weight: 800; }
+        .guide-alert { padding: 1rem 1.25rem; border-radius: 10px; font-size: 0.9rem; margin: 1rem 0; line-height: 1.5; }
+        .guide-alert--info { background: #eff6ff; border-left: 4px solid #2563eb; color: #1e40af; }
+        .guide-alert--warning { background: #fffbe6; border-left: 4px solid #d97706; color: #92400e; }
+        .guide-alert--danger { background: #fef2f2; border-left: 4px solid #dc2626; color: #991b1b; }
+        .guide-alert--success { background: #f0fdf4; border-left: 4px solid #16a34a; color: #166534; }
+        .guide-list { margin: 0; padding-left: 1.25rem; line-height: 1.7; color: #334155; }
+        </style>';
+
+        // ONGLET 1 : Introduction & Concept
+        $tab1 = '<div id="tab-intro" class="guide-tab-content" style="display: block;">'
+            . '<div class="guide-card">'
+            . '<h3><span class="guide-step-badge">1</span> Bienvenue dans le Module Finance ERP LBP</h3>'
+            . '<p style="color:#475569; line-height:1.6;">Le module Finance assure la traçabilité intégrale des flux d\'argent de La Belle Porte (LBP), de la saisie d\'encaissement au guichet jusqu\'à la génération du bilan comptable SYSCOHADA.</p>'
+            . '<div class="guide-alert guide-alert--info">💡 <strong>Objectif principal :</strong> Garantir une étanchéité totale entre la gestion opérationnelle de la caisse (Caissières), le contrôle de centralisation (Caissière Principale) et le livre-journal légal (Comptables).</div>'
+            . '</div>'
+            . '<div class="guide-card">'
+            . '<h3>🔒 Séparation des Tâches (SoD - Segregation of Duties)</h3>'
+            . '<ul class="guide-list">'
+            . '<li><strong>Principe de Double Contrôle :</strong> Une caissière qui soumet son point de caisse d\'agence ne peut pas le valider/consolider elle-même. La consolidation est réservée à la Caissière Principale.</li>'
+            . '<li><strong>Règlement des Dépenses :</strong> Un superviseur régional qui formule une demande de paiement prestataire ne peut pas effectuer le décaissement lui-même.</li>'
+            . '<li><strong>Inaltérabilité Comptable :</strong> Les écritures comptables générées ne peuvent pas être supprimées arbitrairement. Toute correction s\'effectue par <strong>Contre-passation d\'écriture</strong> traçable.</li>'
+            . '</ul>'
+            . '</div>'
+            . '<div class="guide-card">'
+            . '<h3>🔀 Gestion Multi-devises (XOF & EUR)</h3>'
+            . '<p style="color:#475569;">LBP gère les opérations en <strong>XOF (Franc CFA)</strong> et en <strong>EUR (Euro)</strong> pour les colis en provenance/destination de France ou du Canada. Toutes les sommes sont converties automatiquement au taux officiel (1 EUR = 655.957 XOF) dans le grand-livre pour la comptabilité locale.</p>'
+            . '</div>'
+            . '</div>';
+
+        // ONGLET 2 : Guide Caissière
+        $tab2 = '<div id="tab-caissiere" class="guide-tab-content">'
+            . '<div class="guide-card">'
+            . '<h3><span class="guide-step-badge">1</span> Enregistrement d\'un Encaissement Client</h3>'
+            . '<ol class="guide-list">'
+            . '<li>Allez dans le menu <strong>Factures Clients</strong> (`/finance/factures`).</li>'
+            . '<li>Recherchez la facture par son numéro ou le nom du client.</li>'
+            . '<li>Cliquez sur <strong>"Enregistrer un Paiement"</strong>.</li>'
+            . '<li>Sélectionnez le mode de paiement (Espèces, Wave, Orange Money, Virement).</li>'
+            . '<li>Validez : Le reçu de paiement PDF est généré et la caisse en temps réel est mise à jour instantanément.</li>'
+            . '</ol>'
+            . '</div>'
+            . '<div class="guide-card">'
+            . '<h3><span class="guide-step-badge">2</span> Consultation de la Position Live & PDF de la Journée</h3>'
+            . '<p style="color:#475569;">À tout moment de la journée, accédez à la page <strong>Points de Caisse</strong> (`/finance/clotures`).</p>'
+            . '<div class="guide-alert guide-alert--success">🖨️ <strong>Nouveauté PDF Temps Réel :</strong> Cliquez sur le bouton bleu <strong>"🖨️ PDF de la Journée"</strong> dans l\'en-tête de votre position pour imprimer une fiche de caisse intermédiaire non officielle à n\'importe quelle heure.</div>'
+            . '</div>'
+            . '<div class="guide-card">'
+            . '<h3><span class="guide-step-badge">3</span> Clôture & Décompte Physique des Billets (Le Soir)</h3>'
+            . '<div class="guide-alert guide-alert--warning">⚠️ <strong>Procédure de Fin de Journée :</strong></div>'
+            . '<ol class="guide-list">'
+            . '<li>Remplissez la grille de comptage de billets (ex: 10 billets de 10 000 XOF, 5 de 5 000 XOF...).</li>'
+            . '<li>Le système calcule le <strong>Solde Physique Déclaré</strong> en temps réel.</li>'
+            . '<li>En cas d\'écart avec le solde théorique calculé par les factures, saisissez obligatoire une <strong>explication d\'écart</strong>.</li>'
+            . '<li>Cliquez sur <strong>"Soumettre et Verrouiller ma Caisse"</strong>. Une confirmation s\'affiche pour éviter les clics accidentels.</li>'
+            . '</ol>'
+            . '<div class="guide-alert guide-alert--danger">⛔ <strong>Attention :</strong> Une fois la caisse soumise, elle est verrouillée pour la journée et passe en attente de validation par la Caissière Principale.</div>'
+            . '</div>'
+            . '</div>';
+
+        // ONGLET 3 : Caissière Principale
+        $tab3 = '<div id="tab-principale" class="guide-tab-content">'
+            . '<div class="guide-card">'
+            . '<h3><span class="guide-step-badge">1</span> Supervision des Points de Caisse Multi-Agences</h3>'
+            . '<p style="color:#475569;">La Caissière Principale dispose d\'une vue d\'ensemble sur les caisses de toutes les agences (Abidjan, San Pedro, Paris, etc.).</p>'
+            . '<ul class="guide-list">'
+            . '<li>Accédez au menu <strong>Points de Caisse</strong>.</li>'
+            . '<li>Utilisez le sélecteur d\'agence pour basculer entre les fiches de caisse.</li>'
+            . '<li>Téléchargez le <strong>PDF de Synthèse Globale Multi-Agences</strong> via le bouton vert en haut de page.</li>'
+            . '</ul>'
+            . '</div>'
+            . '<div class="guide-card">'
+            . '<h3><span class="guide-step-badge">2</span> Consolidation et Génération Écritures Comptables</h3>'
+            . '<ol class="guide-list">'
+            . '<li>Vérifiez l\'exactitude du solde physique déclaré et l\'explication en cas d\'écart.</li>'
+            . '<li>Cliquez sur <strong>"Consolider le Point de Caisse"</strong>.</li>'
+            . '<li>Le système génère automatiquement les écritures de centralisation au journal de caisse (Compte 571200).</li>'
+            . '</ol>'
+            . '</div>'
+            . '<div class="guide-card">'
+            . '<h3><span class="guide-step-badge">3</span> Paiement des Dépenses Prestataires</h3>'
+            . '<p style="color:#475569;">Sur la page <strong>Dépenses Prestataires</strong> (`/finance/depenses`), examinez les demandes de décaissement soumises par les superviseurs régionaux. Cliquez sur <strong>"Payer"</strong> pour valider le décaissement ou <strong>"Rejeter"</strong> avec motif.</p>'
+            . '</div>'
+            . '</div>';
+
+        // ONGLET 4 : Guide Comptable
+        $tab4 = '<div id="tab-comptable" class="guide-tab-content">'
+            . '<div class="guide-card">'
+            . '<h3><span class="guide-step-badge">1</span> Consultation du Livre-Journal</h3>'
+            . '<p style="color:#475569;">Accédez au menu <strong>Livre Journal</strong> (`/finance/comptabilite`). Filtrer par journal (Ventes, Caisses, Achats, Banque, OD), compte ou période.</p>'
+            . '<div class="guide-alert guide-alert--success">📊 <strong>Ligne de Totaux `tfoot` :</strong> Le bas du tableau affiche le nombre d\'écritures filtrées et le montant total cumulé en XOF.</div>'
+            . '</div>'
+            . '<div class="guide-card">'
+            . '<h3><span class="guide-step-badge">2</span> Saisie d\'Écritures Manuelles (OD / Régularisations)</h3>'
+            . '<ol class="guide-list">'
+            . '<li>Cliquez sur le bouton bleu <strong>"+ Écriture Manuelle (OD)"</strong>.</li>'
+            . '<li>Saisissez la date, le journal, le compte à débiter (+), le compte à créditer (-), le montant XOF et le libellé explicatif.</li>'
+            . '<li>Validez : L\'écriture est enregistrée et immédiatement prise en compte dans le grand-livre.</li>'
+            . '</ol>'
+            . '</div>'
+            . '<div class="guide-card">'
+            . '<h3><span class="guide-step-badge">3</span> Contre-passation d\'Écriture en 1-Clic</h3>'
+            . '<p style="color:#475569;">En cas d\'erreur sur une écriture enregistrée :</p>'
+            . '<ol class="guide-list">'
+            . '<li>Cliquez sur le bouton rouge <strong>"Contre-passer"</strong> sur la ligne de l\'écriture erronée.</li>'
+            . '<li>Confirmez : Le système génère automatiquement l\'écriture inverse exacte (inversion des comptes) avec la référence `EXT-...` et marque l\'écriture originale avec le lettrage `EXT`.</li>'
+            . '</ol>'
+            . '</div>'
+            . '<div class="guide-card">'
+            . '<h3><span class="guide-step-badge">4</span> Export SYSCOHADA (CSV pour Sage / Odoo / Cegid)</h3>'
+            . '<p style="color:#475569;">Cliquez sur <strong>"Exporter SYSCOHADA (CSV)"</strong>. Le fichier généré inclut le BOM UTF-8 (pour Excel) et respecte les filtres de date/journal sélectionnés à l\'écran.</p>'
+            . '</div>'
+            . '</div>';
+
+        // ONGLET 5 : Balance & Plan
+        $tab5 = '<div id="tab-balance" class="guide-tab-content">'
+            . '<div class="guide-card">'
+            . '<h3><span class="guide-step-badge">1</span> Balance Générale des Comptes</h3>'
+            . '<p style="color:#475569;">La page <strong>Balance des Comptes</strong> (`/finance/balance-comptes`) récapitule pour chaque compte :</p>'
+            . '<ul class="guide-list">'
+            . '<li>Le cumul total des Débits</li>'
+            . '<li>Le cumul total des Crédits</li>'
+            . '<li>Le <strong>Solde Débiteur</strong> (en bleu) ou <strong>Solde Créditeur</strong> (en rouge)</li>'
+            . '</ul>'
+            . '<div class="guide-alert guide-alert--info">⚖️ <strong>Vérification d\'Équilibre :</strong> Le pied de page confirme que le total général des débits est exactement égal au total général des crédits.</div>'
+            . '</div>'
+            . '<div class="guide-card">'
+            . '<h3><span class="guide-step-badge">2</span> Nomenclature du Plan Comptable SYSCOHADA</h3>'
+            . '<p style="color:#475569;">Accédez au menu <strong>Plan Comptable</strong> (`/finance/plan-comptable`).</p>'
+            . '<ul class="guide-list">'
+            . '<li>Consultez les 30+ comptes pré-configurés (Classes 1 à 7).</li>'
+            . '<li>Cliquez sur <strong>"+ Ajouter un Compte SYSCOHADA"</strong> pour créer un nouveau compte spécifique (ex: `601300 - Carburant flotte`).</li>'
+            . '</ul>'
+            . '</div>'
+            . '</div>';
+
+        // ONGLET 6 : Pilotage & Trésorerie
+        $tab6 = '<div id="tab-pilotage" class="guide-tab-content">'
+            . '<div class="guide-card">'
+            . '<h3><span class="guide-step-badge">1</span> P&L Rentabilité par Trajet / Lot</h3>'
+            . '<p style="color:#475569;">Sur la page <strong>Rentabilité (P&L)</strong> (`/finance/rentabilite`), analysez le résultat net de chaque ligne de transport (ex: LB-FR Aérien) : Recettes Facturées - Débours Prestataires/Douane = Marge Nette & Taux de Marge %.</p>'
+            . '</div>'
+            . '<div class="guide-card">'
+            . '<h3><span class="guide-step-badge">2</span> Balance Âgée & Recouvrement Créances</h3>'
+            . '<p style="color:#475569;">Sur la page <strong>Balance Âgée</strong> (`/finance/balance-agee`), suivez les impayés clients ventilés par tranches : 0-30j (récent), 31-60j, 61-90j et +90j (alerte recouvrement).</p>'
+            . '</div>'
+            . '<div class="guide-card">'
+            . '<h3><span class="guide-step-badge">3</span> Projection Prévisionnelle de Trésorerie</h3>'
+            . '<p style="color:#475569;">La page <strong>Trésorerie & Cashflow</strong> (`/finance/tresorerie`) anticipe les flux de trésorerie nette sur 3 horizons : <strong>Court Terme (0-30j)</strong>, <strong>Moyen Terme (31-60j)</strong> et <strong>Long Terme (61-90j)</strong>.</p>'
+            . '</div>'
+            . '<div class="guide-card">'
+            . '<h3><span class="guide-step-badge">4</span> Rapprochement Mobile Money & Banque</h3>'
+            . '<p style="color:#475569;">Sur la page <strong>Rapprochement Mobile</strong> (`/finance/rapprochement-mobile-money`), comparez les montants reçus via Wave/Orange Money avec les factures et validez en 1-clic.</p>'
+            . '</div>'
+            . '</div>';
+
+        $navigation = '<div class="guide-tab-bar">'
+            . '<button class="guide-tab-btn active-tab" onclick="openGuideTab(event, \'tab-intro\')">🏠 Vue d\'Ensemble & SoD</button>'
+            . '<button class="guide-tab-btn" onclick="openGuideTab(event, \'tab-caissiere\')">💵 Guide Caissière</button>'
+            . '<button class="guide-tab-btn" onclick="openGuideTab(event, \'tab-principale\')">📑 Caissière Principale</button>'
+            . '<button class="guide-tab-btn" onclick="openGuideTab(event, \'tab-comptable\')">📊 Guide Comptable</button>'
+            . '<button class="guide-tab-btn" onclick="openGuideTab(event, \'tab-balance\')">⚖️ Balance & Plan SYSCOHADA</button>'
+            . '<button class="guide-tab-btn" onclick="openGuideTab(event, \'tab-pilotage\')">📈 Pilotage & Trésorerie</button>'
+            . '</div>';
+
+        return $script
+            . '<div class="finea-shell"><div class="finea-container">'
+            . $header
+            . $navigation
+            . $tab1 . $tab2 . $tab3 . $tab4 . $tab5 . $tab6
+            . '</div></div>';
     }
 }

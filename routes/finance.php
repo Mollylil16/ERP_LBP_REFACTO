@@ -29,6 +29,7 @@ $router->group('/finance', function (Router $router): void {
     // Clôtures et Points de caisse
     $router->get('/clotures', [FinanceController::class, 'cloturesIndex']);
     $router->get('/clotures/export-pdf-global', [FinanceController::class, 'exportClotureGlobalPdf']);
+    $router->get('/clotures/export-pdf-agence', [FinanceController::class, 'exportClotureAgencePdf']);
     $router->post('/clotures/soumettre', [FinanceController::class, 'clotureSoumettre']);
     $router->get('/clotures/{id}/export-pdf', [FinanceController::class, 'exportCloturePdf']);
     $router->get('/clotures/{id}/bordereau-pdf', [FinanceController::class, 'exportBordereauPdf']);
@@ -41,7 +42,13 @@ $router->group('/finance', function (Router $router): void {
 
     // Comptabilité & SYSCOHADA
     $router->get('/comptabilite', [FinanceController::class, 'comptabilite']);
+    $router->post('/comptabilite/ecriture-manuelle', [FinanceController::class, 'ecritureManuelleStore']);
+    $router->post('/comptabilite/lettrer', [FinanceController::class, 'lettrer']);
+    $router->post('/comptabilite/{id}/contre-passer', [FinanceController::class, 'contrePasser']);
     $router->get('/export-syscohada', [FinanceController::class, 'exportSyscohada']);
+    $router->get('/balance-comptes', [FinanceController::class, 'balanceComptes']);
+    $router->get('/plan-comptable', [FinanceController::class, 'planComptableIndex']);
+    $router->post('/plan-comptable/enregistrer', [FinanceController::class, 'planComptableStore']);
 
     // Pilotage financier & Rentabilité
     $router->get('/rentabilite', [FinanceController::class, 'rentabilite']);
@@ -66,4 +73,7 @@ $router->group('/finance', function (Router $router): void {
 
     // Trésorerie Prévisionnelle (30/60/90j)
     $router->get('/tresorerie', [FinanceController::class, 'tresorerieIndex']);
+
+    // Guide Interactif & Tutoriel Finance
+    $router->get('/guide', [FinanceController::class, 'guideIndex']);
 });
