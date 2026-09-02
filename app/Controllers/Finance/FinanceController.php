@@ -191,6 +191,14 @@ final class FinanceController extends FinanceBaseController
             exit;
         }
 
+        // Vérifier si une facture existe déjà pour ce colis
+        $existingFacture = $this->factureRepo->findByColisId($colisId);
+        if ($existingFacture) {
+            Session::flash('info', "Une facture existe déjà pour ce colis ({$existingFacture->numeroFacture}).");
+            header('Location: ' . View::url('finance/factures/' . $existingFacture->id));
+            exit;
+        }
+
         // Calculer le montant total à partir des marchandises
         $stmt = $this->db->prepare("SELECT SUM(total_ligne) FROM lbp_marchandises WHERE colis_id = :colis_id");
         $stmt->execute(['colis_id' => $colisId]);

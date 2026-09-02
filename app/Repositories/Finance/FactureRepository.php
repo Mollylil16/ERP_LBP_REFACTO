@@ -75,6 +75,11 @@ class FactureRepository
 
     public function create(Facture $facture): int
     {
+        $existing = $this->findByColisId($facture->colisId);
+        if ($existing && $existing->id) {
+            return (int) $existing->id;
+        }
+
         $currentUserId = Auth::id() ?: $facture->createdBy ?: $facture->caissiereId;
         $agenceId = $this->resolveValidAgencyId($facture->agenceId);
 
