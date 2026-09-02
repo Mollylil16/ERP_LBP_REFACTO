@@ -362,6 +362,12 @@ final class FinanceController extends FinanceBaseController
     {
         RoleMiddleware::check(['caissiere', 'caissiere_principale', 'chef_agence', 'dg']);
 
+        if (!Csrf::verify($_POST['_csrf_token'] ?? null)) {
+            Session::flash('error', 'Session expirée ou requête invalide (CSRF). Veuillez réessayer.');
+            header('Location: ' . View::url('finance/factures/' . $id));
+            exit;
+        }
+
         $id = (int) $id;
         $facture = $this->factureRepo->findById($id);
 
@@ -387,7 +393,7 @@ final class FinanceController extends FinanceBaseController
             $colisCreatorId = 0;
         }
 
-        if ($colisCreatorId === Auth::id() && !Auth::hasRole('chef_agence') && !$facture->devise === 'EUR') {
+        if ($colisCreatorId === Auth::id() && !Auth::hasRole('chef_agence') && $facture->devise !== 'EUR') {
             Session::flash('error', '🚨 Double contrôle (SoD) : Vous ne pouvez pas encaisser une facture liée à un colis que vous avez vous-même enregistré.');
             header('Location: ' . View::url('finance/factures/' . $id));
             exit;
@@ -468,7 +474,7 @@ final class FinanceController extends FinanceBaseController
             IntegrityRuleEngine::evaluateCumulRoles((int) Auth::id(), $facture->id, 'payment', $auditId);
 
             $this->db->commit();
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             $this->db->rollBack();
             Session::flash('error', 'Erreur lors de l\'encaissement : ' . $e->getMessage());
             header('Location: ' . View::url('finance/factures/' . $id));

@@ -6,6 +6,7 @@ namespace App\View\Components;
 
 use App\Helpers\View;
 use App\Helpers\Auth;
+use App\Helpers\Csrf;
 use App\Models\Finance\Facture;
 use App\View\Components\Ui;
 use App\View\Components\Form;
@@ -702,6 +703,7 @@ final class Finance
             . '<p><strong>Colis :</strong> ' . View::e($colis['numero_tracking'] ?? '—') . '</p>'
             . '<p><strong>Description :</strong> ' . View::e($colis['description'] ?? '—') . '</p>'
             . '<p><strong>Poids total :</strong> ' . View::e((string) ($colis['poids_total'] ?? 0)) . ' kg</p>'
+            . '<p><strong>Nombre total de colis :</strong> <span style="font-size:1.15rem; font-weight:800; color:#1e40af; background:#eff6ff; padding:2px 10px; border-radius:6px;">' . View::e((string) ($colis['nombre_colis'] ?? 1)) . '</span></p>'
             . '</div>'
             . '<div>'
             . '<p><strong>Client :</strong> ' . View::e($client['name'] ?? '—') . '</p>'
@@ -714,14 +716,18 @@ final class Finance
         $marchandisesHtml = '';
         if (!empty($marchandises)) {
             $mRows = '';
+            $totalNbreColis = 0;
             foreach ($marchandises as $m) {
                 $embName = !empty($m['emballage']) ? $m['emballage'] : 'Carton / Propre emballage';
                 $qteEmb = (int) ($m['qte_emballage'] ?? 1);
                 $prixEmb = (float) ($m['prix_emballage'] ?? 0.0);
                 $totLigne = (float) ($m['total_ligne'] ?? 0.0);
+                $nbreColis = (int) ($m['nbre_colis'] ?? 1);
+                $totalNbreColis += $nbreColis;
 
                 $mRows .= '<tr>'
-                    . '<td><strong>' . View::e($m['produit_libelle'] ?? 'Marchandise') . '</strong></td>'
+                    . '<td><strong>' . View::e($m['description'] ?? $m['produit_libelle'] ?? 'Marchandise') . '</strong></td>'
+                    . '<td style="text-align:center; font-weight:700;">' . View::e((string)$nbreColis) . '</td>'
                     . '<td><span class="finea-tag">' . View::e($embName) . '</span></td>'
                     . '<td style="text-align:center;">' . View::e((string)$qteEmb) . '</td>'
                     . '<td style="text-align:right;">' . ($prixEmb > 0 ? number_format($prixEmb, 0, ',', ' ') . ' XOF' : 'Inclus (0 XOF)') . '</td>'
@@ -731,8 +737,9 @@ final class Finance
 
             $marchandisesHtml = '<div class="finea-table-wrapper" style="margin-top:0.5rem;">'
                 . '<table class="finea-table">'
-                . '<thead><tr><th>Produit</th><th>Type d\'Emballage</th><th style="text-align:center;">Qté Emballage</th><th style="text-align:right;">Prix Emballage</th><th style="text-align:right;">Sous-Total Ligne</th></tr></thead>'
+                . '<thead><tr><th>Produit / Description</th><th style="text-align:center;">Nbre Colis</th><th>Type d\'Emballage</th><th style="text-align:center;">Qté Emballage</th><th style="text-align:right;">Prix Emballage</th><th style="text-align:right;">Sous-Total Ligne</th></tr></thead>'
                 . '<tbody>' . $mRows . '</tbody>'
+                . '<tfoot><tr><td><strong>TOTAL</strong></td><td style="text-align:center; font-weight:800; color:#1e40af;">' . $totalNbreColis . '</td><td colspan="4"></td></tr></tfoot>'
                 . '</table>'
                 . '</div>';
         }
@@ -802,6 +809,7 @@ final class Finance
                 . '</div>';
 
             $encaissementForm = '<form method="post" action="' . View::url('finance/factures/' . $facture->id . '/encaisser') . '" class="js-protect-form" style="margin-top:2rem;">'
+                . Form::hidden('_csrf_token', Csrf::token())
                 . '<h3>Enregistrer un Encaissement Physique</h3>'
                 . '<p style="font-size:0.85rem; color:#64748b; margin-bottom:1rem;">Remplir ce formulaire si le client règle directement au guichet.</p>'
                 . $formFields

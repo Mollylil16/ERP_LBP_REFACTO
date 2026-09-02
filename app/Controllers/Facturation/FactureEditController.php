@@ -94,15 +94,29 @@ final class FactureEditController extends FacturationBaseController
 
         $montantTotal = isset($_POST['montant_total']) ? (float) $_POST['montant_total'] : (float) $facture['montant_total'];
         $montantEncaisse = isset($_POST['montant_encaisse']) ? (float) $_POST['montant_encaisse'] : (float) $facture['montant_encaisse'];
-        $statut = $_POST['statut'] ?? $facture['statut'];
-        if (!in_array($statut, ['emise', 'partiellement_payee', 'payee', 'annulee'], true)) {
-            $statut = $facture['statut'];
+        $montantRestant = max(0.0, $montantTotal - $montantEncaisse);
+        $statutPost = $_POST['statut'] ?? null;
+
+        // Recalculer automatiquement le statut en fonction des montants réels
+        // pour éviter les incohérences (ex: montant_encaisse = 0 mais statut = 'partiellement_payee')
+        if ($statutPost === 'annulee') {
+            // Annulation manuelle : respecter le choix utilisateur
+            $statut = 'annulee';
+        } elseif ($montantEncaisse <= 0.01) {
+            // Aucun encaissement → facture émise (non payée)
+            $statut = 'emise';
+        } elseif ($montantRestant <= 0.01) {
+            // Entièrement payée
+            $statut = 'payee';
+        } else {
+            // Partiellement payée
+            $statut = 'partiellement_payee';
         }
 
         $newFields = [
             'montant_total' => $montantTotal,
             'montant_encaisse' => $montantEncaisse,
-            'montant_restant' => max(0.0, $montantTotal - $montantEncaisse),
+            'montant_restant' => $montantRestant,
             'statut' => $statut,
         ];
 
