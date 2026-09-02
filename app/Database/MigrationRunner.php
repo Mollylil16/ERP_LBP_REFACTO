@@ -2370,6 +2370,8 @@ class MigrationRunner
             $this->addColumnIfMissing('lbp_etats_journaliers', 'decompte_coupures_json', "TEXT NULL");
             $this->addColumnIfMissing('lbp_etats_journaliers', 'blind_count', "TINYINT(1) NOT NULL DEFAULT 1");
             $this->addColumnIfMissing('lbp_etats_journaliers', 'validation_superviseur_id', "INT NULL");
+            $this->addColumnIfMissing('lbp_etats_journaliers', 'soumission_retroactive', "TINYINT(1) NOT NULL DEFAULT 0");
+            $this->addColumnIfMissing('lbp_etats_journaliers', 'justification_retard', "VARCHAR(100) NULL");
         }
 
         if ($this->schema->tableExists('lbp_demandes_paiement_prestataires')) {

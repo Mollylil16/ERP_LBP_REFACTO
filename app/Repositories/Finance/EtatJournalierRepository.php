@@ -37,12 +37,14 @@ class EtatJournalierRepository
                 total_facture_xof, total_facture_eur, total_encaisse_xof, total_encaisse_eur,
                 total_restant_du_xof, total_restant_du_eur, solde_caisse_agence_xof, solde_caisse_agence_eur,
                 solde_physique_declare, ecart_caisse, explication_ecart, justificatif_url, decompte_coupures_json, blind_count, validation_superviseur_id,
+                soumission_retroactive, justification_retard,
                 statut, date_soumission, consolide_par_id, date_consolidation, created_at
             ) VALUES (
                 :agence_id, :chef_agence_id, :date_jour, :nb_colis_enregistres, :nb_factures_emises,
                 :total_facture_xof, :total_facture_eur, :total_encaisse_xof, :total_encaisse_eur,
                 :total_restant_du_xof, :total_restant_du_eur, :solde_caisse_agence_xof, :solde_caisse_agence_eur,
                 :solde_physique_declare, :ecart_caisse, :explication_ecart, :justificatif_url, :decompte_coupures_json, :blind_count, :validation_superviseur_id,
+                :soumission_retroactive, :justification_retard,
                 :statut, :date_soumission, :consolide_par_id, :date_consolidation, NOW()
             )
         ");
@@ -68,6 +70,8 @@ class EtatJournalierRepository
             'decompte_coupures_json' => $etat->decompteCoupuresJson,
             'blind_count' => $etat->blindCount ? 1 : 0,
             'validation_superviseur_id' => $etat->validationSuperviseurId,
+            'soumission_retroactive' => $etat->soumissionRetroactive ? 1 : 0,
+            'justification_retard' => $etat->justificationRetard,
             'statut' => $etat->statut,
             'date_soumission' => $etat->dateSoumission,
             'consolide_par_id' => $etat->consolideParId,
@@ -91,6 +95,8 @@ class EtatJournalierRepository
                 total_restant_du_eur = :total_restant_du_eur,
                 solde_caisse_agence_xof = :solde_caisse_agence_xof,
                 solde_caisse_agence_eur = :solde_caisse_agence_eur,
+                soumission_retroactive = :soumission_retroactive,
+                justification_retard = :justification_retard,
                 statut = :statut,
                 date_soumission = :date_soumission,
                 consolide_par_id = :consolide_par_id,
@@ -111,6 +117,8 @@ class EtatJournalierRepository
             'total_restant_du_eur' => $etat->totalRestantDuEur,
             'solde_caisse_agence_xof' => $etat->soldeCaisseAgenceXof,
             'solde_caisse_agence_eur' => $etat->soldeCaisseAgenceEur,
+            'soumission_retroactive' => $etat->soumissionRetroactive ? 1 : 0,
+            'justification_retard' => $etat->justificationRetard,
             'statut' => $etat->statut,
             'date_soumission' => $etat->dateSoumission,
             'consolide_par_id' => $etat->consolideParId,
@@ -349,7 +357,31 @@ class EtatJournalierRepository
             justificatifUrl: $row['justificatif_url'] ?? null,
             decompteCoupuresJson: $row['decompte_coupures_json'] ?? null,
             blindCount: !empty($row['blind_count']),
-            validationSuperviseurId: isset($row['validation_superviseur_id']) && is_numeric($row['validation_superviseur_id']) ? (int) $row['validation_superviseur_id'] : null
+            validationSuperviseurId: isset($row['validation_superviseur_id']) && is_numeric($row['validation_superviseur_id']) ? (int) $row['validation_superviseur_id'] : null,
+            soumissionRetroactive: !empty($row['soumission_retroactive']),
+            justificationRetard: $row['justification_retard'] ?? null
         );
+    }
+
+    /**
+     * Retourne les dates des N derniers jours sans point de caisse soumis/consolidé pour une agence.
+     * Utilisé pour alimenter le dropdown de soumission rétroactive.
+     */
+    public function getJoursNonSoumis(int $agenceId, int $nbJours = 4): array
+    {
+        $joursManquants = [];
+        for ($i = 1; $i <= $nbJours; $i++) {
+            $date = date('Y-m-d', strtotime("-{$i} day"));
+            $stmt = $this->pdo->prepare("
+                SELECT id FROM lbp_etats_journaliers
+                WHERE agence_id = :agence_id AND date_jour = :date_jour AND statut IN ('soumis', 'consolide')
+                LIMIT 1
+            ");
+            $stmt->execute(['agence_id' => $agenceId, 'date_jour' => $date]);
+            if (!$stmt->fetch()) {
+                $joursManquants[] = $date;
+            }
+        }
+        return $joursManquants;
     }
 }

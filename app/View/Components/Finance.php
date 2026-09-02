@@ -1084,7 +1084,7 @@ final class Finance
     /**
      * Point de caisse et états journaliers.
      */
-    public static function etatsJournaliersPage(array $reports, array $agences, ?array $activeReport = null, int $selectedAgenceId = 0, array $filters = []): string
+    public static function etatsJournaliersPage(array $reports, array $agences, ?array $activeReport = null, int $selectedAgenceId = 0, array $filters = [], array $joursNonSoumis = []): string
     {
         $header = Ui::pageHeader(
             'Points de Caisse & Suivi en Direct',
@@ -1119,6 +1119,67 @@ final class Finance
             $agenceSelector .= '</select>'
                 . $globalPdfBtn
                 . '</div>'
+                . '</div>';
+        }
+
+        // 1b. Bloc de Soumission Rétroactive (si des jours non soumis existent)
+        $retroBlock = '';
+        if (!empty($joursNonSoumis) && Auth::hasAnyRole(['caissiere', 'chef_agence', 'caissiere_principale'])) {
+            $nbJours = count($joursNonSoumis);
+            $dateOptionsHtml = '';
+            foreach ($joursNonSoumis as $d) {
+                $label = date('d/m/Y', strtotime($d));
+                $jourSemaine = ['Dimanche','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'][(int)date('w', strtotime($d))];
+                $dateOptionsHtml .= '<option value="' . View::e($d) . '">' . $jourSemaine . ' ' . $label . '</option>';
+            }
+
+            $retroBlock = '<div style="background:linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%); border:2px solid #f59e0b; border-radius:12px; padding:1.5rem; margin-bottom:1.5rem; box-shadow:0 4px 12px rgba(245,158,11,0.12);">' 
+                . '<div style="display:flex; align-items:flex-start; gap:1rem; margin-bottom:1.25rem;">'
+                . '<div style="width:48px; height:48px; border-radius:12px; background:rgba(245,158,11,0.2); display:flex; align-items:center; justify-content:center; flex-shrink:0;">'
+                . '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2.2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>'
+                . '</div>'
+                . '<div>'
+                . '<strong style="color:#92400e; font-size:1.1rem;">Soumission Rétroactive Disponible</strong><br>'
+                . '<span style="color:#a16207; font-size:0.88rem;">' . $nbJours . ' jour(s) sans point de caisse soumis détecté(s) dans les 4 derniers jours. Vous pouvez soumettre le point de caisse pour chacun de ces jours.</span>'
+                . '</div>'
+                . '</div>'
+                . '<div style="display:flex; gap:1rem; align-items:flex-end; flex-wrap:wrap;">'
+                . '<div style="flex:1; min-width:200px;">'
+                . '<label style="display:block; font-size:0.8rem; font-weight:700; color:#92400e; margin-bottom:4px;">Date à soumettre</label>'
+                . '<select id="retro_date_select" style="width:100%; padding:0.6rem 1rem; border:2px solid #f59e0b; border-radius:8px; font-weight:700; color:#0f172a; background:#fff; cursor:pointer; font-size:0.92rem;">'
+                . $dateOptionsHtml
+                . '</select>'
+                . '</div>'
+                . '<div style="flex:1; min-width:200px;">'
+                . '<label style="display:block; font-size:0.8rem; font-weight:700; color:#92400e; margin-bottom:4px;">Justification du retard <span style="font-weight:400; color:#a16207;">(optionnel)</span></label>'
+                . '<select id="retro_justification_select" style="width:100%; padding:0.6rem 1rem; border:2px solid #e2e8f0; border-radius:8px; font-weight:600; color:#0f172a; background:#fff; cursor:pointer; font-size:0.92rem;">'
+                . '<option value="">-- Aucune justification --</option>'
+                . '<option value="Oubli">Oubli</option>'
+                . '<option value="Erreur de connexion">Erreur de connexion</option>'
+                . '<option value="Absence / Congé">Absence / Congé</option>'
+                . '<option value="Panne système / Technique">Panne système / Technique</option>'
+                . '<option value="Jour férié non planifié">Jour férié non planifié</option>'
+                . '<option value="Coupure électrique">Coupure électrique</option>'
+                . '<option value="Problème réseau internet">Problème réseau internet</option>'
+                . '<option value="Autre">Autre</option>'
+                . '</select>'
+                . '</div>'
+                . '<div>'
+                . '<button type="button" onclick="chargerPointRetroactif()" style="padding:0.65rem 1.25rem; background:#d97706; color:#fff; font-weight:800; border:none; border-radius:8px; cursor:pointer; font-size:0.9rem; display:inline-flex; align-items:center; gap:6px; box-shadow:0 2px 6px rgba(217,119,6,0.3); transition:all 0.2s;" onmouseover="this.style.background=\'#b45309\'" onmouseout="this.style.background=\'#d97706\'">'
+                . '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>'
+                . 'Charger le point de ce jour'
+                . '</button>'
+                . '</div>'
+                . '</div>'
+                . '<script>'
+                . 'function chargerPointRetroactif() {'
+                . '  var dateVal = document.getElementById("retro_date_select").value;'
+                . '  var agenceId = ' . ($selectedAgenceId > 0 ? $selectedAgenceId : '""') . ';'
+                . '  var url = "' . View::url('finance/clotures') . '?date_exacte=" + encodeURIComponent(dateVal);'
+                . '  if (agenceId) url += "&agence_id=" + agenceId;'
+                . '  window.location.href = url;'
+                . '}'
+                . '</script>'
                 . '</div>';
         }
 
@@ -1267,8 +1328,43 @@ final class Finance
                 $statut === 'brouillon';
 
             if ($canSubmit) {
+                // Déterminer si c'est une soumission rétroactive (date filtrée != aujourd'hui)
+                $dateActuelle = date('Y-m-d');
+                $dateReport = $activeReport['date_jour'] ?? $dateActuelle;
+                $isRetroMode = ($dateReport !== $dateActuelle) && !empty($joursNonSoumis) && in_array($dateReport, $joursNonSoumis);
+
+                $retroHiddenFields = '';
+                $retroInfoBanner = '';
+                if ($isRetroMode) {
+                    $retroHiddenFields = Form::hidden('date_cible', $dateReport);
+                    $retroInfoBanner = '<div style="background:#fef3c7; border:1px solid #f59e0b; border-radius:8px; padding:0.85rem 1.1rem; margin-bottom:1rem; display:flex; align-items:center; gap:0.75rem;">'
+                        . '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2.2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>'
+                        . '<span style="color:#92400e; font-weight:700; font-size:0.9rem;">Soumission rétroactive pour le <strong>' . date('d/m/Y', strtotime($dateReport)) . '</strong></span>'
+                        . '</div>';
+                }
+
+                $justificationField = '';
+                if ($isRetroMode) {
+                    $justificationField = '<div style="margin-bottom:1rem;">'
+                        . '<label style="display:block; font-size:0.82rem; font-weight:700; color:#475569; margin-bottom:4px;">Justification du retard <span style="font-weight:400; color:#94a3b8;">(optionnel)</span></label>'
+                        . '<select name="justification_retard" style="width:100%; padding:0.6rem 1rem; border:1px solid #cbd5e1; border-radius:8px; font-weight:600; color:#0f172a; background:#fff; font-size:0.9rem;">'
+                        . '<option value="">-- Aucune justification --</option>'
+                        . '<option value="Oubli">Oubli</option>'
+                        . '<option value="Erreur de connexion">Erreur de connexion</option>'
+                        . '<option value="Absence / Congé">Absence / Congé</option>'
+                        . '<option value="Panne système / Technique">Panne système / Technique</option>'
+                        . '<option value="Jour férié non planifié">Jour férié non planifié</option>'
+                        . '<option value="Coupure électrique">Coupure électrique</option>'
+                        . '<option value="Problème réseau internet">Problème réseau internet</option>'
+                        . '<option value="Autre">Autre</option>'
+                        . '</select>'
+                        . '</div>';
+                }
+
                 $submissionForm .= '<form method="post" action="' . View::url('finance/clotures/soumettre') . '" enctype="multipart/form-data" class="js-protect-form" style="background:#fff; border:1px solid #cbd5e1; padding:1.5rem; border-radius:12px; margin-top:1rem; box-shadow: 0 4px 14px rgba(15,23,42,0.03);">'
                     . Form::hidden('agence_id', (string) ($activeReport['agence_id'] ?? ''))
+                    . $retroHiddenFields
+                    . $retroInfoBanner
                     . '<h4 style="margin-bottom:0.5rem; font-size:1.1rem; font-weight:800; color:#0f172a;"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" style="display:inline; margin-right:6px; vertical-align:-2px;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>Rapprochement Financier & Comptage de Caisse à l\'Aveugle</h4>'
                     . '<p style="color:#64748b; font-size:0.85rem; margin-bottom:1.25rem;">Effectuez le décompte physique de vos billets et pièces en caisse sans vous fier au montant théorique du système.</p>'
                     
@@ -1292,10 +1388,11 @@ final class Finance
                     . '</div>'
                     . '<div style="display:grid; grid-template-columns: 1fr 1fr; gap:1.25rem; margin-top:1rem;">'
                     . Form::input('explication_ecart', ['label' => 'Explication de l\'écart éventuel (ex: monnaie en attente)', 'placeholder' => 'Préciser les motifs de l\'écart', 'id' => 'explication_ecart_input'])
-                    . Form::input('justificatif_ecart_file', ['label' => '📎 Pièce justificative d\'écart (Optionnel - Photo/PDF)', 'type' => 'file', 'id' => 'justificatif_ecart_file'])
+                    . Form::input('justificatif_ecart_file', ['label' => '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" style="display:inline; vertical-align:-2px; margin-right:3px;"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg> Pièce justificative d\'écart (Optionnel - Photo/PDF)', 'type' => 'file', 'id' => 'justificatif_ecart_file'])
                     . '</div>'
+                    . $justificationField
                     . '<div style="margin-top:1.25rem; display:flex; justify-content:flex-end;">'
-                    . Ui::button('Soumettre & Verrouiller la Caisse', ['type' => 'submit', 'variant' => 'accent'])
+                    . Ui::button($isRetroMode ? 'Soumettre le Point Rétroactif (' . date('d/m/Y', strtotime($dateReport)) . ')' : 'Soumettre & Verrouiller la Caisse', ['type' => 'submit', 'variant' => $isRetroMode ? 'warning' : 'accent'])
                     . '</div>'
                     . '<script>'
                     . 'document.addEventListener("DOMContentLoaded", function() {'
@@ -1307,13 +1404,13 @@ final class Finance
             } else if ($statut !== 'brouillon') {
                 $submissionForm .= '<div style="background:#ecfdf5; border:2px solid #10b981; border-radius:12px; padding:1.25rem 1.5rem; margin-top:1rem; display:flex; align-items:center; justify-content:space-between; box-shadow:0 4px 12px rgba(16,185,129,0.1);">'
                     . '<div style="display:flex; align-items:center; gap:0.85rem;">'
-                    . '<span style="font-size:1.8rem;">✅</span>'
+                    . '<span style="width:40px; height:40px; border-radius:50%; background:rgba(16,185,129,0.15); display:inline-flex; align-items:center; justify-content:center;"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#10b981" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg></span>'
                     . '<div>'
                     . '<strong style="color:#065f46; font-size:1.1rem;">Point de Caisse du Jour Soumis avec Succès !</strong><br>'
                     . '<span style="color:#047857; font-size:0.88rem;">Votre point d\'état de la journée du <strong>' . date('d/m/Y', strtotime($activeReport['date_jour'] ?? date('Y-m-d'))) . '</strong> a été transmis. Votre caisse est clôturée pour aujourd\'hui. La prochaine session s\'ouvrira demain.</span>'
                     . '</div>'
                     . '</div>'
-                    . (!empty($activeReport['id']) ? '<a href="' . View::url('finance/clotures/' . $activeReport['id'] . '/export-pdf') . '" target="_blank" style="padding:0.55rem 1.1rem; background:#059669; color:#fff; font-weight:800; border-radius:8px; text-decoration:none; font-size:0.85rem; whitespace:nowrap;">🖨️ Télécharger mon PV (PDF)</a>' : '')
+                    . (!empty($activeReport['id']) ? '<a href="' . View::url('finance/clotures/' . $activeReport['id'] . '/export-pdf') . '" target="_blank" style="padding:0.55rem 1.1rem; background:#059669; color:#fff; font-weight:800; border-radius:8px; text-decoration:none; font-size:0.85rem; whitespace:nowrap; display:inline-flex; align-items:center; gap:6px;"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg> Télécharger mon PV (PDF)</a>' : '')
                     . '</div>';
             }
 
@@ -1323,10 +1420,10 @@ final class Finance
         // Formulaire de Filtre d'Historique
         $filterForm = '<form method="get" action="' . View::url('finance/clotures') . '" style="background:#ffffff; border:1px solid #cbd5e1; border-radius:12px; padding:1.25rem 1.5rem; margin-bottom:1.5rem; display:flex; gap:1rem; align-items:flex-end; flex-wrap:wrap; box-shadow:0 2px 8px rgba(0,0,0,0.02);">'
             . ($selectedAgenceId > 0 ? Form::hidden('agence_id', (string) $selectedAgenceId) : '')
-            . '<div style="flex:1; min-width:140px;">' . Form::input('date_exacte', ['label' => '📅 Jour Précis', 'type' => 'date', 'value' => (string)($filters['date_exacte'] ?? '')]) . '</div>'
-            . '<div style="flex:1; min-width:140px;">' . Form::input('semaine', ['label' => '📆 Semaine', 'type' => 'week', 'value' => (string)($filters['semaine'] ?? '')]) . '</div>'
-            . '<div style="flex:1; min-width:140px;">' . Form::input('mois', ['label' => '🗓️ Mois', 'type' => 'month', 'value' => (string)($filters['mois'] ?? '')]) . '</div>'
-            . '<div style="flex:1; min-width:120px;">' . Form::input('annee', ['label' => '🗓️ Année', 'type' => 'number', 'min' => '2020', 'max' => '2030', 'placeholder' => '2026', 'value' => (string)($filters['annee'] ?? '')]) . '</div>'
+            . '<div style="flex:1; min-width:140px;">' . Form::input('date_exacte', ['label' => '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" style="display:inline; vertical-align:-2px; margin-right:3px;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg> Jour Précis', 'type' => 'date', 'value' => (string)($filters['date_exacte'] ?? '')]) . '</div>'
+            . '<div style="flex:1; min-width:140px;">' . Form::input('semaine', ['label' => '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" style="display:inline; vertical-align:-2px; margin-right:3px;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line><line x1="8" y1="14" x2="8" y2="18"></line><line x1="16" y1="14" x2="16" y2="18"></line></svg> Semaine', 'type' => 'week', 'value' => (string)($filters['semaine'] ?? '')]) . '</div>'
+            . '<div style="flex:1; min-width:140px;">' . Form::input('mois', ['label' => '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" style="display:inline; vertical-align:-2px; margin-right:3px;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg> Mois', 'type' => 'month', 'value' => (string)($filters['mois'] ?? '')]) . '</div>'
+            . '<div style="flex:1; min-width:120px;">' . Form::input('annee', ['label' => '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" style="display:inline; vertical-align:-2px; margin-right:3px;"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> Année', 'type' => 'number', 'min' => '2020', 'max' => '2030', 'placeholder' => '2026', 'value' => (string)($filters['annee'] ?? '')]) . '</div>'
             . '<div style="flex:1; min-width:140px;">' . Form::select('statut', [['value' => '', 'label' => 'Tous les statuts'], ['value' => 'soumis', 'label' => 'Soumis'], ['value' => 'consolide', 'label' => 'Consolidé']], $filters['statut'] ?? '', ['label' => 'Statut']) . '</div>'
             . '<div style="display:flex; gap:0.5rem;">'
             . Ui::button('Filtrer', ['type' => 'submit', 'variant' => 'accent'])
@@ -1380,6 +1477,14 @@ final class Finance
                     $ecartTone
                 );
 
+                $retroBadge = '';
+                if ($r->soumissionRetroactive) {
+                    $retroBadge = '<br>' . Ui::badge('<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" style="display:inline; vertical-align:-2px; margin-right:3px;"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>Rétroactif', 'warning');
+                    if ($r->justificationRetard) {
+                        $retroBadge .= '<br><small style="color:#92400e; font-size:0.72rem;" title="' . View::e($r->justificationRetard) . '">' . View::e($r->justificationRetard) . '</small>';
+                    }
+                }
+
                 $dateLink = '<a href="' . View::url('finance/clotures') . '?agence_id=' . $r->agenceId . '&date_exacte=' . urlencode($r->dateJour) . '" style="color:#2563eb; font-weight:800; text-decoration:underline;" title="Consulter la position et ventilation de ce jour">' . View::e($r->dateJour) . '</a>';
 
                 $rows .= '<tr>'
@@ -1390,7 +1495,7 @@ final class Finance
                     . '<td style="text-align:right; font-weight:600; color:#16a34a;">' . View::e(number_format($r->totalEncaisseXof, 2, ',', ' ')) . ' XOF</td>'
                     . '<td style="text-align:center;">' . $ecartBadge . ($r->explicationEcart ? '<br><small style="color:#64748b;" title="' . View::e($r->explicationEcart) . '"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" style="display:inline; margin-right:2px; vertical-align:-1px;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>' . View::e(mb_strimwidth($r->explicationEcart, 0, 25, '...')) . '</small>' : '') . '</td>'
                     . '<td>' . ($r->dateSoumission ? date('d/m/Y à H:i', strtotime($r->dateSoumission)) : '—') . '</td>'
-                    . '<td>' . $badge . '</td>'
+                    . '<td>' . $badge . $retroBadge . '</td>'
                     . '<td>' . $actionsHtml . '</td>'
                     . '</tr>';
             }
@@ -1419,6 +1524,7 @@ final class Finance
             . '<div class="finea-container">'
             . $header
             . $agenceSelector
+            . $retroBlock
             . $submissionForm
             . '<div class="finea-section-card" style="margin-top: 1.5rem;">'
             . '<div class="finea-section-heading"><h2 class="finea-section-title">Historique des points de caisse</h2></div>'

@@ -973,12 +973,19 @@ final class FinanceController extends FinanceBaseController
             $activeReport['agence_name'] = $stmt->fetchColumn() ?: ('Agence #' . $targetAgenceId);
         }
 
+        // Calculer les jours non soumis (rétroactifs) pour l'agence ciblée
+        $joursNonSoumis = [];
+        if ($targetAgenceId > 0) {
+            $joursNonSoumis = $this->etatRepo->getJoursNonSoumis($targetAgenceId, 4);
+        }
+
         $this->financeView('finance/clotures/index', 'Points de Caisse', 'clotures', [
             'reports' => $reports,
             'agences' => $agences,
             'activeReport' => $activeReport,
             'selectedAgenceId' => $selectedAgenceId,
             'filters' => $filters,
+            'joursNonSoumis' => $joursNonSoumis,
         ]);
     }
 
@@ -996,18 +1003,34 @@ final class FinanceController extends FinanceBaseController
             exit;
         }
 
+        // Déterminer la date cible : aujourd'hui par défaut, ou une date antérieure (rétroactif)
         $dateJour = date('Y-m-d');
+        $dateCible = !empty($_POST['date_cible']) ? trim($_POST['date_cible']) : $dateJour;
 
-        // Vérifier si un état existe déjà pour ce jour
-        $existing = $this->etatRepo->findByAgenceAndDate((int) $agenceId, $dateJour);
+        // Valider que la date cible est dans la plage autorisée [J-4, J]
+        $dateMin = date('Y-m-d', strtotime('-4 days'));
+        if ($dateCible < $dateMin || $dateCible > $dateJour) {
+            Session::flash('error', 'La date sélectionnée est hors de la plage autorisée (maximum 4 jours en arrière).');
+            header('Location: ' . View::url('finance/clotures'));
+            exit;
+        }
+
+        $isRetroactif = ($dateCible !== $dateJour);
+        $justificationRetard = isset($_POST['justification_retard']) ? trim((string) $_POST['justification_retard']) : null;
+        if ($justificationRetard === '') {
+            $justificationRetard = null;
+        }
+
+        // Vérifier si un état existe déjà pour cette date
+        $existing = $this->etatRepo->findByAgenceAndDate((int) $agenceId, $dateCible);
         if ($existing && $existing->statut !== 'brouillon') {
             Session::flash('error', 'Le point de caisse de ce jour a déjà été soumis.');
             header('Location: ' . View::url('finance/clotures'));
             exit;
         }
 
-        // Calculer les totaux en temps réel
-        $live = $this->etatRepo->computeTotalsForDay((int) $agenceId, $dateJour);
+        // Calculer les totaux en temps réel pour la date cible
+        $live = $this->etatRepo->computeTotalsForDay((int) $agenceId, $dateCible);
 
         // Récupérer le comptage physique et l'explication éventuelle d'écart
         $soldePhysique = isset($_POST['solde_physique_declare']) && $_POST['solde_physique_declare'] !== '' ? (float) $_POST['solde_physique_declare'] : null;
@@ -1056,6 +1079,8 @@ final class FinanceController extends FinanceBaseController
             if ($justificatifUrl !== null) {
                 $existing->justificatifUrl = $justificatifUrl;
             }
+            $existing->soumissionRetroactive = $isRetroactif;
+            $existing->justificationRetard = $justificationRetard;
             $existing->statut = 'soumis';
             $existing->dateSoumission = date('Y-m-d H:i:s');
             $existing->chefAgenceId = Auth::id();
@@ -1067,7 +1092,7 @@ final class FinanceController extends FinanceBaseController
                 id: null,
                 agenceId: (int) $agenceId,
                 chefAgenceId: Auth::id(),
-                dateJour: $dateJour,
+                dateJour: $dateCible,
                 nbColisEnregistres: $live['nb_colis'],
                 nbFacturesEmises: $live['nb_factures'],
                 totalFactureXof: $live['total_facture_xof'],
@@ -1083,14 +1108,17 @@ final class FinanceController extends FinanceBaseController
                 soldePhysiqueDeclare: $soldePhysique,
                 ecartCaisse: $ecart,
                 explicationEcart: $explication !== '' ? $explication : null,
-                justificatifUrl: $justificatifUrl
+                justificatifUrl: $justificatifUrl,
+                soumissionRetroactive: $isRetroactif,
+                justificationRetard: $justificationRetard
             );
             $reportId = $this->etatRepo->create($etat);
         }
 
-        AuditLogService::log('submit_cash_report', 'lbp_etats_journaliers', $reportId, null, $live + ['ecart' => $ecart]);
+        AuditLogService::log('submit_cash_report', 'lbp_etats_journaliers', $reportId, null, $live + ['ecart' => $ecart, 'retroactif' => $isRetroactif, 'justification_retard' => $justificationRetard]);
 
-        Session::flash('success', 'Le point de caisse avec rapprochement a été soumis et verrouillé avec succès.');
+        $msgRetro = $isRetroactif ? ' (soumission rétroactive pour le ' . date('d/m/Y', strtotime($dateCible)) . ')' : '';
+        Session::flash('success', 'Le point de caisse avec rapprochement a été soumis et verrouillé avec succès' . $msgRetro . '.');
         header('Location: ' . View::url('finance/clotures'));
         exit;
     }

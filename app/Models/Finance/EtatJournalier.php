@@ -31,6 +31,8 @@ class EtatJournalier
         public ?string $justificatifUrl = null,
         public ?string $decompteCoupuresJson = null,
         public bool $blindCount = true,
-        public ?int $validationSuperviseurId = null
+        public ?int $validationSuperviseurId = null,
+        public bool $soumissionRetroactive = false,
+        public ?string $justificationRetard = null
     ) {}
 }
