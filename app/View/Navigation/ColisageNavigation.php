@@ -144,9 +144,18 @@ final class ColisageNavigation
                 'group' => 'Opération',
                 'subgroup' => 'DHL',
                 'key' => 'op_dhl',
-                'label' => 'DHL Express International',
+                'label' => 'DHL Express (Saisie)',
                 'icon' => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>',
                 'url' => 'operation/DHL/saisir',
+                'available' => true
+            ],
+            [
+                'group' => 'Opération',
+                'subgroup' => 'DHL',
+                'key' => 'op_dhl_rentabilite',
+                'label' => 'Rentabilité & Suivi DHL',
+                'icon' => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>',
+                'url' => 'colisage/dhl/rentabilite',
                 'available' => true
             ],
 

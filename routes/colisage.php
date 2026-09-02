@@ -6,6 +6,7 @@ use App\Router;
 use App\Controllers\Colisage\ColisageDashboardController;
 use App\Controllers\Colisage\ColisageController;
 use App\Controllers\Colisage\ColisageAutresController;
+use App\Controllers\Colisage\ColisageDhlController;
 use App\Controllers\Colisage\ExploitationController;
 use App\Controllers\Colisage\RapportsController;
 
@@ -50,6 +51,11 @@ $router->group('/colisage', function (Router $router): void {
     $router->get('/autres', [ColisageAutresController::class, 'index']);
     $router->get('/autres/nouveau', [ColisageAutresController::class, 'create']);
     $router->post('/autres/enregistrer', [ColisageAutresController::class, 'store']);
+
+    // Suivi & Rentabilité DHL Express
+    $router->get('/dhl', [ColisageDhlController::class, 'index']);
+    $router->get('/dhl/rentabilite', [ColisageDhlController::class, 'index']);
+    $router->get('/dhl/export-csv', [ColisageDhlController::class, 'exportCsv']);
 
     $router->get('/documents', [ColisageController::class, 'documents']);
     $router->get('/reporting', [ColisageController::class, 'reporting']);

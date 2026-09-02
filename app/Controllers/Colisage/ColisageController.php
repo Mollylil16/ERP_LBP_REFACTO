@@ -222,6 +222,9 @@ final class ColisageController extends ColisageBaseController
         // pas le champ 'nombre_colis' du formulaire (absent de cet écran, ou pas fiable côté client).
         $totalNombreColis = array_sum(array_column($marchandises, 'nbre_colis'));
 
+        $coutAchatDhl = isset($_POST['cout_achat_dhl']) && $_POST['cout_achat_dhl'] !== '' ? (float) $_POST['cout_achat_dhl'] : 0.0;
+        $awbDhl = isset($_POST['awb_dhl']) && trim($_POST['awb_dhl']) !== '' ? trim((string) $_POST['awb_dhl']) : null;
+
         $registerData = [
             'expediteur_id' => $expediteurId,
             'destinataire_id' => $destinataireId,
@@ -238,6 +241,8 @@ final class ColisageController extends ColisageBaseController
             'created_at' => !empty($_POST['date_enregistrement']) ? $_POST['date_enregistrement'] . ' ' . date('H:i:s') : (!empty($_POST['date_depart_prevue']) ? $_POST['date_depart_prevue'] . ' ' . date('H:i:s') : date('Y-m-d H:i:s')),
             'marchandises' => $marchandises,
             'created_by' => Auth::id(),
+            'awb_dhl' => $awbDhl,
+            'cout_achat_dhl' => $coutAchatDhl,
         ];
 
         if ($trajet !== null) {
@@ -398,6 +403,9 @@ final class ColisageController extends ColisageBaseController
 
         $totalNombreColis = array_sum(array_column($marchandises, 'nbre_colis'));
 
+        $coutAchatDhl = isset($_POST['cout_achat_dhl']) && $_POST['cout_achat_dhl'] !== '' ? (float) $_POST['cout_achat_dhl'] : 0.0;
+        $awbDhl = isset($_POST['awb_dhl']) && trim($_POST['awb_dhl']) !== '' ? trim((string) $_POST['awb_dhl']) : null;
+
         $updateData = [
             'expediteur_id' => $expediteurId,
             'destinataire_id' => $destinataireId,
@@ -409,6 +417,8 @@ final class ColisageController extends ColisageBaseController
             'montant_assurance' => (float) ($_POST['montant_assurance'] ?? 0.0),
             'date_depart_prevue' => $_POST['date_depart_prevue'] ?? date('Y-m-d'),
             'marchandises' => $marchandises,
+            'awb_dhl' => $awbDhl,
+            'cout_achat_dhl' => $coutAchatDhl,
         ];
 
         try {

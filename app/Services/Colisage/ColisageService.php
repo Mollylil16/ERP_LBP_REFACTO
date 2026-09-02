@@ -324,10 +324,11 @@ final class ColisageService
                 UPDATE lbp_colis 
                 SET montant_total = ?, 
                     montant_total_eur = ?, 
+                    marge_lbp = GREATEST(0.0, ? - COALESCE(cout_achat_dhl, 0.0)),
                     updated_at = NOW() 
                 WHERE id = ?
             ");
-            $stmtUp->execute([$finalMontant, $finalMontantEur, $parcelId]);
+            $stmtUp->execute([$finalMontant, $finalMontantEur, $finalMontant, $parcelId]);
 
             $pdo->commit();
 
@@ -421,8 +422,8 @@ final class ColisageService
                 $finalMontant += (float) ($data['montant_assurance'] ?? 0.0);
             }
 
-            $stmtUp = $pdo->prepare("UPDATE lbp_colis SET montant_total = ?, nombre_colis = ?, updated_at = NOW() WHERE id = ?");
-            $stmtUp->execute([$finalMontant, $sumColis, $parcelId]);
+            $stmtUp = $pdo->prepare("UPDATE lbp_colis SET montant_total = ?, nombre_colis = ?, marge_lbp = GREATEST(0.0, ? - COALESCE(cout_achat_dhl, 0.0)), updated_at = NOW() WHERE id = ?");
+            $stmtUp->execute([$finalMontant, $sumColis, $finalMontant, $parcelId]);
 
             try {
                 $stmtInv = $pdo->prepare("UPDATE lbp_factures SET montant_total = ?, updated_at = NOW() WHERE colis_id = ?");

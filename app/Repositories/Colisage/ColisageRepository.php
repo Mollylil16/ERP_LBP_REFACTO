@@ -227,16 +227,22 @@ class ColisageRepository
             }
         }
 
+        $coutAchatDhl = isset($data['cout_achat_dhl']) ? (float) $data['cout_achat_dhl'] : 0.0;
+        $margeLbp = isset($data['marge_lbp']) ? (float) $data['marge_lbp'] : max(0.0, $montantTotal - $coutAchatDhl);
+        $awbDhl = !empty($data['awb_dhl']) ? trim((string) $data['awb_dhl']) : null;
+
         $stmt = $this->pdo->prepare("
             INSERT INTO lbp_colis (
                 numero_tracking, expediteur_id, destinataire_id, poids_total, nombre_colis,
                 valeur_declaree, montant_total, montant_total_eur, devise,
-                agence_depart_id, agence_arrivee_id, statut, type_expediteur, trafic, assurance_souscrite, montant_assurance, date_depart_prevue, created_by, created_at
+                agence_depart_id, agence_arrivee_id, statut, type_expediteur, trafic, assurance_souscrite, montant_assurance, date_depart_prevue, created_by, created_at,
+                awb_dhl, cout_achat_dhl, marge_lbp
             ) VALUES (
                 :numero_tracking, :expediteur_id, :destinataire_id, :poids_total, :nombre_colis,
                 :valeur_declaree, :montant_total, :montant_total_eur, :devise,
                 :agence_depart_id, :agence_arrivee_id,
-                'enregistre', :type_expediteur, :trafic, :assurance_souscrite, :montant_assurance, :date_depart_prevue, :created_by, :created_at
+                'enregistre', :type_expediteur, :trafic, :assurance_souscrite, :montant_assurance, :date_depart_prevue, :created_by, :created_at,
+                :awb_dhl, :cout_achat_dhl, :marge_lbp
             )
         ");
         $stmt->execute([
@@ -258,6 +264,9 @@ class ColisageRepository
             'date_depart_prevue' => !empty($data['date_depart_prevue']) ? $data['date_depart_prevue'] : date('Y-m-d'),
             'created_by' => isset($data['created_by']) ? (int) $data['created_by'] : null,
             'created_at' => $createdAt,
+            'awb_dhl' => $awbDhl,
+            'cout_achat_dhl' => $coutAchatDhl,
+            'marge_lbp' => $margeLbp,
         ]);
         return (int) $this->pdo->lastInsertId();
     }
@@ -290,6 +299,9 @@ class ColisageRepository
 
         $assuranceSouscrite = !empty($data['assurance_souscrite']) ? 1 : 0;
         $montantAssurance = (float) ($data['montant_assurance'] ?? 0.0);
+        $coutAchatDhl = isset($data['cout_achat_dhl']) ? (float) $data['cout_achat_dhl'] : 0.0;
+        $margeLbp = isset($data['marge_lbp']) ? (float) $data['marge_lbp'] : max(0.0, $montantTotal - $coutAchatDhl);
+        $awbDhl = isset($data['awb_dhl']) ? (!empty($data['awb_dhl']) ? trim((string) $data['awb_dhl']) : null) : null;
 
         $stmt = $this->pdo->prepare("
             UPDATE lbp_colis SET
@@ -304,6 +316,9 @@ class ColisageRepository
                 montant_assurance = :montant_assurance,
                 date_depart_prevue = :date_depart_prevue,
                 statut = :statut,
+                awb_dhl = COALESCE(:awb_dhl, awb_dhl),
+                cout_achat_dhl = :cout_achat_dhl,
+                marge_lbp = :marge_lbp,
                 updated_at = NOW()
             WHERE id = :id
         ");
@@ -320,6 +335,9 @@ class ColisageRepository
             'montant_assurance' => $montantAssurance,
             'date_depart_prevue' => !empty($data['date_depart_prevue']) ? $data['date_depart_prevue'] : date('Y-m-d'),
             'statut' => !empty($data['statut']) ? trim((string) $data['statut']) : 'enregistre',
+            'awb_dhl' => $awbDhl,
+            'cout_achat_dhl' => $coutAchatDhl,
+            'marge_lbp' => $margeLbp,
         ]);
 
         try {
@@ -778,5 +796,129 @@ class ColisageRepository
         $stmt->execute(['id' => $id]);
         $name = $stmt->fetchColumn();
         return $name ? (string) $name : null;
+    }
+
+    /**
+     * Rapport et synthèse de rentabilité des envois DHL Express
+     */
+    public function getDhlRentabilite(array $filters = [], int $page = 1, int $limit = 25): array
+    {
+        $offset = ($page - 1) * $limit;
+        $params = [];
+        $where = ["(c.type_expediteur = 'dhl' OR c.trajet = 'DHL' OR (c.awb_dhl IS NOT NULL AND c.awb_dhl != '') OR c.cout_achat_dhl > 0)"];
+
+        if (!empty($filters['q'])) {
+            $where[] = "(c.numero_tracking LIKE :q1 OR c.awb_dhl LIKE :q2 OR exp.name LIKE :q3 OR dest.name LIKE :q4)";
+            $like = '%' . $filters['q'] . '%';
+            $params['q1'] = $like;
+            $params['q2'] = $like;
+            $params['q3'] = $like;
+            $params['q4'] = $like;
+        }
+
+        if (!empty($filters['agence_id'])) {
+            $where[] = "(c.agence_depart_id = :ag_id OR c.agence_arrivee_id = :ag_id)";
+            $params['ag_id'] = (int) $filters['agence_id'];
+        }
+
+        if (!empty($filters['statut'])) {
+            $where[] = "c.statut = :statut";
+            $params['statut'] = $filters['statut'];
+        }
+
+        if (!empty($filters['date_from'])) {
+            $where[] = "DATE(c.created_at) >= :date_from";
+            $params['date_from'] = $filters['date_from'];
+        }
+
+        if (!empty($filters['date_to'])) {
+            $where[] = "DATE(c.created_at) <= :date_to";
+            $params['date_to'] = $filters['date_to'];
+        }
+
+        $whereSql = implode(' AND ', $where);
+
+        // Summary KPIs
+        $kpiSql = "
+            SELECT 
+                COUNT(c.id) AS total_envois,
+                COALESCE(SUM(c.montant_total), 0) AS ca_total,
+                COALESCE(SUM(c.cout_achat_dhl), 0) AS cout_total_dhl,
+                COALESCE(SUM(c.marge_lbp), 0) AS benefice_total
+            FROM lbp_colis c
+            JOIN lbp_clients exp ON c.expediteur_id = exp.id
+            JOIN lbp_clients dest ON c.destinataire_id = dest.id
+            WHERE {$whereSql}
+        ";
+        $kpiStmt = $this->pdo->prepare($kpiSql);
+        $kpiStmt->execute($params);
+        $kpi = $kpiStmt->fetch(\PDO::FETCH_ASSOC) ?: [
+            'total_envois' => 0,
+            'ca_total' => 0.0,
+            'cout_total_dhl' => 0.0,
+            'benefice_total' => 0.0,
+        ];
+
+        $caTotal = (float) $kpi['ca_total'];
+        $coutTotalDhl = (float) $kpi['cout_total_dhl'];
+        $beneficeTotal = (float) $kpi['benefice_total'];
+        $tauxMargeMoyen = $caTotal > 0 ? round(($beneficeTotal / $caTotal) * 100, 1) : 0.0;
+
+        $kpi['total_envois'] = (int) $kpi['total_envois'];
+        $kpi['ca_total'] = $caTotal;
+        $kpi['cout_total_dhl'] = $coutTotalDhl;
+        $kpi['benefice_total'] = $beneficeTotal;
+        $kpi['taux_marge_moyen'] = $tauxMargeMoyen;
+
+        // List query
+        $listSql = "
+            SELECT c.*,
+                   exp.name AS expediteur_name,
+                   exp.phone AS expediteur_phone,
+                   dest.name AS destinataire_name,
+                   dest.phone AS destinataire_phone,
+                   s_dep.name AS agence_depart_name,
+                   s_arr.name AS agence_arrivee_name,
+                   f.id AS facture_id,
+                   f.numero_facture,
+                   f.statut AS facture_statut,
+                   f.montant_encaisse,
+                   f.montant_restant
+            FROM lbp_colis c
+            JOIN lbp_clients exp ON c.expediteur_id = exp.id
+            JOIN lbp_clients dest ON c.destinataire_id = dest.id
+            LEFT JOIN company_sites s_dep ON c.agence_depart_id = s_dep.id
+            LEFT JOIN company_sites s_arr ON c.agence_arrivee_id = s_arr.id
+            LEFT JOIN lbp_factures f ON f.colis_id = c.id
+            WHERE {$whereSql}
+            ORDER BY c.created_at DESC
+        ";
+
+        if ($limit > 0) {
+            $listSql .= " LIMIT :limit OFFSET :offset";
+            $stmt = $this->pdo->prepare($listSql);
+            foreach ($params as $k => $v) {
+                $stmt->bindValue(':' . $k, $v);
+            }
+            $stmt->bindValue(':limit', $limit, \PDO::PARAM_INT);
+            $stmt->bindValue(':offset', $offset, \PDO::PARAM_INT);
+            $stmt->execute();
+            $items = $stmt->fetchAll(\PDO::FETCH_ASSOC) ?: [];
+        } else {
+            $stmt = $this->pdo->prepare($listSql);
+            $stmt->execute($params);
+            $items = $stmt->fetchAll(\PDO::FETCH_ASSOC) ?: [];
+        }
+
+        return [
+            'items' => $items,
+            'kpi' => $kpi,
+            'pagination' => [
+                'currentPage' => $page,
+                'itemsPerPage' => $limit > 0 ? $limit : count($items),
+                'totalItems' => (int) $kpi['total_envois'],
+                'totalPages' => $limit > 0 ? (int) ceil(((int)$kpi['total_envois']) / max(1, $limit)) : 1,
+            ]
+        ];
     }
 }
