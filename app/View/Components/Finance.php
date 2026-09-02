@@ -1122,9 +1122,9 @@ final class Finance
                 . '</div>';
         }
 
-        // 1b. Bloc de Soumission Rétroactive (si des jours non soumis existent)
+        // 1b. Bloc de Soumission Rétroactive (si des jours non soumis existent ou pour régularisation passée)
         $retroBlock = '';
-        if (!empty($joursNonSoumis) && Auth::hasAnyRole(['caissiere', 'chef_agence', 'caissiere_principale'])) {
+        if (Auth::hasAnyRole(['caissiere', 'chef_agence', 'caissiere_principale'])) {
             $nbJours = count($joursNonSoumis);
             $dateOptionsHtml = '';
             foreach ($joursNonSoumis as $d) {
@@ -1132,6 +1132,11 @@ final class Finance
                 $jourSemaine = ['Dimanche','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'][(int)date('w', strtotime($d))];
                 $dateOptionsHtml .= '<option value="' . View::e($d) . '">' . $jourSemaine . ' ' . $label . '</option>';
             }
+            $dateOptionsHtml .= '<option value="__custom__">Choisir une autre date passée (Calendrier)...</option>';
+
+            $infoMsg = $nbJours > 0 
+                ? $nbJours . ' jour(s) sans point de caisse soumis détecté(s) récemment. Vous pouvez soumettre le point de caisse pour ces jours ou choisir une autre date passée.'
+                : 'Sélectionnez une date antérieure pour régulariser et soumettre un point de caisse passé.';
 
             $retroBlock = '<div style="background:linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%); border:2px solid #f59e0b; border-radius:12px; padding:1.5rem; margin-bottom:1.5rem; box-shadow:0 4px 12px rgba(245,158,11,0.12);">' 
                 . '<div style="display:flex; align-items:flex-start; gap:1rem; margin-bottom:1.25rem;">'
@@ -1139,16 +1144,17 @@ final class Finance
                 . '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2.2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>'
                 . '</div>'
                 . '<div>'
-                . '<strong style="color:#92400e; font-size:1.1rem;">Soumission Rétroactive Disponible</strong><br>'
-                . '<span style="color:#a16207; font-size:0.88rem;">' . $nbJours . ' jour(s) sans point de caisse soumis détecté(s) dans les 4 derniers jours. Vous pouvez soumettre le point de caisse pour chacun de ces jours.</span>'
+                . '<strong style="color:#92400e; font-size:1.1rem;">Soumission Rétroactive de Point de Caisse</strong><br>'
+                . '<span style="color:#a16207; font-size:0.88rem;">' . $infoMsg . '</span>'
                 . '</div>'
                 . '</div>'
                 . '<div style="display:flex; gap:1rem; align-items:flex-end; flex-wrap:wrap;">'
-                . '<div style="flex:1; min-width:200px;">'
+                . '<div style="flex:1; min-width:220px;">'
                 . '<label style="display:block; font-size:0.8rem; font-weight:700; color:#92400e; margin-bottom:4px;">Date à soumettre</label>'
-                . '<select id="retro_date_select" style="width:100%; padding:0.6rem 1rem; border:2px solid #f59e0b; border-radius:8px; font-weight:700; color:#0f172a; background:#fff; cursor:pointer; font-size:0.92rem;">'
+                . '<select id="retro_date_select" onchange="toggleCustomDateInput(this.value)" style="width:100%; padding:0.6rem 1rem; border:2px solid #f59e0b; border-radius:8px; font-weight:700; color:#0f172a; background:#fff; cursor:pointer; font-size:0.92rem;">'
                 . $dateOptionsHtml
                 . '</select>'
+                . '<input type="date" id="retro_custom_date" max="' . date('Y-m-d') . '" style="display:none; width:100%; margin-top:6px; padding:0.55rem 0.9rem; border:2px solid #f59e0b; border-radius:8px; font-weight:700; color:#0f172a; background:#fff; font-size:0.92rem;">'
                 . '</div>'
                 . '<div style="flex:1; min-width:200px;">'
                 . '<label style="display:block; font-size:0.8rem; font-weight:700; color:#92400e; margin-bottom:4px;">Justification du retard <span style="font-weight:400; color:#a16207;">(optionnel)</span></label>'
@@ -1172,8 +1178,18 @@ final class Finance
                 . '</div>'
                 . '</div>'
                 . '<script>'
+                . 'function toggleCustomDateInput(val) {'
+                . '  var customInput = document.getElementById("retro_custom_date");'
+                . '  if (val === "__custom__") { customInput.style.display = "block"; customInput.focus(); }'
+                . '  else { customInput.style.display = "none"; }'
+                . '}'
                 . 'function chargerPointRetroactif() {'
-                . '  var dateVal = document.getElementById("retro_date_select").value;'
+                . '  var select = document.getElementById("retro_date_select");'
+                . '  var dateVal = select.value;'
+                . '  if (dateVal === "__custom__") {'
+                . '    dateVal = document.getElementById("retro_custom_date").value;'
+                . '    if (!dateVal) { alert("Veuillez sélectionner une date sur le calendrier."); return; }'
+                . '  }'
                 . '  var agenceId = ' . ($selectedAgenceId > 0 ? $selectedAgenceId : '""') . ';'
                 . '  var url = "' . View::url('finance/clotures') . '?date_exacte=" + encodeURIComponent(dateVal);'
                 . '  if (agenceId) url += "&agence_id=" + agenceId;'
@@ -1331,7 +1347,7 @@ final class Finance
                 // Déterminer si c'est une soumission rétroactive (date filtrée != aujourd'hui)
                 $dateActuelle = date('Y-m-d');
                 $dateReport = $activeReport['date_jour'] ?? $dateActuelle;
-                $isRetroMode = ($dateReport !== $dateActuelle) && !empty($joursNonSoumis) && in_array($dateReport, $joursNonSoumis);
+                $isRetroMode = ($dateReport !== $dateActuelle);
 
                 $retroHiddenFields = '';
                 $retroInfoBanner = '';

@@ -1007,10 +1007,9 @@ final class FinanceController extends FinanceBaseController
         $dateJour = date('Y-m-d');
         $dateCible = !empty($_POST['date_cible']) ? trim($_POST['date_cible']) : $dateJour;
 
-        // Valider que la date cible est dans la plage autorisée [J-4, J]
-        $dateMin = date('Y-m-d', strtotime('-4 days'));
-        if ($dateCible < $dateMin || $dateCible > $dateJour) {
-            Session::flash('error', 'La date sélectionnée est hors de la plage autorisée (maximum 4 jours en arrière).');
+        // Valider que la date cible est un format YYYY-MM-DD valide et pas dans le futur
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateCible) || $dateCible > $dateJour) {
+            Session::flash('error', 'La date sélectionnée est invalide ou située dans le futur.');
             header('Location: ' . View::url('finance/clotures'));
             exit;
         }
