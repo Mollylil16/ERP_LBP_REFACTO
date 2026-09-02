@@ -214,8 +214,15 @@ final class FinanceController extends FinanceBaseController
             $montantTotal = $totalXof / $tauxChange;
         }
 
-        $agenceId = (int) $colis['agence_depart_id'];
+        $candidateAgenceId = !empty($colis['agence_depart_id']) ? (int) $colis['agence_depart_id'] : (Auth::agenceId() ?: null);
+        $agenceId = $this->factureRepo->resolveValidAgencyId($candidateAgenceId);
         $numeroFacture = $this->factureRepo->generateNextInvoiceNumber($agenceId);
+
+        // Auto-heal l'agence de départ du colis si elle était manquante ou à 0
+        if (empty($colis['agence_depart_id']) || (int)$colis['agence_depart_id'] === 0) {
+            $upColis = $this->db->prepare("UPDATE lbp_colis SET agence_depart_id = :ag_id WHERE id = :id AND (agence_depart_id IS NULL OR agence_depart_id = 0)");
+            $upColis->execute(['ag_id' => $agenceId, 'id' => $colisId]);
+        }
 
         // Date d'échéance à J+7 par défaut
         $dateEcheanceSolde = date('Y-m-d H:i:s', strtotime('+7 days'));
@@ -233,7 +240,10 @@ final class FinanceController extends FinanceBaseController
             devise: $devise,
             tauxChange: $tauxChange,
             statut: 'emise',
-            dateEcheanceSolde: $dateEcheanceSolde
+            dateEcheanceSolde: $dateEcheanceSolde,
+            trajetId: !empty($colis['trajet_id']) ? (int) $colis['trajet_id'] : null,
+            agentId: !empty($colis['agent_groupage_id']) ? (int) $colis['agent_groupage_id'] : (int) Auth::id(),
+            createdBy: (int) Auth::id()
         );
 
         $factureId = $this->factureRepo->create($facture);

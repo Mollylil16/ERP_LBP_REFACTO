@@ -37,9 +37,46 @@ class FactureRepository
         return $row ? $this->mapToFacture($row) : null;
     }
 
+    public function resolveValidAgencyId(?int $candidateId = null): int
+    {
+        if (!empty($candidateId) && $candidateId > 0) {
+            $stmt = $this->pdo->prepare("SELECT id FROM company_sites WHERE id = :id LIMIT 1");
+            $stmt->execute(['id' => $candidateId]);
+            $valid = $stmt->fetchColumn();
+            if ($valid) {
+                return (int) $valid;
+            }
+        }
+
+        $userAgency = Auth::agenceId();
+        if (!empty($userAgency) && $userAgency > 0) {
+            $stmt = $this->pdo->prepare("SELECT id FROM company_sites WHERE id = :id LIMIT 1");
+            $stmt->execute(['id' => $userAgency]);
+            $valid = $stmt->fetchColumn();
+            if ($valid) {
+                return (int) $valid;
+            }
+        }
+
+        $stmt = $this->pdo->query("SELECT id FROM company_sites WHERE is_active = 1 ORDER BY id ASC LIMIT 1");
+        $activeId = $stmt ? $stmt->fetchColumn() : null;
+        if ($activeId) {
+            return (int) $activeId;
+        }
+
+        $stmt = $this->pdo->query("SELECT id FROM company_sites ORDER BY id ASC LIMIT 1");
+        $anyId = $stmt ? $stmt->fetchColumn() : null;
+        if ($anyId) {
+            return (int) $anyId;
+        }
+
+        return 1;
+    }
+
     public function create(Facture $facture): int
     {
         $currentUserId = Auth::id() ?: $facture->createdBy ?: $facture->caissiereId;
+        $agenceId = $this->resolveValidAgencyId($facture->agenceId);
 
         $dateEmission = $facture->dateEmission;
         if (empty($dateEmission)) {
@@ -70,7 +107,7 @@ class FactureRepository
             'colis_id' => $facture->colisId,
             'client_id' => $facture->clientId,
             'caissiere_id' => $facture->caissiereId,
-            'agence_id' => $facture->agenceId,
+            'agence_id' => $agenceId,
             'montant_total' => $facture->montantTotal,
             'montant_encaisse' => $facture->montantEncaisse,
             'montant_restant' => $facture->montantRestant,
@@ -379,8 +416,9 @@ class FactureRepository
 
     public function generateNextInvoiceNumber(int $agenceId): string
     {
+        $validAgenceId = $this->resolveValidAgencyId($agenceId);
         $year = date('Y');
-        $prefix = sprintf("FA-%02d-%s-", $agenceId, $year);
+        $prefix = sprintf("FA-%02d-%s-", $validAgenceId, $year);
 
         $stmt = $this->pdo->prepare("
             SELECT MAX(CAST(SUBSTRING(numero_facture, LENGTH(:prefix) + 1) AS UNSIGNED))
@@ -396,7 +434,7 @@ class FactureRepository
         $nextSeq = $maxSeq + 1;
 
         do {
-            $candidate = sprintf("FA-%02d-%s-%06d", $agenceId, $year, $nextSeq);
+            $candidate = sprintf("FA-%02d-%s-%06d", $validAgenceId, $year, $nextSeq);
             $checkStmt = $this->pdo->prepare("SELECT COUNT(*) FROM lbp_factures WHERE numero_facture = :candidate");
             $checkStmt->execute(['candidate' => $candidate]);
             $exists = (int) $checkStmt->fetchColumn() > 0;
@@ -423,9 +461,16 @@ class FactureRepository
             throw new \InvalidArgumentException("Colis introuvable ID: {$parcelId}");
         }
 
-        $agenceId = !empty($colis['agence_depart_id']) ? (int) $colis['agence_depart_id'] : 1;
+        $candidateAgenceId = !empty($colis['agence_depart_id']) ? (int) $colis['agence_depart_id'] : (Auth::agenceId() ?: null);
+        $agenceId = $this->resolveValidAgencyId($candidateAgenceId);
         $numFacture = $this->generateNextInvoiceNumber($agenceId);
         $userId = Auth::id() ?: $caissiereId;
+
+        // Auto-heal parcel agence_depart_id if missing in lbp_colis
+        if (empty($colis['agence_depart_id']) || (int)$colis['agence_depart_id'] === 0) {
+            $upColis = $this->pdo->prepare("UPDATE lbp_colis SET agence_depart_id = :ag_id WHERE id = :id AND (agence_depart_id IS NULL OR agence_depart_id = 0)");
+            $upColis->execute(['ag_id' => $agenceId, 'id' => $parcelId]);
+        }
 
         $montantTotal = (float) $colis['montant_total'];
         if ($montantTotal <= 0.0) {

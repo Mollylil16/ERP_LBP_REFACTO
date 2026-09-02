@@ -1757,6 +1757,9 @@ class MigrationRunner
         $this->addColumnIfMissing('lbp_colis', 'motif_reste', "VARCHAR(255) NULL");
         $this->addColumnIfMissing('lbp_colis', 'date_statut_depart', "DATETIME NULL");
         $this->addColumnIfMissing('lbp_colis', 'date_depart_prevue', "DATE NULL");
+        $this->addColumnIfMissing('lbp_colis', 'awb_dhl', "VARCHAR(100) NULL");
+        $this->addColumnIfMissing('lbp_colis', 'cout_achat_dhl', "DECIMAL(15,2) NOT NULL DEFAULT 0.00");
+        $this->addColumnIfMissing('lbp_colis', 'marge_lbp', "DECIMAL(15,2) NOT NULL DEFAULT 0.00");
 
         $this->pdo->exec("
             CREATE TABLE IF NOT EXISTS lbp_marchandises (
