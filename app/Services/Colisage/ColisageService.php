@@ -291,12 +291,16 @@ final class ColisageService
             }
         }
 
-            // Update final montant_total for the colis based on the inserted marchandises
-            $stmtSum = $pdo->prepare("SELECT SUM(total_ligne) FROM lbp_marchandises WHERE colis_id = ?");
+            // Update final montant_total for the colis based on the inserted marchandises or explicit amount
+            $stmtSum = $pdo->prepare("SELECT COALESCE(SUM(total_ligne), 0) FROM lbp_marchandises WHERE colis_id = ?");
             $stmtSum->execute([$parcelId]);
             $sumLines = (float) $stmtSum->fetchColumn();
+            $explicitMontant = (float) ($data['montant_total'] ?? 0.0);
             
-            $finalMontant = $sumLines;
+            $finalMontant = ($sumLines > 0) ? $sumLines : $explicitMontant;
+            if ($explicitMontant > 0 && ($sumLines == 0 || ($data['type_expediteur'] ?? '') === 'dhl' || ($data['trajet_code_locked'] ?? '') === 'DHL')) {
+                $finalMontant = $explicitMontant;
+            }
             if (!empty($data['assurance_souscrite'])) {
                 $finalMontant += (float) ($data['montant_assurance'] ?? 0.0);
             }
@@ -416,8 +420,12 @@ final class ColisageService
             $rowSum = $stmtSum->fetch(\PDO::FETCH_NUM);
             $sumLines = (float) ($rowSum[0] ?? 0.0);
             $sumColis = max((int) ($rowSum[1] ?? 1), 1);
+            $explicitMontant = (float) ($data['montant_total'] ?? 0.0);
 
-            $finalMontant = $sumLines;
+            $finalMontant = ($sumLines > 0) ? $sumLines : $explicitMontant;
+            if ($explicitMontant > 0 && ($sumLines == 0 || ($data['type_expediteur'] ?? '') === 'dhl' || ($data['trajet'] ?? '') === 'DHL')) {
+                $finalMontant = $explicitMontant;
+            }
             if (!empty($data['assurance_souscrite'])) {
                 $finalMontant += (float) ($data['montant_assurance'] ?? 0.0);
             }

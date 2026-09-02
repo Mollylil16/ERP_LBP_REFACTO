@@ -65,7 +65,7 @@ class ColisageRepository
                    exp.name AS expediteur_name,
                    dest.name AS destinataire_name,
                    s_dep.name AS agence_depart_name,
-                   s_arr.name AS agence_arrivee_name
+                   COALESCE(NULLIF(c.destination_adresse, ''), s_arr.name) AS agence_arrivee_name
             FROM lbp_colis c
             JOIN lbp_clients exp ON c.expediteur_id = exp.id
             JOIN lbp_clients dest ON c.destinataire_id = dest.id
@@ -76,11 +76,13 @@ class ColisageRepository
         $params = [];
 
         if (!empty($filters['q'])) {
-            $sql .= " AND (c.numero_tracking LIKE :q1 OR exp.name LIKE :q2 OR dest.name LIKE :q3)";
+            $sql .= " AND (c.numero_tracking LIKE :q1 OR exp.name LIKE :q2 OR dest.name LIKE :q3 OR c.destination_adresse LIKE :q4 OR c.awb_dhl LIKE :q5)";
             $like = '%' . $filters['q'] . '%';
             $params['q1'] = $like;
             $params['q2'] = $like;
             $params['q3'] = $like;
+            $params['q4'] = $like;
+            $params['q5'] = $like;
         }
         if (!empty($filters['statut'])) {
             $sql .= " AND c.statut = :statut";
@@ -109,24 +111,30 @@ class ColisageRepository
         return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
     }
 
-    /** @param array<string, mixed> $filters */
-    public function getParcelsCount(array $filters = []): int
+    /**
+     * @param array<string, mixed> $filters
+     */
+    public function countParcels(array $filters = []): int
     {
         $sql = "
-            SELECT COUNT(*)
+            SELECT COUNT(c.id)
             FROM lbp_colis c
             JOIN lbp_clients exp ON c.expediteur_id = exp.id
             JOIN lbp_clients dest ON c.destinataire_id = dest.id
+            LEFT JOIN company_sites s_dep ON c.agence_depart_id = s_dep.id
+            LEFT JOIN company_sites s_arr ON c.agence_arrivee_id = s_arr.id
             WHERE 1=1
         ";
         $params = [];
 
         if (!empty($filters['q'])) {
-            $sql .= " AND (c.numero_tracking LIKE :q1 OR exp.name LIKE :q2 OR dest.name LIKE :q3)";
+            $sql .= " AND (c.numero_tracking LIKE :q1 OR exp.name LIKE :q2 OR dest.name LIKE :q3 OR c.destination_adresse LIKE :q4 OR c.awb_dhl LIKE :q5)";
             $like = '%' . $filters['q'] . '%';
             $params['q1'] = $like;
             $params['q2'] = $like;
             $params['q3'] = $like;
+            $params['q4'] = $like;
+            $params['q5'] = $like;
         }
         if (!empty($filters['statut'])) {
             $sql .= " AND c.statut = :statut";
@@ -155,7 +163,7 @@ class ColisageRepository
                    exp.name AS expediteur_name, exp.phone AS expediteur_phone, exp.address AS expediteur_address, exp.email AS expediteur_email,
                    dest.name AS destinataire_name, dest.phone AS destinataire_phone, dest.address AS destinataire_address, dest.email AS destinataire_email,
                    s_dep.name AS agence_depart_name,
-                   s_arr.name AS agence_arrivee_name
+                   COALESCE(NULLIF(c.destination_adresse, ''), s_arr.name) AS agence_arrivee_name
             FROM lbp_colis c
             JOIN lbp_clients exp ON c.expediteur_id = exp.id
             JOIN lbp_clients dest ON c.destinataire_id = dest.id
@@ -175,7 +183,7 @@ class ColisageRepository
                    exp.name AS expediteur_name,
                    dest.name AS destinataire_name,
                    s_dep.name AS agence_depart_name,
-                   s_arr.name AS agence_arrivee_name
+                   COALESCE(NULLIF(c.destination_adresse, ''), s_arr.name) AS agence_arrivee_name
             FROM lbp_colis c
             JOIN lbp_clients exp ON c.expediteur_id = exp.id
             JOIN lbp_clients dest ON c.destinataire_id = dest.id
@@ -230,19 +238,20 @@ class ColisageRepository
         $coutAchatDhl = isset($data['cout_achat_dhl']) ? (float) $data['cout_achat_dhl'] : 0.0;
         $margeLbp = isset($data['marge_lbp']) ? (float) $data['marge_lbp'] : max(0.0, $montantTotal - $coutAchatDhl);
         $awbDhl = !empty($data['awb_dhl']) ? trim((string) $data['awb_dhl']) : null;
+        $destinationAdresse = !empty($data['destination_adresse']) ? trim((string) $data['destination_adresse']) : null;
 
         $stmt = $this->pdo->prepare("
             INSERT INTO lbp_colis (
                 numero_tracking, expediteur_id, destinataire_id, poids_total, nombre_colis,
                 valeur_declaree, montant_total, montant_total_eur, devise,
                 agence_depart_id, agence_arrivee_id, statut, type_expediteur, trafic, assurance_souscrite, montant_assurance, date_depart_prevue, created_by, created_at,
-                awb_dhl, cout_achat_dhl, marge_lbp
+                awb_dhl, cout_achat_dhl, marge_lbp, destination_adresse
             ) VALUES (
                 :numero_tracking, :expediteur_id, :destinataire_id, :poids_total, :nombre_colis,
                 :valeur_declaree, :montant_total, :montant_total_eur, :devise,
                 :agence_depart_id, :agence_arrivee_id,
                 'enregistre', :type_expediteur, :trafic, :assurance_souscrite, :montant_assurance, :date_depart_prevue, :created_by, :created_at,
-                :awb_dhl, :cout_achat_dhl, :marge_lbp
+                :awb_dhl, :cout_achat_dhl, :marge_lbp, :destination_adresse
             )
         ");
         $stmt->execute([
@@ -267,6 +276,7 @@ class ColisageRepository
             'awb_dhl' => $awbDhl,
             'cout_achat_dhl' => $coutAchatDhl,
             'marge_lbp' => $margeLbp,
+            'destination_adresse' => $destinationAdresse,
         ]);
         return (int) $this->pdo->lastInsertId();
     }
@@ -302,6 +312,7 @@ class ColisageRepository
         $coutAchatDhl = isset($data['cout_achat_dhl']) ? (float) $data['cout_achat_dhl'] : 0.0;
         $margeLbp = isset($data['marge_lbp']) ? (float) $data['marge_lbp'] : max(0.0, $montantTotal - $coutAchatDhl);
         $awbDhl = isset($data['awb_dhl']) ? (!empty($data['awb_dhl']) ? trim((string) $data['awb_dhl']) : null) : null;
+        $destinationAdresse = isset($data['destination_adresse']) ? (!empty($data['destination_adresse']) ? trim((string) $data['destination_adresse']) : null) : null;
 
         $stmt = $this->pdo->prepare("
             UPDATE lbp_colis SET
@@ -319,6 +330,7 @@ class ColisageRepository
                 awb_dhl = COALESCE(:awb_dhl, awb_dhl),
                 cout_achat_dhl = :cout_achat_dhl,
                 marge_lbp = :marge_lbp,
+                destination_adresse = COALESCE(:destination_adresse, destination_adresse),
                 updated_at = NOW()
             WHERE id = :id
         ");
@@ -338,6 +350,7 @@ class ColisageRepository
             'awb_dhl' => $awbDhl,
             'cout_achat_dhl' => $coutAchatDhl,
             'marge_lbp' => $margeLbp,
+            'destination_adresse' => $destinationAdresse,
         ]);
 
         try {
@@ -808,12 +821,13 @@ class ColisageRepository
         $where = ["(c.type_expediteur = 'dhl' OR c.trajet = 'DHL' OR (c.awb_dhl IS NOT NULL AND c.awb_dhl != '') OR c.cout_achat_dhl > 0)"];
 
         if (!empty($filters['q'])) {
-            $where[] = "(c.numero_tracking LIKE :q1 OR c.awb_dhl LIKE :q2 OR exp.name LIKE :q3 OR dest.name LIKE :q4)";
+            $where[] = "(c.numero_tracking LIKE :q1 OR c.awb_dhl LIKE :q2 OR exp.name LIKE :q3 OR dest.name LIKE :q4 OR c.destination_adresse LIKE :q5)";
             $like = '%' . $filters['q'] . '%';
             $params['q1'] = $like;
             $params['q2'] = $like;
             $params['q3'] = $like;
             $params['q4'] = $like;
+            $params['q5'] = $like;
         }
 
         if (!empty($filters['agence_id'])) {
@@ -878,7 +892,7 @@ class ColisageRepository
                    dest.name AS destinataire_name,
                    dest.phone AS destinataire_phone,
                    s_dep.name AS agence_depart_name,
-                   s_arr.name AS agence_arrivee_name,
+                   COALESCE(NULLIF(c.destination_adresse, ''), s_arr.name) AS agence_arrivee_name,
                    f.id AS facture_id,
                    f.numero_facture,
                    f.statut AS facture_statut,

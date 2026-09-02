@@ -217,8 +217,9 @@ final class Colisage
                 ['value' => 'FR_SEN', 'label' => 'FR ➔ SEN'],
             ], '', ['label' => 'Trajet inter-pays'])
             . '</div>'
-            . Form::selectSearch('agence_depart_id', $siteOpts, '', ['label' => 'Agence de départ', 'required' => true])
-            . Form::selectSearch('agence_arrivee_id', $siteOpts, '', ['label' => 'DESTINATION (agence d\'arrivée)', 'required' => true])
+            . Form::selectSearch('agence_depart_id', $siteOpts, '', ['label' => 'Agence de départ'])
+            . Form::selectSearch('agence_arrivee_id', $siteOpts, '', ['label' => 'DESTINATION (agence d\'arrivée LBP)'])
+            . Form::input('destination_adresse', ['label' => 'Destination Internationale (Pays & Ville - ex: Gabon, Cameroun...)', 'placeholder' => 'Ex: Gabon - Libreville, Cameroun - Douala, Canada...', 'id' => 'destination_adresse_input_autres'])
             . Form::input('nombre_colis', ['label' => 'Nombre total de colis', 'type' => 'number', 'min' => 1, 'value' => '1', 'required' => true])
             . Form::input('poids_total', ['label' => 'Poids total (kg)', 'type' => 'number', 'step' => '0.01', 'required' => true, 'id' => 'poids_total_input'])
             . '<div style="grid-column: span 3; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:0.8rem 1rem; margin-top:0.25rem;">'
@@ -236,17 +237,25 @@ final class Colisage
             ], 'XOF', ['label' => 'Devise'])
             . Form::input('valeur_declaree', ['label' => 'Valeur déclarée (assurance/douane)', 'type' => 'number', 'step' => '1', 'placeholder' => 'Valeur déclarée par le client'])
             . Form::input('date_enregistrement', ['label' => 'Date d\'enregistrement / d\'envoi', 'type' => 'date', 'value' => date('Y-m-d'), 'required' => true])
-            . '<div id="dhl_cost_section_autres" style="grid-column: span 3; padding:1.25rem; background:#fffbeb; border:1px solid #fde68a; border-left:5px solid #d97706; border-radius:8px; margin-top:0.5rem;">'
-            . '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem; flex-wrap:wrap; gap:0.5rem;">'
-            . '<h4 style="margin:0; color:#92400e; display:flex; align-items:center; gap:0.5rem;"><span style="background:#f59e0b; color:#fff; font-size:0.75rem; font-weight:800; padding:2px 6px; border-radius:4px;">DHL</span> Informations & Coûts Partenaire DHL Express</h4>'
-            . '<span id="dhl_margin_badge_autres" style="background:#ecfdf5; color:#065f46; border:1px solid #a7f3d0; font-weight:700; font-size:0.85rem; padding:4px 12px; border-radius:20px;">Marge LBP : 0 FCFA (0%)</span>'
+            . '<div id="dhl_cost_section_autres" style="grid-column: span 3; padding:1.25rem; background:#fffdf5; border:2px solid #fbbf24; border-left:6px solid #d97706; border-radius:10px; margin-top:0.5rem;' . ($type !== 'dhl' ? ' display:none;' : '') . '">'
+            . '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:0.5rem; border-bottom:1px solid #fef3c7; padding-bottom:0.6rem;">'
+            . '<div style="display:flex; align-items:center; gap:0.6rem;">'
+            . '<span style="background:#d97706; color:#fff; font-size:0.8rem; font-weight:900; padding:3px 8px; border-radius:5px; letter-spacing:0.5px;">DHL EXPRESS</span>'
+            . '<strong style="color:#78350f; font-size:1.05rem;">Paramètres Financiers DHL & Calcul de Marge Bénéficiaire LBP</strong>'
             . '</div>'
-            . '<div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:1rem;">'
-            . Form::input('awb_dhl', ['label' => 'Numéro AWB DHL (Bordereau LTA)', 'placeholder' => 'Ex: 1234567890', 'id' => 'awb_dhl_input_autres'])
-            . Form::input('cout_achat_dhl', ['label' => 'Coût d\'Achat DHL facturé à LBP (FCFA)', 'type' => 'number', 'step' => '1', 'min' => '0', 'placeholder' => 'Ex: 15000', 'id' => 'cout_achat_dhl_input_autres'])
-            . '<div style="display:flex; flex-direction:column; justify-content:center; background:rgba(255,255,255,0.8); padding:8px 12px; border-radius:6px; border:1px dashed #d97706;">'
-            . '<span style="font-size:0.75rem; color:#78350f; font-weight:600;">Bénéfice Net LBP estimé</span>'
-            . '<span id="dhl_net_profit_display_autres" style="font-size:1.15rem; font-weight:800; color:#065f46;">0 FCFA</span>'
+            . '<span id="dhl_margin_badge_autres" style="background:#ecfdf5; color:#065f46; border:1px solid #a7f3d0; font-weight:800; font-size:0.9rem; padding:4px 14px; border-radius:20px;">Marge LBP : 0 FCFA (0%)</span>'
+            . '</div>'
+            . '<div style="display:grid; grid-template-columns: 1fr 1.1fr 1.1fr 1.3fr; gap:1rem; align-items:start;">'
+            . Form::input('awb_dhl', ['label' => 'N° Bordereau AWB DHL (LTA)', 'placeholder' => 'Ex: 1234567890', 'id' => 'awb_dhl_input_autres'])
+            . Form::input('montant_total', ['label' => '1. Montant Encaissé au Client (FCFA)', 'type' => 'number', 'step' => '1', 'min' => '0', 'placeholder' => 'Prix facturé au client', 'id' => 'montant_total_dhl_input_autres', 'style' => 'font-size:1.05rem; font-weight:700; color:#065f46;'])
+            . Form::input('cout_achat_dhl', ['label' => '2. Coût d\'Achat DHL facturé à LBP (FCFA)', 'type' => 'number', 'step' => '1', 'min' => '0', 'placeholder' => 'Frais DHL facturés', 'id' => 'cout_achat_dhl_input_autres', 'style' => 'font-size:1.05rem; font-weight:700; color:#b45309;'])
+            . '<div style="background:#ffffff; border:1px solid #fde68a; padding:10px 14px; border-radius:8px; display:flex; flex-direction:column; justify-content:center; box-shadow:0 1px 3px rgba(0,0,0,0.05);">'
+            . '<span style="font-size:0.75rem; color:#78350f; font-weight:700; text-transform:uppercase;">3. Bénéfice Net LBP réalisé</span>'
+            . '<div style="display:flex; align-items:baseline; gap:0.4rem; margin-top:2px;">'
+            . '<span id="dhl_net_profit_display_autres" style="font-size:1.3rem; font-weight:900; color:#065f46;">0 FCFA</span>'
+            . '<span id="dhl_pct_display_autres" style="font-size:0.85rem; font-weight:800; color:#059669;">(+0%)</span>'
+            . '</div>'
+            . '<small style="color:#64748b; font-size:0.75rem;">(Montant Encaissé − Coût DHL)</small>'
             . '</div>'
             . '</div>'
             . '</div>'
@@ -278,18 +287,29 @@ final class Colisage
             . '    const trajetSelect = document.querySelector(\'select[name="trajet"]\');'
             . '    const eurToXofRate = ' . (float) $eurToXofRate . ';'
             . '    function updateDhlMarginAutres() {'
+            . '        const montantInput = document.getElementById("montant_total_dhl_input_autres");'
             . '        const coutInput = document.getElementById("cout_achat_dhl_input_autres");'
             . '        const badge = document.getElementById("dhl_margin_badge_autres");'
             . '        const profitDisplay = document.getElementById("dhl_net_profit_display_autres");'
-            . '        const totalFcfa = parseFloat((totalFcfaEl ? totalFcfaEl.innerText : "0").replace(/[^0-9]/g, "")) || 0;'
-            . '        if (!coutInput || !badge) return;'
-            . '        const coutAchat = parseFloat(coutInput.value) || 0;'
+            . '        const pctDisplay = document.getElementById("dhl_pct_display_autres");'
+            . '        if (!badge) return;'
+            . '        let totalFcfa = 0;'
+            . '        if (montantInput && parseFloat(montantInput.value) > 0) {'
+            . '            totalFcfa = parseFloat(montantInput.value) || 0;'
+            . '        } else if (totalFcfaEl) {'
+            . '            totalFcfa = parseFloat(totalFcfaEl.innerText.replace(/[^0-9]/g, "")) || 0;'
+            . '        }'
+            . '        const coutAchat = parseFloat(coutInput ? coutInput.value : 0) || 0;'
             . '        const marge = Math.max(0, totalFcfa - coutAchat);'
-            . '        const pct = totalFcfa > 0 ? Math.round((marge / totalFcfa) * 100) : 0;'
+            . '        const pct = totalFcfa > 0 ? (Math.round((marge / totalFcfa) * 1000) / 10) : 0;'
             . '        const formattedMarge = new Intl.NumberFormat("fr-FR").format(Math.round(marge)) + " FCFA";'
             . '        if (profitDisplay) {'
-            . '            profitDisplay.textContent = formattedMarge;'
-            . '            profitDisplay.style.color = marge > 0 ? "#065f46" : "#991b1b";'
+            . '            profitDisplay.textContent = (marge >= 0 ? "+" : "") + formattedMarge;'
+            . '            profitDisplay.style.color = (totalFcfa > 0 && marge > 0) ? "#065f46" : (totalFcfa > 0 ? "#991b1b" : "#64748b");'
+            . '        }'
+            . '        if (pctDisplay) {'
+            . '            pctDisplay.textContent = "(+" + pct + "%)";'
+            . '            pctDisplay.style.color = pct >= 25 ? "#059669" : (pct > 0 ? "#d97706" : "#991b1b");'
             . '        }'
             . '        if (coutAchat > 0) {'
             . '            if (marge > 0) {'
@@ -302,6 +322,20 @@ final class Colisage
             . '        } else {'
             . '            badge.textContent = "Marge LBP : " + formattedMarge + " (100%)";'
             . '        }'
+            . '    }'
+            . '    const montantAutresInput = document.getElementById("montant_total_dhl_input_autres");'
+            . '    if (montantAutresInput) {'
+            . '        montantAutresInput.addEventListener("input", function() {'
+            . '            this.dataset.customized = "true";'
+            . '            if (inputValeurDeclaree && (!inputValeurDeclaree.value || inputValeurDeclaree.dataset.auto !== "false")) {'
+            . '                inputValeurDeclaree.value = this.value;'
+            . '            }'
+            . '            const effective = parseFloat(this.value) || 0;'
+            . '            const formattedEffective = new Intl.NumberFormat("fr-FR").format(Math.round(effective)) + " FCFA";'
+            . '            if (sousTotalEl) sousTotalEl.textContent = formattedEffective;'
+            . '            if (totalFcfaEl) totalFcfaEl.textContent = formattedEffective;'
+            . '            updateDhlMarginAutres();'
+            . '        });'
             . '    }'
             . '    const coutAutresInput = document.getElementById("cout_achat_dhl_input_autres");'
             . '    if (coutAutresInput) {'
@@ -1446,21 +1480,30 @@ final class Colisage
         ], 'XOF', ['label' => 'Devise']);
 
         $depAgency = Form::selectSearch('agence_depart_id', $siteOpts, '', ['label' => 'Agence de départ']);
-        $arrAgency = Form::selectSearch('agence_arrivee_id', $siteOpts, '', ['label' => 'Agence d\'arrivée prévue']);
+        $arrAgency = Form::selectSearch('agence_arrivee_id', $siteOpts, '', ['label' => 'Agence d\'arrivée LBP']);
+        $destAdresseInput = Form::input('destination_adresse', ['label' => 'Destination Internationale (Pays / Ville)', 'placeholder' => 'Ex: Gabon - Libreville, Cameroun, Canada...', 'id' => 'destination_adresse_input']);
         $dateEnregistrement = Form::input('date_enregistrement', ['label' => 'Date d\'enregistrement / d\'envoi', 'type' => 'date', 'value' => date('Y-m-d'), 'required' => true]);
 
         $isDhlTrajet = ($trajet !== null && strtoupper((string)$trajet['code']) === 'DHL');
-        $dhlSection = '<div id="dhl_cost_section" class="finea-section-card-nested" style="margin-top:1.25rem; padding:1.25rem; background:#fffbeb; border:1px solid #fde68a; border-left:5px solid #d97706; border-radius:8px;' . (!$isDhlTrajet ? ' display:none;' : '') . '">'
-            . '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem; flex-wrap:wrap; gap:0.5rem;">'
-            . '<h4 style="margin:0; color:#92400e; display:flex; align-items:center; gap:0.5rem;"><span style="background:#f59e0b; color:#fff; font-size:0.75rem; font-weight:800; padding:2px 6px; border-radius:4px;">DHL</span> Informations & Coûts Partenaire DHL Express</h4>'
-            . '<span id="dhl_margin_badge" style="background:#ecfdf5; color:#065f46; border:1px solid #a7f3d0; font-weight:700; font-size:0.85rem; padding:4px 12px; border-radius:20px;">Marge LBP : 0 FCFA (0%)</span>'
+        $dhlSection = '<div id="dhl_cost_section" class="finea-section-card-nested" style="margin-top:1.25rem; padding:1.25rem; background:#fffdf5; border:2px solid #fbbf24; border-left:6px solid #d97706; border-radius:10px;' . (!$isDhlTrajet ? ' display:none;' : '') . '">'
+            . '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:0.5rem; border-bottom:1px solid #fef3c7; padding-bottom:0.6rem;">'
+            . '<div style="display:flex; align-items:center; gap:0.6rem;">'
+            . '<span style="background:#d97706; color:#fff; font-size:0.8rem; font-weight:900; padding:3px 8px; border-radius:5px; letter-spacing:0.5px;">DHL EXPRESS</span>'
+            . '<strong style="color:#78350f; font-size:1.05rem;">Paramètres Financiers DHL & Calcul de Marge Bénéficiaire LBP</strong>'
             . '</div>'
-            . '<div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:1rem;">'
-            . Form::input('awb_dhl', ['label' => 'Numéro AWB DHL (Bordereau LTA)', 'placeholder' => 'Ex: 1234567890', 'id' => 'awb_dhl_input'])
-            . Form::input('cout_achat_dhl', ['label' => 'Coût d\'Achat DHL facturé à LBP (FCFA)', 'type' => 'number', 'step' => '1', 'min' => '0', 'placeholder' => 'Ex: 15000', 'id' => 'cout_achat_dhl_input'])
-            . '<div style="display:flex; flex-direction:column; justify-content:center; background:rgba(255,255,255,0.8); padding:8px 12px; border-radius:6px; border:1px dashed #d97706;">'
-            . '<span style="font-size:0.75rem; color:#78350f; font-weight:600;">Bénéfice Net LBP estimé</span>'
-            . '<span id="dhl_net_profit_display" style="font-size:1.15rem; font-weight:800; color:#065f46;">0 FCFA</span>'
+            . '<span id="dhl_margin_badge" style="background:#ecfdf5; color:#065f46; border:1px solid #a7f3d0; font-weight:800; font-size:0.9rem; padding:4px 14px; border-radius:20px;">Marge LBP : 0 FCFA (0%)</span>'
+            . '</div>'
+            . '<div style="display:grid; grid-template-columns: 1fr 1.1fr 1.1fr 1.3fr; gap:1rem; align-items:start;">'
+            . Form::input('awb_dhl', ['label' => 'N° Bordereau AWB DHL (LTA)', 'placeholder' => 'Ex: 1234567890', 'id' => 'awb_dhl_input'])
+            . Form::input('montant_total', ['label' => '1. Montant Encaissé au Client (FCFA)', 'type' => 'number', 'step' => '1', 'min' => '0', 'placeholder' => 'Prix facturé au client', 'id' => 'montant_total_dhl_input', 'style' => 'font-size:1.05rem; font-weight:700; color:#065f46;'])
+            . Form::input('cout_achat_dhl', ['label' => '2. Coût d\'Achat DHL facturé à LBP (FCFA)', 'type' => 'number', 'step' => '1', 'min' => '0', 'placeholder' => 'Frais DHL facturés', 'id' => 'cout_achat_dhl_input', 'style' => 'font-size:1.05rem; font-weight:700; color:#b45309;'])
+            . '<div style="background:#ffffff; border:1px solid #fde68a; padding:10px 14px; border-radius:8px; display:flex; flex-direction:column; justify-content:center; box-shadow:0 1px 3px rgba(0,0,0,0.05);">'
+            . '<span style="font-size:0.75rem; color:#78350f; font-weight:700; text-transform:uppercase;">3. Bénéfice Net LBP réalisé</span>'
+            . '<div style="display:flex; align-items:baseline; gap:0.4rem; margin-top:2px;">'
+            . '<span id="dhl_net_profit_display" style="font-size:1.3rem; font-weight:900; color:#065f46;">0 FCFA</span>'
+            . '<span id="dhl_pct_display" style="font-size:0.85rem; font-weight:800; color:#059669;">(+0%)</span>'
+            . '</div>'
+            . '<small style="color:#64748b; font-size:0.75rem;">(Montant Encaissé − Coût DHL)</small>'
             . '</div>'
             . '</div>'
             . '</div>';
@@ -1468,8 +1511,8 @@ final class Colisage
         $colisGrid = '<div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:1rem;">'
             . $typeExp . $weight . $valeur
             . '</div>'
-            . '<div style="display:grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap:1rem; margin-top:1rem;">'
-            . $devise . $depAgency . $arrAgency . $dateEnregistrement
+            . '<div style="display:grid; grid-template-columns: 1fr 1.2fr 1.2fr 1.5fr 1fr; gap:1rem; margin-top:1rem;">'
+            . $devise . $depAgency . $arrAgency . $destAdresseInput . $dateEnregistrement
             . '</div>'
             . $dhlSection;
 
@@ -1608,30 +1651,49 @@ final class Colisage
             . '            }'
             . '        });'
             . '        const formattedGrandTotal = new Intl.NumberFormat("fr-FR").format(Math.round(grandTotal)) + " FCFA";'
-            . '        if (sousTotalEl) sousTotalEl.textContent = formattedGrandTotal;'
-            . '        if (totalFcfaEl) totalFcfaEl.textContent = formattedGrandTotal;'
-            . '        const grandTotalEur = grandTotal / tauxChangeEur;'
+            . '        const montantDhlInput = document.getElementById("montant_total_dhl_input");'
+            . '        const valDeclareeInput = document.querySelector(\'input[name="valeur_declaree"]\');'
+            . '        if (montantDhlInput && (!montantDhlInput.dataset.customized || parseFloat(montantDhlInput.value) <= 0) && grandTotal > 0) {'
+            . '            montantDhlInput.value = Math.round(grandTotal);'
+            . '        }'
+            . '        let effectiveTotal = (montantDhlInput && parseFloat(montantDhlInput.value) > 0) ? parseFloat(montantDhlInput.value) : grandTotal;'
+            . '        const formattedEffective = new Intl.NumberFormat("fr-FR").format(Math.round(effectiveTotal)) + " FCFA";'
+            . '        if (sousTotalEl) sousTotalEl.textContent = formattedEffective;'
+            . '        if (totalFcfaEl) totalFcfaEl.textContent = formattedEffective;'
+            . '        const grandTotalEur = effectiveTotal / tauxChangeEur;'
             . '        if (totalEurEl) {'
             . '            totalEurEl.textContent = "≈ " + new Intl.NumberFormat("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(grandTotalEur) + " €";'
             . '        }'
-            . '        const valDeclareeInput = document.querySelector(\'input[name="valeur_declaree"]\');'
-            . '        if (valDeclareeInput) valDeclareeInput.value = Math.round(grandTotal);'
+            . '        if (valDeclareeInput && valDeclareeInput.dataset.auto !== "false") {'
+            . '            valDeclareeInput.value = Math.round(effectiveTotal);'
+            . '        }'
             . '        updateDhlMargin();'
             . '    }'
             . '    function updateDhlMargin() {'
+            . '        const montantDhlInput = document.getElementById("montant_total_dhl_input");'
             . '        const coutInput = document.getElementById("cout_achat_dhl_input");'
             . '        const badge = document.getElementById("dhl_margin_badge");'
             . '        const profitDisplay = document.getElementById("dhl_net_profit_display");'
+            . '        const pctDisplay = document.getElementById("dhl_pct_display");'
             . '        const valDeclareeInput = document.querySelector(\'input[name="valeur_declaree"]\');'
-            . '        if (!coutInput || !badge) return;'
-            . '        const prixVente = parseFloat(valDeclareeInput ? valDeclareeInput.value : 0) || 0;'
-            . '        const coutAchat = parseFloat(coutInput.value) || 0;'
+            . '        if (!badge) return;'
+            . '        let prixVente = 0;'
+            . '        if (montantDhlInput && parseFloat(montantDhlInput.value) > 0) {'
+            . '            prixVente = parseFloat(montantDhlInput.value) || 0;'
+            . '        } else if (valDeclareeInput && parseFloat(valDeclareeInput.value) > 0) {'
+            . '            prixVente = parseFloat(valDeclareeInput.value) || 0;'
+            . '        }'
+            . '        const coutAchat = parseFloat(coutInput ? coutInput.value : 0) || 0;'
             . '        const marge = Math.max(0, prixVente - coutAchat);'
-            . '        const pct = prixVente > 0 ? Math.round((marge / prixVente) * 100) : 0;'
+            . '        const pct = prixVente > 0 ? (Math.round((marge / prixVente) * 1000) / 10) : 0;'
             . '        const formattedMarge = new Intl.NumberFormat("fr-FR").format(Math.round(marge)) + " FCFA";'
             . '        if (profitDisplay) {'
-            . '            profitDisplay.textContent = formattedMarge;'
-            . '            profitDisplay.style.color = marge > 0 ? "#065f46" : "#991b1b";'
+            . '            profitDisplay.textContent = (marge >= 0 ? "+" : "") + formattedMarge;'
+            . '            profitDisplay.style.color = (prixVente > 0 && marge > 0) ? "#065f46" : (prixVente > 0 ? "#991b1b" : "#64748b");'
+            . '        }'
+            . '        if (pctDisplay) {'
+            . '            pctDisplay.textContent = "(+" + pct + "%)";'
+            . '            pctDisplay.style.color = pct >= 25 ? "#059669" : (pct > 0 ? "#d97706" : "#991b1b");'
             . '        }'
             . '        if (coutAchat > 0) {'
             . '            if (marge > 0) {'
@@ -1648,6 +1710,21 @@ final class Colisage
             . '        } else {'
             . '            badge.textContent = "Marge LBP : " + formattedMarge + " (100%)";'
             . '        }'
+            . '    }'
+            . '    const montantDhlInput = document.getElementById("montant_total_dhl_input");'
+            . '    if (montantDhlInput) {'
+            . '        montantDhlInput.addEventListener("input", function() {'
+            . '            this.dataset.customized = "true";'
+            . '            const valDeclareeInput = document.querySelector(\'input[name="valeur_declaree"]\');'
+            . '            if (valDeclareeInput && (!valDeclareeInput.value || valDeclareeInput.dataset.auto !== "false")) {'
+            . '                valDeclareeInput.value = this.value;'
+            . '            }'
+            . '            const effective = parseFloat(this.value) || 0;'
+            . '            const formattedEffective = new Intl.NumberFormat("fr-FR").format(Math.round(effective)) + " FCFA";'
+            . '            if (sousTotalEl) sousTotalEl.textContent = formattedEffective;'
+            . '            if (totalFcfaEl) totalFcfaEl.textContent = formattedEffective;'
+            . '            updateDhlMargin();'
+            . '        });'
             . '    }'
             . '    const coutDhlInput = document.getElementById("cout_achat_dhl_input");'
             . '    if (coutDhlInput) {'
@@ -1946,6 +2023,8 @@ final class Colisage
 
         $weight = Form::input('poids_total', 'Poids total (kg)', (string) ($colis['poids_total'] ?? '0.00'), ['type' => 'number', 'step' => '0.01', 'min' => '0']);
         $valeur = Form::input('valeur_declaree', 'Valeur déclarée (FCFA)', (string) ($colis['valeur_declaree'] ?? '0'), ['type' => 'number', 'step' => '1', 'min' => '0']);
+        $montantTotal = Form::input('montant_total', 'Montant Total Encaissé au Client (FCFA)', (string) ($colis['montant_total'] ?? '0'), ['type' => 'number', 'step' => '1', 'min' => '0']);
+        $destinationAdresse = Form::input('destination_adresse', 'Destination Internationale (Pays / Ville / Adresse)', (string) ($colis['destination_adresse'] ?? ''), ['placeholder' => 'Ex: Gabon - Libreville, Cameroun...']);
         $dateDepart = Form::input('date_depart_prevue', 'Date de départ prévue', (string) ($colis['date_depart_prevue'] ?? date('Y-m-d')), ['type' => 'date']);
 
         $statutOptions = [
@@ -2001,7 +2080,7 @@ final class Colisage
             . Form::hidden('_csrf_token', \App\Helpers\Csrf::token())
             . '<div style="display:grid; grid-template-columns: 1fr 1fr; gap:1.5rem;">'
             . Ui::section('Acteurs du Colis', $expSelect . $destSelect)
-            . Ui::section('Paramètres & Statut', $weight . $valeur . $dateDepart . $statutSelect . $awbDhl . $coutAchatDhl)
+            . Ui::section('Paramètres & Statut', $weight . $valeur . $montantTotal . $destinationAdresse . $dateDepart . $statutSelect . $awbDhl . $coutAchatDhl)
             . '</div>'
             . Ui::section('Lignes de Marchandises', $tableHtml)
             . '<div style="display:flex; justify-content:flex-end; gap:1rem; margin-top:1.5rem;">'
@@ -2056,15 +2135,18 @@ final class Colisage
 
         $header = Ui::pageHeader(
             'Colis ' . $colis['numero_tracking'],
-            'Visualisation et suivi opérationnel du colis.',
+            'Détails complets de l\'envoi, facturation et statut logistique.',
             [
-                'eyebrow' => 'Suivi de Colis',
+                'eyebrow' => 'Colisage & Suivi',
                 'class' => 'rh-hero-white',
-                'actions' => $headerActions,
+                'actions' => $headerActions
             ]
         );
 
-        $decimals = in_array(strtoupper((string)($colis['devise'] ?? 'XOF')), ['EUR', 'USD']) ? 2 : 0;
+        $decimals = 0;
+        if (in_array(strtoupper((string)($colis['devise'] ?? 'XOF')), ['EUR', 'USD'])) {
+            $decimals = 2;
+        }
         
         $totalMontant = 0.0;
         if (!empty($colis['marchandises'])) {
@@ -2074,11 +2156,13 @@ final class Colisage
             if (!empty($colis['assurance_souscrite'])) {
                 $totalMontant += (float) ($colis['montant_assurance'] ?? 0.0);
             }
-        } else {
+        }
+        if ($totalMontant <= 0) {
             $totalMontant = (float) ($colis['montant_total'] ?? 0.0);
         }
 
         $formattedMontant = number_format($totalMontant, $decimals, ',', ' ');
+        $destLabel = !empty($colis['destination_adresse']) ? View::e($colis['destination_adresse']) : View::e($colis['agence_arrivee_name'] ?? 'Non spécifiée');
 
         $colisInfo = '<div style="display:grid; grid-template-columns: 1fr 1fr; gap: 2rem;">'
             . '<div>'
@@ -2091,7 +2175,7 @@ final class Colisage
             . '</div>'
             . '<div>'
             . '<p><strong>Agence départ :</strong> ' . View::e($colis['agence_depart_name'] ?? 'Non spécifiée') . '</p>'
-            . '<p><strong>Agence d\'arrivée :</strong> ' . View::e($colis['agence_arrivee_name'] ?? 'Non spécifiée') . '</p>'
+            . '<p><strong>Destination :</strong> <span style="font-weight:700; color:#1e40af;">' . $destLabel . '</span></p>'
             . '<p><strong>Date d\'enregistrement :</strong> ' . View::e(date('d/m/Y H:i', strtotime((string)$colis['created_at']))) . '</p>'
             . '<p><strong>Date de départ prévue :</strong> <span style="font-weight:700; color:#0f766e;">' . View::e(!empty($colis['date_depart_prevue']) ? date('d/m/Y', strtotime((string)$colis['date_depart_prevue'])) : date('d/m/Y', strtotime((string)$colis['created_at']))) . '</span></p>'
             . '</div>'

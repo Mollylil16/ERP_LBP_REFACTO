@@ -27,7 +27,8 @@ final class Colis
         public readonly ?string $updatedAt,
         public readonly ?string $awbDhl = null,
         public readonly float $coutAchatDhl = 0.0,
-        public readonly float $margeLbp = 0.0
+        public readonly float $margeLbp = 0.0,
+        public readonly ?string $destinationAdresse = null
     ) {}
 
     /**
@@ -56,7 +57,8 @@ final class Colis
             isset($data['updated_at']) ? (string) $data['updated_at'] : null,
             isset($data['awb_dhl']) ? (string) $data['awb_dhl'] : null,
             (float) ($data['cout_achat_dhl'] ?? 0.0),
-            (float) ($data['marge_lbp'] ?? 0.0)
+            (float) ($data['marge_lbp'] ?? 0.0),
+            isset($data['destination_adresse']) ? (string) $data['destination_adresse'] : null
         );
     }
 }

@@ -243,6 +243,8 @@ final class ColisageAutresController extends ColisageBaseController
 
         $coutAchatDhl = isset($_POST['cout_achat_dhl']) && $_POST['cout_achat_dhl'] !== '' ? (float) $_POST['cout_achat_dhl'] : 0.0;
         $awbDhl = isset($_POST['awb_dhl']) && trim($_POST['awb_dhl']) !== '' ? trim((string) $_POST['awb_dhl']) : null;
+        $destinationAdresse = isset($_POST['destination_adresse']) && trim($_POST['destination_adresse']) !== '' ? trim((string) $_POST['destination_adresse']) : null;
+        $montantTotalInput = isset($_POST['montant_total']) && $_POST['montant_total'] !== '' ? (float) $_POST['montant_total'] : (float) ($_POST['valeur_declaree'] ?? 0.0);
 
         $registerData = [
             'expediteur_id' => $expediteurId,
@@ -250,10 +252,11 @@ final class ColisageAutresController extends ColisageBaseController
             'poids_total' => (float) ($_POST['poids_total'] ?? 0.0),
             'nombre_colis' => $totalNombreColis > 0 ? $totalNombreColis : (int) ($_POST['nombre_colis'] ?? 1),
             'valeur_declaree' => (float) ($_POST['valeur_declaree'] ?? 0.0),
-            'montant_total' => (float) ($_POST['valeur_declaree'] ?? 0.0),
+            'montant_total' => $montantTotalInput,
             'devise' => $_POST['devise'] ?? 'XOF',
             'agence_depart_id' => !empty($_POST['agence_depart_id']) ? (int) $_POST['agence_depart_id'] : null,
             'agence_arrivee_id' => !empty($_POST['agence_arrivee_id']) ? (int) $_POST['agence_arrivee_id'] : null,
+            'destination_adresse' => $destinationAdresse,
             'type_expediteur' => $type,
             'trafic' => $trafic,
             'assurance_souscrite' => !empty($_POST['assurance_souscrite']) ? 1 : 0,

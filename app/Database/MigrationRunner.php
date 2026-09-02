@@ -1760,6 +1760,7 @@ class MigrationRunner
         $this->addColumnIfMissing('lbp_colis', 'awb_dhl', "VARCHAR(100) NULL");
         $this->addColumnIfMissing('lbp_colis', 'cout_achat_dhl', "DECIMAL(15,2) NOT NULL DEFAULT 0.00");
         $this->addColumnIfMissing('lbp_colis', 'marge_lbp', "DECIMAL(15,2) NOT NULL DEFAULT 0.00");
+        $this->addColumnIfMissing('lbp_colis', 'destination_adresse', "VARCHAR(255) NULL");
 
         $this->pdo->exec("
             CREATE TABLE IF NOT EXISTS lbp_marchandises (
