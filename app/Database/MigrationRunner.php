@@ -3239,12 +3239,32 @@ class MigrationRunner
                 $userId = (int) $userRow['id'];
 
                 // 1. Mettre à jour l'utilisateur : mot de passe lbp2026, agence_id Aéroport Fret et statut actif
-                $stmtUpUser = $this->pdo->prepare("UPDATE users SET password = :password, agence_id = :agence_id, status = 'active', email = 'sylvestre.kichi@labelleporte.ci', updated_at = NOW() WHERE id = :id");
-                $stmtUpUser->execute([
-                    'password'  => password_hash('lbp2026', PASSWORD_BCRYPT),
-                    'agence_id' => $fretAgId,
-                    'id'        => $userId
-                ]);
+                try {
+                    $userCols = $this->pdo->query("SHOW COLUMNS FROM users")->fetchAll(PDO::FETCH_COLUMN) ?: [];
+                    $hasPassword = in_array('password', $userCols, true);
+                    $hasPasswordHash = in_array('password_hash', $userCols, true);
+                    $hasUpdatedAt = in_array('updated_at', $userCols, true);
+
+                    $hash = password_hash('lbp2026', PASSWORD_BCRYPT);
+                    $updates = ['agence_id = :agence_id', "status = 'active'", "email = 'sylvestre.kichi@labelleporte.ci'"];
+                    $params = ['agence_id' => $fretAgId, 'id' => $userId];
+
+                    if ($hasPassword) {
+                        $updates[] = 'password = :pwd';
+                        $params['pwd'] = $hash;
+                    }
+                    if ($hasPasswordHash) {
+                        $updates[] = 'password_hash = :pwd_hash';
+                        $params['pwd_hash'] = $hash;
+                    }
+                    if ($hasUpdatedAt) {
+                        $updates[] = 'updated_at = NOW()';
+                    }
+
+                    $sql = "UPDATE users SET " . implode(', ', $updates) . " WHERE id = :id";
+                    $stmtUpUser = $this->pdo->prepare($sql);
+                    $stmtUpUser->execute($params);
+                } catch (\Throwable $e) {}
 
                 // 2. Mettre à jour l'employé RH correspondant si existant
                 try {
