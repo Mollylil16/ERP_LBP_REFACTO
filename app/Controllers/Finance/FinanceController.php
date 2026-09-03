@@ -62,7 +62,7 @@ final class FinanceController extends FinanceBaseController
      */
     public function facturesIndex(): void
     {
-        RoleMiddleware::check(['caissiere', 'caissiere_principale', 'chef_agence', 'dg', 'comptable', 'superviseur_regional', 'superviseur_general']);
+        RoleMiddleware::check(['caissiere', 'caissiere_principale', 'chef_agence', 'dg', 'comptable', 'superviseur_regional', 'superviseur_general', 'suivi_recouvrement']);
 
         $userAgId = Auth::agenceId();
         $selectedAgence = $_GET['agence_id'] ?? null;
@@ -317,7 +317,7 @@ final class FinanceController extends FinanceBaseController
      */
     public function factureShow(string $id): void
     {
-        RoleMiddleware::check(['caissiere', 'caissiere_principale', 'chef_agence', 'dg', 'comptable', 'superviseur_regional', 'superviseur_general']);
+        RoleMiddleware::check(['caissiere', 'caissiere_principale', 'chef_agence', 'dg', 'comptable', 'superviseur_regional', 'superviseur_general', 'suivi_recouvrement']);
 
         $id = (int) $id;
         $facture = $this->factureRepo->findById($id);
@@ -661,7 +661,7 @@ final class FinanceController extends FinanceBaseController
      */
     public function factureRelancer(string $id): void
     {
-        RoleMiddleware::check(['caissiere', 'caissiere_principale', 'chef_agence', 'dg']);
+        RoleMiddleware::check(['caissiere', 'caissiere_principale', 'chef_agence', 'dg', 'suivi_recouvrement']);
 
         $id = (int) $id;
         $facture = $this->factureRepo->findById($id);
@@ -722,7 +722,7 @@ final class FinanceController extends FinanceBaseController
      */
     public function factureRelancerTout(): void
     {
-        RoleMiddleware::check(['caissiere', 'caissiere_principale', 'chef_agence', 'dg', 'comptable']);
+        RoleMiddleware::check(['caissiere', 'caissiere_principale', 'chef_agence', 'dg', 'comptable', 'suivi_recouvrement']);
 
         $unpaid = $this->factureRepo->getUnpaidFacturesForRelance();
         if (empty($unpaid)) {
@@ -1600,7 +1600,7 @@ final class FinanceController extends FinanceBaseController
      */
     public function balanceAgee(): void
     {
-        RoleMiddleware::check(['comptable', 'dg', 'chef_agence', 'superviseur_general']);
+        RoleMiddleware::check(['comptable', 'dg', 'chef_agence', 'superviseur_general', 'suivi_recouvrement']);
 
         $sql = "
             SELECT f.id, f.numero_facture, f.date_emission, f.montant_total, f.montant_restant, f.devise,
@@ -1728,7 +1728,7 @@ final class FinanceController extends FinanceBaseController
      */
     public function exportCategoriesCsv(): void
     {
-        RoleMiddleware::check(['caissiere', 'caissiere_principale', 'chef_agence', 'dg', 'comptable', 'superviseur_regional', 'superviseur_general']);
+        RoleMiddleware::check(['caissiere', 'caissiere_principale', 'chef_agence', 'dg', 'comptable', 'superviseur_regional', 'superviseur_general', 'suivi_recouvrement']);
 
         $filters = [
             'agence_id' => $_GET['agence_id'] ?? '',
@@ -1774,7 +1774,7 @@ final class FinanceController extends FinanceBaseController
     public function exportCategoriesPdf(): void
     {
         AuthMiddleware::check();
-        RoleMiddleware::check(['caissiere', 'caissiere_principale', 'chef_agence', 'dg', 'comptable', 'superviseur_regional', 'superviseur_general']);
+        RoleMiddleware::check(['caissiere', 'caissiere_principale', 'chef_agence', 'dg', 'comptable', 'superviseur_regional', 'superviseur_general', 'suivi_recouvrement']);
 
         $filters = [
             'agence_id' => $_GET['agence_id'] ?? '',
@@ -1865,7 +1865,7 @@ final class FinanceController extends FinanceBaseController
     public function exportRentabilitePdf(): void
     {
         AuthMiddleware::check();
-        RoleMiddleware::check(['comptable', 'dg', 'chef_agence', 'superviseur_general']);
+        RoleMiddleware::check(['comptable', 'dg', 'chef_agence', 'superviseur_general', 'suivi_recouvrement']);
 
         $stmt = $this->db->query("
             SELECT t.id, t.code, t.libelle, t.type_transport,
@@ -1924,7 +1924,7 @@ final class FinanceController extends FinanceBaseController
     public function exportBalanceAgeePdf(): void
     {
         AuthMiddleware::check();
-        RoleMiddleware::check(['comptable', 'dg', 'chef_agence', 'superviseur_general']);
+        RoleMiddleware::check(['comptable', 'dg', 'chef_agence', 'superviseur_general', 'suivi_recouvrement']);
 
         $sql = "
             SELECT f.id, f.numero_facture, f.date_emission, f.montant_total, f.montant_restant, f.devise,
@@ -1993,7 +1993,7 @@ final class FinanceController extends FinanceBaseController
 
     public function portefeuillesIndex(): void
     {
-        RoleMiddleware::check(['caissiere', 'caissiere_principale', 'chef_agence', 'dg', 'comptable', 'superviseur_regional', 'superviseur_general']);
+        RoleMiddleware::check(['caissiere', 'caissiere_principale', 'chef_agence', 'dg', 'comptable', 'superviseur_regional', 'superviseur_general', 'suivi_recouvrement']);
 
         $pdo = \App\Models\Database::getConnection();
         $wallets = $pdo->query("SELECT * FROM lbp_client_wallets ORDER BY updated_at DESC, created_at DESC")->fetchAll(\PDO::FETCH_ASSOC);
@@ -2016,7 +2016,7 @@ final class FinanceController extends FinanceBaseController
 
     public function portefeuilleCrediter(): void
     {
-        RoleMiddleware::check(['caissiere', 'caissiere_principale', 'chef_agence', 'dg', 'comptable']);
+        RoleMiddleware::check(['caissiere', 'caissiere_principale', 'chef_agence', 'dg', 'comptable', 'suivi_recouvrement']);
 
         if (!Csrf::verify($_POST['_csrf_token'] ?? null)) {
             Session::flash('error', 'Session expirée ou requête invalide (CSRF).');
@@ -2056,7 +2056,7 @@ final class FinanceController extends FinanceBaseController
 
     public function coutsApprocheIndex(): void
     {
-        RoleMiddleware::check(['caissiere', 'caissiere_principale', 'chef_agence', 'dg', 'comptable', 'superviseur_regional', 'superviseur_general']);
+        RoleMiddleware::check(['caissiere', 'caissiere_principale', 'chef_agence', 'dg', 'comptable', 'superviseur_regional', 'superviseur_general', 'suivi_recouvrement']);
 
         $pdo = \App\Models\Database::getConnection();
         $landedCosts = $pdo->query("SELECT * FROM lbp_landed_costs ORDER BY created_at DESC")->fetchAll(\PDO::FETCH_ASSOC);
@@ -2171,7 +2171,7 @@ final class FinanceController extends FinanceBaseController
 
     public function tresorerieIndex(): void
     {
-        RoleMiddleware::check(['caissiere', 'caissiere_principale', 'chef_agence', 'dg', 'comptable', 'superviseur_regional', 'superviseur_general']);
+        RoleMiddleware::check(['caissiere', 'caissiere_principale', 'chef_agence', 'dg', 'comptable', 'superviseur_regional', 'superviseur_general', 'suivi_recouvrement']);
 
         $pdo = \App\Models\Database::getConnection();
         
@@ -2204,7 +2204,7 @@ final class FinanceController extends FinanceBaseController
 
     public function guideIndex(): void
     {
-        RoleMiddleware::check(['caissiere', 'caissiere_principale', 'chef_agence', 'dg', 'comptable', 'superviseur_regional', 'superviseur_general']);
+        RoleMiddleware::check(['caissiere', 'caissiere_principale', 'chef_agence', 'dg', 'comptable', 'superviseur_regional', 'superviseur_general', 'suivi_recouvrement']);
 
         $dashService = new \App\Services\Shared\ModuleDashboardService();
         $module = $dashService->dashboard('finance');

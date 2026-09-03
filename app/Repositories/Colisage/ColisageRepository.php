@@ -155,6 +155,15 @@ class ColisageRepository
         return (int) $stmt->fetchColumn();
     }
 
+    /**
+     * Alias for countParcels
+     * @param array<string, mixed> $filters
+     */
+    public function getParcelsCount(array $filters = []): int
+    {
+        return $this->countParcels($filters);
+    }
+
     /** @return array<string, mixed>|null */
     public function findParcelById(int $id): ?array
     {

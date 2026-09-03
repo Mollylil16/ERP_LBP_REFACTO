@@ -140,7 +140,7 @@ class Auth
      */
     public static function isFacturationPrivileged(): bool
     {
-        return self::hasAnyRole(['responsable', 'chef_agence', 'superviseur_general', 'dg', 'comptable']);
+        return self::hasAnyRole(['responsable', 'chef_agence', 'superviseur_general', 'dg', 'comptable', 'suivi_recouvrement']);
     }
 
     /**
@@ -192,7 +192,7 @@ class Auth
         }
 
         // Rôles locaux : restreints à leur agence propre
-        $localRoles = ['agent_groupage', 'caissiere', 'chef_agence'];
+        $localRoles = ['agent_groupage', 'caissiere', 'chef_agence', 'suivi_recouvrement'];
         if (self::hasAnyRole($localRoles)) {
             return $user->agenceId === $targetAgenceId;
         }

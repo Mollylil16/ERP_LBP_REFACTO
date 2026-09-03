@@ -43,6 +43,7 @@ class MigrationRunner
         $this->seedRealEmballagesCatalogue();
         $this->createIntegrityAndAntiFraudTables();
         $this->deleteUnwantedAgencies();
+        $this->seedSuiviEtRecouvrementRoleAndUser();
     }
 
 
@@ -3186,5 +3187,113 @@ class MigrationRunner
         }
 
         try { $this->pdo->exec("SET FOREIGN_KEY_CHECKS = 1;"); } catch (\Throwable $e) {}
+    }
+
+    /**
+     * Configuration du rôle Suivi & Recouvrement et affectation à sylvestre.kichi@labelleporte.ci (Agence Aéroport Port-Bouët Fret).
+     */
+    private function seedSuiviEtRecouvrementRoleAndUser(): void
+    {
+        try {
+            // S'assurer que la table et la colonne role supportent de nouvelles valeurs de rôles
+            $this->pdo->exec("
+                CREATE TABLE IF NOT EXISTS lbp_user_roles (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    user_id INT NOT NULL,
+                    role VARCHAR(64) NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE KEY uq_user_role (user_id, role),
+                    KEY idx_user_id (user_id),
+                    KEY idx_role (role)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+            ");
+            try {
+                $this->pdo->exec("ALTER TABLE lbp_user_roles MODIFY COLUMN role VARCHAR(64) NOT NULL");
+            } catch (\Throwable $e) {}
+
+            // Trouver l'identifiant de l'agence Aéroport Port-Bouët Fret (ABJ-FRET)
+            $fretAgId = 3402;
+            $stmtSite = $this->pdo->query("SELECT id FROM company_sites WHERE code = 'ABJ-FRET' OR name LIKE '%Aéroport%' OR name LIKE '%Fret%' ORDER BY (code = 'ABJ-FRET') DESC LIMIT 1");
+            if ($stmtSite) {
+                $siteRow = (int) $stmtSite->fetchColumn();
+                if ($siteRow > 0) {
+                    $fretAgId = $siteRow;
+                }
+            }
+
+            // Rechercher l'utilisateur Sylvestre Kichi
+            $stmtUsr = $this->pdo->query("
+                SELECT id, email, full_name 
+                FROM users 
+                WHERE email LIKE '%sylvestre.kichi%' 
+                   OR email LIKE '%sylvestre%' 
+                   OR full_name LIKE '%SYLVESTRE%' 
+                   OR full_name LIKE '%Kichi%' 
+                ORDER BY (email LIKE '%sylvestre.kichi%') DESC 
+                LIMIT 1
+            ");
+            $userRow = $stmtUsr ? $stmtUsr->fetch(PDO::FETCH_ASSOC) : null;
+
+            if ($userRow && !empty($userRow['id'])) {
+                $userId = (int) $userRow['id'];
+
+                // 1. Mettre à jour l'utilisateur : agence_id Aéroport Fret et statut actif
+                $stmtUpUser = $this->pdo->prepare("UPDATE users SET agence_id = :agence_id, status = 'active', email = 'sylvestre.kichi@labelleporte.ci', updated_at = NOW() WHERE id = :id");
+                $stmtUpUser->execute(['agence_id' => $fretAgId, 'id' => $userId]);
+
+                // 2. Mettre à jour l'employé RH correspondant si existant
+                try {
+                    $stmtEmp = $this->pdo->prepare("UPDATE rh_employees SET site_id = :site_id, email = 'sylvestre.kichi@labelleporte.ci', updated_at = NOW() WHERE email LIKE '%sylvestre%' OR id = 1013");
+                    $stmtEmp->execute(['site_id' => $fretAgId]);
+                } catch (\Throwable $e) {}
+
+                // 3. Attribuer le rôle 'suivi_recouvrement' et 'agent_groupage'
+                $stmtRole = $this->pdo->prepare("INSERT IGNORE INTO lbp_user_roles (user_id, role) VALUES (:user_id, :role)");
+                $stmtRole->execute(['user_id' => $userId, 'role' => 'suivi_recouvrement']);
+                $stmtRole->execute(['user_id' => $userId, 'role' => 'agent_groupage']);
+
+                // 4. Attribuer les permissions fonctionnelles dans user_permissions
+                try {
+                    $permEntities = $this->pdo->query("SELECT id, code FROM permission_entities WHERE is_active = 1")->fetchAll(PDO::FETCH_ASSOC) ?: [];
+                    if (!empty($permEntities)) {
+                        $stmtPerm = $this->pdo->prepare("
+                            INSERT INTO user_permissions (user_id, entity_id, can_view, can_create, can_update, can_delete)
+                            VALUES (:user_id, :entity_id, :can_view, :can_create, :can_update, :can_delete)
+                            ON DUPLICATE KEY UPDATE can_view = VALUES(can_view), can_create = VALUES(can_create), can_update = VALUES(can_update), can_delete = VALUES(can_delete)
+                        ");
+
+                        $targetCodes = [
+                            'exploitation_synthese' => [1, 1, 1, 0],
+                            'exploitation_tracking' => [1, 1, 1, 0],
+                            'exploitation_credits' => [1, 1, 1, 0],
+                            'exploitation_fournitures' => [1, 1, 1, 0],
+                            'rapports_agence' => [1, 1, 0, 0],
+                            'exporter_rapports_excel' => [1, 0, 0, 0],
+                            'saisir_facture' => [1, 1, 1, 0],
+                            'call_center_view' => [1, 0, 0, 0],
+                            'exporter_colisage_sans_montant' => [1, 0, 0, 0],
+                            'exporter_facturation_avec_montant' => [1, 0, 0, 0],
+                        ];
+
+                        foreach ($permEntities as $pe) {
+                            $code = (string) $pe['code'];
+                            if (isset($targetCodes[$code])) {
+                                [$cv, $cc, $cu, $cd] = $targetCodes[$code];
+                                $stmtPerm->execute([
+                                    'user_id' => $userId,
+                                    'entity_id' => (int) $pe['id'],
+                                    'can_view' => $cv,
+                                    'can_create' => $cc,
+                                    'can_update' => $cu,
+                                    'can_delete' => $cd,
+                                ]);
+                            }
+                        }
+                    }
+                } catch (\Throwable $e) {}
+            }
+        } catch (\Throwable $e) {
+            error_log('[MigrationRunner Warning] Erreur seedSuiviEtRecouvrementRoleAndUser: ' . $e->getMessage());
+        }
     }
 }

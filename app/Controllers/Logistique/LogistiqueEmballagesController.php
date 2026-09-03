@@ -64,7 +64,7 @@ final class LogistiqueEmballagesController extends LogistiqueBaseController
     public function store(): void
     {
         AuthMiddleware::check();
-        RoleMiddleware::check(['admin', 'chef_agence', 'agent', 'magasinier', 'agent_logistique', 'superviseur_general']);
+        RoleMiddleware::check(['admin', 'chef_agence', 'agent', 'magasinier', 'agent_logistique', 'superviseur_general', 'suivi_recouvrement']);
 
         if (!Csrf::verify($_POST['_csrf_token'] ?? null)) {
             Session::flash('error', 'Session expirée ou requête invalide (CSRF). Veuillez réessayer.');
@@ -118,7 +118,7 @@ final class LogistiqueEmballagesController extends LogistiqueBaseController
     public function creerEmballage(): void
     {
         AuthMiddleware::check();
-        RoleMiddleware::check(['admin', 'chef_agence', 'agent', 'magasinier', 'agent_logistique', 'superviseur_general']);
+        RoleMiddleware::check(['admin', 'chef_agence', 'agent', 'magasinier', 'agent_logistique', 'superviseur_general', 'suivi_recouvrement']);
 
         if (!Csrf::verify($_POST['_csrf_token'] ?? null)) {
             Session::flash('error', 'Session expirée ou requête invalide (CSRF). Veuillez réessayer.');

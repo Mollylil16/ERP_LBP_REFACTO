@@ -33,6 +33,7 @@ class AdminService
         'agent_transit'        => 'Agent Transit',
         'transit'              => 'Opérateur Transit',
         'transitaire'          => 'Transitaire',
+        'suivi_recouvrement'   => 'Suivi & Recouvrement',
         'admin'                => 'Administrateur Système',
     ];
 

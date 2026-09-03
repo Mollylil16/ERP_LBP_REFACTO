@@ -20,14 +20,14 @@ final class AdminServiceTest extends TestCase
         $users = $this->createMock(UserRepository::class);
         $users->expects(self::once())
             ->method('paginate')
-            ->with(['q' => 'admin', 'status' => '', 'profile' => ''], 0, 15)
+            ->with(['q' => 'admin', 'status' => '', 'profile' => '', 'role' => ''], 0, 15)
             ->willReturn(['items' => [], 'total' => 0, 'page' => 1, 'perPage' => 15, 'totalPages' => 1]);
 
         $service = $this->service($users);
 
         $result = $service->listUsers(['q' => ' admin ', 'status' => 'bad', 'profile' => 'root', 'page' => 0]);
 
-        self::assertSame(['q' => 'admin', 'status' => '', 'profile' => ''], $result['filters']);
+        self::assertSame(['q' => 'admin', 'status' => '', 'profile' => '', 'role' => ''], $result['filters']);
     }
 
     public function test_set_user_active_prevents_self_deactivation(): void

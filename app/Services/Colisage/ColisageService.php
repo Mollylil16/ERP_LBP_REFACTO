@@ -66,7 +66,7 @@ final class ColisageService
     {
         $offset = ($page - 1) * $limit;
         $items = $this->repository->getParcels($filters, $limit, $offset);
-        $total = $this->repository->getParcelsCount($filters);
+        $total = $this->repository->countParcels($filters);
         $totalPages = (int) ceil($total / $limit);
 
         return [
