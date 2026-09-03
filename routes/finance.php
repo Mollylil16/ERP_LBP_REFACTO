@@ -76,6 +76,22 @@ $router->group('/finance', function (Router $router): void {
     // Trésorerie Prévisionnelle (30/60/90j)
     $router->get('/tresorerie', [FinanceController::class, 'tresorerieIndex']);
 
+    // ==========================================
+    // GESTION DES FONDS (Décaissements, Caisse & Imputation)
+    // ==========================================
+    $router->get('/fonds', [\App\Controllers\Finance\DemandesFondsController::class, 'index']);
+    $router->get('/fonds/nouveau', [\App\Controllers\Finance\DemandesFondsController::class, 'create']);
+    $router->post('/fonds/enregistrer', [\App\Controllers\Finance\DemandesFondsController::class, 'store']);
+    $router->get('/fonds/prise-en-compte', [\App\Controllers\Finance\DemandesFondsController::class, 'priseEnCompteIndex']);
+    $router->get('/fonds/imputation', [\App\Controllers\Finance\DemandesFondsController::class, 'imputationIndex']);
+    $router->get('/fonds/{id}', [\App\Controllers\Finance\DemandesFondsController::class, 'show']);
+    $router->post('/fonds/{id}/valider', [\App\Controllers\Finance\DemandesFondsController::class, 'valider']);
+    $router->post('/fonds/{id}/rejeter', [\App\Controllers\Finance\DemandesFondsController::class, 'rejeter']);
+    $router->post('/fonds/{id}/decaisser', [\App\Controllers\Finance\DemandesFondsController::class, 'decaisser']);
+    $router->post('/fonds/{id}/imputer', [\App\Controllers\Finance\DemandesFondsController::class, 'imputer']);
+    $router->get('/fonds/{id}/bon-caisse-pdf', [\App\Controllers\Finance\DemandesFondsController::class, 'exportBonCaissePdf']);
+    $router->post('/fonds/{id}/supprimer', [\App\Controllers\Finance\DemandesFondsController::class, 'delete']);
+
     // Guide Interactif & Tutoriel Finance
     $router->get('/guide', [FinanceController::class, 'guideIndex']);
 });

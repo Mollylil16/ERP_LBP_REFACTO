@@ -331,6 +331,9 @@ final class ModuleDashboardService
         if ($module['slug'] === 'finance') {
             return [
                 ['key' => 'dashboard', 'label' => 'Tableau de bord', 'icon' => 'DB', 'url' => '/finance/dashboard', 'available' => true, 'group' => 'Pilotage'],
+                ['key' => 'fonds', 'label' => 'Demandes de Fonds', 'icon' => 'FND', 'url' => '/finance/fonds', 'available' => true, 'group' => 'Gestion des Fonds'],
+                ['key' => 'prise_en_compte', 'label' => 'Prise en Compte', 'icon' => 'PEC', 'url' => '/finance/fonds/prise-en-compte', 'available' => true, 'group' => 'Gestion des Fonds'],
+                ['key' => 'imputation', 'label' => 'Imputation', 'icon' => 'IMP', 'url' => '/finance/fonds/imputation', 'available' => true, 'group' => 'Gestion des Fonds'],
                 ['key' => 'factures', 'label' => 'Factures Clients', 'icon' => 'FAC', 'url' => '/finance/factures', 'available' => true, 'group' => 'Facturation & Caisse'],
                 ['key' => 'portefeuilles', 'label' => 'Portefeuilles Clients', 'icon' => 'WAL', 'url' => '/finance/portefeuilles', 'available' => true, 'group' => 'Facturation & Caisse'],
                 ['key' => 'clotures', 'label' => 'Points de Caisse', 'icon' => 'CLT', 'url' => '/finance/clotures', 'available' => true, 'group' => 'Facturation & Caisse'],

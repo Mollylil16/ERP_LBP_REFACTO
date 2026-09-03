@@ -44,6 +44,7 @@ class MigrationRunner
         $this->createIntegrityAndAntiFraudTables();
         $this->deleteUnwantedAgencies();
         $this->seedSuiviEtRecouvrementRoleAndUser();
+        $this->createGestionDesFondsTables();
     }
 
 
@@ -3294,6 +3295,83 @@ class MigrationRunner
             }
         } catch (\Throwable $e) {
             error_log('[MigrationRunner Warning] Erreur seedSuiviEtRecouvrementRoleAndUser: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Crée les tables pour le module Gestion des Fonds (Demandes de décaissement, Prise en compte, Imputation et Traçabilité).
+     */
+    private function createGestionDesFondsTables(): void
+    {
+        try {
+            // 1. Table des Demandes de Fonds
+            $this->pdo->exec("
+                CREATE TABLE IF NOT EXISTS lbp_demandes_fonds (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    numero_demande VARCHAR(50) NOT NULL,
+                    agence_id INT NOT NULL,
+                    cadre ENUM('traitement_dossier', 'fonctionnement') NOT NULL DEFAULT 'traitement_dossier',
+                    dossier_num VARCHAR(100) NULL,
+                    motif TEXT NOT NULL,
+                    montant DECIMAL(15,2) NOT NULL,
+                    devise VARCHAR(10) NOT NULL DEFAULT 'XOF',
+                    demandeur_id INT NOT NULL,
+                    statut ENUM('en_attente', 'validee', 'rejetee', 'decaissee', 'imputee') NOT NULL DEFAULT 'en_attente',
+                    motif_rejet TEXT NULL,
+                    validateur_id INT NULL,
+                    date_validation DATETIME NULL,
+                    caissiere_id INT NULL,
+                    date_decaissement DATETIME NULL,
+                    mode_paiement VARCHAR(50) NOT NULL DEFAULT 'Espèces',
+                    reference_bon_caisse VARCHAR(50) NULL,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME NULL ON UPDATE CURRENT_TIMESTAMP,
+                    UNIQUE KEY uq_numero_demande (numero_demande),
+                    KEY idx_agence_id (agence_id),
+                    KEY idx_demandeur_id (demandeur_id),
+                    KEY idx_statut (statut),
+                    KEY idx_cadre (cadre),
+                    KEY idx_created_at (created_at)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+            ");
+
+            // 2. Table des Imputations de Fonds
+            $this->pdo->exec("
+                CREATE TABLE IF NOT EXISTS lbp_imputations_fonds (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    demande_fonds_id INT NOT NULL,
+                    montant_engage DECIMAL(15,2) NOT NULL,
+                    montant_reel_depense DECIMAL(15,2) NOT NULL,
+                    montant_reliquat_restitue DECIMAL(15,2) NOT NULL DEFAULT 0.00,
+                    pieces_justificatives TEXT NULL,
+                    commentaires TEXT NULL,
+                    impute_par_id INT NOT NULL,
+                    statut_imputation ENUM('conforme', 'ecart_constate', 'reliquat_encaisse') NOT NULL DEFAULT 'conforme',
+                    date_imputation DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    KEY idx_demande_fonds_id (demande_fonds_id),
+                    KEY idx_impute_par_id (impute_par_id),
+                    KEY idx_date_imputation (date_imputation)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+            ");
+
+            // 3. Table de Journalisation & Traçabilité (Audit Trail)
+            $this->pdo->exec("
+                CREATE TABLE IF NOT EXISTS lbp_demandes_fonds_historique (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    demande_fonds_id INT NOT NULL,
+                    user_id INT NOT NULL,
+                    action VARCHAR(50) NOT NULL,
+                    statut_avant VARCHAR(50) NULL,
+                    statut_apres VARCHAR(50) NULL,
+                    commentaire TEXT NULL,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    KEY idx_hist_demande_id (demande_fonds_id),
+                    KEY idx_hist_user_id (user_id),
+                    KEY idx_hist_created_at (created_at)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+            ");
+        } catch (\Throwable $e) {
+            error_log('[MigrationRunner Warning] createGestionDesFondsTables: ' . $e->getMessage());
         }
     }
 }
