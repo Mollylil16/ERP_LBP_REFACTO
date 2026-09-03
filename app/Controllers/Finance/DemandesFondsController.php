@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Controllers\Finance;
 
-use App\Database\Database;
+use App\Models\Database;
 use App\Helpers\Auth;
 use App\Helpers\Csrf;
 use App\Helpers\Session;

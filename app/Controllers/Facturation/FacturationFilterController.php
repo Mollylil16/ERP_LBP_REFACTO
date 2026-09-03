@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Controllers\Facturation;
 
 use App\Middleware\AuthMiddleware;
-use App\Database\Database;
+use App\Models\Database;
 use App\Helpers\View;
 use App\Helpers\Auth;
 use App\Helpers\Session;
