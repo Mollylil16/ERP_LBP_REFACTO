@@ -71,7 +71,10 @@ final class Facturation
         int $endMonth,
         int $endYear,
         int $selectedAgenceId,
-        string $selectedTrajet,
+        string $selectedCategorie = 'all',
+        string $selectedStatutPaiement = 'all',
+        string $dateFrom = '',
+        string $dateTo = '',
         string $searchQuery = '',
         bool $canSeeAllAgencies = true,
         array $sites = [],
@@ -83,25 +86,28 @@ final class Facturation
         $months = View::monthNames();
         $years = range((int) date('Y') - 2, (int) date('Y') + 1);
 
-        $exportQuery = http_build_query([
-            'start_month' => $startMonth,
-            'start_year' => $startYear,
-            'end_month' => $endMonth,
-            'end_year' => $endYear,
-            'agence_id' => $selectedAgenceId,
-            'trajet' => $selectedTrajet,
-            'q' => $searchQuery,
-        ]);
+        $exportQuery = http_build_query(array_filter([
+            'start_month'     => $startMonth,
+            'start_year'      => $startYear,
+            'end_month'       => $endMonth,
+            'end_year'        => $endYear,
+            'date_from'       => $dateFrom,
+            'date_to'         => $dateTo,
+            'agence_id'       => $selectedAgenceId,
+            'categorie_code'  => $selectedCategorie,
+            'statut_paiement' => $selectedStatutPaiement,
+            'q'               => $searchQuery,
+        ]));
 
         $header = Ui::pageHeader(
-            'Filtre par Période, Agence & Trajet',
-            'Analyse détaillée des factures émises, montants encaissés et statut d\'audit.',
+            'Vue d\'ensemble & Recherche Facturation',
+            'Filtrage avancé des créances et factures par catégorie (Cargo, Rapide, DHL), agence et statut de paiement.',
             [
-                'eyebrow' => 'Facturation • Recherche multi-critères',
+                'eyebrow' => 'Facturation • Pilotage des Encaissements & Impayés',
                 'class' => 'rh-hero-white',
                 'actions' => [
-                    Ui::button('Export PDF (avec montants)', ['href' => 'facturation/filtre/export-pdf?' . $exportQuery, 'variant' => 'danger']),
-                    Ui::button('Export Excel (avec montants)', ['href' => 'facturation/filtre/export-excel?' . $exportQuery, 'variant' => 'accent']),
+                    Ui::button('🖨️ Export PDF Officiel', ['href' => 'facturation/filtre/export-pdf?' . $exportQuery, 'variant' => 'danger', 'target' => '_blank']),
+                    Ui::button('📊 Export Excel (CSV UTF-8)', ['href' => 'facturation/filtre/export-excel?' . $exportQuery, 'variant' => 'accent']),
                 ],
             ]
         );
@@ -123,68 +129,138 @@ final class Facturation
 
         $agenceOpts = [['value' => '0', 'label' => 'Toutes les agences']];
         foreach ($sites as $s) {
-            $agenceOpts[] = ['value' => (string) $s['id'], 'label' => $s['name']];
+            $agenceOpts[] = ['value' => (string) $s['id'], 'label' => $s['name'] . ' (' . $s['code'] . ')'];
         }
 
-        $trajetOpts = [['value' => 'all', 'label' => 'Tous les trajets']];
-        foreach ($trajets as $t) {
-            $trajetOpts[] = ['value' => $t['code'], 'label' => $t['code'] . ' — ' . $t['libelle'] . ' (' . strtoupper((string) $t['type_transport']) . ')'];
-        }
+        // Catégories groupées avec optgroup
+        $categoriesGroups = [
+            ['value' => 'all', 'label' => 'Toutes les catégories'],
+            ['value' => 'groupage_cargo', 'label' => '✈️ Tout le Groupage Cargo (Tous codes)'],
+            ['value' => 'colis_rapide', 'label' => '⚡ Tout le Colis Rapide (Tous codes)'],
+            ['value' => 'dhl', 'label' => '🚚 DHL / Express'],
+            ['value' => 'autres', 'label' => 'Autres / Transit'],
+            ['value' => 'LB-CI', 'label' => '↳ LB-CI : Abidjan ➔ France'],
+            ['value' => 'LB-FR', 'label' => '↳ LB-FR : France ➔ Abidjan'],
+            ['value' => 'S-FR', 'label' => '↳ S-FR : Sénégal ➔ France'],
+            ['value' => 'S-CI', 'label' => '↳ S-CI : Sénégal ➔ Côte d\'Ivoire'],
+            ['value' => 'LB-CA', 'label' => '↳ LB-CA : Abidjan ➔ Canada'],
+            ['value' => 'F-SN', 'label' => '↳ F-SN : France ➔ Sénégal'],
+            ['value' => 'CA-CI', 'label' => '↳ CA-CI : Abidjan ➔ Paris (Rapide)'],
+            ['value' => 'CA-FR', 'label' => '↳ CA-FR : Paris ➔ Abidjan (Rapide)'],
+        ];
 
-        $qInput = Form::input('q', [
-            'label' => 'Recherche (N° Colis / N° Facture / Client)',
-            'value' => $searchQuery,
-            'placeholder' => 'ex: LB-CI-020, FA-3403-2026-000019...',
-        ]);
+        $statutPaiementOpts = [
+            ['value' => 'all', 'label' => 'Tous les statuts'],
+            ['value' => 'impayes', 'label' => '🔴 Impayés uniquement (Reste > 0)'],
+            ['value' => 'partiellement_payee', 'label' => '🟡 Partiellement payés'],
+            ['value' => 'payee', 'label' => '🟢 Payés en totalité'],
+        ];
 
-        $filterForm = '<form method="get" action="' . View::url('facturation/filtre') . '" class="rh-form-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); align-items:end;">'
-            . '<div><label class="rh-eyebrow" style="display:block; margin-bottom:0.35rem;">Période Début (Mois / Année)</label>'
-            . '<div style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem;">'
-            . Form::rawSelect('start_month', $monthOpts($startMonth))
-            . Form::rawSelect('start_year', $yearOpts($startYear))
-            . '</div></div>'
-            . '<div><label class="rh-eyebrow" style="display:block; margin-bottom:0.35rem;">Période Fin (Mois / Année)</label>'
-            . '<div style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem;">'
-            . Form::rawSelect('end_month', $monthOpts($endMonth))
-            . Form::rawSelect('end_year', $yearOpts($endYear))
-            . '</div></div>'
-            . Form::select('agence_id', $agenceOpts, (string) $selectedAgenceId, ['label' => 'Agence d\'expédition', 'disabled' => !$canSeeAllAgencies])
-            . Form::select('trajet', $trajetOpts, $selectedTrajet, ['label' => 'Trajet spécifique'])
-            . $qInput
-            . '<div>' . Ui::button('Filtrer les factures', ['type' => 'submit', 'variant' => 'primary']) . '</div>'
-            . '</form>';
+        $filterForm = '<form method="get" action="' . View::url('facturation/filtre') . '" style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:1.25rem;">'
+            . '<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:1rem; align-items:end;">'
+            
+            // Statut de paiement (Impayés mis en avant)
+            . '<div>'
+            . '<label style="display:block; font-size:0.75rem; font-weight:800; text-transform:uppercase; color:#0f172a; margin-bottom:0.35rem;">Statut Paiement</label>'
+            . Form::select('statut_paiement', $statutPaiementOpts, $selectedStatutPaiement, ['class' => 'finea-select', 'style' => 'width:100%; font-weight:700; border-color:#cbd5e1;'])
+            . '</div>'
 
-        $kpisHtml = Dashboard::kpis([
-            ['label' => 'Nombre de factures', 'value' => number_format((int) $kpis['totalCount'], 0, ',', ' ')],
-            ['label' => 'Chiffre d\'affaires total', 'value' => number_format((float) $kpis['totalMontantXof'], 0, ',', ' ') . ' XOF', 'tone' => 'success'],
-            ['label' => 'Poids total expédié', 'value' => number_format((float) $kpis['totalPoids'], 2, ',', ' ') . ' kg'],
-            ['label' => 'Nombre de colis total', 'value' => number_format((int) $kpis['totalColis'], 0, ',', ' ') . ' colis'],
-        ]);
+            // Catégorie / Trajet
+            . '<div>'
+            . '<label style="display:block; font-size:0.75rem; font-weight:800; text-transform:uppercase; color:#0f172a; margin-bottom:0.35rem;">Catégorie de Code</label>'
+            . Form::select('categorie_code', $categoriesGroups, $selectedCategorie, ['class' => 'finea-select', 'style' => 'width:100%; font-weight:700; border-color:#cbd5e1;'])
+            . '</div>'
 
-        $tableSection = Ui::section('Résultats de la recherche', self::filtreResultsTable($results));
+            // Agence
+            . '<div>'
+            . '<label style="display:block; font-size:0.75rem; font-weight:800; text-transform:uppercase; color:#0f172a; margin-bottom:0.35rem;">Agence</label>'
+            . Form::select('agence_id', $agenceOpts, (string) $selectedAgenceId, ['class' => 'finea-select', 'disabled' => !$canSeeAllAgencies, 'style' => 'width:100%; border-color:#cbd5e1;'])
+            . '</div>'
+
+            // Date début
+            . '<div>'
+            . '<label style="display:block; font-size:0.75rem; font-weight:800; text-transform:uppercase; color:#0f172a; margin-bottom:0.35rem;">Date Début</label>'
+            . '<input type="date" name="date_from" value="' . View::e($dateFrom) . '" class="finea-input" style="width:100%; padding:0.5rem; border:1px solid #cbd5e1; border-radius:6px; font-size:0.85rem;">'
+            . '</div>'
+
+            // Date fin
+            . '<div>'
+            . '<label style="display:block; font-size:0.75rem; font-weight:800; text-transform:uppercase; color:#0f172a; margin-bottom:0.35rem;">Date Fin</label>'
+            . '<input type="date" name="date_to" value="' . View::e($dateTo) . '" class="finea-input" style="width:100%; padding:0.5rem; border:1px solid #cbd5e1; border-radius:6px; font-size:0.85rem;">'
+            . '</div>'
+
+            // Recherche
+            . '<div>'
+            . '<label style="display:block; font-size:0.75rem; font-weight:800; text-transform:uppercase; color:#0f172a; margin-bottom:0.35rem;">Recherche libre</label>'
+            . '<input type="text" name="q" placeholder="N° Facture, Tracking, Client..." value="' . View::e($searchQuery) . '" class="finea-input" style="width:100%; padding:0.5rem; border:1px solid #cbd5e1; border-radius:6px; font-size:0.85rem;">'
+            . '</div>'
+
+            // Boutons Filtrer & Reset
+            . '<div style="display:flex; gap:6px;">'
+            . '<button type="submit" class="finea-button finea-button--primary" style="flex:1; padding:0.55rem 1rem; border-radius:6px; font-weight:700; background:#0f172a;">Filtrer</button>'
+            . '<a href="' . View::url('facturation/filtre') . '" class="finea-button finea-button--secondary" style="padding:0.55rem 0.8rem; border-radius:6px; text-decoration:none; color:#64748b; background:#fff; border:1px solid #cbd5e1;">✕</a>'
+            . '</div>'
+
+            . '</div></form>';
+
+        $totalImpaye = (float) ($kpis['totalImpaye'] ?? 0);
+        $totalEncaisse = (float) ($kpis['totalEncaisse'] ?? 0);
+        $totalMontant = (float) ($kpis['totalMontantXof'] ?? 0);
+
+        $kpisCardsHtml = '<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:1rem; margin: 1.5rem 0;">'
+            . '<div style="background:#fff; border:1px solid #e2e8f0; border-radius:10px; padding:1rem; box-shadow:0 1px 3px rgba(0,0,0,0.04);">'
+            . '<div style="font-size:0.75rem; font-weight:800; color:#64748b; text-transform:uppercase;">Total Factures Trouvées</div>'
+            . '<div style="font-size:1.6rem; font-weight:900; color:#0f172a; margin-top:0.25rem;">' . number_format((int) $kpis['totalCount'], 0, ',', ' ') . '</div>'
+            . '<div style="font-size:0.8rem; color:#64748b; margin-top:0.2rem;">' . (int) $kpis['totalColis'] . ' colis (' . number_format((float) $kpis['totalPoids'], 1, ',', ' ') . ' kg)</div>'
+            . '</div>'
+
+            . '<div style="background:#fff; border:1px solid #e2e8f0; border-radius:10px; padding:1rem; box-shadow:0 1px 3px rgba(0,0,0,0.04);">'
+            . '<div style="font-size:0.75rem; font-weight:800; color:#64748b; text-transform:uppercase;">Chiffre d\'Affaires Total</div>'
+            . '<div style="font-size:1.6rem; font-weight:900; color:#0284c7; margin-top:0.25rem;">' . number_format($totalMontant, 0, ',', ' ') . ' <small style="font-size:0.8rem; color:#64748b;">FCFA</small></div>'
+            . '<div style="font-size:0.8rem; color:#64748b; margin-top:0.2rem;">Montant total facturé</div>'
+            . '</div>'
+
+            . '<div style="background:#fff; border:1px solid #bbf7d0; border-left:4px solid #16a34a; border-radius:10px; padding:1rem; box-shadow:0 1px 3px rgba(0,0,0,0.04);">'
+            . '<div style="font-size:0.75rem; font-weight:800; color:#15803d; text-transform:uppercase;">Montant Déjà Encaissé</div>'
+            . '<div style="font-size:1.6rem; font-weight:900; color:#15803d; margin-top:0.25rem;">' . number_format($totalEncaisse, 0, ',', ' ') . ' <small style="font-size:0.8rem;">FCFA</small></div>'
+            . '<div style="font-size:0.8rem; color:#15803d; margin-top:0.2rem; font-weight:600;">Paiements validés</div>'
+            . '</div>'
+
+            . '<div style="background:#fff; border:1px solid #fecaca; border-left:4px solid #dc2626; border-radius:10px; padding:1rem; box-shadow:0 1px 3px rgba(0,0,0,0.04);">'
+            . '<div style="font-size:0.75rem; font-weight:800; color:#dc2626; text-transform:uppercase;">TOTAL IMPAYÉS / RESTE À RECOUVRER</div>'
+            . '<div style="font-size:1.6rem; font-weight:900; color:#dc2626; margin-top:0.25rem;">' . number_format($totalImpaye, 0, ',', ' ') . ' <small style="font-size:0.8rem;">FCFA</small></div>'
+            . '<div style="font-size:0.8rem; color:#dc2626; margin-top:0.2rem; font-weight:700;">Créances à encaisser</div>'
+            . '</div>'
+            . '</div>';
+
+        $tableSection = Ui::section('Résultats de la recherche (' . count($results) . ' factures affichées)', self::filtreResultsTable($results));
 
         $paginationHtml = '';
         if (($pagination['totalPages'] ?? 1) > 1) {
             $baseParams = [
-                'start_month' => $startMonth,
-                'start_year' => $startYear,
-                'end_month' => $endMonth,
-                'end_year' => $endYear,
-                'agence_id' => $selectedAgenceId,
-                'trajet' => $selectedTrajet,
+                'start_month'     => $startMonth,
+                'start_year'      => $startYear,
+                'end_month'       => $endMonth,
+                'end_year'        => $endYear,
+                'date_from'       => $dateFrom,
+                'date_to'         => $dateTo,
+                'agence_id'       => $selectedAgenceId,
+                'categorie_code'  => $selectedCategorie,
+                'statut_paiement' => $selectedStatutPaiement,
+                'q'               => $searchQuery,
             ];
             $paginationHtml = '<div style="margin-top: 1.5rem;">' . Rh::pagination(
                 (int) $pagination['currentPage'],
                 (int) $pagination['totalPages'],
-                static fn(int $page): string => View::url('facturation/filtre?' . http_build_query($baseParams + ['page' => $page]))
+                static fn(int $page): string => View::url('facturation/filtre?' . http_build_query(array_filter($baseParams + ['page' => $page])))
             ) . '</div>';
         }
 
         return '<div class="finea-shell">'
-            . '<div class="finea-container">'
+            . '<div class="finea-container" style="max-width:1400px; margin:0 auto; padding:1.5rem 1rem;">'
             . $header
-            . '<div style="margin: 1.5rem 0;">' . Ui::section('Filtres', $filterForm) . '</div>'
-            . $kpisHtml
+            . '<div style="margin: 1.5rem 0;">' . $filterForm . '</div>'
+            . $kpisCardsHtml
             . '<div style="margin-top: 1.5rem;">' . $tableSection . '</div>'
             . $paginationHtml
             . '</div>'
@@ -200,30 +276,56 @@ final class Facturation
 
         $rows = '';
         foreach ($results as $row) {
-            $dateTime = new \DateTime($row['date_emission']);
-            $trajetDisp = !empty($row['trajet_code']) ? $row['trajet_code'] . ' (' . ($row['trajet_libelle'] ?? '') . ')' : ($row['col_trajet'] ?? 'N/A');
-            $modifsCount = (int) ($row['modifications_count'] ?? 0);
-            $statusBadge = $modifsCount > 0
-                ? Ui::badge('Modifiée (' . $modifsCount . ')', 'warning')
-                : Ui::badge('Verrouillée', 'primary');
+            $dateTime = new \DateTime((string) ($row['date_emission'] ?? 'now'));
+            $code = strtoupper((string) ($row['trajet_code'] ?? $row['col_trajet'] ?? 'AUTRE'));
+            
+            $isCargo = in_array($code, ['LB-CI', 'LB-FR', 'S-FR', 'S-CI', 'LB-CA', 'F-SN']) || str_starts_with($code, 'GP-');
+            $isRapide = in_array($code, ['CA-CI', 'CA-FR']) || str_starts_with($code, 'CR-');
+            $isDhl = str_contains($code, 'DHL') || str_starts_with((string)($row['numero_tracking'] ?? ''), 'DHL');
 
-            $rows .= '<tr>'
-                . '<td><a href="' . View::url('colisage/parcels/' . $row['colis_id'] . '/facture') . '"><strong>' . View::e($row['numero_facture']) . '</strong></a></td>'
-                . '<td>' . $dateTime->format('d/m/Y') . '<br><small>' . $dateTime->format('H:i') . '</small></td>'
-                . '<td><strong>' . View::e($row['agent_name']) . '</strong></td>'
-                . '<td>' . View::e($row['agence_name']) . '</td>'
-                . '<td><strong>' . View::e((string) $trajetDisp) . '</strong><br><small>' . View::e((string) ($row['trajet_type_transport'] ?? $row['type_expediteur'])) . '</small></td>'
-                . '<td>' . View::e($row['client_name']) . '<br><small>' . View::e($row['client_phone'] ?? '') . '</small></td>'
-                . '<td style="text-align:right;">' . number_format((float) $row['poids_total'], 2, ',', ' ') . ' kg<br><small>' . (int) $row['nombre_colis'] . ' colis</small></td>'
-                . '<td style="text-align:right;"><strong>' . number_format((float) $row['montant_total'], 0, ',', ' ') . ' ' . View::e($row['devise']) . '</strong></td>'
-                . '<td style="text-align:center;">' . $statusBadge . '</td>'
-                . '<td>' . Ui::button('Voir / Modifier', ['href' => 'facturation/factures/' . $row['facture_id'] . '/modifier', 'variant' => 'secondary']) . '</td>'
+            $catStyle = 'background:#f1f5f9; color:#475569; border:1px solid #e2e8f0;';
+            $catIcon = '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle></svg>';
+            if ($isCargo) {
+                $catStyle = 'background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe;';
+                $catIcon = '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M17.8 19.2L16 11l3.5-3.5C21 6 21.5 4 21 3.5c-.5-.5-2.5 0-4 1.5L13.5 8.5 5.3 6.7c-.5-.1-1.1.1-1.4.6l-.6.9c-.3.4-.2 1 .2 1.3L8 13l-3 3-2-1c-.4-.2-.9-.1-1.2.2l-.6.6c-.3.3-.3.8 0 1.1l2.5 2.5c.3.3.8.3 1.1 0l.6-.6c.3-.3.4-.8.2-1.2l-1-2 3-3 3.5 4.5c.3.4.9.5 1.3.2l.9-.6c.5-.3.7-.9.6-1.4z"></path></svg>';
+            } elseif ($isRapide) {
+                $catStyle = 'background:#fdf4ff; color:#a21caf; border:1px solid #f5d0fe;';
+                $catIcon = '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>';
+            } elseif ($isDhl) {
+                $catStyle = 'background:#fefce8; color:#a16207; border:1px solid #fef08a;';
+                $catIcon = '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>';
+            }
+
+            $restant = (float) ($row['montant_restant'] ?? 0);
+            $encaisse = (float) ($row['montant_encaisse'] ?? 0);
+            $total = (float) ($row['montant_total'] ?? 0);
+            
+            $statutBadge = '<span style="display:inline-block; padding:2px 8px; border-radius:9999px; font-size:0.75rem; font-weight:700; background:#fee2e2; color:#dc2626;">Impayé</span>';
+            if ($restant <= 0 || ($row['facture_statut'] ?? '') === 'payee') {
+                $statutBadge = '<span style="display:inline-block; padding:2px 8px; border-radius:9999px; font-size:0.75rem; font-weight:700; background:#dcfce7; color:#15803d;">Payé</span>';
+            } elseif ($encaisse > 0) {
+                $statutBadge = '<span style="display:inline-block; padding:2px 8px; border-radius:9999px; font-size:0.75rem; font-weight:700; background:#fef3c7; color:#d97706;">Partiel</span>';
+            }
+
+            $rows .= '<tr style="border-bottom:1px solid #f1f5f9;">'
+                . '<td><a href="' . View::url('colisage/parcels/' . ($row['colis_id'] ?? 0) . '/facture') . '" style="color:#0284c7; font-weight:700; text-decoration:none;">' . View::e((string) $row['numero_facture']) . '</a></td>'
+                . '<td style="font-family:monospace; font-weight:700; color:#0f172a;">' . View::e((string) ($row['numero_tracking'] ?? '—')) . '</td>'
+                . '<td><span style="display:inline-flex; align-items:center; gap:4px; padding:2px 8px; border-radius:4px; font-weight:700; font-size:0.75rem; ' . $catStyle . '">' . $catIcon . ' ' . View::e($code) . '</span></td>'
+                . '<td><strong>' . View::e((string) $row['client_name']) . '</strong>' . (!empty($row['client_phone']) ? '<br><small style="color:#64748b;">' . View::e((string) $row['client_phone']) . '</small>' : '') . '</td>'
+                . '<td>' . View::e((string) $row['agence_name']) . '</td>'
+                . '<td style="color:#475569; white-space:nowrap;">' . $dateTime->format('d/m/Y') . '</td>'
+                . '<td style="text-align:right;">' . number_format((float) $row['poids_total'], 1, ',', ' ') . ' kg<br><small style="color:#94a3b8;">' . (int) $row['nombre_colis'] . ' colis</small></td>'
+                . '<td style="text-align:right; font-weight:700;">' . number_format($total, 0, ',', ' ') . ' ' . View::e((string) ($row['devise'] ?? 'XOF')) . '</td>'
+                . '<td style="text-align:right; color:#15803d; font-weight:700;">' . number_format($encaisse, 0, ',', ' ') . '</td>'
+                . '<td style="text-align:right; font-weight:900; color:' . ($restant > 0 ? '#dc2626' : '#15803d') . ';">' . number_format($restant, 0, ',', ' ') . '</td>'
+                . '<td style="text-align:center;">' . $statutBadge . '</td>'
+                . '<td><a href="' . View::url('facturation/factures/' . $row['facture_id'] . '/modifier') . '" class="finea-button finea-button--secondary finea-button-sm" style="padding:4px 8px; font-size:0.75rem; text-decoration:none; border-radius:4px;">Détail</a></td>'
                 . '</tr>';
         }
 
-        return '<div class="finea-table-wrapper"><table class="finea-table"><thead><tr>'
-            . '<th>N° Facture</th><th>Date & Heure</th><th>Agent Créateur</th><th>Agence</th><th>Trajet & Transport</th>'
-            . '<th>Client</th><th>Poids / Colis</th><th>Montant Total</th><th>Statut</th><th>Action</th>'
+        return '<div class="finea-table-wrapper" style="background:#fff; border-radius:10px; border:1px solid #e2e8f0; overflow:hidden;"><table class="finea-table" style="width:100%; font-size:0.85rem;"><thead><tr style="background:#f8fafc; border-bottom:2px solid #e2e8f0; color:#475569; text-transform:uppercase; font-size:0.75rem;">'
+            . '<th>N° Facture</th><th>N° Tracking</th><th>Catégorie / Trajet</th>'
+            . '<th>Client & Contact</th><th>Agence</th><th>Date</th><th>Poids / Colis</th><th>Montant Total</th><th>Encaissé</th><th style="color:#dc2626;">Reste Impayé</th><th>Statut</th><th>Action</th>'
             . '</tr></thead><tbody>' . $rows . '</tbody></table></div>';
     }
 
