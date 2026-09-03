@@ -115,15 +115,16 @@ if (!$user) {
 $userId = (int) $user['id'];
 out("Utilisateur trouvé : {$user['full_name']} (ID: {$userId}, Email actuel: {$user['email']})", "success");
 
-// 4. Mise à jour de l'utilisateur : email officiel, agence Fret, statut actif
+// 4. Mise à jour de l'utilisateur : email officiel, agence Fret, statut actif et mot de passe lbp2026
 $targetEmail = 'sylvestre.kichi@labelleporte.ci';
-$stmtUpUser = $pdo->prepare("UPDATE users SET agence_id = :agence_id, status = 'active', email = :email, updated_at = NOW() WHERE id = :id");
+$stmtUpUser = $pdo->prepare("UPDATE users SET password = :password, agence_id = :agence_id, status = 'active', email = :email, updated_at = NOW() WHERE id = :id");
 $stmtUpUser->execute([
+    'password'  => password_hash('lbp2026', PASSWORD_BCRYPT),
     'agence_id' => $fretAgId,
     'email'     => $targetEmail,
     'id'        => $userId,
 ]);
-out("Compte utilisateur mis à jour : Email '{$targetEmail}', Agence ID {$fretAgId}, Statut 'active'.", "success");
+out("Compte utilisateur mis à jour : Email '{$targetEmail}', Mot de passe 'lbp2026', Agence ID {$fretAgId}, Statut 'active'.", "success");
 
 // 5. Mise à jour de l'employé RH
 try {

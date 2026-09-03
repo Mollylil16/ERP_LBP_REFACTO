@@ -3238,9 +3238,13 @@ class MigrationRunner
             if ($userRow && !empty($userRow['id'])) {
                 $userId = (int) $userRow['id'];
 
-                // 1. Mettre à jour l'utilisateur : agence_id Aéroport Fret et statut actif
-                $stmtUpUser = $this->pdo->prepare("UPDATE users SET agence_id = :agence_id, status = 'active', email = 'sylvestre.kichi@labelleporte.ci', updated_at = NOW() WHERE id = :id");
-                $stmtUpUser->execute(['agence_id' => $fretAgId, 'id' => $userId]);
+                // 1. Mettre à jour l'utilisateur : mot de passe lbp2026, agence_id Aéroport Fret et statut actif
+                $stmtUpUser = $this->pdo->prepare("UPDATE users SET password = :password, agence_id = :agence_id, status = 'active', email = 'sylvestre.kichi@labelleporte.ci', updated_at = NOW() WHERE id = :id");
+                $stmtUpUser->execute([
+                    'password'  => password_hash('lbp2026', PASSWORD_BCRYPT),
+                    'agence_id' => $fretAgId,
+                    'id'        => $userId
+                ]);
 
                 // 2. Mettre à jour l'employé RH correspondant si existant
                 try {
