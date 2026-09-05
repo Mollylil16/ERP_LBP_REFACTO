@@ -378,7 +378,7 @@ final class FinanceController extends FinanceBaseController
      */
     public function factureEncaisser(string $id): void
     {
-        RoleMiddleware::check(['caissiere', 'caissiere_principale', 'chef_agence', 'dg']);
+        RoleMiddleware::check(['caissiere', 'caissiere_principale', 'chef_agence', 'dg', 'agent_groupage', 'suivi_recouvrement']);
 
         if (!Csrf::verify($_POST['_csrf_token'] ?? null)) {
             Session::flash('error', 'Session expirée ou requête invalide (CSRF). Veuillez réessayer.');
@@ -401,7 +401,7 @@ final class FinanceController extends FinanceBaseController
             exit;
         }
 
-        // Sécurité SoD : l'agent groupage qui a créé le colis ne devrait pas pouvoir encaisser la facture
+        // Traçabilité de l'auteur du colis pour l'audit d'encaissement
         $colisCreatorId = 0;
         try {
             $stmt = $this->db->prepare("SELECT created_by FROM lbp_colis WHERE id = :id LIMIT 1");
@@ -409,12 +409,6 @@ final class FinanceController extends FinanceBaseController
             $colisCreatorId = (int) $stmt->fetchColumn();
         } catch (\Throwable $e) {
             $colisCreatorId = 0;
-        }
-
-        if ($colisCreatorId === Auth::id() && !Auth::hasRole('chef_agence') && $facture->devise !== 'EUR') {
-            Session::flash('error', '🚨 Double contrôle (SoD) : Vous ne pouvez pas encaisser une facture liée à un colis que vous avez vous-même enregistré.');
-            header('Location: ' . View::url('finance/factures/' . $id));
-            exit;
         }
 
         $montant = (float) ($_POST['montant'] ?? 0.0);
