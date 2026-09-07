@@ -10,66 +10,47 @@
 define('BASE_PATH', __DIR__);
 require_once BASE_PATH . '/vendor/autoload.php';
 
-$isCli = (php_sapi_name() === 'cli');
+// Activer l'affichage des erreurs et le vidage de buffer
+ini_set('display_errors', '1');
+error_reporting(E_ALL);
 
 function out(string $msg, string $type = 'info'): void {
-    global $isCli;
-    if ($isCli) {
-        $prefix = match($type) {
-            'success' => '[✔] ',
-            'error'   => '[-] ',
-            'warn'    => '[!] ',
-            default   => '[*] '
-        };
-        echo $prefix . $msg . PHP_EOL;
-    } else {
-        $color = match($type) {
-            'success' => '#155724; background-color: #d4edda; border-color: #c3e6cb;',
-            'error'   => '#721c24; background-color: #f8d7da; border-color: #f5c6cb;',
-            'warn'    => '#856404; background-color: #fff3cd; border-color: #ffeeba;',
-            default   => '#0c5460; background-color: #d1ecf1; border-color: #bee5eb;'
-        };
-        echo "<div style=\"padding:8px 12px; margin:4px 0; border:1px solid; border-radius:4px; color:{$color}; font-family:monospace;\">"
-             . htmlspecialchars($msg) . "</div>";
+    $prefix = match($type) {
+        'success' => '[✔] ',
+        'error'   => '[-] ',
+        'warn'    => '[!] ',
+        default   => '[*] '
+    };
+    echo $prefix . $msg . PHP_EOL;
+    if (php_sapi_name() !== 'cli') {
+        echo "<br>";
     }
+    if (ob_get_level() > 0) {
+        ob_flush();
+    }
+    flush();
 }
 
-if (!$isCli) {
-    echo "<!DOCTYPE html><html><head><meta charset='utf-8'><title>Attribution Rôles & Agences</title></head><body style='font-family:sans-serif; padding:20px; background:#f8f9fa;'>";
-    echo "<h2>Attribution des Rôles, Agences & Permissions (Liste Personnel)</h2>";
-}
-
-$config = require BASE_PATH . '/config/database.php';
-$ports = [$config['port'] ?? 3306, 3306, 3307, 3308];
-$creds = [
-    ['user' => $config['username'], 'pass' => $config['password']],
-    ['user' => 'root', 'pass' => ''],
-    ['user' => 'root', 'pass' => 'root'],
-    ['user' => 'admin', 'pass' => '@Succes2019'],
-];
+out("Démarrage du script d'attribution des rôles et agences...");
 
 $pdo = null;
-foreach ($ports as $port) {
-    foreach ($creds as $c) {
-        try {
-            $pdo = new PDO(
-                "mysql:host={$config['host']};port={$port};dbname={$config['dbname']};charset={$config['charset']}",
-                $c['user'],
-                $c['pass'],
-                [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC]
-            );
-            out("Connexion BDD réussie sur le port {$port} (user: {$c['user']})", "success");
-            break 2;
-        } catch (\Exception $e) {
-            // continuer
-        }
+try {
+    $pdo = \App\Models\Database::getConnection();
+    out("Connexion à la base de données réussie via Database::getConnection().", "success");
+} catch (\Throwable $e) {
+    out("Tentative avec config/database.php direct...", "warn");
+    $config = require BASE_PATH . '/config/database.php';
+    try {
+        $dsn = "mysql:host={$config['host']};port={$config['port']};dbname={$config['dbname']};charset={$config['charset']}";
+        $pdo = new PDO($dsn, $config['username'], $config['password'], [
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+        ]);
+        out("Connexion directe réussie à {$config['dbname']}.", "success");
+    } catch (\Throwable $err) {
+        out("Erreur de connexion BDD : " . $err->getMessage(), "error");
+        exit(1);
     }
-}
-
-if (!$pdo) {
-    out("Impossible d'établir la connexion MySQL. Vérifiez que MySQL/WAMP est démarré.", "error");
-    if (!$isCli) echo "</body></html>";
-    exit(1);
 }
 
 // 1. Structure des tables requises
@@ -362,7 +343,8 @@ $hasPassword = in_array('password', $userCols, true);
 $hasPasswordHash = in_array('password_hash', $userCols, true);
 $defaultPassword = password_hash('lbp2026', PASSWORD_BCRYPT);
 
-foreach ($staffList as $staff) {
+foreach ($staffList as $index => $staff) {
+    $num = $index + 1;
     // A. Recherche de l'utilisateur existant
     $user = null;
     foreach ($staff['email_match'] as $matcher) {
@@ -402,20 +384,20 @@ foreach ($staffList as $staff) {
         $stmtInsert = $pdo->prepare($sql);
         $stmtInsert->execute($params);
         $userId = (int) $pdo->lastInsertId();
-        out("Création du compte : {$staff['name']} <{$staff['default_mail']}> (ID: {$userId})", "success");
+        out("[{$num}/15] Création du compte : {$staff['name']} <{$staff['default_mail']}> (ID: {$userId})", "success");
     } else {
         $userId = (int) $user['id'];
         // Mise à jour de l'agence et du statut
         $stmtUp = $pdo->prepare("UPDATE users SET agence_id = :agence_id, status = 'active' WHERE id = :id");
         $stmtUp->execute(['agence_id' => $staff['agence_id'], 'id' => $userId]);
-        out("Utilisateur existant mis à jour : {$user['full_name']} (ID: {$userId}, Email: {$user['email']}) -> Agence {$staff['agence_name']} (ID {$staff['agence_id']})", "success");
+        out("[{$num}/15] Utilisateur mis à jour : {$user['full_name']} (ID: {$userId}, Email: {$user['email']}) -> Agence {$staff['agence_name']} (ID {$staff['agence_id']})", "success");
     }
 
     // B. Attribution du rôle dans lbp_user_roles
     $pdo->prepare("DELETE FROM lbp_user_roles WHERE user_id = ?")->execute([$userId]);
     $stmtRole = $pdo->prepare("INSERT INTO lbp_user_roles (user_id, role) VALUES (?, ?)");
     $stmtRole->execute([$userId, $staff['role']]);
-    out("  -> Rôle assigné : {$staff['role']}", "info");
+    out("    -> Rôle assigné : {$staff['role']}", "info");
 
     // C. Attribution des permissions granulaires
     $stmtEnt = $pdo->prepare("SELECT id FROM permission_entities WHERE code = ? LIMIT 1");
@@ -432,7 +414,7 @@ foreach ($staffList as $staff) {
             $stmtPerm->execute([$userId, (int)$entId, $rights[0], $rights[1], $rights[2], $rights[3]]);
         }
     }
-    out("  -> " . count($staff['permissions']) . " entités de permissions configurées.", "info");
+    out("    -> " . count($staff['permissions']) . " entités de permissions configurées.", "info");
 
     // D. Liaison avec rh_employees si la table existe
     try {
@@ -456,8 +438,3 @@ foreach ($staffList as $staff) {
 out("\n===========================================================", "success");
 out("  ATTRIBUTION TERMINÉE AVEC SUCCÈS POUR LES 15 UTILISATEURS", "success");
 out("===========================================================", "success");
-
-if (!$isCli) {
-    echo "<p><a href='/admin/users' style='display:inline-block; padding:10px 20px; background:#007bff; color:#fff; text-decoration:none; border-radius:4px;'>Retour aux Utilisateurs</a></p>";
-    echo "</body></html>";
-}
