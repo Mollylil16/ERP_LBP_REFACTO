@@ -79,9 +79,9 @@ $staffToCheck = [
         'name_pattern' => '%SIAKA%DIARRA%',
     ],
     [
-        'label'        => 'KOUAME GRACE',
-        'emails'       => ['grace.kouame@labelleporte.ci'],
-        'name_pattern' => '%KOUAME%GRACE%',
+        'label'        => 'KOUAME YVETTE',
+        'emails'       => ['yvette.kouame@labelleporte.ci', 'grace.kouame@labelleporte.ci'],
+        'name_pattern' => '%KOUAME%',
     ],
     [
         'label'        => 'KOLI KONAN ANICET',

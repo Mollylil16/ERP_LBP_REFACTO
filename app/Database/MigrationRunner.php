@@ -3432,9 +3432,9 @@ class MigrationRunner
                     'permissions' => ['colisage_colis' => [1, 1, 1, 0], 'colisage_expeditions' => [1, 1, 1, 0], 'crm_clients' => [1, 1, 1, 0], 'saisir_facture' => [1, 1, 1, 0], 'modifier_facture_apres_creation' => [1, 1, 1, 0], 'rapports_agence' => [1, 1, 0, 0], 'exporter_rapports_excel' => [1, 1, 0, 0], 'entrepot_inventaires' => [1, 1, 1, 0]]
                 ],
                 [
-                    'name'        => 'KOUAME GRACE',
-                    'email_match' => ['grace.kouame@labelleporte.ci', '%grace.kouame%', '%kouame%grace%'],
-                    'default_mail'=> 'grace.kouame@labelleporte.ci',
+                    'name'        => 'KOUAME YVETTE',
+                    'email_match' => ['yvette.kouame@labelleporte.ci', 'grace.kouame@labelleporte.ci', '%kouame%'],
+                    'default_mail'=> 'yvette.kouame@labelleporte.ci',
                     'role'        => 'agent_saisie',
                     'agence_id'   => 3403,
                     'permissions' => ['colisage_colis' => [1, 1, 0, 0], 'colisage_expeditions' => [1, 0, 0, 0], 'crm_clients' => [1, 1, 1, 0], 'saisir_facture' => [1, 1, 0, 0], 'exporter_colisage_sans_montant' => [1, 0, 0, 0]]

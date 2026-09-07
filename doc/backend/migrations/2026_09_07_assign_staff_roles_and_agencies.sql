@@ -41,8 +41,8 @@ UPDATE `users` SET `agence_id` = 1, `status` = 'active' WHERE `email` LIKE '%sal
 -- 3. DIARRA SIAKA -> Chef d'agence Dokui (ID 3403)
 UPDATE `users` SET `agence_id` = 3403, `status` = 'active' WHERE `email` LIKE '%siaka.diarra%' OR `full_name` LIKE '%DIARRA SIAKA%';
 
--- 4. KOUAME GRACE -> Agent de Saisie Dokui (ID 3403)
-UPDATE `users` SET `agence_id` = 3403, `status` = 'active' WHERE `email` LIKE '%grace.kouame%' OR (`full_name` LIKE '%KOUAME%' AND `full_name` LIKE '%GRACE%');
+-- 4. KOUAME YVETTE -> Agent de Saisie Dokui (ID 3403)
+UPDATE `users` SET `full_name` = 'KOUAME YVETTE', `email` = 'yvette.kouame@labelleporte.ci', `agence_id` = 3403, `status` = 'active' WHERE `email` LIKE '%yvette.kouame%' OR `email` LIKE '%grace.kouame%' OR `full_name` LIKE '%KOUAME%';
 
 -- 5. KOLI KONAN ANICET -> Agent de Saisie Dokui (ID 3403)
 UPDATE `users` SET `agence_id` = 3403, `status` = 'active' WHERE `email` LIKE '%anicet.koli%' OR `full_name` LIKE '%KOLI%';
@@ -100,10 +100,10 @@ SELECT `id`, 'chef_agence' FROM `users` WHERE `email` IN (
     'prince.kadjo@labelleporte.ci'
 );
 
--- Agents de Saisie : Kouame Grace, Koli Konan Anicet, Assoma Jean Eudes, Sarah Djambitche, Amy Karabboue, Sery Grace
+-- Agents de Saisie : Kouame Yvette, Koli Konan Anicet, Assoma Jean Eudes, Sarah Djambitche, Amy Karabboue, Sery Grace
 DELETE FROM `lbp_user_roles` WHERE `user_id` IN (
     SELECT `id` FROM `users` WHERE `email` IN (
-        'grace.kouame@labelleporte.ci',
+        'yvette.kouame@labelleporte.ci', 'grace.kouame@labelleporte.ci',
         'anicet.koli@labelleporte.ci',
         'jeaneudes.assoma@labelleporte.ci',
         'sarah.djambitche@labelleporte.ci',
@@ -113,7 +113,7 @@ DELETE FROM `lbp_user_roles` WHERE `user_id` IN (
 );
 INSERT INTO `lbp_user_roles` (`user_id`, `role`)
 SELECT `id`, 'agent_saisie' FROM `users` WHERE `email` IN (
-    'grace.kouame@labelleporte.ci',
+    'yvette.kouame@labelleporte.ci',
     'anicet.koli@labelleporte.ci',
     'jeaneudes.assoma@labelleporte.ci',
     'sarah.djambitche@labelleporte.ci',

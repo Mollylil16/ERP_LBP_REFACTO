@@ -191,11 +191,11 @@ $staffList = [
         ]
     ],
     [
-        'name'        => 'KOUAME GRACE',
+        'name'        => 'KOUAME YVETTE',
         'poste'       => 'AGENT DE SAISIE DOKUI',
-        'exact_emails'=> ['grace.kouame@labelleporte.ci'],
-        'name_pattern'=> '%KOUAME%GRACE%',
-        'default_mail'=> 'grace.kouame@labelleporte.ci',
+        'exact_emails'=> ['yvette.kouame@labelleporte.ci', 'grace.kouame@labelleporte.ci'],
+        'name_pattern'=> '%KOUAME%',
+        'default_mail'=> 'yvette.kouame@labelleporte.ci',
         'role'        => 'agent_saisie',
         'agence_id'   => 3403, // Abobo Dokui
         'agence_name' => 'Agence Abobo Dokui',
@@ -459,12 +459,15 @@ foreach ($staffList as $index => $staff) {
         $stmtInsert->execute($params);
         $userId = (int) $pdo->lastInsertId();
         out("[{$num}/15] [Créé] {$staff['name']} <{$staff['default_mail']}> (ID: {$userId}) -> Agence ID: " . ($validSiteId ?? 'Siège'), "success");
-    } else {
         $userId = (int) $user['id'];
-        $stmtUp = $pdo->prepare("UPDATE users SET agence_id = :agence_id, status = 'active' WHERE id = :id");
-        $stmtUp->execute(['agence_id' => $validSiteId, 'id' => $userId]);
-        out("[{$num}/15] [Mis à jour] {$user['full_name']} <{$user['email']}> (ID: {$userId}) -> Agence ID: " . ($validSiteId ?? 'Siège'), "success");
-    }
+        $stmtUp = $pdo->prepare("UPDATE users SET full_name = :full_name, email = :email, agence_id = :agence_id, status = 'active' WHERE id = :id");
+        $stmtUp->execute([
+            'full_name' => $staff['name'],
+            'email'     => $staff['default_mail'],
+            'agence_id' => $validSiteId,
+            'id'        => $userId
+        ]);
+        out("[{$num}/15] [Mis à jour] {$staff['name']} <{$staff['default_mail']}> (ID: {$userId}) -> Agence ID: " . ($validSiteId ?? 'Siège'), "success");
 
     // B. Rôle dans lbp_user_roles
     $pdo->prepare("DELETE FROM lbp_user_roles WHERE user_id = ?")->execute([$userId]);
