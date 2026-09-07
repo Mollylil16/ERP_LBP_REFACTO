@@ -4,8 +4,8 @@ ini_set('display_startup_errors', '1');
 error_reporting(E_ALL);
 
 /**
- * Script d'attribution automatique des rôles, agences et permissions
- * pour la liste des utilisateurs du personnel (Liste PDF).
+ * Script officiel d'attribution automatique des rôles, agences et permissions
+ * pour l'ensemble des 22 utilisateurs de l'ERP LA BELLE PORTE.
  * Compatible PHP 7.4+ et PHP 8.x
  */
 
@@ -53,8 +53,8 @@ function out($msg, $type = 'info') {
 }
 
 if (!$isCli) {
-    echo "<!DOCTYPE html><html><head><meta charset='utf-8'><title>Attribution Rôles & Agences</title></head><body style='font-family:sans-serif; padding:20px; background:#f8f9fa;'>";
-    echo "<h2>Attribution des Rôles, Agences & Permissions (Liste Personnel)</h2>";
+    echo "<!DOCTYPE html><html><head><meta charset='utf-8'><title>Attribution Rôles & Agences ERP</title></head><body style='font-family:sans-serif; padding:20px; background:#f8f9fa;'>";
+    echo "<h2>Attribution des Rôles, Agences & Permissions (22 Utilisateurs)</h2>";
 }
 
 out("Version PHP : " . PHP_VERSION, "info");
@@ -77,7 +77,7 @@ try {
         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
     ]);
-    out("Connexion à la base {$config['dbname']} réussie.", "success");
+    out("Connexion réussie à la base {$config['dbname']}.", "success");
 } catch (Exception $e) {
     out("Erreur MySQL : " . $e->getMessage(), "error");
     if (!$isCli) echo "</body></html>";
@@ -112,16 +112,10 @@ $pdo->exec("
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 ");
 
-// Fonction de validation du site ID par rapport à company_sites
+// Validation site ID
 function resolveValidSiteId($pdo, $targetSiteId) {
     if ($targetSiteId === null || $targetSiteId === 1) {
-        // Vérifier si le site 1 existe
-        $stmt = $pdo->prepare("SELECT id FROM company_sites WHERE id = ?");
-        $stmt->execute([$targetSiteId]);
-        if ($stmt->fetchColumn()) {
-            return (int)$targetSiteId;
-        }
-        return null; // Siège / Multi-agence
+        return null; // Toutes les agences / Siège
     }
     $stmt = $pdo->prepare("SELECT id FROM company_sites WHERE id = ?");
     $stmt->execute([$targetSiteId]);
@@ -131,18 +125,20 @@ function resolveValidSiteId($pdo, $targetSiteId) {
     return null;
 }
 
-// 2. Définition stricte des 15 utilisateurs de la liste PDF
-$staffList = [
+// 2. Définition complète des 22 utilisateurs
+$usersList = [
+    // 1. AKOIBLIN ROXANE
     [
-        'name'        => 'AKOIBLIN ROXANE',
-        'poste'       => "CHEF D'AGENCE ADJAME",
-        'exact_emails'=> ['roxane.akoiblin@labelleporte.ci', 'roxane.a@labelleporte.ci'],
-        'name_pattern'=> '%AKOIBLIN%',
-        'default_mail'=> 'roxane.akoiblin@labelleporte.ci',
-        'role'        => 'chef_agence',
-        'agence_id'   => 3404, // Adjamé
-        'agence_name' => 'Agence Adjamé',
-        'permissions' => [
+        'name'         => 'AKOIBLIN ROXANE',
+        'poste'        => "CHEF D'AGENCE ADJAME",
+        'email'        => 'roxane.akoiblin@labelleporte.ci',
+        'alias_emails' => ['roxane.akoiblin@labelleporte.ci'],
+        'name_pattern' => '%AKOIBLIN%',
+        'roles'        => ['chef_agence'],
+        'is_admin'     => 0,
+        'agence_id'    => 3404, // Adjamé
+        'agence_label' => 'Agence Adjamé (ID 3404)',
+        'permissions'  => [
             'colisage_colis'        => [1, 1, 1, 0],
             'colisage_expeditions'  => [1, 1, 1, 0],
             'crm_clients'           => [1, 1, 1, 0],
@@ -153,16 +149,18 @@ $staffList = [
             'entrepot_inventaires'  => [1, 1, 1, 0],
         ]
     ],
+    // 2. KOUAKOU SALES
     [
-        'name'        => 'KOUAKOU SALES',
-        'poste'       => 'RESPONSABLE GROUPAGE',
-        'exact_emails'=> ['sales.kouakou@labelleporte.ci'],
-        'name_pattern'=> '%SALES%',
-        'default_mail'=> 'sales.kouakou@labelleporte.ci',
-        'role'        => 'agent_groupage',
-        'agence_id'   => 1, // Siège
-        'agence_name' => 'Siège Abidjan',
-        'permissions' => [
+        'name'         => 'KOUAKOU SALES',
+        'poste'        => 'RESPONSABLE GROUPAGE GENERAL',
+        'email'        => 'kouakou.sales@labelleporte.ci',
+        'alias_emails' => ['kouakou.sales@labelleporte.ci', 'sales.kouakou@labelleporte.ci'],
+        'name_pattern' => '%SALES%',
+        'roles'        => ['responsable_groupage', 'agent_groupage'],
+        'is_admin'     => 0,
+        'agence_id'    => null, // Toutes les agences
+        'agence_label' => 'Toutes les agences (Siège)',
+        'permissions'  => [
             'colisage_colis'        => [1, 1, 1, 0],
             'colisage_expeditions'  => [1, 1, 1, 0],
             'entrepot_inventaires'  => [1, 1, 1, 0],
@@ -170,16 +168,18 @@ $staffList = [
             'crm_clients'           => [1, 1, 1, 0],
         ]
     ],
+    // 3. DIARRA SIAKA
     [
-        'name'        => 'DIARRA SIAKA',
-        'poste'       => "CHEF D'AGENCE DOKUI",
-        'exact_emails'=> ['siaka.diarra@labelleporte.ci'],
-        'name_pattern'=> '%SIAKA%DIARRA%',
-        'default_mail'=> 'siaka.diarra@labelleporte.ci',
-        'role'        => 'chef_agence',
-        'agence_id'   => 3403, // Abobo Dokui
-        'agence_name' => 'Agence Abobo Dokui',
-        'permissions' => [
+        'name'         => 'DIARRA SIAKA',
+        'poste'        => "CHEF D'AGENCE DOKUI",
+        'email'        => 'siaka.diarra@labelleporte.ci',
+        'alias_emails' => ['siaka.diarra@labelleporte.ci'],
+        'name_pattern' => '%SIAKA%DIARRA%',
+        'roles'        => ['chef_agence'],
+        'is_admin'     => 0,
+        'agence_id'    => 3403, // Abobo Dokui
+        'agence_label' => 'Agence Abobo Dokui (ID 3403)',
+        'permissions'  => [
             'colisage_colis'        => [1, 1, 1, 0],
             'colisage_expeditions'  => [1, 1, 1, 0],
             'crm_clients'           => [1, 1, 1, 0],
@@ -190,16 +190,18 @@ $staffList = [
             'entrepot_inventaires'  => [1, 1, 1, 0],
         ]
     ],
+    // 4. KOUAME YVETTE
     [
-        'name'        => 'KOUAME YVETTE',
-        'poste'       => 'AGENT DE SAISIE DOKUI',
-        'exact_emails'=> ['yvette.kouame@labelleporte.ci', 'grace.kouame@labelleporte.ci'],
-        'name_pattern'=> '%KOUAME%',
-        'default_mail'=> 'yvette.kouame@labelleporte.ci',
-        'role'        => 'agent_saisie',
-        'agence_id'   => 3403, // Abobo Dokui
-        'agence_name' => 'Agence Abobo Dokui',
-        'permissions' => [
+        'name'         => 'KOUAME Yvette',
+        'poste'        => 'AGENT DE SAISIE DOKUI',
+        'email'        => 'kouame.yvette@labelleporte.ci',
+        'alias_emails' => ['kouame.yvette@labelleporte.ci', 'yvette.kouame@labelleporte.ci', 'grace.kouame@labelleporte.ci'],
+        'name_pattern' => '%KOUAME%',
+        'roles'        => ['agent_saisie'],
+        'is_admin'     => 0,
+        'agence_id'    => 3403, // Abobo Dokui
+        'agence_label' => 'Agence Abobo Dokui (ID 3403)',
+        'permissions'  => [
             'colisage_colis'        => [1, 1, 0, 0],
             'colisage_expeditions'  => [1, 0, 0, 0],
             'crm_clients'           => [1, 1, 1, 0],
@@ -207,16 +209,18 @@ $staffList = [
             'exporter_colisage_sans_montant' => [1, 0, 0, 0],
         ]
     ],
+    // 5. KOLI KONAN ANICET
     [
-        'name'        => 'KOLI KONAN ANICET',
-        'poste'       => 'AGENT DE SAISIE DOKUI',
-        'exact_emails'=> ['anicet.koli@labelleporte.ci'],
-        'name_pattern'=> '%KOLI%ANICET%',
-        'default_mail'=> 'anicet.koli@labelleporte.ci',
-        'role'        => 'agent_saisie',
-        'agence_id'   => 3403, // Abobo Dokui
-        'agence_name' => 'Agence Abobo Dokui',
-        'permissions' => [
+        'name'         => 'KOLI KONAN ANICET',
+        'poste'        => 'AGENT DE SAISIE DOKUI',
+        'email'        => 'anicet.konan@labelleporte.ci',
+        'alias_emails' => ['anicet.konan@labelleporte.ci', 'anicet.koli@labelleporte.ci'],
+        'name_pattern' => '%KOLI%',
+        'roles'        => ['agent_saisie'],
+        'is_admin'     => 0,
+        'agence_id'    => 3403, // Abobo Dokui
+        'agence_label' => 'Agence Abobo Dokui (ID 3403)',
+        'permissions'  => [
             'colisage_colis'        => [1, 1, 0, 0],
             'colisage_expeditions'  => [1, 0, 0, 0],
             'crm_clients'           => [1, 1, 1, 0],
@@ -224,16 +228,18 @@ $staffList = [
             'exporter_colisage_sans_montant' => [1, 0, 0, 0],
         ]
     ],
+    // 6. Mme AGBADAN (Carine Abou)
     [
-        'name'        => 'ABOU CARINE (Mme AGBADAN)',
-        'poste'       => 'CAISSIERE DOKUI',
-        'exact_emails'=> ['carine.abou@labelleporte.ci'],
-        'name_pattern'=> '%AGBADAN%',
-        'default_mail'=> 'carine.abou@labelleporte.ci',
-        'role'        => 'caissiere',
-        'agence_id'   => 3403, // Abobo Dokui
-        'agence_name' => 'Agence Abobo Dokui',
-        'permissions' => [
+        'name'         => 'Mme AGBADAN (Carine Abou)',
+        'poste'        => 'CAISSIERE PRINCIPALE & CAISSIERE DOKUI',
+        'email'        => 'carine.abou@labelleporte.ci',
+        'alias_emails' => ['carine.abou@labelleporte.ci'],
+        'name_pattern' => '%AGBADAN%',
+        'roles'        => ['caissiere_principale', 'caissiere'],
+        'is_admin'     => 0,
+        'agence_id'    => 3403, // Abobo Dokui
+        'agence_label' => 'Agence Abobo Dokui (ID 3403)',
+        'permissions'  => [
             'saisir_facture'        => [1, 1, 0, 0],
             'finance_retraits'      => [1, 1, 0, 0],
             'colisage_colis'        => [1, 0, 0, 0],
@@ -241,46 +247,55 @@ $staffList = [
             'rapports_agence'       => [1, 0, 0, 0],
         ]
     ],
+    // 7. ABASSI WILFRIED
     [
-        'name'        => 'ABASSI WILFRIED',
-        'poste'       => 'RESPONSABLE MARKETING ET COMMUNICATION',
-        'exact_emails'=> ['wilfried.abassi@labelleporte.ci'],
-        'name_pattern'=> '%ABASSI%',
-        'default_mail'=> 'wilfried.abassi@labelleporte.ci',
-        'role'        => 'responsable_marketing',
-        'agence_id'   => 1, // Siège
-        'agence_name' => 'Siège Abidjan',
-        'permissions' => [
+        'name'         => 'ABASSI WILFRIED',
+        'poste'        => 'RESPONSABLE MARKETING & COMMUNICATION ET RESPONSABLE CALL CENTER',
+        'email'        => 'wilfried.abassi@labelleporte.ci',
+        'alias_emails' => ['wilfried.abassi@labelleporte.ci'],
+        'name_pattern' => '%ABASSI%',
+        'roles'        => ['responsable_marketing', 'responsable_call_center', 'agent_call_center'],
+        'is_admin'     => 0,
+        'agence_id'    => null, // Toutes les agences
+        'agence_label' => 'Toutes les agences (Siège)',
+        'permissions'  => [
             'crm_clients'           => [1, 1, 1, 0],
             'crm_opportunities'     => [1, 1, 1, 0],
+            'call_center_view'      => [1, 1, 0, 0],
+            'call_center_manage'    => [1, 1, 1, 0],
+            'colisage_colis'        => [1, 0, 0, 0],
         ]
     ],
+    // 8. LASSICI MARIAM
     [
-        'name'        => 'LASSICI MARIAM',
-        'poste'       => 'AGENT CALL CENTER',
-        'exact_emails'=> ['mariam.lassici@labelleporte.ci'],
-        'name_pattern'=> '%LASSICI%',
-        'default_mail'=> 'mariam.lassici@labelleporte.ci',
-        'role'        => 'agent_call_center',
-        'agence_id'   => 1, // Siège
-        'agence_name' => 'Siège Abidjan',
-        'permissions' => [
+        'name'         => 'LASSICI MARIAM',
+        'poste'        => 'AGENT CALL CENTER',
+        'email'        => 'mariam.lassici@labelleporte.ci',
+        'alias_emails' => ['mariam.lassici@labelleporte.ci'],
+        'name_pattern' => '%LASSICI%',
+        'roles'        => ['agent_call_center'],
+        'is_admin'     => 0,
+        'agence_id'    => null, // Toutes les agences
+        'agence_label' => 'Toutes les agences (Siège)',
+        'permissions'  => [
             'call_center_view'      => [1, 1, 0, 0],
             'call_center_manage'    => [1, 1, 1, 0],
             'colisage_colis'        => [1, 0, 0, 0],
             'crm_clients'           => [1, 1, 1, 0],
         ]
     ],
+    // 9. KOFFI MARQUEZ
     [
-        'name'        => 'KOFFI MARQUEZ',
-        'poste'       => "CHEF D'AGENCE AEROPORT",
-        'exact_emails'=> ['marquez.koffi@labelleporte.ci'],
-        'name_pattern'=> '%MARQUEZ%',
-        'default_mail'=> 'marquez.koffi@labelleporte.ci',
-        'role'        => 'chef_agence',
-        'agence_id'   => 3402, // Aéroport Port-Bouët Fret
-        'agence_name' => 'Aéroport Port Bouët Fret',
-        'permissions' => [
+        'name'         => 'KOFFI MARQUEZ',
+        'poste'        => "CHEF D'AGENCE AEROPORT",
+        'email'        => 'marquez.koffi@labelleporte.ci',
+        'alias_emails' => ['marquez.koffi@labelleporte.ci'],
+        'name_pattern' => '%MARQUEZ%',
+        'roles'        => ['chef_agence'],
+        'is_admin'     => 0,
+        'agence_id'    => 3402, // Aéroport Port-Bouët Fret
+        'agence_label' => 'Aéroport Port-Bouët Fret (ID 3402)',
+        'permissions'  => [
             'colisage_colis'        => [1, 1, 1, 0],
             'colisage_expeditions'  => [1, 1, 1, 0],
             'crm_clients'           => [1, 1, 1, 0],
@@ -291,16 +306,18 @@ $staffList = [
             'entrepot_inventaires'  => [1, 1, 1, 0],
         ]
     ],
+    // 10. ASSOMA ASSI JEAN EUDES
     [
-        'name'        => 'ASSOMA ASSI JEAN EUDES',
-        'poste'       => 'AGENT DE SAISIE AEROPORT',
-        'exact_emails'=> ['jeaneudes.assoma@labelleporte.ci'],
-        'name_pattern'=> '%ASSOMA%',
-        'default_mail'=> 'jeaneudes.assoma@labelleporte.ci',
-        'role'        => 'agent_saisie',
-        'agence_id'   => 3402, // Aéroport Port-Bouët Fret
-        'agence_name' => 'Aéroport Port Bouët Fret',
-        'permissions' => [
+        'name'         => 'ASSOMA ASSI JEAN EUDES',
+        'poste'        => 'AGENT DE SAISIE AEROPORT',
+        'email'        => 'jean.eudes@labelleporte.ci',
+        'alias_emails' => ['jean.eudes@labelleporte.ci', 'jeaneudes.assoma@labelleporte.ci'],
+        'name_pattern' => '%ASSOMA%',
+        'roles'        => ['agent_saisie'],
+        'is_admin'     => 0,
+        'agence_id'    => 3402, // Aéroport Port-Bouët Fret
+        'agence_label' => 'Aéroport Port-Bouët Fret (ID 3402)',
+        'permissions'  => [
             'colisage_colis'        => [1, 1, 0, 0],
             'colisage_expeditions'  => [1, 0, 0, 0],
             'crm_clients'           => [1, 1, 1, 0],
@@ -308,16 +325,18 @@ $staffList = [
             'exporter_colisage_sans_montant' => [1, 0, 0, 0],
         ]
     ],
+    // 11. ADEPO MARIE ESTHER
     [
-        'name'        => 'ADEPO MARIE ESTHER',
-        'poste'       => "CHEF D'AGENCE SENEGAL",
-        'exact_emails'=> ['estelle.adepo@labelleporte.ci', 'esther.adepo@labelleporte.ci'],
-        'name_pattern'=> '%ADEPO%ESTHER%',
-        'default_mail'=> 'estelle.adepo@labelleporte.ci',
-        'role'        => 'chef_agence',
-        'agence_id'   => 3401, // Agence Sénégal
-        'agence_name' => 'Agence Sénégal - Dakar',
-        'permissions' => [
+        'name'         => 'ADEPO MARIE ESTHER',
+        'poste'        => "CHEF D'AGENCE SENEGAL",
+        'email'        => 'estelle.adepo@labelleporte.ci',
+        'alias_emails' => ['estelle.adepo@labelleporte.ci', 'esther.adepo@labelleporte.ci'],
+        'name_pattern' => '%ADEPO%',
+        'roles'        => ['chef_agence'],
+        'is_admin'     => 0,
+        'agence_id'    => 3401, // Agence Sénégal
+        'agence_label' => 'Agence Sénégal (ID 3401)',
+        'permissions'  => [
             'colisage_colis'        => [1, 1, 1, 0],
             'colisage_expeditions'  => [1, 1, 1, 0],
             'crm_clients'           => [1, 1, 1, 0],
@@ -328,16 +347,18 @@ $staffList = [
             'entrepot_inventaires'  => [1, 1, 1, 0],
         ]
     ],
+    // 12. DJAMBITCHE SARAH STEPHANIE
     [
-        'name'        => 'DJAMBITCHE SARAH STEPHANIE',
-        'poste'       => 'AGENT DE SAISIE ADJAME',
-        'exact_emails'=> ['sarah.djambitche@labelleporte.ci'],
-        'name_pattern'=> '%SARAH%DJAMBITCHE%',
-        'default_mail'=> 'sarah.djambitche@labelleporte.ci',
-        'role'        => 'agent_saisie',
-        'agence_id'   => 3404, // Adjamé
-        'agence_name' => 'Agence Adjamé',
-        'permissions' => [
+        'name'         => 'DJAMBITCHE SARAH STEPHANIE',
+        'poste'        => 'AGENT DE SAISIE ADJAME',
+        'email'        => 'sarah.djambitche@labelleporte.ci',
+        'alias_emails' => ['sarah.djambitche@labelleporte.ci'],
+        'name_pattern' => '%SARAH%DJAMBITCHE%',
+        'roles'        => ['agent_saisie'],
+        'is_admin'     => 0,
+        'agence_id'    => 3404, // Adjamé
+        'agence_label' => 'Agence Adjamé (ID 3404)',
+        'permissions'  => [
             'colisage_colis'        => [1, 1, 0, 0],
             'colisage_expeditions'  => [1, 0, 0, 0],
             'crm_clients'           => [1, 1, 1, 0],
@@ -345,16 +366,18 @@ $staffList = [
             'exporter_colisage_sans_montant' => [1, 0, 0, 0],
         ]
     ],
+    // 13. KARABBOUE AMY
     [
-        'name'        => 'KARABBOUE AMY',
-        'poste'       => 'AGENT DE SAISIE ADJAME',
-        'exact_emails'=> ['amy.dieng@labelleporte.ci', 'amy.karabboue@labelleporte.ci'],
-        'name_pattern'=> '%KARABBOUE%',
-        'default_mail'=> 'amy.dieng@labelleporte.ci',
-        'role'        => 'agent_saisie',
-        'agence_id'   => 3404, // Adjamé
-        'agence_name' => 'Agence Adjamé',
-        'permissions' => [
+        'name'         => 'KARABBOUE AMY',
+        'poste'        => 'AGENT DE SAISIE ADJAME',
+        'email'        => 'karabboue.amy@labelleporte.ci',
+        'alias_emails' => ['karabboue.amy@labelleporte.ci'],
+        'name_pattern' => '%KARABBOUE%',
+        'roles'        => ['agent_saisie'],
+        'is_admin'     => 0,
+        'agence_id'    => 3404, // Adjamé
+        'agence_label' => 'Agence Adjamé (ID 3404)',
+        'permissions'  => [
             'colisage_colis'        => [1, 1, 0, 0],
             'colisage_expeditions'  => [1, 0, 0, 0],
             'crm_clients'           => [1, 1, 1, 0],
@@ -362,16 +385,18 @@ $staffList = [
             'exporter_colisage_sans_montant' => [1, 0, 0, 0],
         ]
     ],
+    // 14. SERY GRACE
     [
-        'name'        => 'SERY GRACE',
-        'poste'       => 'AGENT DE SAISIE ADJAME',
-        'exact_emails'=> ['grace.sery@labelleporte.ci'],
-        'name_pattern'=> '%SERY%GRACE%',
-        'default_mail'=> 'grace.sery@labelleporte.ci',
-        'role'        => 'agent_saisie',
-        'agence_id'   => 3404, // Adjamé
-        'agence_name' => 'Agence Adjamé',
-        'permissions' => [
+        'name'         => 'SERY GRACE',
+        'poste'        => 'AGENT DE SAISIE ADJAME',
+        'email'        => 'sery.grace@labelleporte.ci',
+        'alias_emails' => ['sery.grace@labelleporte.ci', 'grace.sery@labelleporte.ci'],
+        'name_pattern' => '%SERY%',
+        'roles'        => ['agent_saisie'],
+        'is_admin'     => 0,
+        'agence_id'    => 3404, // Adjamé
+        'agence_label' => 'Agence Adjamé (ID 3404)',
+        'permissions'  => [
             'colisage_colis'        => [1, 1, 0, 0],
             'colisage_expeditions'  => [1, 0, 0, 0],
             'crm_clients'           => [1, 1, 1, 0],
@@ -379,16 +404,18 @@ $staffList = [
             'exporter_colisage_sans_montant' => [1, 0, 0, 0],
         ]
     ],
+    // 15. KADJO PRINCE
     [
-        'name'        => 'KADJO PRINCE',
-        'poste'       => 'RESPONSABLE PARIS',
-        'exact_emails'=> ['prince.kadjo@labelleporte.ci'],
-        'name_pattern'=> '%PRINCE%KADJO%',
-        'default_mail'=> 'prince.kadjo@labelleporte.ci',
-        'role'        => 'chef_agence',
-        'agence_id'   => 3400, // France Paris
-        'agence_name' => 'Agence France - Paris',
-        'permissions' => [
+        'name'         => 'KADJO PRINCE',
+        'poste'        => 'CHEF D\'AGENCE FRANCE',
+        'email'        => 'prince.kadjo@labelleporte.ci',
+        'alias_emails' => ['prince.kadjo@labelleporte.ci'],
+        'name_pattern' => '%PRINCE%KADJO%',
+        'roles'        => ['chef_agence'],
+        'is_admin'     => 0,
+        'agence_id'    => 3400, // France Paris
+        'agence_label' => 'Agence France - Paris (ID 3400)',
+        'permissions'  => [
             'colisage_colis'        => [1, 1, 1, 0],
             'colisage_expeditions'  => [1, 1, 1, 0],
             'crm_clients'           => [1, 1, 1, 0],
@@ -397,11 +424,157 @@ $staffList = [
             'rapports_agence'       => [1, 1, 0, 0],
             'exporter_rapports_excel'=> [1, 1, 0, 0],
             'entrepot_inventaires'  => [1, 1, 1, 0],
+        ]
+    ],
+    // 16. Claude Yedess
+    [
+        'name'         => 'Claude Yedess',
+        'poste'        => 'ASSISTANTE DG',
+        'email'        => 'claude.yedess@labelleporte.ci',
+        'alias_emails' => ['claude.yedess@labelleporte.ci'],
+        'name_pattern' => '%YEDESS%',
+        'roles'        => ['assistant_dg', 'assistante_dg'],
+        'is_admin'     => 0,
+        'agence_id'    => null, // Toutes les agences
+        'agence_label' => 'Toutes les agences (Direction)',
+        'permissions'  => [
+            'colisage_colis'        => [1, 0, 0, 0],
+            'colisage_expeditions'  => [1, 0, 0, 0],
+            'crm_clients'           => [1, 0, 0, 0],
+            'saisir_facture'        => [1, 0, 0, 0],
+            'rapports_agence'       => [1, 0, 0, 0],
+            'call_center_view'      => [1, 0, 0, 0],
+        ]
+    ],
+    // 17. Dieng Amy
+    [
+        'name'         => 'Dieng Amy',
+        'poste'        => 'AGENT DE SAISIE SENEGAL',
+        'email'        => 'amy.dieng@labelleporte.ci',
+        'alias_emails' => ['amy.dieng@labelleporte.ci'],
+        'name_pattern' => '%DIENG%',
+        'roles'        => ['agent_saisie'],
+        'is_admin'     => 0,
+        'agence_id'    => 3401, // Agence Sénégal
+        'agence_label' => 'Agence Sénégal (ID 3401)',
+        'permissions'  => [
+            'colisage_colis'        => [1, 1, 0, 0],
+            'colisage_expeditions'  => [1, 0, 0, 0],
+            'crm_clients'           => [1, 1, 1, 0],
+            'saisir_facture'        => [1, 1, 0, 0],
+            'exporter_colisage_sans_montant' => [1, 0, 0, 0],
+        ]
+    ],
+    // 18. BRUNELL OMEPIEUR
+    [
+        'name'         => 'BRUNELL OMEPIEUR',
+        'poste'        => 'ADMINISTRATEUR',
+        'email'        => 'brunellomepieu@labelleporte.ci',
+        'alias_emails' => ['brunellomepieu@labelleporte.ci', 'brunellomepieu01@gmail.com'],
+        'name_pattern' => '%BRUNELL%',
+        'roles'        => ['admin'],
+        'is_admin'     => 1,
+        'agence_id'    => null, // Toutes les agences
+        'agence_label' => 'Toutes les agences (Super Admin)',
+        'permissions'  => [
+            'users'                 => [1, 1, 1, 1],
+            'user_permissions'      => [1, 1, 1, 1],
+            'colisage_colis'        => [1, 1, 1, 1],
+            'colisage_expeditions'  => [1, 1, 1, 1],
+            'crm_clients'           => [1, 1, 1, 1],
+            'saisir_facture'        => [1, 1, 1, 1],
+        ]
+    ],
+    // 19. SIBRI PAUL
+    [
+        'name'         => 'SIBRI PAUL',
+        'poste'        => 'COMPTABLE',
+        'email'        => 'sibri.paulaime@labelleporte.ci',
+        'alias_emails' => ['sibri.paulaime@labelleporte.ci'],
+        'name_pattern' => '%SIBRI%',
+        'roles'        => ['comptable'],
+        'is_admin'     => 0,
+        'agence_id'    => 3403, // Abobo Dokui
+        'agence_label' => 'Agence Abobo Dokui (ID 3403)',
+        'permissions'  => [
+            'saisir_facture'        => [1, 1, 1, 0],
+            'finance_retraits'      => [1, 1, 1, 0],
+            'finance_compensations' => [1, 1, 1, 0],
+            'facturation_factures'  => [1, 1, 1, 0],
+            'rapports_agence'       => [1, 1, 0, 0],
+            'exporter_rapports_excel'=> [1, 1, 0, 0],
+            'exporter_facturation_avec_montant' => [1, 1, 0, 0],
+            'colisage_colis'        => [1, 0, 0, 0],
+            'crm_clients'           => [1, 1, 1, 0],
+        ]
+    ],
+    // 20. SORO IBRAHIM
+    [
+        'name'         => 'SORO IBRAHIM',
+        'poste'        => 'STAGIAIRE RH',
+        'email'        => 'soro.ibrahim@labelleporte.ci',
+        'alias_emails' => ['soro.ibrahim@labelleporte.ci'],
+        'name_pattern' => '%SORO%',
+        'roles'        => ['rh', 'rh_agent', 'stagiaire_rh'],
+        'is_admin'     => 0,
+        'agence_id'    => 3403, // Abobo Dokui
+        'agence_label' => 'Agence Abobo Dokui (ID 3403)',
+        'permissions'  => [
+            'rh_employees'          => [1, 1, 1, 0],
+            'rh_employee_history'   => [1, 1, 1, 0],
+            'rh_employee_mutations' => [1, 1, 1, 0],
+            'rh_attendance'         => [1, 1, 1, 0],
+            'rh_leaves'             => [1, 1, 1, 0],
+        ]
+    ],
+    // 21. Serge Kadjo
+    [
+        'name'         => 'Serge Kadjo',
+        'poste'        => 'DIRECTEUR GENERAL',
+        'email'        => 'serge.kadjo@labelleporte.ci',
+        'alias_emails' => ['serge.kadjo@labelleporte.ci', 'serges.kadjo@labelleporte.ci'],
+        'name_pattern' => '%SERGE%KADJO%',
+        'roles'        => ['dg', 'dg_surveillance'],
+        'is_admin'     => 1,
+        'agence_id'    => null, // Toutes les agences
+        'agence_label' => 'Toutes les agences (Direction Générale)',
+        'permissions'  => [
+            'colisage_colis'        => [1, 1, 1, 1],
+            'colisage_expeditions'  => [1, 1, 1, 1],
+            'crm_clients'           => [1, 1, 1, 1],
+            'saisir_facture'        => [1, 1, 1, 1],
+            'surveillance_module'   => [1, 1, 1, 1],
+        ]
+    ],
+    // 22. Adje Roxane
+    [
+        'name'         => 'Adje Roxane',
+        'poste'        => 'RESPONSABLE RH',
+        'email'        => 'roxane.a@labelleporte.ci',
+        'alias_emails' => ['roxane.a@labelleporte.ci', 'adjemoriaroxanne@labelleporte.cloud'],
+        'name_pattern' => '%ADJE%',
+        'roles'        => ['responsable_rh', 'rh', 'rh_manager'],
+        'is_admin'     => 0,
+        'agence_id'    => null, // Toutes les agences
+        'agence_label' => 'Toutes les agences (Direction RH)',
+        'permissions'  => [
+            'rh_employees'          => [1, 1, 1, 1],
+            'rh_employee_history'   => [1, 1, 1, 1],
+            'rh_employee_mutations' => [1, 1, 1, 1],
+            'rh_exit_reasons'       => [1, 1, 1, 1],
+            'rh_functions'          => [1, 1, 1, 1],
+            'rh_services'           => [1, 1, 1, 1],
+            'rh_statuses'           => [1, 1, 1, 1],
+            'rh_contracts'          => [1, 1, 1, 1],
+            'rh_payroll_params'     => [1, 1, 1, 1],
+            'rh_attendance'         => [1, 1, 1, 1],
+            'rh_payroll'            => [1, 1, 1, 1],
+            'rh_leaves'             => [1, 1, 1, 1],
         ]
     ],
 ];
 
-out("Attribution en cours pour les 15 utilisateurs du personnel...", "info");
+out("Attribution en cours pour les 22 utilisateurs du personnel...", "info");
 
 $userCols = $pdo->query("SHOW COLUMNS FROM users")->fetchAll(PDO::FETCH_COLUMN);
 if (!$userCols) $userCols = [];
@@ -409,32 +582,33 @@ $hasPassword = in_array('password', $userCols, true);
 $hasPasswordHash = in_array('password_hash', $userCols, true);
 $defaultPassword = password_hash('lbp2026', PASSWORD_BCRYPT);
 
-foreach ($staffList as $index => $staff) {
+foreach ($usersList as $index => $uData) {
     $num = $index + 1;
-    $validSiteId = resolveValidSiteId($pdo, $staff['agence_id']);
+    $validSiteId = resolveValidSiteId($pdo, $uData['agence_id']);
 
-    // A. Recherche stricte
+    // A. Recherche de l'utilisateur par e-mail exact ou alias
     $user = null;
-    foreach ($staff['exact_emails'] as $em) {
+    foreach ($uData['alias_emails'] as $em) {
         $stmt = $pdo->prepare("SELECT * FROM users WHERE LOWER(email) = LOWER(?) LIMIT 1");
         $stmt->execute([$em]);
         $user = $stmt->fetch();
         if ($user) break;
     }
 
-    if (!$user && !empty($staff['name_pattern'])) {
+    if (!$user && !empty($uData['name_pattern'])) {
         $stmt = $pdo->prepare("SELECT * FROM users WHERE full_name LIKE ? LIMIT 1");
-        $stmt->execute([$staff['name_pattern']]);
+        $stmt->execute([$uData['name_pattern']]);
         $user = $stmt->fetch();
     }
 
     if (!$user) {
         // Création de l'utilisateur
         $insertFields = ['full_name', 'email', 'status', 'is_admin'];
-        $insertValues = [':full_name', ':email', "'active'", 0];
+        $insertValues = [':full_name', ':email', "'active'", ':is_admin'];
         $params = [
-            'full_name' => $staff['name'],
-            'email'     => $staff['default_mail'],
+            'full_name' => $uData['name'],
+            'email'     => $uData['email'],
+            'is_admin'  => $uData['is_admin'],
         ];
 
         if ($validSiteId !== null) {
@@ -458,22 +632,27 @@ foreach ($staffList as $index => $staff) {
         $stmtInsert = $pdo->prepare($sql);
         $stmtInsert->execute($params);
         $userId = (int) $pdo->lastInsertId();
-        out("[{$num}/15] [Créé] {$staff['name']} <{$staff['default_mail']}> (ID: {$userId}) -> Agence ID: " . ($validSiteId ?? 'Siège'), "success");
+        out(sprintf("[%02d/22] [Créé] %s <%s> (ID: %d) -> %s", $num, $uData['name'], $uData['email'], $userId, $uData['agence_label']), "success");
+    } else {
         $userId = (int) $user['id'];
-        $stmtUp = $pdo->prepare("UPDATE users SET full_name = :full_name, email = :email, agence_id = :agence_id, status = 'active' WHERE id = :id");
+        $stmtUp = $pdo->prepare("UPDATE users SET full_name = :full_name, email = :email, agence_id = :agence_id, is_admin = :is_admin, status = 'active' WHERE id = :id");
         $stmtUp->execute([
-            'full_name' => $staff['name'],
-            'email'     => $staff['default_mail'],
+            'full_name' => $uData['name'],
+            'email'     => $uData['email'],
             'agence_id' => $validSiteId,
+            'is_admin'  => $uData['is_admin'],
             'id'        => $userId
         ]);
-        out("[{$num}/15] [Mis à jour] {$staff['name']} <{$staff['default_mail']}> (ID: {$userId}) -> Agence ID: " . ($validSiteId ?? 'Siège'), "success");
+        out(sprintf("[%02d/22] [Mis à jour] %s <%s> (ID: %d) -> %s", $num, $uData['name'], $uData['email'], $userId, $uData['agence_label']), "success");
+    }
 
-    // B. Rôle dans lbp_user_roles
+    // B. Rôles dans lbp_user_roles
     $pdo->prepare("DELETE FROM lbp_user_roles WHERE user_id = ?")->execute([$userId]);
     $stmtRole = $pdo->prepare("INSERT INTO lbp_user_roles (user_id, role) VALUES (?, ?)");
-    $stmtRole->execute([$userId, $staff['role']]);
-    out("    -> Rôle assigné : {$staff['role']}", "info");
+    foreach ($uData['roles'] as $r) {
+        $stmtRole->execute([$userId, $r]);
+    }
+    out("    -> Rôle(s) : " . implode(', ', $uData['roles']), "info");
 
     // C. Permissions
     $stmtEnt = $pdo->prepare("SELECT id FROM permission_entities WHERE code = ? LIMIT 1");
@@ -483,16 +662,16 @@ foreach ($staffList as $index => $staff) {
         ON DUPLICATE KEY UPDATE can_view = VALUES(can_view), can_create = VALUES(can_create), can_update = VALUES(can_update), can_delete = VALUES(can_delete)
     ");
 
-    foreach ($staff['permissions'] as $entCode => $rights) {
+    foreach ($uData['permissions'] as $entCode => $rights) {
         $stmtEnt->execute([$entCode]);
         $entId = $stmtEnt->fetchColumn();
         if ($entId) {
             $stmtPerm->execute([$userId, (int)$entId, $rights[0], $rights[1], $rights[2], $rights[3]]);
         }
     }
-    out("    -> " . count($staff['permissions']) . " entités de permissions configurées.", "info");
+    out("    -> " . count($uData['permissions']) . " entités de permissions configurées.", "info");
 
-    // D. Liaison rh_employees si présente
+    // D. Liaison rh_employees
     try {
         $stmtEmp = $pdo->prepare("
             UPDATE rh_employees 
@@ -502,18 +681,18 @@ foreach ($staffList as $index => $staff) {
         $stmtEmp->execute([
             'user_id'   => $userId,
             'site_id'   => $validSiteId,
-            'poste'     => $staff['poste'],
-            'email'     => $staff['default_mail'],
+            'poste'     => $uData['poste'],
+            'email'     => $uData['email'],
         ]);
     } catch (Exception $e) {}
 }
 
 out("\n===========================================================", "success");
-out("  ATTRIBUTION TERMINÉE AVEC SUCCÈS POUR LES 15 COLLABORATEURS", "success");
+out("  ATTRIBUTION TERMINÉE AVEC SUCCÈS POUR LES 22 COLLABORATEURS", "success");
 out("===========================================================", "success");
 
 if (!$isCli) {
-    echo "<p style='margin-top:20px;'><a href='/verify_staff_roles.php' style='display:inline-block; padding:10px 20px; background:#28a745; color:#fff; text-decoration:none; border-radius:4px;'>Lancer la Vérification</a> ";
-    echo "<a href='/admin/users' style='display:inline-block; padding:10px 20px; background:#007bff; color:#fff; text-decoration:none; border-radius:4px;'>Aller aux Utilisateurs</a></p>";
+    echo "<p style='margin-top:20px;'><a href='/verify_staff_roles.php' style='display:inline-block; padding:10px 20px; background:#28a745; color:#fff; text-decoration:none; border-radius:4px;'>Lancer l'Audit de Vérification</a> ";
+    echo "<a href='/admin/users' style='display:inline-block; padding:10px 20px; background:#007bff; color:#fff; text-decoration:none; border-radius:4px;'>Gérer dans le Module Admin</a></p>";
     echo "</body></html>";
 }
