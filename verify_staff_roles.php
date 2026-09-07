@@ -1,38 +1,65 @@
 <?php
+ini_set('display_errors', '1');
+ini_set('display_startup_errors', '1');
+error_reporting(E_ALL);
+
 /**
  * Script de vérification et d'audit des rôles et agences du personnel.
- *
- * Exécution CLI : php verify_staff_roles.php
- * Exécution Web : http://votre-domaine/verify_staff_roles.php
+ * Compatible PHP 7.4+ et PHP 8.x
  */
 
-define('BASE_PATH', __DIR__);
-require_once BASE_PATH . '/vendor/autoload.php';
+$basePath = __DIR__;
+if (!file_exists($basePath . '/config/database.php') && file_exists(dirname($basePath) . '/config/database.php')) {
+    $basePath = dirname($basePath);
+}
 
-ini_set('display_errors', '1');
-error_reporting(E_ALL);
+if (file_exists($basePath . '/vendor/autoload.php')) {
+    require_once $basePath . '/vendor/autoload.php';
+}
 
 $isCli = (php_sapi_name() === 'cli');
 
-function line(string $text = ''): void {
+function line($text = '') {
     global $isCli;
-    echo $text . ($isCli ? PHP_EOL : "<br>\n");
+    if ($isCli) {
+        echo $text . PHP_EOL;
+    } else {
+        echo htmlspecialchars($text) . "<br>\n";
+    }
+}
+
+if (!$isCli) {
+    echo "<!DOCTYPE html><html><head><meta charset='utf-8'><title>Audit Rôles & Agences</title></head><body style='font-family:monospace; padding:20px; background:#f8f9fa; white-space:pre-wrap;'>";
 }
 
 line("=========================================================================================");
 line("        AUDIT & VÉRIFICATION DES UTILISATEURS DU PERSONNEL (ERP LA BELLE PORTE)          ");
 line("=========================================================================================");
+line("PHP Version : " . PHP_VERSION);
+line();
 
+$configFile = $basePath . '/config/database.php';
+if (!file_exists($configFile)) {
+    line("[-] Fichier de configuration BDD introuvable : {$configFile}");
+    if (!$isCli) echo "</body></html>";
+    exit(1);
+}
+
+$config = require $configFile;
 $pdo = null;
+
 try {
-    $pdo = \App\Models\Database::getConnection();
-} catch (\Throwable $e) {
-    $config = require BASE_PATH . '/config/database.php';
     $dsn = "mysql:host={$config['host']};port={$config['port']};dbname={$config['dbname']};charset={$config['charset']}";
     $pdo = new PDO($dsn, $config['username'], $config['password'], [
         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
     ]);
+    line("[✔] Connexion réussie à la base {$config['dbname']}");
+    line();
+} catch (Exception $e) {
+    line("[-] Erreur de connexion BDD : " . $e->getMessage());
+    if (!$isCli) echo "</body></html>";
+    exit(1);
 }
 
 $emailsToCheck = [
@@ -68,8 +95,10 @@ $stmtPerms = $pdo->prepare("SELECT COUNT(*) FROM user_permissions WHERE user_id 
 
 $i = 1;
 foreach ($emailsToCheck as $mail => $nomPdf) {
-    $mailPrefix = explode('@', $mail)[0];
-    $nameFirst = explode(' ', $nomPdf)[0];
+    $mailParts = explode('@', $mail);
+    $mailPrefix = $mailParts[0];
+    $nomParts = explode(' ', $nomPdf);
+    $nameFirst = $nomParts[0];
     
     $stmtUser->execute([
         'email'      => $mail,
@@ -80,12 +109,15 @@ foreach ($emailsToCheck as $mail => $nomPdf) {
 
     if ($u) {
         $stmtRoles->execute([$u['id']]);
-        $roles = $stmtRoles->fetchAll(PDO::FETCH_COLUMN) ?: ['(aucun)'];
+        $roles = $stmtRoles->fetchAll(PDO::FETCH_COLUMN);
+        if (!$roles) $roles = ['(aucun)'];
 
         $stmtPerms->execute([$u['id']]);
         $permsCount = (int) $stmtPerms->fetchColumn();
 
-        $agLabel = $u['agence_name'] ? "{$u['agence_name']} (ID: {$u['agence_id']})" : "[ID: {$u['agence_id']}]";
+        $agName = !empty($u['agence_name']) ? $u['agence_name'] : 'ID ' . $u['agence_id'];
+        $agLabel = "{$agName} (ID: {$u['agence_id']})";
+        
         line(sprintf("[%02d/15] [✔] %s", $i, $nomPdf));
         line(sprintf("        - Nom en BDD  : %s (ID: %d)", $u['full_name'], $u['id']));
         line(sprintf("        - Email       : %s", $u['email']));
@@ -105,3 +137,7 @@ foreach ($emailsToCheck as $mail => $nomPdf) {
 line("=========================================================================================");
 line("                             FIN DU RAPPORT D'AUDIT                                      ");
 line("=========================================================================================");
+
+if (!$isCli) {
+    echo "</body></html>";
+}

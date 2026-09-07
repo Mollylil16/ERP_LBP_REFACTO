@@ -1,56 +1,88 @@
 <?php
+ini_set('display_errors', '1');
+ini_set('display_startup_errors', '1');
+error_reporting(E_ALL);
+
 /**
  * Script d'attribution automatique des rôles, agences et permissions
  * pour la liste des utilisateurs du personnel (Liste PDF).
- *
- * Exécution CLI : php assign_staff_roles.php
- * Exécution Web : http://votre-domaine/assign_staff_roles.php
+ * Compatible PHP 7.4+ et PHP 8.x
  */
 
-define('BASE_PATH', __DIR__);
-require_once BASE_PATH . '/vendor/autoload.php';
+// Détection du chemin racine
+$basePath = __DIR__;
+if (!file_exists($basePath . '/config/database.php') && file_exists(dirname($basePath) . '/config/database.php')) {
+    $basePath = dirname($basePath);
+}
 
-// Activer l'affichage des erreurs et le vidage de buffer
-ini_set('display_errors', '1');
-error_reporting(E_ALL);
+if (file_exists($basePath . '/vendor/autoload.php')) {
+    require_once $basePath . '/vendor/autoload.php';
+}
 
-function out(string $msg, string $type = 'info'): void {
-    $prefix = match($type) {
-        'success' => '[✔] ',
-        'error'   => '[-] ',
-        'warn'    => '[!] ',
-        default   => '[*] '
-    };
-    echo $prefix . $msg . PHP_EOL;
-    if (php_sapi_name() !== 'cli') {
-        echo "<br>";
+$isCli = (php_sapi_name() === 'cli');
+
+function out($msg, $type = 'info') {
+    global $isCli;
+    $prefix = '[*] ';
+    if ($type === 'success') {
+        $prefix = '[✔] ';
+    } elseif ($type === 'error') {
+        $prefix = '[-] ';
+    } elseif ($type === 'warn') {
+        $prefix = '[!] ';
     }
+
+    if ($isCli) {
+        echo $prefix . $msg . PHP_EOL;
+    } else {
+        $color = '#0c5460; background-color: #d1ecf1; border-color: #bee5eb;';
+        if ($type === 'success') {
+            $color = '#155724; background-color: #d4edda; border-color: #c3e6cb;';
+        } elseif ($type === 'error') {
+            $color = '#721c24; background-color: #f8d7da; border-color: #f5c6cb;';
+        } elseif ($type === 'warn') {
+            $color = '#856404; background-color: #fff3cd; border-color: #ffeeba;';
+        }
+        echo "<div style=\"padding:6px 12px; margin:4px 0; border:1px solid; border-radius:4px; color:{$color}; font-family:monospace;\">"
+             . htmlspecialchars($prefix . $msg) . "</div>\n";
+    }
+
     if (ob_get_level() > 0) {
         ob_flush();
     }
     flush();
 }
 
-out("Démarrage du script d'attribution des rôles et agences...");
+if (!$isCli) {
+    echo "<!DOCTYPE html><html><head><meta charset='utf-8'><title>Attribution Rôles & Agences</title></head><body style='font-family:sans-serif; padding:20px; background:#f8f9fa;'>";
+    echo "<h2>Attribution des Rôles, Agences & Permissions (Liste Personnel)</h2>";
+}
 
+out("Version PHP utilisée : " . PHP_VERSION, "info");
+out("Dossier racine détecté : " . $basePath, "info");
+
+// Connexion BDD
+$configFile = $basePath . '/config/database.php';
+if (!file_exists($configFile)) {
+    out("Fichier de configuration BDD introuvable : {$configFile}", "error");
+    if (!$isCli) echo "</body></html>";
+    exit(1);
+}
+
+$config = require $configFile;
 $pdo = null;
+
 try {
-    $pdo = \App\Models\Database::getConnection();
-    out("Connexion à la base de données réussie via Database::getConnection().", "success");
-} catch (\Throwable $e) {
-    out("Tentative avec config/database.php direct...", "warn");
-    $config = require BASE_PATH . '/config/database.php';
-    try {
-        $dsn = "mysql:host={$config['host']};port={$config['port']};dbname={$config['dbname']};charset={$config['charset']}";
-        $pdo = new PDO($dsn, $config['username'], $config['password'], [
-            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-        ]);
-        out("Connexion directe réussie à {$config['dbname']}.", "success");
-    } catch (\Throwable $err) {
-        out("Erreur de connexion BDD : " . $err->getMessage(), "error");
-        exit(1);
-    }
+    $dsn = "mysql:host={$config['host']};port={$config['port']};dbname={$config['dbname']};charset={$config['charset']}";
+    $pdo = new PDO($dsn, $config['username'], $config['password'], [
+        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+    ]);
+    out("Connexion à la base de données {$config['dbname']} réussie.", "success");
+} catch (Exception $e) {
+    out("Erreur de connexion MySQL : " . $e->getMessage(), "error");
+    if (!$isCli) echo "</body></html>";
+    exit(1);
 }
 
 // 1. Structure des tables requises
@@ -338,7 +370,8 @@ $staffList = [
 
 out("Traitement des 15 utilisateurs du personnel...", "info");
 
-$userCols = $pdo->query("SHOW COLUMNS FROM users")->fetchAll(PDO::FETCH_COLUMN) ?: [];
+$userCols = $pdo->query("SHOW COLUMNS FROM users")->fetchAll(PDO::FETCH_COLUMN);
+if (!$userCols) $userCols = [];
 $hasPassword = in_array('password', $userCols, true);
 $hasPasswordHash = in_array('password_hash', $userCols, true);
 $defaultPassword = password_hash('lbp2026', PASSWORD_BCRYPT);
@@ -348,7 +381,7 @@ foreach ($staffList as $index => $staff) {
     // A. Recherche de l'utilisateur existant
     $user = null;
     foreach ($staff['email_match'] as $matcher) {
-        if (str_contains($matcher, '%')) {
+        if (strpos($matcher, '%') !== false) {
             $stmt = $pdo->prepare("SELECT * FROM users WHERE email LIKE ? OR full_name LIKE ? LIMIT 1");
             $stmt->execute([$matcher, $matcher]);
         } else {
@@ -418,6 +451,7 @@ foreach ($staffList as $index => $staff) {
 
     // D. Liaison avec rh_employees si la table existe
     try {
+        $nameParts = explode(' ', $staff['name']);
         $stmtEmp = $pdo->prepare("
             UPDATE rh_employees 
             SET user_id = :user_id, site_id = :site_id, agence_id = :site_id, poste = :poste, updated_at = NOW() 
@@ -428,13 +462,19 @@ foreach ($staffList as $index => $staff) {
             'site_id'   => $staff['agence_id'],
             'poste'     => $staff['poste'],
             'email'     => $staff['default_mail'],
-            'name_like' => '%' . explode(' ', $staff['name'])[0] . '%',
+            'name_like' => '%' . $nameParts[0] . '%',
         ]);
-    } catch (\Throwable $e) {
-        // Optionnel si rh_employees a un schéma différent
+    } catch (Exception $e) {
+        // Optionnel
     }
 }
 
 out("\n===========================================================", "success");
 out("  ATTRIBUTION TERMINÉE AVEC SUCCÈS POUR LES 15 UTILISATEURS", "success");
 out("===========================================================", "success");
+
+if (!$isCli) {
+    echo "<p style='margin-top:20px;'><a href='/verify_staff_roles.php' style='display:inline-block; padding:10px 20px; background:#28a745; color:#fff; text-decoration:none; border-radius:4px;'>Lancer la Vérification</a> ";
+    echo "<a href='/admin/users' style='display:inline-block; padding:10px 20px; background:#007bff; color:#fff; text-decoration:none; border-radius:4px;'>Aller aux Utilisateurs</a></p>";
+    echo "</body></html>";
+}
