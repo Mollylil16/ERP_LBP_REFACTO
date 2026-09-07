@@ -24,4 +24,9 @@ class Csrf
     {
         return '<input type="hidden" name="_csrf_token" value="' . htmlspecialchars(self::token(), ENT_QUOTES, 'UTF-8') . '">';
     }
+
+    public static function field(): string
+    {
+        return self::input();
+    }
 }

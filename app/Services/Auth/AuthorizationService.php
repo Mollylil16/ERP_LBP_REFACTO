@@ -32,7 +32,7 @@ class AuthorizationService
         }
 
         // L'Assistant DG a un accès total en consultation (VIEW) sur toutes les entités métier
-        if (in_array('assistant_dg', $this->user->roles, true) && $action === PermissionAction::VIEW) {
+        if ((in_array('assistant_dg', $this->user->roles, true) || in_array('assistante_dg', $this->user->roles, true)) && $action === PermissionAction::VIEW) {
             return true;
         }
 

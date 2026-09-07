@@ -27,7 +27,7 @@ class RoleMiddleware
 
         // L'Assistant DG possède les mêmes accès de consultation globale que le DG et l'Admin
         if (Auth::isAssistantDg()) {
-            if (in_array('dg', $allowedRoles, true) || in_array('admin', $allowedRoles, true) || in_array('assistant_dg', $allowedRoles, true)) {
+            if (in_array('dg', $allowedRoles, true) || in_array('admin', $allowedRoles, true) || in_array('assistant_dg', $allowedRoles, true) || in_array('assistante_dg', $allowedRoles, true)) {
                 return;
             }
         }

@@ -40,7 +40,7 @@ final class ColisageController extends ColisageBaseController
 
         // Scope restriction : les utilisateurs locaux ne voient que leur agence (départ/arrivée)
         $userAgId = Auth::agenceId();
-        $isGlobalRole = Auth::isAdmin() || Auth::hasAnyRole(['dg', 'assistant_dg', 'caissiere_principale', 'comptable', 'superviseur_general']);
+        $isGlobalRole = Auth::isAdmin() || Auth::isAssistantDg() || Auth::hasAnyRole(['dg', 'assistant_dg', 'assistante_dg', 'caissiere_principale', 'comptable', 'superviseur_general']);
 
         if (!$isGlobalRole && $userAgId !== null && $userAgId > 0) {
             $filters['agence_id'] = $userAgId;

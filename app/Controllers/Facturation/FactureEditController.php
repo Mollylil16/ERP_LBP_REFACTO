@@ -135,7 +135,7 @@ final class FactureEditController extends FacturationBaseController
         if (Auth::can(PermissionEntityRegistry::CONSULTER_TOUTES_FACTURES_TOUTES_AGENCES)) {
             return true;
         }
-        if (Auth::isFacturationPrivileged()) {
+        if (Auth::isFacturationPrivileged() || Auth::isAssistantDg()) {
             return true;
         }
 

@@ -27,4 +27,13 @@ final class CsrfTest extends TestCase
         self::assertStringContainsString('name="_csrf_token"', $html);
         self::assertStringContainsString(Csrf::token(), $html);
     }
+
+    public function test_field_is_an_alias_of_input(): void
+    {
+        $field = Csrf::field();
+        $input = Csrf::input();
+
+        self::assertSame($input, $field);
+        self::assertStringContainsString('name="_csrf_token"', $field);
+    }
 }

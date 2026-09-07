@@ -24,9 +24,10 @@ final class LogistiqueColisageController extends LogistiqueBaseController
 
         [$period, $dateStart, $dateEnd] = $this->resolveDates();
 
-        // Selected agence filter (default: current logged in user agence if set, else 0/all)
+        // Selected agence filter (default: 0/all for global roles / Assistante DG, else user agence)
         $userAgenceId = $_SESSION['user']['agence_id'] ?? null;
-        $selectedAgenceId = isset($_GET['agence_id']) ? (int) $_GET['agence_id'] : ($userAgenceId ? (int) $userAgenceId : 0);
+        $isGlobal = \App\Helpers\Auth::isAdmin() || \App\Helpers\Auth::isAssistantDg() || \App\Helpers\Auth::hasAnyRole(['dg', 'assistant_dg', 'assistante_dg', 'superviseur_general', 'comptable', 'caissiere_principale']);
+        $selectedAgenceId = isset($_GET['agence_id']) ? (int) $_GET['agence_id'] : ($isGlobal ? 0 : ($userAgenceId ? (int) $userAgenceId : 0));
 
         // Fetch active agencies
         $sitesStmt = $this->pdo->query("SELECT id, name, code, city FROM company_sites WHERE is_active = 1 ORDER BY name ASC");

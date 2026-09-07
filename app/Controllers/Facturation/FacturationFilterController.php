@@ -111,7 +111,7 @@ final class FacturationFilterController extends FacturationBaseController
     {
         AuthMiddleware::check();
 
-        if (!Auth::isAdmin() && !Auth::isFacturationPrivileged() && !Auth::can(PermissionEntityRegistry::EXPORTER_FACTURATION_AVEC_MONTANT)) {
+        if (!Auth::isAdmin() && !Auth::isAssistantDg() && !Auth::isFacturationPrivileged() && !Auth::can(PermissionEntityRegistry::EXPORTER_FACTURATION_AVEC_MONTANT)) {
             Session::flash('error', "Vous n'avez pas l'autorisation d'exporter les données de facturation.");
             header('Location: ' . View::url('facturation/filtre'));
             return;
@@ -179,7 +179,7 @@ final class FacturationFilterController extends FacturationBaseController
     {
         AuthMiddleware::check();
 
-        if (!Auth::isAdmin() && !Auth::isFacturationPrivileged() && !Auth::can(PermissionEntityRegistry::EXPORTER_FACTURATION_AVEC_MONTANT)) {
+        if (!Auth::isAdmin() && !Auth::isAssistantDg() && !Auth::isFacturationPrivileged() && !Auth::can(PermissionEntityRegistry::EXPORTER_FACTURATION_AVEC_MONTANT)) {
             Session::flash('error', "Vous n'avez pas l'autorisation d'exporter les données de facturation.");
             header('Location: ' . View::url('facturation/filtre'));
             return;
@@ -326,6 +326,7 @@ final class FacturationFilterController extends FacturationBaseController
     {
         $userAgenceId = $_SESSION['user']['agence_id'] ?? null;
         $canSeeAllAgencies = Auth::isAdmin()
+            || Auth::isAssistantDg()
             || Auth::can(PermissionEntityRegistry::CONSULTER_TOUTES_FACTURES_TOUTES_AGENCES)
             || Auth::isFacturationPrivileged();
 

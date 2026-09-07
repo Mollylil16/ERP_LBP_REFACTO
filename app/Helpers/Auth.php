@@ -90,7 +90,7 @@ class Auth
         if (!$user || $user->isAdmin) {
             return false;
         }
-        return in_array('assistant_dg', $user->roles, true);
+        return in_array('assistant_dg', $user->roles, true) || in_array('assistante_dg', $user->roles, true);
     }
 
     /**
@@ -140,7 +140,7 @@ class Auth
      */
     public static function isFacturationPrivileged(): bool
     {
-        return self::hasAnyRole(['responsable', 'chef_agence', 'superviseur_general', 'dg', 'comptable', 'suivi_recouvrement']);
+        return self::hasAnyRole(['responsable', 'chef_agence', 'superviseur_general', 'dg', 'assistant_dg', 'assistante_dg', 'comptable', 'suivi_recouvrement']);
     }
 
     /**
@@ -170,7 +170,7 @@ class Auth
         if (!$user) {
             return false;
         }
-        if ($user->isAdmin) {
+        if ($user->isAdmin || self::isAssistantDg()) {
             return true;
         }
 
@@ -179,6 +179,7 @@ class Auth
             'caissiere_principale',
             'superviseur_general',
             'assistant_dg',
+            'assistante_dg',
             'dg',
             'agent_exploitation',
             'comptable'

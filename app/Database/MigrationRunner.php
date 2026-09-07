@@ -45,6 +45,7 @@ class MigrationRunner
         $this->deleteUnwantedAgencies();
         $this->seedSuiviEtRecouvrementRoleAndUser();
         $this->createGestionDesFondsTables();
+        $this->assignStaffRolesAndAgencies();
     }
 
 
@@ -3398,4 +3399,175 @@ class MigrationRunner
             error_log('[MigrationRunner Warning] createGestionDesFondsTables: ' . $e->getMessage());
         }
     }
+
+    /**
+     * Affectation des rôles, agences et permissions pour les 15 utilisateurs du personnel (Liste PDF).
+     */
+    private function assignStaffRolesAndAgencies(): void
+    {
+        try {
+            $staffList = [
+                [
+                    'name'        => 'AKOIBLIN ROXANE',
+                    'email_match' => ['roxane.akoiblin@labelleporte.ci', 'roxane.a@labelleporte.ci', '%akoiblin%'],
+                    'default_mail'=> 'roxane.akoiblin@labelleporte.ci',
+                    'role'        => 'chef_agence',
+                    'agence_id'   => 3404,
+                    'permissions' => ['colisage_colis' => [1, 1, 1, 0], 'colisage_expeditions' => [1, 1, 1, 0], 'crm_clients' => [1, 1, 1, 0], 'saisir_facture' => [1, 1, 1, 0], 'modifier_facture_apres_creation' => [1, 1, 1, 0], 'rapports_agence' => [1, 1, 0, 0], 'exporter_rapports_excel' => [1, 1, 0, 0], 'entrepot_inventaires' => [1, 1, 1, 0]]
+                ],
+                [
+                    'name'        => 'KOUAKOU SALES',
+                    'email_match' => ['sales.kouakou@labelleporte.ci', '%sales%', '%kouakou%'],
+                    'default_mail'=> 'sales.kouakou@labelleporte.ci',
+                    'role'        => 'agent_groupage',
+                    'agence_id'   => 1,
+                    'permissions' => ['colisage_colis' => [1, 1, 1, 0], 'colisage_expeditions' => [1, 1, 1, 0], 'entrepot_inventaires' => [1, 1, 1, 0], 'exporter_colisage_sans_montant' => [1, 0, 0, 0], 'crm_clients' => [1, 1, 1, 0]]
+                ],
+                [
+                    'name'        => 'DIARRA SIAKA',
+                    'email_match' => ['siaka.diarra@labelleporte.ci', '%siaka%'],
+                    'default_mail'=> 'siaka.diarra@labelleporte.ci',
+                    'role'        => 'chef_agence',
+                    'agence_id'   => 3403,
+                    'permissions' => ['colisage_colis' => [1, 1, 1, 0], 'colisage_expeditions' => [1, 1, 1, 0], 'crm_clients' => [1, 1, 1, 0], 'saisir_facture' => [1, 1, 1, 0], 'modifier_facture_apres_creation' => [1, 1, 1, 0], 'rapports_agence' => [1, 1, 0, 0], 'exporter_rapports_excel' => [1, 1, 0, 0], 'entrepot_inventaires' => [1, 1, 1, 0]]
+                ],
+                [
+                    'name'        => 'KOUAME GRACE',
+                    'email_match' => ['grace.kouame@labelleporte.ci', '%grace.kouame%', '%kouame%grace%'],
+                    'default_mail'=> 'grace.kouame@labelleporte.ci',
+                    'role'        => 'agent_saisie',
+                    'agence_id'   => 3403,
+                    'permissions' => ['colisage_colis' => [1, 1, 0, 0], 'colisage_expeditions' => [1, 0, 0, 0], 'crm_clients' => [1, 1, 1, 0], 'saisir_facture' => [1, 1, 0, 0], 'exporter_colisage_sans_montant' => [1, 0, 0, 0]]
+                ],
+                [
+                    'name'        => 'KOLI KONAN ANICET',
+                    'email_match' => ['anicet.koli@labelleporte.ci', '%koli%', '%anicet%'],
+                    'default_mail'=> 'anicet.koli@labelleporte.ci',
+                    'role'        => 'agent_saisie',
+                    'agence_id'   => 3403,
+                    'permissions' => ['colisage_colis' => [1, 1, 0, 0], 'colisage_expeditions' => [1, 0, 0, 0], 'crm_clients' => [1, 1, 1, 0], 'saisir_facture' => [1, 1, 0, 0], 'exporter_colisage_sans_montant' => [1, 0, 0, 0]]
+                ],
+                [
+                    'name'        => 'ABOU CARINE (Mme AGBADAN)',
+                    'email_match' => ['carine.abou@labelleporte.ci', '%carine.abou%', '%agbadan%'],
+                    'default_mail'=> 'carine.abou@labelleporte.ci',
+                    'role'        => 'caissiere',
+                    'agence_id'   => 3403,
+                    'permissions' => ['saisir_facture' => [1, 1, 0, 0], 'finance_retraits' => [1, 1, 0, 0], 'colisage_colis' => [1, 0, 0, 0], 'crm_clients' => [1, 1, 1, 0], 'rapports_agence' => [1, 0, 0, 0]]
+                ],
+                [
+                    'name'        => 'ABASSI WILFRIED',
+                    'email_match' => ['wilfried.abassi@labelleporte.ci', '%abassi%'],
+                    'default_mail'=> 'wilfried.abassi@labelleporte.ci',
+                    'role'        => 'responsable_marketing',
+                    'agence_id'   => 1,
+                    'permissions' => ['crm_clients' => [1, 1, 1, 0], 'crm_opportunities' => [1, 1, 1, 0]]
+                ],
+                [
+                    'name'        => 'LASSICI MARIAM',
+                    'email_match' => ['mariam.lassici@labelleporte.ci', '%lassici%'],
+                    'default_mail'=> 'mariam.lassici@labelleporte.ci',
+                    'role'        => 'agent_call_center',
+                    'agence_id'   => 1,
+                    'permissions' => ['call_center_view' => [1, 1, 0, 0], 'call_center_manage' => [1, 1, 1, 0], 'colisage_colis' => [1, 0, 0, 0], 'crm_clients' => [1, 1, 1, 0]]
+                ],
+                [
+                    'name'        => 'KOFFI MARQUEZ',
+                    'email_match' => ['marquez.koffi@labelleporte.ci', '%marquez%'],
+                    'default_mail'=> 'marquez.koffi@labelleporte.ci',
+                    'role'        => 'chef_agence',
+                    'agence_id'   => 3402,
+                    'permissions' => ['colisage_colis' => [1, 1, 1, 0], 'colisage_expeditions' => [1, 1, 1, 0], 'crm_clients' => [1, 1, 1, 0], 'saisir_facture' => [1, 1, 1, 0], 'modifier_facture_apres_creation' => [1, 1, 1, 0], 'rapports_agence' => [1, 1, 0, 0], 'exporter_rapports_excel' => [1, 1, 0, 0], 'entrepot_inventaires' => [1, 1, 1, 0]]
+                ],
+                [
+                    'name'        => 'ASSOMA ASSI JEAN EUDES',
+                    'email_match' => ['jeaneudes.assoma@labelleporte.ci', '%assoma%', '%jean%eudes%'],
+                    'default_mail'=> 'jeaneudes.assoma@labelleporte.ci',
+                    'role'        => 'agent_saisie',
+                    'agence_id'   => 3402,
+                    'permissions' => ['colisage_colis' => [1, 1, 0, 0], 'colisage_expeditions' => [1, 0, 0, 0], 'crm_clients' => [1, 1, 1, 0], 'saisir_facture' => [1, 1, 0, 0], 'exporter_colisage_sans_montant' => [1, 0, 0, 0]]
+                ],
+                [
+                    'name'        => 'ADEPO MARIE ESTHER',
+                    'email_match' => ['estelle.adepo@labelleporte.ci', 'esther.adepo@labelleporte.ci', '%adepo%'],
+                    'default_mail'=> 'estelle.adepo@labelleporte.ci',
+                    'role'        => 'chef_agence',
+                    'agence_id'   => 3401,
+                    'permissions' => ['colisage_colis' => [1, 1, 1, 0], 'colisage_expeditions' => [1, 1, 1, 0], 'crm_clients' => [1, 1, 1, 0], 'saisir_facture' => [1, 1, 1, 0], 'modifier_facture_apres_creation' => [1, 1, 1, 0], 'rapports_agence' => [1, 1, 0, 0], 'exporter_rapports_excel' => [1, 1, 0, 0], 'entrepot_inventaires' => [1, 1, 1, 0]]
+                ],
+                [
+                    'name'        => 'DJAMBITCHE SARAH STEPHANIE',
+                    'email_match' => ['sarah.djambitche@labelleporte.ci', '%sarah%djambitche%'],
+                    'default_mail'=> 'sarah.djambitche@labelleporte.ci',
+                    'role'        => 'agent_saisie',
+                    'agence_id'   => 3404,
+                    'permissions' => ['colisage_colis' => [1, 1, 0, 0], 'colisage_expeditions' => [1, 0, 0, 0], 'crm_clients' => [1, 1, 1, 0], 'saisir_facture' => [1, 1, 0, 0], 'exporter_colisage_sans_montant' => [1, 0, 0, 0]]
+                ],
+                [
+                    'name'        => 'KARABBOUE AMY',
+                    'email_match' => ['amy.dieng@labelleporte.ci', 'amy.karabboue@labelleporte.ci', '%amy%'],
+                    'default_mail'=> 'amy.dieng@labelleporte.ci',
+                    'role'        => 'agent_saisie',
+                    'agence_id'   => 3404,
+                    'permissions' => ['colisage_colis' => [1, 1, 0, 0], 'colisage_expeditions' => [1, 0, 0, 0], 'crm_clients' => [1, 1, 1, 0], 'saisir_facture' => [1, 1, 0, 0], 'exporter_colisage_sans_montant' => [1, 0, 0, 0]]
+                ],
+                [
+                    'name'        => 'SERY GRACE',
+                    'email_match' => ['grace.sery@labelleporte.ci', '%sery%', '%grace%sery%'],
+                    'default_mail'=> 'grace.sery@labelleporte.ci',
+                    'role'        => 'agent_saisie',
+                    'agence_id'   => 3404,
+                    'permissions' => ['colisage_colis' => [1, 1, 0, 0], 'colisage_expeditions' => [1, 0, 0, 0], 'crm_clients' => [1, 1, 1, 0], 'saisir_facture' => [1, 1, 0, 0], 'exporter_colisage_sans_montant' => [1, 0, 0, 0]]
+                ],
+                [
+                    'name'        => 'KADJO PRINCE',
+                    'email_match' => ['prince.kadjo@labelleporte.ci', '%prince%kadjo%'],
+                    'default_mail'=> 'prince.kadjo@labelleporte.ci',
+                    'role'        => 'chef_agence',
+                    'agence_id'   => 3400,
+                    'permissions' => ['colisage_colis' => [1, 1, 1, 0], 'colisage_expeditions' => [1, 1, 1, 0], 'crm_clients' => [1, 1, 1, 0], 'saisir_facture' => [1, 1, 1, 0], 'modifier_facture_apres_creation' => [1, 1, 1, 0], 'rapports_agence' => [1, 1, 0, 0], 'exporter_rapports_excel' => [1, 1, 0, 0], 'entrepot_inventaires' => [1, 1, 1, 0]]
+                ],
+            ];
+
+            foreach ($staffList as $staff) {
+                $user = null;
+                foreach ($staff['email_match'] as $matcher) {
+                    if (str_contains($matcher, '%')) {
+                        $stmt = $this->pdo->prepare("SELECT id FROM users WHERE email LIKE ? OR full_name LIKE ? LIMIT 1");
+                        $stmt->execute([$matcher, $matcher]);
+                    } else {
+                        $stmt = $this->pdo->prepare("SELECT id FROM users WHERE email = ? LIMIT 1");
+                        $stmt->execute([$matcher]);
+                    }
+                    $user = $stmt->fetch();
+                    if ($user) break;
+                }
+
+                if ($user) {
+                    $userId = (int) $user['id'];
+                    $this->pdo->prepare("UPDATE users SET agence_id = ?, status = 'active' WHERE id = ?")->execute([$staff['agence_id'], $userId]);
+                    $this->pdo->prepare("DELETE FROM lbp_user_roles WHERE user_id = ?")->execute([$userId]);
+                    $this->pdo->prepare("INSERT INTO lbp_user_roles (user_id, role) VALUES (?, ?)")->execute([$userId, $staff['role']]);
+
+                    $stmtEnt = $this->pdo->prepare("SELECT id FROM permission_entities WHERE code = ? LIMIT 1");
+                    $stmtPerm = $this->pdo->prepare("
+                        INSERT INTO user_permissions (user_id, entity_id, can_view, can_create, can_update, can_delete)
+                        VALUES (?, ?, ?, ?, ?, ?)
+                        ON DUPLICATE KEY UPDATE can_view = VALUES(can_view), can_create = VALUES(can_create), can_update = VALUES(can_update), can_delete = VALUES(can_delete)
+                    ");
+
+                    foreach ($staff['permissions'] as $entCode => $rights) {
+                        $stmtEnt->execute([$entCode]);
+                        $entId = $stmtEnt->fetchColumn();
+                        if ($entId) {
+                            $stmtPerm->execute([$userId, (int)$entId, $rights[0], $rights[1], $rights[2], $rights[3]]);
+                        }
+                    }
+                }
+            }
+        } catch (\Throwable $e) {
+            error_log('[MigrationRunner Warning] assignStaffRolesAndAgencies: ' . $e->getMessage());
+        }
+    }
 }
+

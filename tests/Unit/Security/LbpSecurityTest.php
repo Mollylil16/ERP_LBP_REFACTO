@@ -151,4 +151,104 @@ final class LbpSecurityTest extends TestCase
         self::assertTrue(Auth::checkAgencyScope(2));
         self::assertTrue(Auth::checkAgencyScope(999));
     }
+
+    public function test_assistant_dg_has_global_agency_scope(): void
+    {
+        $user = new User(
+            id: 13,
+            fullName: 'Assistante DG',
+            email: 'assistante.dg@lbp.local',
+            phone: '0102030405',
+            passwordHash: 'hash',
+            status: 'active',
+            isAdmin: false,
+            agenceId: 1, // Même rattachée à l'agence 1
+            zoneRegionaleId: null,
+            roles: ['assistant_dg']
+        );
+
+        Session::set('auth_user_id', 13);
+        
+        $ref = new \ReflectionClass(Auth::class);
+        $cachedUserProp = $ref->getProperty('cachedUser');
+        $cachedUserProp->setAccessible(true);
+        $cachedUserProp->setValue(null, $user);
+
+        $cachedUserIdProp = $ref->getProperty('cachedUserId');
+        $cachedUserIdProp->setAccessible(true);
+        $cachedUserIdProp->setValue(null, 13);
+
+        self::assertTrue(Auth::isAssistantDg());
+        self::assertTrue(Auth::isFacturationPrivileged());
+        self::assertTrue(Auth::checkAgencyScope(1));
+        self::assertTrue(Auth::checkAgencyScope(2));
+        self::assertTrue(Auth::checkAgencyScope(3));
+        self::assertTrue(Auth::checkAgencyScope(999));
+    }
+
+    public function test_assistante_dg_with_feminine_code_has_global_scope(): void
+    {
+        $user = new User(
+            id: 14,
+            fullName: 'Assistante DG Feminine Code',
+            email: 'assistante.dg2@lbp.local',
+            phone: '0102030405',
+            passwordHash: 'hash',
+            status: 'active',
+            isAdmin: false,
+            agenceId: 2,
+            zoneRegionaleId: null,
+            roles: ['assistante_dg']
+        );
+
+        Session::set('auth_user_id', 14);
+        
+        $ref = new \ReflectionClass(Auth::class);
+        $cachedUserProp = $ref->getProperty('cachedUser');
+        $cachedUserProp->setAccessible(true);
+        $cachedUserProp->setValue(null, $user);
+
+        $cachedUserIdProp = $ref->getProperty('cachedUserId');
+        $cachedUserIdProp->setAccessible(true);
+        $cachedUserIdProp->setValue(null, 14);
+
+        self::assertTrue(Auth::isAssistantDg());
+        self::assertTrue(Auth::isFacturationPrivileged());
+        self::assertTrue(Auth::checkAgencyScope(1));
+        self::assertTrue(Auth::checkAgencyScope(2));
+        self::assertTrue(Auth::checkAgencyScope(999));
+    }
+
+    public function test_assistant_dg_can_view_all_entities_and_cannot_modify_without_permission(): void
+    {
+        $user = new User(
+            id: 15,
+            fullName: 'Assistante DG Auth Test',
+            email: 'assistante.auth@lbp.local',
+            phone: '0102030405',
+            passwordHash: 'hash',
+            status: 'active',
+            isAdmin: false,
+            agenceId: 1,
+            zoneRegionaleId: null,
+            roles: ['assistant_dg']
+        );
+
+        $permRepo = $this->createMock(\App\Repositories\Admin\PermissionRepository::class);
+        $permRepo->method('permissionMapForUser')->willReturn([]);
+
+        $authService = new \App\Services\Auth\AuthorizationService($user, $permRepo);
+
+        // L'Assistante DG a automatiquement la permission VIEW sur toutes les entités
+        self::assertTrue($authService->can(\App\Security\PermissionEntityRegistry::RH_EMPLOYEES, \App\Security\PermissionAction::VIEW));
+        self::assertTrue($authService->can(\App\Security\PermissionEntityRegistry::CALL_CENTER_VIEW, \App\Security\PermissionAction::VIEW));
+        self::assertTrue($authService->can(\App\Security\PermissionEntityRegistry::EXPLOITATION_SYNTHESE, \App\Security\PermissionAction::VIEW));
+        self::assertTrue($authService->can(\App\Security\PermissionEntityRegistry::CONSULTER_TOUTES_FACTURES_TOUTES_AGENCES, \App\Security\PermissionAction::VIEW));
+
+        // En revanche, sans permission explicite accordée par le DG, les actions d'écriture/modification sont refusées
+        self::assertFalse($authService->can(\App\Security\PermissionEntityRegistry::RH_EMPLOYEES, \App\Security\PermissionAction::CREATE));
+        self::assertFalse($authService->can(\App\Security\PermissionEntityRegistry::RH_EMPLOYEES, \App\Security\PermissionAction::UPDATE));
+        self::assertFalse($authService->can(\App\Security\PermissionEntityRegistry::RH_EMPLOYEES, \App\Security\PermissionAction::DELETE));
+        self::assertFalse($authService->can(\App\Security\PermissionEntityRegistry::MODIFIER_FACTURE_APRES_CREATION, \App\Security\PermissionAction::UPDATE));
+    }
 }

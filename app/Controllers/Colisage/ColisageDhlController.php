@@ -35,7 +35,7 @@ final class ColisageDhlController extends ColisageBaseController
 
         // Scope agence pour les non-globaux
         $userAgId = Auth::agenceId();
-        $isGlobalRole = Auth::isAdmin() || Auth::hasAnyRole(['dg', 'assistant_dg', 'caissiere_principale', 'comptable', 'superviseur_general']);
+        $isGlobalRole = Auth::isAdmin() || Auth::isAssistantDg() || Auth::hasAnyRole(['dg', 'assistant_dg', 'assistante_dg', 'caissiere_principale', 'comptable', 'superviseur_general']);
         if (!$isGlobalRole && !empty($userAgId)) {
             $filters['agence_id'] = $userAgId;
         }
@@ -67,7 +67,7 @@ final class ColisageDhlController extends ColisageBaseController
         ];
 
         $userAgId = Auth::agenceId();
-        $isGlobalRole = Auth::isAdmin() || Auth::hasAnyRole(['dg', 'assistant_dg', 'caissiere_principale', 'comptable', 'superviseur_general']);
+        $isGlobalRole = Auth::isAdmin() || Auth::isAssistantDg() || Auth::hasAnyRole(['dg', 'assistant_dg', 'assistante_dg', 'caissiere_principale', 'comptable', 'superviseur_general']);
         if (!$isGlobalRole && !empty($userAgId)) {
             $filters['agence_id'] = $userAgId;
         }

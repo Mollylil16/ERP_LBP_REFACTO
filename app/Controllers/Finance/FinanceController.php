@@ -75,8 +75,10 @@ final class FinanceController extends FinanceBaseController
             'type_envoi' => $typeEnvoi,
         ];
 
-        // Par défaut, si l'utilisateur est une caissière / caissière principale / chef d'agence et qu'aucun filtre d'agence n'est dans l'URL, limiter à son agence
-        if ($selectedAgence === null && $userAgId !== null && $userAgId > 0) {
+        $isGlobalRole = Auth::isAdmin() || Auth::isAssistantDg() || Auth::hasAnyRole(['caissiere_principale', 'dg', 'assistant_dg', 'assistante_dg', 'comptable', 'superviseur_general']);
+
+        // Par défaut, si l'utilisateur a un rôle local et qu'aucun filtre d'agence n'est dans l'URL, limiter à son agence
+        if (!$isGlobalRole && $selectedAgence === null && $userAgId !== null && $userAgId > 0) {
             $filters['agence_id'] = (string) $userAgId;
         }
 
@@ -133,7 +135,7 @@ final class FinanceController extends FinanceBaseController
 
         // Récupérer les colis réceptionnés sans facture dans le scope de l'utilisateur
         $agenceId = Auth::agenceId();
-        if (Auth::hasAnyRole(['caissiere_principale', 'superviseur_general', 'assistant_dg', 'dg'])) {
+        if (Auth::isAdmin() || Auth::isAssistantDg() || Auth::hasAnyRole(['caissiere_principale', 'superviseur_general', 'assistant_dg', 'assistante_dg', 'dg'])) {
             $stmt = $this->db->query("
                 SELECT c.*, cl.name as expediteur_name,
                        (SELECT SUM(m.poids_unitaire * m.quantite) FROM lbp_marchandises m WHERE m.colis_id = c.id) as poids_total,
@@ -760,7 +762,7 @@ final class FinanceController extends FinanceBaseController
         RoleMiddleware::check(['superviseur_regional', 'superviseur_general', 'caissiere_principale', 'dg', 'comptable']);
 
         $user = Auth::user();
-        if (Auth::hasAnyRole(['caissiere_principale', 'superviseur_general', 'dg', 'comptable'])) {
+        if (Auth::isAdmin() || Auth::isAssistantDg() || Auth::hasAnyRole(['caissiere_principale', 'superviseur_general', 'dg', 'assistant_dg', 'assistante_dg', 'comptable'])) {
             $demandes = $this->demandeRepo->getDemandesGlobal();
         } else {
             $demandes = $this->demandeRepo->getDemandesBySuperviseur((int) Auth::id());
@@ -913,7 +915,7 @@ final class FinanceController extends FinanceBaseController
 
         $userAgenceId = Auth::agenceId();
         $dateJour = date('Y-m-d');
-        $isGlobalRole = Auth::hasAnyRole(['caissiere_principale', 'dg', 'comptable', 'superviseur_general', 'superviseur_regional', 'admin']);
+        $isGlobalRole = Auth::isAdmin() || Auth::isAssistantDg() || Auth::hasAnyRole(['caissiere_principale', 'dg', 'assistant_dg', 'assistante_dg', 'comptable', 'superviseur_general', 'superviseur_regional', 'admin']);
 
         $agences = $this->db->query("SELECT id, name FROM company_sites WHERE is_active = 1 ORDER BY name ASC")->fetchAll() ?: [];
 
@@ -1208,9 +1210,9 @@ final class FinanceController extends FinanceBaseController
             exit;
         }
 
-        // Seul le chef de cette agence, la caissière principale, le DG ou le comptable peuvent exporter
+        // Seul le chef de cette agence, la caissière principale, le DG, l'assistante DG ou le comptable peuvent exporter
         $userAgenceId = Auth::user()?->agenceId ?? 0;
-        if (!Auth::hasRole(['caissiere_principale', 'dg', 'comptable', 'superviseur_general']) && (int) $userAgenceId !== $report->agenceId) {
+        if (!Auth::isAdmin() && !Auth::isAssistantDg() && !Auth::hasRole(['caissiere_principale', 'dg', 'assistant_dg', 'assistante_dg', 'comptable', 'superviseur_general']) && (int) $userAgenceId !== $report->agenceId) {
             Session::flash('error', 'Accès non autorisé au point de caisse d\'une autre agence.');
             header('Location: ' . View::url('finance/clotures'));
             exit;
@@ -1787,7 +1789,7 @@ final class FinanceController extends FinanceBaseController
         AuthMiddleware::check();
 
         $userAgenceId = Auth::user()?->agenceId ?? 0;
-        $isGlobal = Auth::hasRole(['caissiere_principale', 'dg', 'comptable', 'superviseur_general']);
+        $isGlobal = Auth::isAdmin() || Auth::isAssistantDg() || Auth::hasRole(['caissiere_principale', 'dg', 'assistant_dg', 'assistante_dg', 'comptable', 'superviseur_general', 'admin']);
 
         $agenceId = isset($_GET['agence_id']) && $_GET['agence_id'] !== '' ? (int) $_GET['agence_id'] : ($userAgenceId ? (int) $userAgenceId : 0);
         $dateJour = !empty($_GET['date']) ? trim((string) $_GET['date']) : date('Y-m-d');

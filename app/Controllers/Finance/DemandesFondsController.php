@@ -33,7 +33,7 @@ final class DemandesFondsController extends FinanceBaseController
 
         $user = Auth::user();
         $userAgId = Auth::agenceId();
-        $isSuperUser = Auth::isAdmin() || Auth::hasAnyRole(['dg', 'assistant_dg', 'caissiere_principale', 'comptable', 'superviseur_general']);
+        $isSuperUser = Auth::isAdmin() || Auth::isAssistantDg() || Auth::hasAnyRole(['dg', 'assistant_dg', 'assistante_dg', 'caissiere_principale', 'comptable', 'superviseur_general']);
 
         $selectedAgence = isset($_GET['agence_id']) && $_GET['agence_id'] !== '' ? (int) $_GET['agence_id'] : null;
         if (!$isSuperUser && $selectedAgence === null && $userAgId !== null && $userAgId > 0) {
@@ -250,7 +250,7 @@ final class DemandesFondsController extends FinanceBaseController
         RoleMiddleware::check(['admin', 'dg', 'assistant_dg', 'caissiere_principale', 'caissiere', 'chef_agence', 'comptable', 'superviseur_general']);
 
         $userAgId = Auth::agenceId();
-        $isSuperUser = Auth::isAdmin() || Auth::hasAnyRole(['dg', 'assistant_dg', 'caissiere_principale', 'comptable', 'superviseur_general']);
+        $isSuperUser = Auth::isAdmin() || Auth::isAssistantDg() || Auth::hasAnyRole(['dg', 'assistant_dg', 'assistante_dg', 'caissiere_principale', 'comptable', 'superviseur_general']);
 
         $selectedAgence = isset($_GET['agence_id']) && $_GET['agence_id'] !== '' ? (int) $_GET['agence_id'] : null;
         if (!$isSuperUser && $selectedAgence === null && $userAgId !== null && $userAgId > 0) {
@@ -320,7 +320,7 @@ final class DemandesFondsController extends FinanceBaseController
         RoleMiddleware::check(['admin', 'dg', 'assistant_dg', 'comptable', 'chef_agence', 'caissiere_principale', 'superviseur_general', 'agent', 'suivi_recouvrement']);
 
         $userAgId = Auth::agenceId();
-        $isSuperUser = Auth::isAdmin() || Auth::hasAnyRole(['dg', 'assistant_dg', 'caissiere_principale', 'comptable', 'superviseur_general']);
+        $isSuperUser = Auth::isAdmin() || Auth::isAssistantDg() || Auth::hasAnyRole(['dg', 'assistant_dg', 'assistante_dg', 'caissiere_principale', 'comptable', 'superviseur_general']);
 
         $selectedAgence = isset($_GET['agence_id']) && $_GET['agence_id'] !== '' ? (int) $_GET['agence_id'] : null;
         if (!$isSuperUser && $selectedAgence === null && $userAgId !== null && $userAgId > 0) {

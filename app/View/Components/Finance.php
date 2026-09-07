@@ -1095,7 +1095,7 @@ final class Finance
             ]
         );
 
-        $isGlobal = Auth::hasAnyRole(['caissiere_principale', 'dg', 'comptable', 'superviseur_general', 'superviseur_regional', 'admin']);
+        $isGlobal = Auth::isAdmin() || Auth::isAssistantDg() || Auth::hasAnyRole(['caissiere_principale', 'dg', 'assistant_dg', 'assistante_dg', 'comptable', 'superviseur_general', 'superviseur_regional', 'admin']);
 
         // 1. Selector dropdown for global roles (caissière principale, DG, etc.)
         $agenceSelector = '';
