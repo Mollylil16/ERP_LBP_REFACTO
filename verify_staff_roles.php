@@ -62,50 +62,115 @@ try {
     exit(1);
 }
 
-$emailsToCheck = [
-    'roxane.akoiblin@labelleporte.ci' => 'AKOIBLIN ROXANE',
-    'sales.kouakou@labelleporte.ci'   => 'KOUAKOU SALES',
-    'siaka.diarra@labelleporte.ci'    => 'DIARRA SIAKA',
-    'grace.kouame@labelleporte.ci'    => 'KOUAME GRACE',
-    'anicet.koli@labelleporte.ci'     => 'KOLI KONAN ANICET',
-    'carine.abou@labelleporte.ci'     => 'Mme AGBADAN (Carine Abou)',
-    'wilfried.abassi@labelleporte.ci' => 'ABASSI WILFRIED',
-    'mariam.lassici@labelleporte.ci'  => 'LASSICI MARIAM',
-    'marquez.koffi@labelleporte.ci'   => 'KOFFI MARQUEZ',
-    'jeaneudes.assoma@labelleporte.ci'=> 'ASSOMA ASSI JEAN EUDES',
-    'estelle.adepo@labelleporte.ci'   => 'ADEPO MARIE ESTHER',
-    'sarah.djambitche@labelleporte.ci'=> 'DJAMBITCHE SARAH STEPHANIE',
-    'amy.dieng@labelleporte.ci'       => 'KARABBOUE AMY',
-    'grace.sery@labelleporte.ci'      => 'SERY GRACE',
-    'prince.kadjo@labelleporte.ci'    => 'KADJO PRINCE',
+$staffToCheck = [
+    [
+        'label'        => 'AKOIBLIN ROXANE',
+        'emails'       => ['roxane.akoiblin@labelleporte.ci', 'roxane.a@labelleporte.ci'],
+        'name_pattern' => '%AKOIBLIN%',
+    ],
+    [
+        'label'        => 'KOUAKOU SALES',
+        'emails'       => ['sales.kouakou@labelleporte.ci'],
+        'name_pattern' => '%SALES%',
+    ],
+    [
+        'label'        => 'DIARRA SIAKA',
+        'emails'       => ['siaka.diarra@labelleporte.ci'],
+        'name_pattern' => '%SIAKA%DIARRA%',
+    ],
+    [
+        'label'        => 'KOUAME GRACE',
+        'emails'       => ['grace.kouame@labelleporte.ci'],
+        'name_pattern' => '%KOUAME%GRACE%',
+    ],
+    [
+        'label'        => 'KOLI KONAN ANICET',
+        'emails'       => ['anicet.koli@labelleporte.ci'],
+        'name_pattern' => '%KOLI%ANICET%',
+    ],
+    [
+        'label'        => 'ABOU CARINE (Mme AGBADAN)',
+        'emails'       => ['carine.abou@labelleporte.ci'],
+        'name_pattern' => '%AGBADAN%',
+    ],
+    [
+        'label'        => 'ABASSI WILFRIED',
+        'emails'       => ['wilfried.abassi@labelleporte.ci'],
+        'name_pattern' => '%ABASSI%',
+    ],
+    [
+        'label'        => 'LASSICI MARIAM',
+        'emails'       => ['mariam.lassici@labelleporte.ci'],
+        'name_pattern' => '%LASSICI%',
+    ],
+    [
+        'label'        => 'KOFFI MARQUEZ',
+        'emails'       => ['marquez.koffi@labelleporte.ci'],
+        'name_pattern' => '%MARQUEZ%',
+    ],
+    [
+        'label'        => 'ASSOMA ASSI JEAN EUDES',
+        'emails'       => ['jeaneudes.assoma@labelleporte.ci'],
+        'name_pattern' => '%ASSOMA%',
+    ],
+    [
+        'label'        => 'ADEPO MARIE ESTHER',
+        'emails'       => ['estelle.adepo@labelleporte.ci', 'esther.adepo@labelleporte.ci'],
+        'name_pattern' => '%ADEPO%ESTHER%',
+    ],
+    [
+        'label'        => 'DJAMBITCHE SARAH STEPHANIE',
+        'emails'       => ['sarah.djambitche@labelleporte.ci'],
+        'name_pattern' => '%SARAH%DJAMBITCHE%',
+    ],
+    [
+        'label'        => 'KARABBOUE AMY',
+        'emails'       => ['amy.dieng@labelleporte.ci', 'amy.karabboue@labelleporte.ci'],
+        'name_pattern' => '%KARABBOUE%',
+    ],
+    [
+        'label'        => 'SERY GRACE',
+        'emails'       => ['grace.sery@labelleporte.ci'],
+        'name_pattern' => '%SERY%GRACE%',
+    ],
+    [
+        'label'        => 'KADJO PRINCE',
+        'emails'       => ['prince.kadjo@labelleporte.ci'],
+        'name_pattern' => '%PRINCE%KADJO%',
+    ],
 ];
-
-$stmtUser = $pdo->prepare("
-    SELECT u.id, u.full_name, u.email, u.status, u.agence_id, s.name AS agence_name
-    FROM users u
-    LEFT JOIN company_sites s ON s.id = u.agence_id
-    WHERE u.email = :email 
-       OR u.email LIKE :email_like 
-       OR u.full_name LIKE :name_like
-    LIMIT 1
-");
 
 $stmtRoles = $pdo->prepare("SELECT role FROM lbp_user_roles WHERE user_id = ?");
 $stmtPerms = $pdo->prepare("SELECT COUNT(*) FROM user_permissions WHERE user_id = ? AND (can_view = 1 OR can_create = 1 OR can_update = 1 OR can_delete = 1)");
 
-$i = 1;
-foreach ($emailsToCheck as $mail => $nomPdf) {
-    $mailParts = explode('@', $mail);
-    $mailPrefix = $mailParts[0];
-    $nomParts = explode(' ', $nomPdf);
-    $nameFirst = $nomParts[0];
-    
-    $stmtUser->execute([
-        'email'      => $mail,
-        'email_like' => "%{$mailPrefix}%",
-        'name_like'  => "%{$nameFirst}%",
-    ]);
-    $u = $stmtUser->fetch();
+foreach ($staffToCheck as $i => $staff) {
+    $num = $i + 1;
+    $u = null;
+
+    foreach ($staff['emails'] as $em) {
+        $stmt = $pdo->prepare("
+            SELECT u.id, u.full_name, u.email, u.status, u.agence_id, s.name AS agence_name
+            FROM users u
+            LEFT JOIN company_sites s ON s.id = u.agence_id
+            WHERE LOWER(u.email) = LOWER(?)
+            LIMIT 1
+        ");
+        $stmt->execute([$em]);
+        $u = $stmt->fetch();
+        if ($u) break;
+    }
+
+    if (!$u && !empty($staff['name_pattern'])) {
+        $stmt = $pdo->prepare("
+            SELECT u.id, u.full_name, u.email, u.status, u.agence_id, s.name AS agence_name
+            FROM users u
+            LEFT JOIN company_sites s ON s.id = u.agence_id
+            WHERE u.full_name LIKE ?
+            LIMIT 1
+        ");
+        $stmt->execute([$staff['name_pattern']]);
+        $u = $stmt->fetch();
+    }
 
     if ($u) {
         $stmtRoles->execute([$u['id']]);
@@ -115,10 +180,10 @@ foreach ($emailsToCheck as $mail => $nomPdf) {
         $stmtPerms->execute([$u['id']]);
         $permsCount = (int) $stmtPerms->fetchColumn();
 
-        $agName = !empty($u['agence_name']) ? $u['agence_name'] : 'ID ' . $u['agence_id'];
-        $agLabel = "{$agName} (ID: {$u['agence_id']})";
+        $agName = !empty($u['agence_name']) ? $u['agence_name'] : ($u['agence_id'] ? 'ID ' . $u['agence_id'] : 'Siège Abidjan');
+        $agLabel = $u['agence_id'] ? "{$agName} (ID: {$u['agence_id']})" : "Siège Abidjan";
         
-        line(sprintf("[%02d/15] [✔] %s", $i, $nomPdf));
+        line(sprintf("[%02d/15] [✔] %s", $num, $staff['label']));
         line(sprintf("        - Nom en BDD  : %s (ID: %d)", $u['full_name'], $u['id']));
         line(sprintf("        - Email       : %s", $u['email']));
         line(sprintf("        - Agence      : %s", $agLabel));
@@ -126,12 +191,11 @@ foreach ($emailsToCheck as $mail => $nomPdf) {
         line(sprintf("        - Statut      : %s | Permissions actives : %d", strtoupper($u['status']), $permsCount));
         line();
     } else {
-        line(sprintf("[%02d/15] [❌] %s", $i, $nomPdf));
-        line(sprintf("        - Email attendu : %s", $mail));
-        line("        - État          : Utilisateur non trouvé en base.");
+        line(sprintf("[%02d/15] [❌] %s", $num, $staff['label']));
+        line(sprintf("        - Email(s) attendu(s) : %s", implode(', ', $staff['emails'])));
+        line("        - État                 : Utilisateur non trouvé en base.");
         line();
     }
-    $i++;
 }
 
 line("=========================================================================================");

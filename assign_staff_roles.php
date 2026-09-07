@@ -9,7 +9,6 @@ error_reporting(E_ALL);
  * Compatible PHP 7.4+ et PHP 8.x
  */
 
-// Détection du chemin racine
 $basePath = __DIR__;
 if (!file_exists($basePath . '/config/database.php') && file_exists(dirname($basePath) . '/config/database.php')) {
     $basePath = dirname($basePath);
@@ -58,13 +57,13 @@ if (!$isCli) {
     echo "<h2>Attribution des Rôles, Agences & Permissions (Liste Personnel)</h2>";
 }
 
-out("Version PHP utilisée : " . PHP_VERSION, "info");
-out("Dossier racine détecté : " . $basePath, "info");
+out("Version PHP : " . PHP_VERSION, "info");
+out("Dossier racine : " . $basePath, "info");
 
 // Connexion BDD
 $configFile = $basePath . '/config/database.php';
 if (!file_exists($configFile)) {
-    out("Fichier de configuration BDD introuvable : {$configFile}", "error");
+    out("Fichier config/database.php introuvable : {$configFile}", "error");
     if (!$isCli) echo "</body></html>";
     exit(1);
 }
@@ -78,9 +77,9 @@ try {
         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
     ]);
-    out("Connexion à la base de données {$config['dbname']} réussie.", "success");
+    out("Connexion à la base {$config['dbname']} réussie.", "success");
 } catch (Exception $e) {
-    out("Erreur de connexion MySQL : " . $e->getMessage(), "error");
+    out("Erreur MySQL : " . $e->getMessage(), "error");
     if (!$isCli) echo "</body></html>";
     exit(1);
 }
@@ -113,16 +112,36 @@ $pdo->exec("
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 ");
 
-// 2. Définition des 15 utilisateurs de la liste PDF
+// Fonction de validation du site ID par rapport à company_sites
+function resolveValidSiteId($pdo, $targetSiteId) {
+    if ($targetSiteId === null || $targetSiteId === 1) {
+        // Vérifier si le site 1 existe
+        $stmt = $pdo->prepare("SELECT id FROM company_sites WHERE id = ?");
+        $stmt->execute([$targetSiteId]);
+        if ($stmt->fetchColumn()) {
+            return (int)$targetSiteId;
+        }
+        return null; // Siège / Multi-agence
+    }
+    $stmt = $pdo->prepare("SELECT id FROM company_sites WHERE id = ?");
+    $stmt->execute([$targetSiteId]);
+    if ($stmt->fetchColumn()) {
+        return (int)$targetSiteId;
+    }
+    return null;
+}
+
+// 2. Définition stricte des 15 utilisateurs de la liste PDF
 $staffList = [
     [
         'name'        => 'AKOIBLIN ROXANE',
         'poste'       => "CHEF D'AGENCE ADJAME",
-        'email_match' => ['roxane.akoiblin@labelleporte.ci', 'roxane.a@labelleporte.ci', '%akoiblin%'],
+        'exact_emails'=> ['roxane.akoiblin@labelleporte.ci', 'roxane.a@labelleporte.ci'],
+        'name_pattern'=> '%AKOIBLIN%',
         'default_mail'=> 'roxane.akoiblin@labelleporte.ci',
         'role'        => 'chef_agence',
         'agence_id'   => 3404, // Adjamé
-        'agence_name' => 'Agence Adjamé Pharmacie Latin',
+        'agence_name' => 'Agence Adjamé',
         'permissions' => [
             'colisage_colis'        => [1, 1, 1, 0],
             'colisage_expeditions'  => [1, 1, 1, 0],
@@ -137,7 +156,8 @@ $staffList = [
     [
         'name'        => 'KOUAKOU SALES',
         'poste'       => 'RESPONSABLE GROUPAGE',
-        'email_match' => ['sales.kouakou@labelleporte.ci', '%sales%', '%kouakou%'],
+        'exact_emails'=> ['sales.kouakou@labelleporte.ci'],
+        'name_pattern'=> '%SALES%',
         'default_mail'=> 'sales.kouakou@labelleporte.ci',
         'role'        => 'agent_groupage',
         'agence_id'   => 1, // Siège
@@ -153,7 +173,8 @@ $staffList = [
     [
         'name'        => 'DIARRA SIAKA',
         'poste'       => "CHEF D'AGENCE DOKUI",
-        'email_match' => ['siaka.diarra@labelleporte.ci', '%siaka%'],
+        'exact_emails'=> ['siaka.diarra@labelleporte.ci'],
+        'name_pattern'=> '%SIAKA%DIARRA%',
         'default_mail'=> 'siaka.diarra@labelleporte.ci',
         'role'        => 'chef_agence',
         'agence_id'   => 3403, // Abobo Dokui
@@ -172,7 +193,8 @@ $staffList = [
     [
         'name'        => 'KOUAME GRACE',
         'poste'       => 'AGENT DE SAISIE DOKUI',
-        'email_match' => ['grace.kouame@labelleporte.ci', '%grace.kouame%', '%kouame%grace%'],
+        'exact_emails'=> ['grace.kouame@labelleporte.ci'],
+        'name_pattern'=> '%KOUAME%GRACE%',
         'default_mail'=> 'grace.kouame@labelleporte.ci',
         'role'        => 'agent_saisie',
         'agence_id'   => 3403, // Abobo Dokui
@@ -188,7 +210,8 @@ $staffList = [
     [
         'name'        => 'KOLI KONAN ANICET',
         'poste'       => 'AGENT DE SAISIE DOKUI',
-        'email_match' => ['anicet.koli@labelleporte.ci', '%koli%', '%anicet%'],
+        'exact_emails'=> ['anicet.koli@labelleporte.ci'],
+        'name_pattern'=> '%KOLI%ANICET%',
         'default_mail'=> 'anicet.koli@labelleporte.ci',
         'role'        => 'agent_saisie',
         'agence_id'   => 3403, // Abobo Dokui
@@ -204,7 +227,8 @@ $staffList = [
     [
         'name'        => 'ABOU CARINE (Mme AGBADAN)',
         'poste'       => 'CAISSIERE DOKUI',
-        'email_match' => ['carine.abou@labelleporte.ci', '%carine.abou%', '%agbadan%'],
+        'exact_emails'=> ['carine.abou@labelleporte.ci'],
+        'name_pattern'=> '%AGBADAN%',
         'default_mail'=> 'carine.abou@labelleporte.ci',
         'role'        => 'caissiere',
         'agence_id'   => 3403, // Abobo Dokui
@@ -220,7 +244,8 @@ $staffList = [
     [
         'name'        => 'ABASSI WILFRIED',
         'poste'       => 'RESPONSABLE MARKETING ET COMMUNICATION',
-        'email_match' => ['wilfried.abassi@labelleporte.ci', '%abassi%'],
+        'exact_emails'=> ['wilfried.abassi@labelleporte.ci'],
+        'name_pattern'=> '%ABASSI%',
         'default_mail'=> 'wilfried.abassi@labelleporte.ci',
         'role'        => 'responsable_marketing',
         'agence_id'   => 1, // Siège
@@ -233,7 +258,8 @@ $staffList = [
     [
         'name'        => 'LASSICI MARIAM',
         'poste'       => 'AGENT CALL CENTER',
-        'email_match' => ['mariam.lassici@labelleporte.ci', '%lassici%'],
+        'exact_emails'=> ['mariam.lassici@labelleporte.ci'],
+        'name_pattern'=> '%LASSICI%',
         'default_mail'=> 'mariam.lassici@labelleporte.ci',
         'role'        => 'agent_call_center',
         'agence_id'   => 1, // Siège
@@ -248,7 +274,8 @@ $staffList = [
     [
         'name'        => 'KOFFI MARQUEZ',
         'poste'       => "CHEF D'AGENCE AEROPORT",
-        'email_match' => ['marquez.koffi@labelleporte.ci', '%marquez%'],
+        'exact_emails'=> ['marquez.koffi@labelleporte.ci'],
+        'name_pattern'=> '%MARQUEZ%',
         'default_mail'=> 'marquez.koffi@labelleporte.ci',
         'role'        => 'chef_agence',
         'agence_id'   => 3402, // Aéroport Port-Bouët Fret
@@ -267,7 +294,8 @@ $staffList = [
     [
         'name'        => 'ASSOMA ASSI JEAN EUDES',
         'poste'       => 'AGENT DE SAISIE AEROPORT',
-        'email_match' => ['jeaneudes.assoma@labelleporte.ci', '%assoma%', '%jean%eudes%'],
+        'exact_emails'=> ['jeaneudes.assoma@labelleporte.ci'],
+        'name_pattern'=> '%ASSOMA%',
         'default_mail'=> 'jeaneudes.assoma@labelleporte.ci',
         'role'        => 'agent_saisie',
         'agence_id'   => 3402, // Aéroport Port-Bouët Fret
@@ -283,7 +311,8 @@ $staffList = [
     [
         'name'        => 'ADEPO MARIE ESTHER',
         'poste'       => "CHEF D'AGENCE SENEGAL",
-        'email_match' => ['estelle.adepo@labelleporte.ci', 'esther.adepo@labelleporte.ci', '%adepo%'],
+        'exact_emails'=> ['estelle.adepo@labelleporte.ci', 'esther.adepo@labelleporte.ci'],
+        'name_pattern'=> '%ADEPO%ESTHER%',
         'default_mail'=> 'estelle.adepo@labelleporte.ci',
         'role'        => 'chef_agence',
         'agence_id'   => 3401, // Agence Sénégal
@@ -302,11 +331,12 @@ $staffList = [
     [
         'name'        => 'DJAMBITCHE SARAH STEPHANIE',
         'poste'       => 'AGENT DE SAISIE ADJAME',
-        'email_match' => ['sarah.djambitche@labelleporte.ci', '%sarah%djambitche%'],
+        'exact_emails'=> ['sarah.djambitche@labelleporte.ci'],
+        'name_pattern'=> '%SARAH%DJAMBITCHE%',
         'default_mail'=> 'sarah.djambitche@labelleporte.ci',
         'role'        => 'agent_saisie',
         'agence_id'   => 3404, // Adjamé
-        'agence_name' => 'Agence Adjamé Pharmacie Latin',
+        'agence_name' => 'Agence Adjamé',
         'permissions' => [
             'colisage_colis'        => [1, 1, 0, 0],
             'colisage_expeditions'  => [1, 0, 0, 0],
@@ -318,11 +348,12 @@ $staffList = [
     [
         'name'        => 'KARABBOUE AMY',
         'poste'       => 'AGENT DE SAISIE ADJAME',
-        'email_match' => ['amy.dieng@labelleporte.ci', 'amy.karabboue@labelleporte.ci', '%amy%'],
+        'exact_emails'=> ['amy.dieng@labelleporte.ci', 'amy.karabboue@labelleporte.ci'],
+        'name_pattern'=> '%KARABBOUE%',
         'default_mail'=> 'amy.dieng@labelleporte.ci',
         'role'        => 'agent_saisie',
         'agence_id'   => 3404, // Adjamé
-        'agence_name' => 'Agence Adjamé Pharmacie Latin',
+        'agence_name' => 'Agence Adjamé',
         'permissions' => [
             'colisage_colis'        => [1, 1, 0, 0],
             'colisage_expeditions'  => [1, 0, 0, 0],
@@ -334,11 +365,12 @@ $staffList = [
     [
         'name'        => 'SERY GRACE',
         'poste'       => 'AGENT DE SAISIE ADJAME',
-        'email_match' => ['grace.sery@labelleporte.ci', '%sery%', '%grace%sery%'],
+        'exact_emails'=> ['grace.sery@labelleporte.ci'],
+        'name_pattern'=> '%SERY%GRACE%',
         'default_mail'=> 'grace.sery@labelleporte.ci',
         'role'        => 'agent_saisie',
         'agence_id'   => 3404, // Adjamé
-        'agence_name' => 'Agence Adjamé Pharmacie Latin',
+        'agence_name' => 'Agence Adjamé',
         'permissions' => [
             'colisage_colis'        => [1, 1, 0, 0],
             'colisage_expeditions'  => [1, 0, 0, 0],
@@ -350,7 +382,8 @@ $staffList = [
     [
         'name'        => 'KADJO PRINCE',
         'poste'       => 'RESPONSABLE PARIS',
-        'email_match' => ['prince.kadjo@labelleporte.ci', '%prince%kadjo%'],
+        'exact_emails'=> ['prince.kadjo@labelleporte.ci'],
+        'name_pattern'=> '%PRINCE%KADJO%',
         'default_mail'=> 'prince.kadjo@labelleporte.ci',
         'role'        => 'chef_agence',
         'agence_id'   => 3400, // France Paris
@@ -368,7 +401,7 @@ $staffList = [
     ],
 ];
 
-out("Traitement des 15 utilisateurs du personnel...", "info");
+out("Attribution en cours pour les 15 utilisateurs du personnel...", "info");
 
 $userCols = $pdo->query("SHOW COLUMNS FROM users")->fetchAll(PDO::FETCH_COLUMN);
 if (!$userCols) $userCols = [];
@@ -378,29 +411,37 @@ $defaultPassword = password_hash('lbp2026', PASSWORD_BCRYPT);
 
 foreach ($staffList as $index => $staff) {
     $num = $index + 1;
-    // A. Recherche de l'utilisateur existant
+    $validSiteId = resolveValidSiteId($pdo, $staff['agence_id']);
+
+    // A. Recherche stricte
     $user = null;
-    foreach ($staff['email_match'] as $matcher) {
-        if (strpos($matcher, '%') !== false) {
-            $stmt = $pdo->prepare("SELECT * FROM users WHERE email LIKE ? OR full_name LIKE ? LIMIT 1");
-            $stmt->execute([$matcher, $matcher]);
-        } else {
-            $stmt = $pdo->prepare("SELECT * FROM users WHERE email = ? LIMIT 1");
-            $stmt->execute([$matcher]);
-        }
+    foreach ($staff['exact_emails'] as $em) {
+        $stmt = $pdo->prepare("SELECT * FROM users WHERE LOWER(email) = LOWER(?) LIMIT 1");
+        $stmt->execute([$em]);
         $user = $stmt->fetch();
         if ($user) break;
     }
 
+    if (!$user && !empty($staff['name_pattern'])) {
+        $stmt = $pdo->prepare("SELECT * FROM users WHERE full_name LIKE ? LIMIT 1");
+        $stmt->execute([$staff['name_pattern']]);
+        $user = $stmt->fetch();
+    }
+
     if (!$user) {
-        // Création du compte s'il n'existe pas encore
-        $insertFields = ['full_name', 'email', 'status', 'agence_id', 'is_admin'];
-        $insertValues = [':full_name', ':email', "'active'", ':agence_id', 0];
+        // Création de l'utilisateur
+        $insertFields = ['full_name', 'email', 'status', 'is_admin'];
+        $insertValues = [':full_name', ':email', "'active'", 0];
         $params = [
             'full_name' => $staff['name'],
             'email'     => $staff['default_mail'],
-            'agence_id' => $staff['agence_id'],
         ];
+
+        if ($validSiteId !== null) {
+            $insertFields[] = 'agence_id';
+            $insertValues[] = ':agence_id';
+            $params['agence_id'] = $validSiteId;
+        }
 
         if ($hasPassword) {
             $insertFields[] = 'password';
@@ -417,22 +458,21 @@ foreach ($staffList as $index => $staff) {
         $stmtInsert = $pdo->prepare($sql);
         $stmtInsert->execute($params);
         $userId = (int) $pdo->lastInsertId();
-        out("[{$num}/15] Création du compte : {$staff['name']} <{$staff['default_mail']}> (ID: {$userId})", "success");
+        out("[{$num}/15] [Créé] {$staff['name']} <{$staff['default_mail']}> (ID: {$userId}) -> Agence ID: " . ($validSiteId ?? 'Siège'), "success");
     } else {
         $userId = (int) $user['id'];
-        // Mise à jour de l'agence et du statut
         $stmtUp = $pdo->prepare("UPDATE users SET agence_id = :agence_id, status = 'active' WHERE id = :id");
-        $stmtUp->execute(['agence_id' => $staff['agence_id'], 'id' => $userId]);
-        out("[{$num}/15] Utilisateur mis à jour : {$user['full_name']} (ID: {$userId}, Email: {$user['email']}) -> Agence {$staff['agence_name']} (ID {$staff['agence_id']})", "success");
+        $stmtUp->execute(['agence_id' => $validSiteId, 'id' => $userId]);
+        out("[{$num}/15] [Mis à jour] {$user['full_name']} <{$user['email']}> (ID: {$userId}) -> Agence ID: " . ($validSiteId ?? 'Siège'), "success");
     }
 
-    // B. Attribution du rôle dans lbp_user_roles
+    // B. Rôle dans lbp_user_roles
     $pdo->prepare("DELETE FROM lbp_user_roles WHERE user_id = ?")->execute([$userId]);
     $stmtRole = $pdo->prepare("INSERT INTO lbp_user_roles (user_id, role) VALUES (?, ?)");
     $stmtRole->execute([$userId, $staff['role']]);
     out("    -> Rôle assigné : {$staff['role']}", "info");
 
-    // C. Attribution des permissions granulaires
+    // C. Permissions
     $stmtEnt = $pdo->prepare("SELECT id FROM permission_entities WHERE code = ? LIMIT 1");
     $stmtPerm = $pdo->prepare("
         INSERT INTO user_permissions (user_id, entity_id, can_view, can_create, can_update, can_delete)
@@ -449,28 +489,24 @@ foreach ($staffList as $index => $staff) {
     }
     out("    -> " . count($staff['permissions']) . " entités de permissions configurées.", "info");
 
-    // D. Liaison avec rh_employees si la table existe
+    // D. Liaison rh_employees si présente
     try {
-        $nameParts = explode(' ', $staff['name']);
         $stmtEmp = $pdo->prepare("
             UPDATE rh_employees 
             SET user_id = :user_id, site_id = :site_id, agence_id = :site_id, poste = :poste, updated_at = NOW() 
-            WHERE (email = :email OR nom LIKE :name_like OR user_id = :user_id)
+            WHERE (email = :email OR user_id = :user_id)
         ");
         $stmtEmp->execute([
             'user_id'   => $userId,
-            'site_id'   => $staff['agence_id'],
+            'site_id'   => $validSiteId,
             'poste'     => $staff['poste'],
             'email'     => $staff['default_mail'],
-            'name_like' => '%' . $nameParts[0] . '%',
         ]);
-    } catch (Exception $e) {
-        // Optionnel
-    }
+    } catch (Exception $e) {}
 }
 
 out("\n===========================================================", "success");
-out("  ATTRIBUTION TERMINÉE AVEC SUCCÈS POUR LES 15 UTILISATEURS", "success");
+out("  ATTRIBUTION TERMINÉE AVEC SUCCÈS POUR LES 15 COLLABORATEURS", "success");
 out("===========================================================", "success");
 
 if (!$isCli) {
