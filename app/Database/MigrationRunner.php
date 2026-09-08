@@ -1621,52 +1621,11 @@ class MigrationRunner
                 (1, 'LBP Transit', 'Le monde avance. Vos marchandises aussi.', 'LBP', '#111c44', '#ffcc00', '#d40511', '#f5f7fb', 'Inter', 'Expéditions France & Europe → Afrique : départs réguliers chaque semaine')
         ");
         $this->pdo->exec("
-            INSERT IGNORE INTO website_slides
-                (id, eyebrow, title, description, image_url, primary_label, primary_url, secondary_label, secondary_url, overlay_color, sort_order)
-            VALUES
-                (1, 'Transit international', 'Votre commerce n’a plus de frontières.', 'Fret, dédouanement et livraison finale réunis dans une expérience digitale claire.', 'images/site/hero-logistics.svg', 'Demander un devis', 'site/devis', 'Suivre un colis', 'site/tracking', '#111c44', 10),
-                (2, 'Marketplace logistique', 'Achetez les services et fournitures utiles à vos expéditions.', 'Emballages, assurance, groupage et prestations transit accessibles depuis notre nouvelle boutique.', 'images/site/warehouse.svg', 'Explorer la boutique', 'site/shop', 'Nos services', 'site#services', '#063f4f', 20),
-                (3, 'Communauté import-export', 'Les bonnes réponses circulent aussi vite que vos colis.', 'Échangez avec des professionnels sur les formalités, fournisseurs, corridors et bonnes pratiques.', 'images/site/hero-logistics.svg', 'Découvrir le forum', 'site/forum', 'Créer un compte bientôt', 'site/forum', '#4c1d95', 30)
-        ");
-        $this->pdo->exec("
-            INSERT IGNORE INTO website_products
-                (id, sku, name, category, summary, price, currency, badge, stock_status, is_featured, sort_order)
-            VALUES
-                (1, 'PACK-EXPORT-M', 'Kit emballage export renforcé', 'Emballage', 'Carton double cannelure, film, adhésif et protections pour expédition internationale.', 35000, 'XOF', 'Best-seller', 'available', 1, 10),
-                (2, 'GROUPAGE-FR-CI', 'Réservation groupage France → Abidjan', 'Transport', 'Acompte de réservation pour un départ aérien/maritime consolidé.', 150000, 'XOF', 'Départ hebdomadaire', 'available', 1, 20),
-                (3, 'ASSUR-CARGO', 'Assurance cargo essentielle', 'Assurance', 'Protection simplifiée de votre marchandise pendant le transport.', 45000, 'XOF', 'Recommandé', 'available', 1, 30),
-                (4, 'DOC-IMPORT', 'Pack documents import', 'Formalités', 'Contrôle documentaire et préparation du dossier avant embarquement.', 75000, 'XOF', 'Gain de temps', 'available', 1, 40)
-        ");
-        $this->pdo->exec("
-            INSERT IGNORE INTO website_forum_topics
-                (id, category, title, excerpt, author_name, replies_count, views_count, is_pinned, last_activity_at)
-            VALUES
-                (1, 'Douane & Transit', 'Quels documents exiger de son expéditeur avant le départ ?', 'Checklist facture commerciale, packing list, LTA/BL et certificat d’origine.', 'Awa K.', 18, 426, 1, NOW()),
-                (2, 'Douane', 'Comprendre la valeur en douane sans jargon', 'Échange pratique autour du fret, de l’assurance et de la valeur transactionnelle.', 'Conseiller LBP', 12, 318, 1, NOW()),
-                (3, 'Transport', 'Maritime ou aérien pour un premier envoi ?', 'Retours d’expérience selon le volume, l’urgence et le budget.', 'Moussa T.', 27, 591, 0, NOW())
-        ");
-        $this->pdo->exec("
             INSERT IGNORE INTO website_announcements
                 (id, badge, title, link_label, link_url, is_active, sort_order)
             VALUES
                 (1, 'Nouveau', 'Expéditions France & Europe → Afrique : départs réguliers chaque semaine', 'En savoir plus', 'site/devis', 1, 10)
         ");
-        $this->pdo->exec("
-            INSERT IGNORE INTO website_articles
-                (id, slug, title, excerpt, content, author_name, is_published, published_at)
-            VALUES
-                (1, 'preparer-son-expedition-fret-aerien-ou-maritime', 'Préparer son expédition Fret Aérien ou Maritime',
-                 'Les étapes essentielles avant de réserver le transport et passer la douane.',
-                 'Vérifiez la marchandise, définissez clairement les incoterms, contrôlez les documents commerciaux (facture, packing list) et anticipez les formalités douanières avant l’embarquement.',
-                 'Équipe LBP', 1, NOW())
-        ");
-
-        // Clean any pre-existing rows containing Chine in existing databases
-        $this->pdo->exec("UPDATE website_announcements SET title = 'Expéditions France & Europe → Afrique : départs réguliers chaque semaine' WHERE title LIKE '%Chine%' OR id = 1");
-        $this->pdo->exec("UPDATE website_articles SET title = 'Préparer son expédition Fret Aérien ou Maritime', slug = 'preparer-son-expedition-fret-aerien-ou-maritime', excerpt = 'Les étapes essentielles avant de réserver le transport et passer la douane.' WHERE title LIKE '%Chine%' OR id = 1");
-        $this->pdo->exec("UPDATE website_forum_topics SET category = 'Douane & Transit', title = 'Quels documents exiger de son expéditeur avant le départ ?' WHERE category LIKE '%Chine%' OR title LIKE '%Chine%' OR id = 1");
-        $this->pdo->exec("UPDATE website_products SET name = 'Réservation groupage France → Abidjan', sku = 'GROUPAGE-FR-CI' WHERE sku LIKE '%CN%' OR name LIKE '%Chine%' OR id = 2");
-        $this->pdo->exec("UPDATE website_branding SET announcement = 'Expéditions France & Europe → Afrique : départs réguliers chaque semaine' WHERE announcement LIKE '%Chine%' OR id = 1");
     }
 
     private function createColisageTables(): void
