@@ -19,11 +19,11 @@ use App\Helpers\View;
  */
 
 $statusBadges = [
-    'en_attente' => ['label' => 'En attente de validation', 'bg' => '#fee2e2', 'color' => '#dc2626', 'icon' => '⏳'],
-    'validee'    => ['label' => 'Validée (À décaisser)',    'bg' => '#fef3c7', 'color' => '#d97706', 'icon' => '✓'],
-    'decaissee'  => ['label' => 'Décaissée (En cours)',     'bg' => '#e0e7ff', 'color' => '#4338ca', 'icon' => '💵'],
-    'imputee'    => ['label' => 'Imputée & Clôturée',       'bg' => '#dcfce7', 'color' => '#15803d', 'icon' => '✅'],
-    'rejetee'    => ['label' => 'Rejetée',                  'bg' => '#f1f5f9', 'color' => '#64748b', 'icon' => '✕'],
+    'en_attente' => ['label' => 'En attente de validation', 'bg' => '#fee2e2', 'color' => '#dc2626', 'icon' => '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:inline-block; vertical-align:-1px; margin-right:3px;"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>'],
+    'validee'    => ['label' => 'Validée (À décaisser)',    'bg' => '#fef3c7', 'color' => '#d97706', 'icon' => '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:inline-block; vertical-align:-1px; margin-right:3px;"><polyline points="20 6 9 17 4 12"></polyline></svg>'],
+    'decaissee'  => ['label' => 'Décaissée (En cours)',     'bg' => '#e0e7ff', 'color' => '#4338ca', 'icon' => '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:inline-block; vertical-align:-1px; margin-right:3px;"><rect x="2" y="6" width="20" height="12" rx="2"></rect><circle cx="12" cy="12" r="2"></circle></svg>'],
+    'imputee'    => ['label' => 'Imputée & Clôturée',       'bg' => '#dcfce7', 'color' => '#15803d', 'icon' => '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:inline-block; vertical-align:-1px; margin-right:3px;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>'],
+    'rejetee'    => ['label' => 'Rejetée',                  'bg' => '#f1f5f9', 'color' => '#64748b', 'icon' => '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:inline-block; vertical-align:-1px; margin-right:3px;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>'],
 ];
 ?>
 
@@ -34,7 +34,8 @@ $statusBadges = [
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
             <div>
                 <div style="display: inline-flex; align-items: center; gap: 8px; font-size: 0.8rem; font-weight: 700; color: #2563eb; text-transform: uppercase; letter-spacing: 0.05em; background: #eff6ff; padding: 4px 10px; border-radius: 9999px; margin-bottom: 0.4rem;">
-                    <span>💳 TRÉSORERIE & DÉCAISSEMENTS</span>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:inline-block; vertical-align:-2px;"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+                    <span>TRÉSORERIE & DÉCAISSEMENTS</span>
                 </div>
                 <h1 style="font-size: 1.75rem; font-weight: 800; color: #0f172a; margin: 0; letter-spacing: -0.02em;">DEMANDES DE FONDS</h1>
                 <p style="color: #64748b; margin: 0.25rem 0 0; font-size: 0.9rem;">Gestion, traçabilité et validation des décaissements sur dossiers de transit et fonctionnement.</p>
@@ -78,7 +79,7 @@ $statusBadges = [
                 <!-- Période Date début -->
                 <div>
                     <label style="display: block; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: #7c2d12; margin-bottom: 0.35rem;">
-                        🔍 Période du
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:inline-block; vertical-align:-1px; margin-right:4px;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>Période du
                     </label>
                     <input type="date" name="date_from" value="<?= View::e($filters['date_from'] ?? '') ?>" class="finea-input" style="width: 100%; background: #fff; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.85rem;">
                 </div>
@@ -94,7 +95,7 @@ $statusBadges = [
                 <!-- Filtre État -->
                 <div>
                     <label style="display: block; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: #7c2d12; margin-bottom: 0.35rem;">
-                        🔍 Historique par État
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:inline-block; vertical-align:-1px; margin-right:4px;"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>Historique par État
                     </label>
                     <select name="statut" class="finea-select" style="width: 100%; background: #fff; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.85rem;">
                         <option value="">Tous les états</option>
@@ -109,7 +110,7 @@ $statusBadges = [
                 <!-- Filtre Agence -->
                 <div>
                     <label style="display: block; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: #7c2d12; margin-bottom: 0.35rem;">
-                        🏢 Agence
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:inline-block; vertical-align:-1px; margin-right:4px;"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect><path d="M9 22v-4h6v4"></path></svg>Agence
                     </label>
                     <select name="agence_id" class="finea-select" style="width: 100%; background: #fff; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.85rem;">
                         <option value="">Toutes les agences</option>
@@ -124,7 +125,7 @@ $statusBadges = [
                 <!-- Filtre Cadre -->
                 <div>
                     <label style="display: block; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: #7c2d12; margin-bottom: 0.35rem;">
-                        📂 Cadre
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:inline-block; vertical-align:-1px; margin-right:4px;"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>Cadre
                     </label>
                     <select name="cadre" class="finea-select" style="width: 100%; background: #fff; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.85rem;">
                         <option value="">Tous les cadres</option>
@@ -136,7 +137,7 @@ $statusBadges = [
                 <!-- Recherche libre -->
                 <div>
                     <label style="display: block; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: #7c2d12; margin-bottom: 0.35rem;">
-                        🔎 Recherche
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:inline-block; vertical-align:-1px; margin-right:4px;"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>Recherche
                     </label>
                     <input type="text" name="q" placeholder="N° demande, motif, dossier..." value="<?= View::e($filters['q'] ?? '') ?>" class="finea-input" style="width: 100%; background: #fff; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.85rem;">
                 </div>
@@ -178,7 +179,7 @@ $statusBadges = [
                         <?php if (empty($items)): ?>
                             <tr>
                                 <td colspan="12" style="text-align: center; padding: 3rem 1rem; color: #94a3b8;">
-                                    <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">📂</div>
+                                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin: 0 auto 0.75rem auto; display: block;"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
                                     <div style="font-weight: 700; color: #475569; font-size: 1rem;">Aucune demande de fonds trouvée</div>
                                     <div style="font-size: 0.85rem; margin-top: 0.25rem;">Modifiez vos critères de recherche ou cliquez sur "Ajouter une demande de décaissement".</div>
                                 </td>

@@ -22,7 +22,8 @@ use App\Helpers\View;
         <!-- Header -->
         <div style="margin-bottom: 1.5rem;">
             <div style="display: inline-flex; align-items: center; gap: 8px; font-size: 0.8rem; font-weight: 700; color: #4338ca; text-transform: uppercase; letter-spacing: 0.05em; background: #e0e7ff; padding: 4px 10px; border-radius: 9999px; margin-bottom: 0.4rem;">
-                <span>📑 CONTRÔLE DE GESTION & JUSTIFICATIFS</span>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:inline-block; vertical-align:-2px;"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
+                <span>CONTRÔLE DE GESTION & JUSTIFICATIFS</span>
             </div>
             <h1 style="font-size: 1.75rem; font-weight: 800; color: #0f172a; margin: 0;">IMPUTATION DES FONDS</h1>
             <p style="color: #64748b; margin: 0.25rem 0 0; font-size: 0.9rem;">Justification des dépenses engagées, enregistrement des pièces comptables et régularisation des reliquats de caisse.</p>
@@ -30,11 +31,13 @@ use App\Helpers\View;
 
         <!-- Filter Bar & Statut Tabs -->
         <div style="display: flex; gap: 10px; margin-bottom: 1.25rem; border-bottom: 2px solid #e2e8f0; padding-bottom: 0.75rem;">
-            <a href="<?= View::url('finance/fonds/imputation') ?>?statut=decaissee" style="padding: 8px 16px; border-radius: 6px; font-weight: 700; font-size: 0.875rem; text-decoration: none; <?= $currentStatut === 'decaissee' ? 'background:#4338ca; color:#fff;' : 'background:#f1f5f9; color:#475569;' ?>">
-                ⏳ À Imputer / En attente de justificatifs
+            <a href="<?= View::url('finance/fonds/imputation') ?>?statut=decaissee" style="padding: 8px 16px; border-radius: 6px; font-weight: 700; font-size: 0.875rem; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; <?= $currentStatut === 'decaissee' ? 'background:#4338ca; color:#fff;' : 'background:#f1f5f9; color:#475569;' ?>">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                À Imputer / En attente de justificatifs
             </a>
-            <a href="<?= View::url('finance/fonds/imputation') ?>?statut=imputee" style="padding: 8px 16px; border-radius: 6px; font-weight: 700; font-size: 0.875rem; text-decoration: none; <?= $currentStatut === 'imputee' ? 'background:#15803d; color:#fff;' : 'background:#f1f5f9; color:#475569;' ?>">
-                ✅ Déjà Imputées & Clôturées
+            <a href="<?= View::url('finance/fonds/imputation') ?>?statut=imputee" style="padding: 8px 16px; border-radius: 6px; font-weight: 700; font-size: 0.875rem; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; <?= $currentStatut === 'imputee' ? 'background:#15803d; color:#fff;' : 'background:#f1f5f9; color:#475569;' ?>">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                Déjà Imputées & Clôturées
             </a>
         </div>
 
@@ -45,7 +48,7 @@ use App\Helpers\View;
 
                 <div>
                     <label style="display: block; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: #475569; margin-bottom: 0.35rem;">
-                        🏢 Agence
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:inline-block; vertical-align:-1px; margin-right:4px;"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect><path d="M9 22v-4h6v4"></path></svg>Agence
                     </label>
                     <select name="agence_id" class="finea-select" style="width: 100%; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.85rem;">
                         <option value="">Toutes les agences</option>
@@ -59,7 +62,7 @@ use App\Helpers\View;
 
                 <div>
                     <label style="display: block; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: #475569; margin-bottom: 0.35rem;">
-                        📂 Cadre
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:inline-block; vertical-align:-1px; margin-right:4px;"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>Cadre
                     </label>
                     <select name="cadre" class="finea-select" style="width: 100%; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.85rem;">
                         <option value="">Tous les cadres</option>
@@ -70,7 +73,7 @@ use App\Helpers\View;
 
                 <div>
                     <label style="display: block; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: #475569; margin-bottom: 0.35rem;">
-                        🔎 Recherche
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:inline-block; vertical-align:-1px; margin-right:4px;"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>Recherche
                     </label>
                     <input type="text" name="q" placeholder="Numéro, motif, dossier..." value="<?= View::e($filters['q'] ?? '') ?>" class="finea-input" style="width: 100%; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.85rem;">
                 </div>
@@ -112,7 +115,7 @@ use App\Helpers\View;
                         <?php if (empty($items)): ?>
                             <tr>
                                 <td colspan="10" style="text-align: center; padding: 3rem 1rem; color: #94a3b8;">
-                                    <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">📋</div>
+                                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin: 0 auto 0.75rem auto; display: block;"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
                                     <div style="font-weight: 700; color: #475569; font-size: 1rem;">Aucune demande d'imputation trouvée</div>
                                     <div style="font-size: 0.85rem; margin-top: 0.25rem;">Toutes les dépenses ont été régularisées ou aucune demande ne correspond à vos filtres.</div>
                                 </td>

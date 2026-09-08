@@ -14,11 +14,11 @@ use App\Helpers\View;
  */
 
 $statusBadges = [
-    'en_attente' => ['label' => 'En attente de validation', 'bg' => '#fee2e2', 'color' => '#dc2626', 'icon' => '⏳'],
-    'validee'    => ['label' => 'Validée (À décaisser)',    'bg' => '#fef3c7', 'color' => '#d97706', 'icon' => '✓'],
-    'decaissee'  => ['label' => 'Décaissée (En cours)',     'bg' => '#e0e7ff', 'color' => '#4338ca', 'icon' => '💵'],
-    'imputee'    => ['label' => 'Imputée & Clôturée',       'bg' => '#dcfce7', 'color' => '#15803d', 'icon' => '✅'],
-    'rejetee'    => ['label' => 'Rejetée',                  'bg' => '#f1f5f9', 'color' => '#64748b', 'icon' => '✕'],
+    'en_attente' => ['label' => 'En attente de validation', 'bg' => '#fee2e2', 'color' => '#dc2626', 'icon' => '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:inline-block; vertical-align:-1px; margin-right:3px;"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>'],
+    'validee'    => ['label' => 'Validée (À décaisser)',    'bg' => '#fef3c7', 'color' => '#d97706', 'icon' => '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:inline-block; vertical-align:-1px; margin-right:3px;"><polyline points="20 6 9 17 4 12"></polyline></svg>'],
+    'decaissee'  => ['label' => 'Décaissée (En cours)',     'bg' => '#e0e7ff', 'color' => '#4338ca', 'icon' => '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:inline-block; vertical-align:-1px; margin-right:3px;"><rect x="2" y="6" width="20" height="12" rx="2"></rect><circle cx="12" cy="12" r="2"></circle></svg>'],
+    'imputee'    => ['label' => 'Imputée & Clôturée',       'bg' => '#dcfce7', 'color' => '#15803d', 'icon' => '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:inline-block; vertical-align:-1px; margin-right:3px;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>'],
+    'rejetee'    => ['label' => 'Rejetée',                  'bg' => '#f1f5f9', 'color' => '#64748b', 'icon' => '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:inline-block; vertical-align:-1px; margin-right:3px;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>'],
 ];
 
 $badgeInfo = $statusBadges[$demande->statut] ?? ['label' => ucfirst($demande->statut), 'bg' => '#f1f5f9', 'color' => '#475569', 'icon' => '•'];
@@ -94,7 +94,7 @@ $cadreColor = $demande->cadre === 'traitement_dossier' ? '#2563eb' : '#7c3aed';
                         <div>
                             <div style="font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Agence & Date</div>
                             <div style="font-size: 0.95rem; font-weight: 700; color: #1e293b; margin-top: 0.25rem;">
-                                🏢 <?= View::e($demande->agenceNom ?? 'Agence LBP') ?>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:inline-block; vertical-align:-1px; margin-right:4px;"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect><path d="M9 22v-4h6v4"></path></svg><?= View::e($demande->agenceNom ?? 'Agence LBP') ?>
                             </div>
                             <div style="font-size: 0.8rem; color: #64748b;">
                                 Le <?= $demande->createdAt ? date('d/m/Y à H:i', strtotime($demande->createdAt)) : '—' ?>
@@ -145,7 +145,7 @@ $cadreColor = $demande->cadre === 'traitement_dossier' ? '#2563eb' : '#7c3aed';
                 <?php if ($demande->statut === 'en_attente' && $canValidate): ?>
                     <div style="background: #ffffff; border-radius: 12px; border: 2px solid #38bdf8; box-shadow: 0 4px 12px rgba(56, 189, 248, 0.15); padding: 1.5rem;">
                         <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 0.75rem;">
-                            <span style="font-size: 1.2rem;">🛡️</span>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0369a1" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
                             <h3 style="margin: 0; font-size: 1.1rem; font-weight: 800; color: #0369a1;">
                                 Décision Direction (Assistante DG / DG / Admin)
                             </h3>
@@ -183,7 +183,7 @@ $cadreColor = $demande->cadre === 'traitement_dossier' ? '#2563eb' : '#7c3aed';
                 <?php if ($demande->statut === 'validee' && $canDecaisser): ?>
                     <div style="background: #ffffff; border-radius: 12px; border: 2px solid #fbbf24; box-shadow: 0 4px 12px rgba(251, 191, 36, 0.15); padding: 1.5rem;">
                         <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 0.75rem;">
-                            <span style="font-size: 1.2rem;">💵</span>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#b45309" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"></rect><circle cx="12" cy="12" r="2"></circle></svg>
                             <h3 style="margin: 0; font-size: 1.1rem; font-weight: 800; color: #b45309;">
                                 Prise en Compte Caisse & Décaissement
                             </h3>
@@ -217,7 +217,7 @@ $cadreColor = $demande->cadre === 'traitement_dossier' ? '#2563eb' : '#7c3aed';
                 <?php if ($demande->statut === 'decaissee' && $canImputer): ?>
                     <div style="background: #ffffff; border-radius: 12px; border: 2px solid #818cf8; box-shadow: 0 4px 12px rgba(129, 140, 248, 0.15); padding: 1.5rem;">
                         <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 0.75rem;">
-                            <span style="font-size: 1.2rem;">📑</span>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4338ca" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
                             <h3 style="margin: 0; font-size: 1.1rem; font-weight: 800; color: #4338ca;">
                                 Imputation Comptable & Décharge
                             </h3>
@@ -271,7 +271,7 @@ $cadreColor = $demande->cadre === 'traitement_dossier' ? '#2563eb' : '#7c3aed';
                 <?php if ($demande->statut === 'imputee' && $demande->imputation): ?>
                     <div style="background: #f0fdf4; border: 2px solid #86efac; border-radius: 12px; padding: 1.5rem;">
                         <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 0.75rem;">
-                            <span style="font-size: 1.2rem;">✅</span>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#15803d" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
                             <h3 style="margin: 0; font-size: 1.1rem; font-weight: 800; color: #15803d;">
                                 Dossier de Fonds Imputé & Clôturé
                             </h3>
@@ -303,7 +303,8 @@ $cadreColor = $demande->cadre === 'traitement_dossier' ? '#2563eb' : '#7c3aed';
             <!-- Right Column : Timeline & Journal d'Audit de Traçabilité -->
             <div style="background: #ffffff; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); padding: 1.5rem;">
                 <h3 style="margin: 0 0 1.25rem; font-size: 1.1rem; font-weight: 800; color: #0f172a; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.75rem; display: flex; align-items: center; gap: 8px;">
-                    <span>📜</span> Journal de Traçabilité
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0f172a" stroke-width="2" style="display:inline-block; vertical-align:-3px;"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                    Journal de Traçabilité
                 </h3>
 
                 <div style="position: relative; padding-left: 20px; border-left: 2px solid #e2e8f0; display: flex; flex-direction: column; gap: 1.5rem;">
@@ -313,12 +314,12 @@ $cadreColor = $demande->cadre === 'traitement_dossier' ? '#2563eb' : '#7c3aed';
                         <?php foreach ($historique as $hist): ?>
                             <?php
                             $actionIcons = [
-                                'CREATION'     => '📝',
-                                'VALIDATION'   => '🛡️',
-                                'REJET'        => '❌',
-                                'DECAISSEMENT' => '💵',
-                                'IMPUTATION'   => '✅',
-                                'MODIFICATION' => '✏️',
+                                'CREATION'     => '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>',
+                                'VALIDATION'   => '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>',
+                                'REJET'        => '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>',
+                                'DECAISSEMENT' => '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"></rect><circle cx="12" cy="12" r="2"></circle></svg>',
+                                'IMPUTATION'   => '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>',
+                                'MODIFICATION' => '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>',
                             ];
                             $icon = $actionIcons[$hist['action']] ?? '•';
                             ?>

@@ -22,7 +22,8 @@ use App\Helpers\View;
         <!-- Header -->
         <div style="margin-bottom: 1.5rem;">
             <div style="display: inline-flex; align-items: center; gap: 8px; font-size: 0.8rem; font-weight: 700; color: #d97706; text-transform: uppercase; letter-spacing: 0.05em; background: #fef3c7; padding: 4px 10px; border-radius: 9999px; margin-bottom: 0.4rem;">
-                <span>💵 GUICHET DE CAISSE & DÉCAISSEMENTS</span>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:inline-block; vertical-align:-2px;"><rect x="2" y="6" width="20" height="12" rx="2"></rect><circle cx="12" cy="12" r="2"></circle><path d="M6 12h.01M18 12h.01"></path></svg>
+                <span>GUICHET DE CAISSE & DÉCAISSEMENTS</span>
             </div>
             <h1 style="font-size: 1.75rem; font-weight: 800; color: #0f172a; margin: 0;">PRISE EN COMPTE</h1>
             <p style="color: #64748b; margin: 0.25rem 0 0; font-size: 0.9rem;">File d'attente des demandes de fonds validées par la Direction, en attente de paiement physique par la Caisse.</p>
@@ -34,7 +35,7 @@ use App\Helpers\View;
                 
                 <div>
                     <label style="display: block; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: #475569; margin-bottom: 0.35rem;">
-                        🏢 Agence
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:inline-block; vertical-align:-1px; margin-right:4px;"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect><path d="M9 22v-4h6v4"></path></svg>Agence
                     </label>
                     <select name="agence_id" class="finea-select" style="width: 100%; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.85rem;">
                         <option value="">Toutes les agences</option>
@@ -48,7 +49,7 @@ use App\Helpers\View;
 
                 <div>
                     <label style="display: block; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: #475569; margin-bottom: 0.35rem;">
-                        📂 Cadre
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:inline-block; vertical-align:-1px; margin-right:4px;"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>Cadre
                     </label>
                     <select name="cadre" class="finea-select" style="width: 100%; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.85rem;">
                         <option value="">Tous les cadres</option>
@@ -59,7 +60,7 @@ use App\Helpers\View;
 
                 <div>
                     <label style="display: block; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: #475569; margin-bottom: 0.35rem;">
-                        🔎 Recherche
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:inline-block; vertical-align:-1px; margin-right:4px;"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>Recherche
                     </label>
                     <input type="text" name="q" placeholder="Numéro, dossier, motif..." value="<?= View::e($filters['q'] ?? '') ?>" class="finea-input" style="width: 100%; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.85rem;">
                 </div>
@@ -100,7 +101,7 @@ use App\Helpers\View;
                         <?php if (empty($items)): ?>
                             <tr>
                                 <td colspan="9" style="text-align: center; padding: 3rem 1rem; color: #94a3b8;">
-                                    <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">🎉</div>
+                                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin: 0 auto 0.75rem auto; display: block;"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path></svg>
                                     <div style="font-weight: 700; color: #475569; font-size: 1rem;">Aucune demande en attente de décaissement</div>
                                     <div style="font-size: 0.85rem; margin-top: 0.25rem;">Toutes les demandes validées ont déjà été prises en compte et décaissées.</div>
                                 </td>
