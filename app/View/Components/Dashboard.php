@@ -24,19 +24,21 @@ final class Dashboard
         return $html . '</section>';
     }
 
-    /** @param array{label:mixed,value:mixed,meta?:mixed,tone?:string,href?:string} $item */
+    /** @param array{label:mixed,value:mixed,meta?:mixed,tone?:string,href?:string,icon?:string} $item */
     public static function kpi(array $item): string
     {
         $href = trim((string) ($item['href'] ?? ''));
+        $icon = isset($item['icon']) ? (string) $item['icon'] : '';
         $class = Html::classes(['finea-kpi-card', 'is-clickable' => $href !== '', isset($item['tone']) ? 'tone-' . $item['tone'] : '']);
         $tag = $href !== '' ? 'a' : 'article';
         $attributes = $href !== ''
             ? ' href="' . View::url(ltrim($href, '/')) . '" aria-label="' . View::e('Ouvrir : ' . (string) $item['label']) . '"'
             : '';
-        return '<' . $tag . ' class="' . View::e($class) . '"' . $attributes . '><span class="finea-kpi-label">'
-            . View::e((string) $item['label']) . '</span><strong class="finea-kpi-value">'
-            . View::e((string) $item['value']) . '</strong><small class="finea-kpi-meta">'
-            . View::e((string) ($item['meta'] ?? '')) . '</small>'
+        $iconHtml = $icon !== '' ? '<span class="finea-kpi-icon-badge">' . $icon . '</span>' : '';
+        return '<' . $tag . ' class="' . View::e($class) . '"' . $attributes . '>'
+            . '<div class="finea-kpi-header">' . $iconHtml . '<span class="finea-kpi-label">' . View::e((string) $item['label']) . '</span></div>'
+            . '<strong class="finea-kpi-value">' . View::e((string) $item['value']) . '</strong>'
+            . '<small class="finea-kpi-meta">' . View::e((string) ($item['meta'] ?? '')) . '</small>'
             . ($href !== '' ? '<span class="finea-kpi-arrow" aria-hidden="true">→</span>' : '')
             . '</' . $tag . '>';
     }

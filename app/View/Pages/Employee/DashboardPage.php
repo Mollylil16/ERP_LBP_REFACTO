@@ -37,6 +37,12 @@ final class DashboardPage
         return explode(' ', trim((string) ($this->employee['full_name'] ?? 'Collaborateur')))[0];
     }
 
+    public function displayName(): string
+    {
+        $fullName = trim((string) ($this->employee['full_name'] ?? 'Collaborateur'));
+        return $fullName !== '' ? $fullName : 'Collaborateur';
+    }
+
     public function subtitle(): string
     {
         return (string) (($this->employee['function_name'] ?? '') ?: 'Fonction non renseignée')
