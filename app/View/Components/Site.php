@@ -101,6 +101,17 @@ final class Site
     public static function products(array $products, int $limit = 0): string
     {
         $products = $limit > 0 ? array_slice($products, 0, $limit) : $products;
+        if (empty($products)) {
+            return '<div style="background:#ffffff; border-radius:18px; border:1px dashed #cbd5e1; padding:45px 24px; text-align:center; margin:20px 0; box-shadow:0 4px 15px rgba(15,23,42,0.03);">'
+                . '<div style="width:54px; height:54px; border-radius:16px; background:#eff6ff; color:#2563eb; display:flex; align-items:center; justify-content:center; margin:0 auto 16px auto;">'
+                . '<svg viewBox="0 0 24 24" width="26" height="26" stroke="currentColor" stroke-width="2" fill="none"><rect x="2" y="4" width="20" height="16" rx="2"/><line x1="6" y1="8" x2="6" y2="8"/><line x1="10" y1="8" x2="18" y2="8"/></svg>'
+                . '</div>'
+                . '<h3 style="font-size:1.15rem; font-weight:800; color:#0f172a; margin:0 0 8px 0;">Marketplace en cours d\'approvisionnement</h3>'
+                . '<p style="color:#64748b; font-size:0.92rem; max-width:540px; margin:0 auto 20px auto; line-height:1.5;">La Direction Générale et l\'équipe logistique publieront prochainement les tarifs officiels de kits d\'emballage export et de réservation de fret.</p>'
+                . '<a href="' . View::url('site/contact') . '" style="display:inline-flex; align-items:center; gap:8px; background:#0C2A4A; color:#ffffff; font-weight:700; padding:12px 24px; border-radius:12px; text-decoration:none; font-size:0.92rem;">Demander un devis sur mesure ➔</a>'
+                . '</div>';
+        }
+
         $html = '<section class="site-product-grid">';
         foreach ($products as $product) {
             $price = number_format((float) ($product['price'] ?? 0), 0, ',', ' ');
@@ -129,6 +140,17 @@ final class Site
     public static function topics(array $topics, int $limit = 0): string
     {
         $topics = $limit > 0 ? array_slice($topics, 0, $limit) : $topics;
+        if (empty($topics)) {
+            return '<div style="background:#ffffff; border-radius:18px; border:1px dashed #cbd5e1; padding:45px 24px; text-align:center; margin:20px 0; box-shadow:0 4px 15px rgba(15,23,42,0.03);">'
+                . '<div style="width:54px; height:54px; border-radius:16px; background:#ecfdf5; color:#10b981; display:flex; align-items:center; justify-content:center; margin:0 auto 16px auto;">'
+                . '<svg viewBox="0 0 24 24" width="26" height="26" stroke="currentColor" stroke-width="2" fill="none"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>'
+                . '</div>'
+                . '<h3 style="font-size:1.15rem; font-weight:800; color:#0f172a; margin:0 0 8px 0;">Aucune discussion publique pour le moment</h3>'
+                . '<p style="color:#64748b; font-size:0.92rem; max-width:540px; margin:0 auto 20px auto; line-height:1.5;">Soyez le premier expéditeur à démarrer un fil de discussion ou posez vos questions douanières directement à nos conseillers en agence.</p>'
+                . '<a href="' . View::url('site/contact') . '" style="display:inline-flex; align-items:center; gap:8px; background:#10b981; color:#ffffff; font-weight:700; padding:12px 24px; border-radius:12px; text-decoration:none; font-size:0.92rem;">Contacter un expert agence ➔</a>'
+                . '</div>';
+        }
+
         $html = '<section class="site-forum-list">';
         foreach ($topics as $topic) {
             $html .= '<article><div class="site-forum-avatar">'
@@ -143,6 +165,61 @@ final class Site
                 . ' vues</small></aside></article>';
         }
         return $html . '</section>';
+    }
+
+    public static function partnerLogos(): string
+    {
+        $partners = [
+            ['name' => 'DHL Express', 'file' => '19336-dhl-logo.png'],
+            ['name' => 'Air France Cargo', 'file' => 'Air-France-Logo-1.png'],
+            ['name' => 'CMA CGM', 'file' => 'CMA_CGM_logo.jpg'],
+            ['name' => 'Maersk Line', 'file' => 'Maersk_Group_Logo.jpg'],
+            ['name' => 'Corsair International', 'file' => 'corsair.jpg'],
+            ['name' => 'FedEx Express', 'file' => 'logo-fedex-3.jpg'],
+            ['name' => 'Port Autonome d\'Abidjan', 'file' => 'paa.jpg'],
+        ];
+
+        $html = '<section style="margin:50px 0; text-align:center;">'
+            . '<span style="font-size:0.75rem; font-weight:800; color:#64748b; text-transform:uppercase; letter-spacing:1.5px; display:block; margin-bottom:20px;">PARTENAIRES MARITIMES, AÉRIENS & DOUANIERS</span>'
+            . '<div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:30px; opacity:0.85;">';
+
+        foreach ($partners as $p) {
+            $imgUrl = View::asset('assets/images/img partenaire/' . $p['file']);
+            $html .= '<div style="background:#ffffff; padding:12px 20px; border-radius:12px; border:1px solid #e2e8f0; box-shadow:0 4px 12px rgba(15,23,42,0.04); display:flex; align-items:center; justify-content:center; height:60px;">'
+                . '<img src="' . View::e($imgUrl) . '" alt="' . View::e($p['name']) . '" style="max-height:36px; max-width:110px; object-fit:contain;" />'
+                . '</div>';
+        }
+
+        $html .= '</div></section>';
+        return $html;
+    }
+
+    public static function directorNote(): string
+    {
+        $dgImg = View::asset('assets/images/dg_Serge_Kadjo-la-belle-porte.png');
+        return '<section style="background:linear-gradient(135deg, #0C2A4A 0%, #17385c 100%); border-radius:24px; padding:40px; color:#ffffff; margin:60px 0; box-shadow:0 20px 40px -10px rgba(12,42,74,0.3); display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:35px; align-items:center;">'
+            . '<div>'
+            . '<span style="display:inline-flex; align-items:center; gap:6px; background:rgba(16,185,129,0.2); color:#34d399; border:1px solid rgba(52,211,153,0.3); padding:4px 14px; border-radius:20px; font-size:0.78rem; font-weight:800; text-transform:uppercase; margin-bottom:14px;">'
+            . 'Mot de la Direction Générale'
+            . '</span>'
+            . '<h2 style="font-size:1.9rem; font-weight:900; color:#ffffff; margin:0 0 14px 0; line-height:1.2;">"Assurer la fluidité de vos échanges intercontinentaux avec rigueur & clarté."</h2>'
+            . '<p style="color:#cbd5e1; font-size:0.98rem; line-height:1.6; margin:0 0 20px 0;">Chez LA BELLE PORTE TRANSIT, chaque colis et conteneur confié représente un engagement absolu. Nos agences directes à Abidjan, Paris-Bobigny, Dakar et Montréal garantissent un contrôle de bout en bout sans intermédiaire anonyme.</p>'
+            . '<div style="display:flex; align-items:center; gap:14px;">'
+            . '<div style="width:48px; height:48px; border-radius:50%; border:2px solid #10b981; overflow:hidden; background:#ffffff;">'
+            . '<img src="' . View::e($dgImg) . '" alt="Serge Kadjo" style="width:100%; height:100%; object-fit:cover;" />'
+            . '</div>'
+            . '<div>'
+            . '<strong style="display:block; font-size:1rem; color:#ffffff; font-weight:800;">M. Serge KADJO</strong>'
+            . '<small style="color:#34d399; font-weight:700; font-size:0.82rem;">Directeur Général — LA BELLE PORTE TRANSIT</small>'
+            . '</div>'
+            . '</div>'
+            . '</div>'
+            . '<div style="text-align:center;">'
+            . '<div style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); padding:28px; border-radius:20px; backdrop-filter:blur(10px);">'
+            . '<img src="' . View::e($dgImg) . '" alt="Directeur Général Serge Kadjo" style="max-height:260px; width:auto; border-radius:16px; box-shadow:0 15px 30px rgba(0,0,0,0.3); border:2px solid rgba(255,255,255,0.2);" />'
+            . '</div>'
+            . '</div>'
+            . '</section>';
     }
 
     public static function pageHero(string $eyebrow, string $title, string $description): string

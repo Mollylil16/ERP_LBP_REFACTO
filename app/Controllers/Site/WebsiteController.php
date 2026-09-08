@@ -158,6 +158,34 @@ final class WebsiteController extends BaseController
             }
         }
 
+        $realStats = [];
+        try {
+            $pdo = \App\Models\Database::getConnection();
+            $countriesCount = (int)$pdo->query("SELECT COUNT(DISTINCT country) FROM company_sites WHERE is_active = 1")->fetchColumn();
+            if ($countriesCount === 0) { $countriesCount = 4; }
+
+            $colisCount = (int)($pdo->query("SELECT COUNT(*) FROM lbp_colis")->fetchColumn() ?: 0);
+            $expCount = (int)($pdo->query("SELECT COUNT(*) FROM lbp_expeditions")->fetchColumn() ?: 0);
+            $totalTracked = $colisCount + $expCount;
+
+            $agenciesCount = (int)$pdo->query("SELECT COUNT(*) FROM company_sites WHERE is_active = 1")->fetchColumn();
+            if ($agenciesCount === 0) { $agenciesCount = 4; }
+
+            $realStats = [
+                ['label' => 'Pays d\'implantation', 'value' => $countriesCount . ' Hubs'],
+                ['label' => 'Expéditions enregistrées', 'value' => number_format($totalTracked, 0, ' ', ' ') . ' colis'],
+                ['label' => 'Agences physiques', 'value' => $agenciesCount . ' comptoirs'],
+                ['label' => 'SLA suivi client', 'value' => 'Direct ERP 24/7'],
+            ];
+        } catch (\Throwable $e) {
+            $realStats = [
+                ['label' => 'Pays d\'implantation', 'value' => '4 Hubs (CI, SN, FR, CA)'],
+                ['label' => 'Expéditions enregistrées', 'value' => 'Synchronisé ERP'],
+                ['label' => 'Agences physiques', 'value' => '4 Agences'],
+                ['label' => 'SLA suivi client', 'value' => 'Direct ERP 24/7'],
+            ];
+        }
+
         $this->view($view, [
             'pageTitle' => $title,
             'page' => new SitePage(
@@ -166,13 +194,8 @@ final class WebsiteController extends BaseController
                 $shipments,
                 $this->demoAgencies(),
                 $content['services'] !== [] ? $content['services'] : $this->demoServices(),
-                $this->demoNews(),
-                [
-                ['label' => 'Pays couverts', 'value' => '14+'],
-                ['label' => 'Dossiers suivis', 'value' => '2 480'],
-                ['label' => 'Agences & points relais', 'value' => '9'],
-                ['label' => 'SLA suivi client', 'value' => '24/7'],
-                ],
+                $content['articles'] !== [] ? $content['articles'] : [],
+                $realStats,
                 $content['branding'],
                 $content['slides'],
                 $content['products'],

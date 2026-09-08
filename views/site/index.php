@@ -96,9 +96,156 @@ ob_start();
 <div class="site-content">
 
     <!-- 2. METRICS & IMPACT KEY STATS -->
-    <div style="margin-bottom:50px;">
+    <div style="margin-bottom:30px;">
         <?= Site::stats($page->stats) ?>
     </div>
+
+    <!-- PARTENAIRES LOGISTIQUES RÉELS -->
+    <?= Site::partnerLogos() ?>
+
+    <!-- 3. RÉSEAU D'AGENCES ET CARTE INTERACTIVE DE FLUX -->
+    <section id="reseau-flux" style="margin-bottom:60px; background:#0C2A4A; border-radius:24px; padding:40px 30px; color:#ffffff; box-shadow:0 25px 50px -12px rgba(12,42,74,0.35); position:relative; overflow:hidden;">
+        <div style="max-width:700px; margin:0 auto 30px auto; text-align:center;">
+            <span style="display:inline-flex; align-items:center; gap:8px; background:rgba(16,185,129,0.15); color:#34d399; border:1px solid rgba(52,211,153,0.3); padding:4px 14px; border-radius:20px; font-size:0.78rem; font-weight:800; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:12px;">
+                <span style="width:8px; height:8px; border-radius:50%; background:#34d399; display:inline-block; box-shadow:0 0 8px #34d399;"></span>
+                FLUX LOGISTIQUES INTERCONTINENTAUX EN DIRECT
+            </span>
+            <h2 style="font-size:2rem; font-weight:900; color:#ffffff; margin:0 0 10px 0; letter-spacing:-0.5px;">Réseau International & Hubs Stratégiques</h2>
+            <p style="color:#94a3b8; font-size:0.95rem; margin:0; line-height:1.5;">Lignes régulières aériennes et maritimes connectant nos agences en Côte d'Ivoire, au Sénégal, en France et au Canada.</p>
+        </div>
+
+        <!-- SVG Geodesic Projection Canvas -->
+        <div style="background:#091e35; border-radius:18px; border:1px solid rgba(255,255,255,0.1); padding:20px; position:relative;">
+            <svg viewBox="0 0 960 520" style="width:100%; height:auto; display:block;">
+                <defs>
+                    <radialGradient id="phpAbidjanGlow" cx="50%" cy="50%" r="50%">
+                        <stop offset="0%" stop-color="#10B981" stop-opacity="0.9"/>
+                        <stop offset="100%" stop-color="#10B981" stop-opacity="0"/>
+                    </radialGradient>
+                    <radialGradient id="phpParisGlow" cx="50%" cy="50%" r="50%">
+                        <stop offset="0%" stop-color="#3B82F6" stop-opacity="0.9"/>
+                        <stop offset="100%" stop-color="#3B82F6" stop-opacity="0"/>
+                    </radialGradient>
+                    <radialGradient id="phpMontrealGlow" cx="50%" cy="50%" r="50%">
+                        <stop offset="0%" stop-color="#F43F5E" stop-opacity="0.9"/>
+                        <stop offset="100%" stop-color="#F43F5E" stop-opacity="0"/>
+                    </radialGradient>
+                    <filter id="phpGlow" x="-20%" y="-20%" width="140%" height="140%">
+                        <feGaussianBlur stdDeviation="3" result="blur" />
+                        <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                    </filter>
+                </defs>
+
+                <!-- Grid Background Lines -->
+                <g stroke="rgba(255,255,255,0.04)" stroke-width="1" stroke-dasharray="4 6">
+                    <line x1="0" y1="130" x2="960" y2="130" />
+                    <line x1="0" y1="260" x2="960" y2="260" />
+                    <line x1="0" y1="390" x2="960" y2="390" />
+                    <line x1="240" y1="0" x2="240" y2="520" />
+                    <line x1="480" y1="0" x2="480" y2="520" />
+                    <line x1="720" y1="0" x2="720" y2="520" />
+                </g>
+
+                <!-- Continent Outlines -->
+                <!-- Africa Highlight (Emerald tint) -->
+                <path d="M 440 250 Q 520 230 560 310 T 540 450 T 470 480 T 420 380 Z" fill="rgba(16,185,129,0.08)" stroke="rgba(16,185,129,0.25)" stroke-width="1.2" stroke-dasharray="3 3"/>
+                <!-- Europe Highlight (Cobalt tint) -->
+                <path d="M 460 70 Q 530 60 580 90 T 550 160 T 470 140 Z" fill="rgba(59,130,246,0.08)" stroke="rgba(59,130,246,0.25)" stroke-width="1.2" stroke-dasharray="3 3"/>
+                <!-- North America Highlight (Rose tint) -->
+                <path d="M 80 50 Q 220 40 280 120 T 230 250 T 110 210 Z" fill="rgba(244,63,94,0.08)" stroke="rgba(244,63,94,0.25)" stroke-width="1.2" stroke-dasharray="3 3"/>
+
+                <!-- Animated Bezier Route Arcs -->
+                <!-- Abidjan (814,449) <-> Paris (875,64) -->
+                <path id="phpRouteAbjPar" d="M 814 449 Q 890 250 875 64" fill="none" stroke="#3B82F6" stroke-width="2" stroke-opacity="0.5" stroke-dasharray="5 5"/>
+                <!-- Dakar (684,366) <-> Paris (875,64) -->
+                <path id="phpRouteDakPar" d="M 684 366 Q 810 200 875 64" fill="none" stroke="#10B981" stroke-width="1.8" stroke-opacity="0.5" stroke-dasharray="5 5"/>
+                <!-- Abidjan (814,449) <-> Montreal (140,94) -->
+                <path id="phpRouteAbjMtl" d="M 814 449 Q 450 200 140 94" fill="none" stroke="#F43F5E" stroke-width="2" stroke-opacity="0.5" stroke-dasharray="5 5"/>
+                <!-- Paris (875,64) <-> Montreal (140,94) -->
+                <path id="phpRouteParMtl" d="M 875 64 Q 500 20 140 94" fill="none" stroke="#3B82F6" stroke-width="1.8" stroke-opacity="0.5" stroke-dasharray="5 5"/>
+                <!-- Abidjan (814,449) <-> Dakar (684,366) -->
+                <path id="phpRouteAbjDak" d="M 814 449 Q 750 420 684 366" fill="none" stroke="#10B981" stroke-width="1.5" stroke-opacity="0.5" stroke-dasharray="5 5"/>
+
+                <!-- Cargo Pulse Dots moving continuously along routes -->
+                <circle r="5" fill="#60A5FA" filter="url(#phpGlow)">
+                    <animateMotion dur="4.2s" repeatCount="indefinite">
+                        <mpath href="#phpRouteAbjPar"/>
+                    </animateMotion>
+                </circle>
+
+                <circle r="4.5" fill="#34D399" filter="url(#phpGlow)">
+                    <animateMotion dur="3.8s" repeatCount="indefinite">
+                        <mpath href="#phpRouteDakPar"/>
+                    </animateMotion>
+                </circle>
+
+                <circle r="5" fill="#FB7185" filter="url(#phpGlow)">
+                    <animateMotion dur="5.5s" repeatCount="indefinite">
+                        <mpath href="#phpRouteAbjMtl"/>
+                    </animateMotion>
+                </circle>
+
+                <circle r="4" fill="#60A5FA" filter="url(#phpGlow)">
+                    <animateMotion dur="4.8s" repeatCount="indefinite">
+                        <mpath href="#phpRouteParMtl"/>
+                    </animateMotion>
+                </circle>
+
+                <!-- City Hub Markers & Badges -->
+                <!-- 1. Abidjan (Hub Principal) -->
+                <g transform="translate(814, 449)">
+                    <circle r="22" fill="url(#phpAbidjanGlow)" opacity="0.6"/>
+                    <circle r="7" fill="#10B981" stroke="#ffffff" stroke-width="2"/>
+                    <rect x="-60" y="12" width="120" height="34" rx="8" fill="#0C2A4A" stroke="#10B981" stroke-width="1.5"/>
+                    <text x="0" y="26" fill="#ffffff" font-size="11" font-weight="800" text-anchor="middle">Abidjan (CI)</text>
+                    <text x="0" y="38" fill="#34D399" font-size="9" font-weight="700" text-anchor="middle">HUB PRINCIPAL</text>
+                </g>
+
+                <!-- 2. Dakar -->
+                <g transform="translate(684, 366)">
+                    <circle r="18" fill="url(#phpAbidjanGlow)" opacity="0.5"/>
+                    <circle r="6" fill="#059669" stroke="#ffffff" stroke-width="2"/>
+                    <rect x="-50" y="10" width="100" height="30" rx="8" fill="#0C2A4A" stroke="#059669" stroke-width="1.2"/>
+                    <text x="0" y="24" fill="#ffffff" font-size="11" font-weight="800" text-anchor="middle">Dakar (SN)</text>
+                    <text x="0" y="34" fill="#6EE7B7" font-size="8" font-weight="700" text-anchor="middle">HUB AFRIQUE</text>
+                </g>
+
+                <!-- 3. Paris -->
+                <g transform="translate(875, 64)">
+                    <circle r="20" fill="url(#phpParisGlow)" opacity="0.6"/>
+                    <circle r="7" fill="#3B82F6" stroke="#ffffff" stroke-width="2"/>
+                    <rect x="-55" y="-38" width="110" height="32" rx="8" fill="#0C2A4A" stroke="#3B82F6" stroke-width="1.5"/>
+                    <text x="0" y="-24" fill="#ffffff" font-size="11" font-weight="800" text-anchor="middle">Paris (FR)</text>
+                    <text x="0" y="-12" fill="#93C5FD" font-size="8" font-weight="700" text-anchor="middle">HUB EUROPE (CDG)</text>
+                </g>
+
+                <!-- 4. Montreal -->
+                <g transform="translate(140, 94)">
+                    <circle r="20" fill="url(#phpMontrealGlow)" opacity="0.6"/>
+                    <circle r="7" fill="#F43F5E" stroke="#ffffff" stroke-width="2"/>
+                    <rect x="-60" y="12" width="120" height="32" rx="8" fill="#0C2A4A" stroke="#F43F5E" stroke-width="1.5"/>
+                    <text x="0" y="26" fill="#ffffff" font-size="11" font-weight="800" text-anchor="middle">Montréal (CA)</text>
+                    <text x="0" y="38" fill="#FDA4AF" font-size="8" font-weight="700" text-anchor="middle">HUB AMÉRIQUES</text>
+                </g>
+            </svg>
+
+            <!-- Legend Badge Overlay -->
+            <div style="display:flex; justify-content:center; gap:20px; flex-wrap:wrap; margin-top:16px; padding-top:14px; border-top:1px solid rgba(255,255,255,0.1); font-size:0.82rem; font-weight:700;">
+                <div style="display:flex; align-items:center; gap:6px;">
+                    <span style="width:10px; height:10px; border-radius:50%; background:#10B981;"></span>
+                    <span>Côte d'Ivoire & Sénégal (Afrique)</span>
+                </div>
+                <div style="display:flex; align-items:center; gap:6px;">
+                    <span style="width:10px; height:10px; border-radius:50%; background:#3B82F6;"></span>
+                    <span>France (Europe)</span>
+                </div>
+                <div style="display:flex; align-items:center; gap:6px;">
+                    <span style="width:10px; height:10px; border-radius:50%; background:#F43F5E;"></span>
+                    <span>Canada (Amérique du Nord)</span>
+                </div>
+            </div>
+        </div>
+    </section>
 
     <!-- 4. NOS SOLUTIONS LOGISTIQUES ET MÉTIERS -->
     <section id="services" style="margin-bottom:60px;">
@@ -197,6 +344,9 @@ ob_start();
         <?= Site::sectionHeading('Actualités & Forum', 'Conseils, réglementation et échanges d\'expérience.', 'Restez informé des évolutions douanières et échangez avec notre communauté d\'expéditeurs.', '<a class="site-text-link" href="' . View::url('site/blog') . '">Découvrir le mag →</a>') ?>
         <?= Site::topics($page->topics, 3) ?>
     </section>
+
+    <!-- MOT DU DIRECTEUR GÉNÉRAL -->
+    <?= Site::directorNote() ?>
 
     <!-- 9. CALL TO ACTION FINAL -->
     <section style="text-align:center; padding:55px 30px; background:#ffffff; border-radius:24px; border:1px solid #e2e8f0; margin-top:40px; box-shadow:0 15px 35px -10px rgba(15,23,42,0.05);">
