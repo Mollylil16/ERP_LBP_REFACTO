@@ -1626,6 +1626,10 @@ class MigrationRunner
             VALUES
                 (1, 'Nouveau', 'Expéditions France & Europe → Afrique : départs réguliers chaque semaine', 'En savoir plus', 'site/devis', 1, 10)
         ");
+
+        // Clean any old demo fake rows from production database
+        $this->pdo->exec("DELETE FROM website_products WHERE sku IN ('PACK-EXPORT-M', 'GROUPAGE-FR-CI', 'ASSUR-CARGO', 'DOC-IMPORT') OR name LIKE '%Kit emballage%' OR name LIKE '%Réservation groupage%';");
+        $this->pdo->exec("DELETE FROM website_forum_topics WHERE author_name IN ('Awa K.', 'Conseiller LBP', 'Moussa T.') OR title LIKE '%valeur en douane%';");
     }
 
     private function createColisageTables(): void
