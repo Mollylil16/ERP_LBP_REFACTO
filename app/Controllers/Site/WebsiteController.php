@@ -186,6 +186,8 @@ final class WebsiteController extends BaseController
             ];
         }
 
+        $slides = $content['slides'] !== [] ? $content['slides'] : $this->defaultRealSlides();
+
         $this->view($view, [
             'pageTitle' => $title,
             'page' => new SitePage(
@@ -197,7 +199,7 @@ final class WebsiteController extends BaseController
                 $content['articles'] !== [] ? $content['articles'] : [],
                 $realStats,
                 $content['branding'],
-                $content['slides'],
+                $slides,
                 $content['products'],
                 $content['topics'],
                 $content['announcements'],
@@ -205,6 +207,45 @@ final class WebsiteController extends BaseController
                 $reference,
             ),
         ]);
+    }
+
+    private function defaultRealSlides(): array
+    {
+        return [
+            [
+                'eyebrow' => 'FRET MARITIME & CONTENEURS',
+                'title' => 'Votre commerce n\'a plus de frontières.',
+                'description' => 'Groupage maritime hebdomadaire et conteneurs complets FCL entre Abidjan, Dakar, Paris et Montréal.',
+                'image_url' => 'images/icon-box-1.jpg',
+                'primary_label' => 'Simuler un tarif Fret',
+                'primary_url' => 'site/devis',
+                'secondary_label' => 'Suivre une expédition',
+                'secondary_url' => 'site/tracking',
+                'overlay_color' => '#0C2A4A',
+            ],
+            [
+                'eyebrow' => 'CARGO AÉRIEN EXPRESS',
+                'title' => 'Lignes directes Paris ⇄ Abidjan & Montréal.',
+                'description' => 'Départs réguliers chaque semaine avec dédouanement prioritaire et traçabilité GPS en temps réel.',
+                'image_url' => 'images/icon-box-3-e1760544654334.jpg',
+                'primary_label' => 'Obtenir une cotation',
+                'primary_url' => 'site/devis',
+                'secondary_label' => 'Nos agences physiques',
+                'secondary_url' => 'site/agences',
+                'overlay_color' => '#091F38',
+            ],
+            [
+                'eyebrow' => 'TRANSPORT ROUTIER & CORRIDORS',
+                'title' => 'Enlèvement & livraison dans nos comptoirs agences.',
+                'description' => 'Prise en charge directe par nos équipes en propre à Abidjan, Dakar, Paris-Bobigny et Montréal.',
+                'image_url' => 'images/icon-box-2.jpg',
+                'primary_label' => 'Nos agences & contacts',
+                'primary_url' => 'site/agences',
+                'secondary_label' => 'Demander un devis',
+                'secondary_url' => 'site/devis',
+                'overlay_color' => '#0A2540',
+            ],
+        ];
     }
 
     private function realShipments(): array

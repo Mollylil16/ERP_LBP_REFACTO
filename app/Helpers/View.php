@@ -19,6 +19,8 @@ class View
 
     public static function asset(string $path): string
     {
+        $path = (string) preg_replace('#^(?:public/)?(?:assets/)?#i', '', trim($path));
+
         $scriptName = $_SERVER['SCRIPT_NAME'] ?? '';
         $docRoot = $_SERVER['DOCUMENT_ROOT'] ?? '';
 

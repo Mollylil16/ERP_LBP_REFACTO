@@ -115,8 +115,8 @@ ob_start();
         </div>
 
         <!-- SVG Geodesic Projection Canvas -->
-        <div style="background:#091e35; border-radius:18px; border:1px solid rgba(255,255,255,0.1); padding:20px; position:relative;">
-            <svg viewBox="0 0 960 520" style="width:100%; height:auto; display:block;">
+        <div style="background:#091e35; border-radius:18px; border:1px solid rgba(255,255,255,0.1); padding:24px; position:relative;">
+            <svg viewBox="0 0 960 480" style="width:100%; height:auto; display:block;">
                 <defs>
                     <radialGradient id="phpAbidjanGlow" cx="50%" cy="50%" r="50%">
                         <stop offset="0%" stop-color="#10B981" stop-opacity="0.9"/>
@@ -138,33 +138,33 @@ ob_start();
 
                 <!-- Grid Background Lines -->
                 <g stroke="rgba(255,255,255,0.04)" stroke-width="1" stroke-dasharray="4 6">
-                    <line x1="0" y1="130" x2="960" y2="130" />
-                    <line x1="0" y1="260" x2="960" y2="260" />
-                    <line x1="0" y1="390" x2="960" y2="390" />
-                    <line x1="240" y1="0" x2="240" y2="520" />
-                    <line x1="480" y1="0" x2="480" y2="520" />
-                    <line x1="720" y1="0" x2="720" y2="520" />
+                    <line x1="0" y1="120" x2="960" y2="120" />
+                    <line x1="0" y1="240" x2="960" y2="240" />
+                    <line x1="0" y1="360" x2="960" y2="360" />
+                    <line x1="240" y1="0" x2="240" y2="480" />
+                    <line x1="480" y1="0" x2="480" y2="480" />
+                    <line x1="720" y1="0" x2="720" y2="480" />
                 </g>
 
                 <!-- Continent Outlines -->
                 <!-- Africa Highlight (Emerald tint) -->
-                <path d="M 440 250 Q 520 230 560 310 T 540 450 T 470 480 T 420 380 Z" fill="rgba(16,185,129,0.08)" stroke="rgba(16,185,129,0.25)" stroke-width="1.2" stroke-dasharray="3 3"/>
+                <path d="M 520 220 Q 640 210 700 280 T 670 430 T 570 450 T 500 350 Z" fill="rgba(16,185,129,0.08)" stroke="rgba(16,185,129,0.25)" stroke-width="1.2" stroke-dasharray="3 3"/>
                 <!-- Europe Highlight (Cobalt tint) -->
-                <path d="M 460 70 Q 530 60 580 90 T 550 160 T 470 140 Z" fill="rgba(59,130,246,0.08)" stroke="rgba(59,130,246,0.25)" stroke-width="1.2" stroke-dasharray="3 3"/>
+                <path d="M 680 50 Q 770 40 820 75 T 790 140 T 700 120 Z" fill="rgba(59,130,246,0.08)" stroke="rgba(59,130,246,0.25)" stroke-width="1.2" stroke-dasharray="3 3"/>
                 <!-- North America Highlight (Rose tint) -->
-                <path d="M 80 50 Q 220 40 280 120 T 230 250 T 110 210 Z" fill="rgba(244,63,94,0.08)" stroke="rgba(244,63,94,0.25)" stroke-width="1.2" stroke-dasharray="3 3"/>
+                <path d="M 80 40 Q 220 30 270 100 T 220 220 T 100 180 Z" fill="rgba(244,63,94,0.08)" stroke="rgba(244,63,94,0.25)" stroke-width="1.2" stroke-dasharray="3 3"/>
 
                 <!-- Animated Bezier Route Arcs -->
-                <!-- Abidjan (814,449) <-> Paris (875,64) -->
-                <path id="phpRouteAbjPar" d="M 814 449 Q 890 250 875 64" fill="none" stroke="#3B82F6" stroke-width="2" stroke-opacity="0.5" stroke-dasharray="5 5"/>
-                <!-- Dakar (684,366) <-> Paris (875,64) -->
-                <path id="phpRouteDakPar" d="M 684 366 Q 810 200 875 64" fill="none" stroke="#10B981" stroke-width="1.8" stroke-opacity="0.5" stroke-dasharray="5 5"/>
-                <!-- Abidjan (814,449) <-> Montreal (140,94) -->
-                <path id="phpRouteAbjMtl" d="M 814 449 Q 450 200 140 94" fill="none" stroke="#F43F5E" stroke-width="2" stroke-opacity="0.5" stroke-dasharray="5 5"/>
-                <!-- Paris (875,64) <-> Montreal (140,94) -->
-                <path id="phpRouteParMtl" d="M 875 64 Q 500 20 140 94" fill="none" stroke="#3B82F6" stroke-width="1.8" stroke-opacity="0.5" stroke-dasharray="5 5"/>
-                <!-- Abidjan (814,449) <-> Dakar (684,366) -->
-                <path id="phpRouteAbjDak" d="M 814 449 Q 750 420 684 366" fill="none" stroke="#10B981" stroke-width="1.5" stroke-opacity="0.5" stroke-dasharray="5 5"/>
+                <!-- Abidjan (710,380) <-> Paris (800,75) -->
+                <path id="phpRouteAbjPar" d="M 710 380 Q 800 220 800 75" fill="none" stroke="#3B82F6" stroke-width="2" stroke-opacity="0.5" stroke-dasharray="5 5"/>
+                <!-- Dakar (600,310) <-> Paris (800,75) -->
+                <path id="phpRouteDakPar" d="M 600 310 Q 730 170 800 75" fill="none" stroke="#10B981" stroke-width="1.8" stroke-opacity="0.5" stroke-dasharray="5 5"/>
+                <!-- Abidjan (710,380) <-> Montreal (140,110) -->
+                <path id="phpRouteAbjMtl" d="M 710 380 Q 400 180 140 110" fill="none" stroke="#F43F5E" stroke-width="2" stroke-opacity="0.5" stroke-dasharray="5 5"/>
+                <!-- Paris (800,75) <-> Montreal (140,110) -->
+                <path id="phpRouteParMtl" d="M 800 75 Q 460 25 140 110" fill="none" stroke="#3B82F6" stroke-width="1.8" stroke-opacity="0.5" stroke-dasharray="5 5"/>
+                <!-- Abidjan (710,380) <-> Dakar (600,310) -->
+                <path id="phpRouteAbjDak" d="M 710 380 Q 650 350 600 310" fill="none" stroke="#10B981" stroke-width="1.5" stroke-opacity="0.5" stroke-dasharray="5 5"/>
 
                 <!-- Cargo Pulse Dots moving continuously along routes -->
                 <circle r="5" fill="#60A5FA" filter="url(#phpGlow)">
@@ -193,7 +193,7 @@ ob_start();
 
                 <!-- City Hub Markers & Badges -->
                 <!-- 1. Abidjan (Hub Principal) -->
-                <g transform="translate(814, 449)">
+                <g transform="translate(710, 380)">
                     <circle r="22" fill="url(#phpAbidjanGlow)" opacity="0.6"/>
                     <circle r="7" fill="#10B981" stroke="#ffffff" stroke-width="2"/>
                     <rect x="-60" y="12" width="120" height="34" rx="8" fill="#0C2A4A" stroke="#10B981" stroke-width="1.5"/>
@@ -202,7 +202,7 @@ ob_start();
                 </g>
 
                 <!-- 2. Dakar -->
-                <g transform="translate(684, 366)">
+                <g transform="translate(600, 310)">
                     <circle r="18" fill="url(#phpAbidjanGlow)" opacity="0.5"/>
                     <circle r="6" fill="#059669" stroke="#ffffff" stroke-width="2"/>
                     <rect x="-50" y="10" width="100" height="30" rx="8" fill="#0C2A4A" stroke="#059669" stroke-width="1.2"/>
@@ -211,7 +211,7 @@ ob_start();
                 </g>
 
                 <!-- 3. Paris -->
-                <g transform="translate(875, 64)">
+                <g transform="translate(800, 75)">
                     <circle r="20" fill="url(#phpParisGlow)" opacity="0.6"/>
                     <circle r="7" fill="#3B82F6" stroke="#ffffff" stroke-width="2"/>
                     <rect x="-55" y="-38" width="110" height="32" rx="8" fill="#0C2A4A" stroke="#3B82F6" stroke-width="1.5"/>
@@ -220,7 +220,7 @@ ob_start();
                 </g>
 
                 <!-- 4. Montreal -->
-                <g transform="translate(140, 94)">
+                <g transform="translate(140, 110)">
                     <circle r="20" fill="url(#phpMontrealGlow)" opacity="0.6"/>
                     <circle r="7" fill="#F43F5E" stroke="#ffffff" stroke-width="2"/>
                     <rect x="-60" y="12" width="120" height="32" rx="8" fill="#0C2A4A" stroke="#F43F5E" stroke-width="1.5"/>
