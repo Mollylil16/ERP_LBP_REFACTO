@@ -1219,6 +1219,8 @@ final class Finance
             $encEspeces = (float) ($activeReport['encaisseEspecesXof'] ?? $activeReport['encaisse_especes_xof'] ?? 0);
             $encDigital = (float) ($activeReport['encaisseDigitalXof'] ?? $activeReport['encaisse_digital_xof'] ?? 0);
             $encCheque = (float) ($activeReport['encaisseChequeXof'] ?? $activeReport['encaisse_cheque_xof'] ?? 0);
+            $encPortefeuille = (float) ($activeReport['encaissePortefeuilleXof'] ?? $activeReport['encaisse_portefeuille_xof'] ?? 0);
+            $encAutre = (float) ($activeReport['encaisseAutreXof'] ?? $activeReport['encaisse_autre_xof'] ?? 0);
 
             // Alerte Clôture Tardive après 15h00
             $lateAlert = '';
@@ -1252,9 +1254,11 @@ final class Finance
                 . '</div>'
                 . '<div style="background:#f1f5f9; border:1px solid #cbd5e1; padding:0.75rem 1.25rem; font-size:0.82rem; color:#475569; display:flex; gap:1.5rem; flex-wrap:wrap; border-radius:0 0 10px 10px; margin-bottom:1rem;">'
                 . '<div><strong style="color:#0f172a;">Encaissements par Canal :</strong></div>'
-                . '<div><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#16a34a" stroke-width="2" style="display:inline; margin-right:3px; vertical-align:-2px;"><rect x="2" y="6" width="20" height="12" rx="2"></rect><circle cx="12" cy="12" r="3"></circle></svg> Espèces (Tiroir) : <strong style="color:#0f172a;">' . number_format($encEspeces > 0 ? $encEspeces : $totalEncaisseXof, 0, ',', ' ') . ' XOF</strong></div>'
+                . '<div><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#16a34a" stroke-width="2" style="display:inline; margin-right:3px; vertical-align:-2px;"><rect x="2" y="6" width="20" height="12" rx="2"></rect><circle cx="12" cy="12" r="3"></circle></svg> Espèces (Tiroir) : <strong style="color:#0f172a;">' . number_format($encEspeces, 0, ',', ' ') . ' XOF</strong></div>'
                 . '<div><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#2563eb" stroke-width="2" style="display:inline; margin-right:3px; vertical-align:-2px;"><rect x="5" y="2" width="14" height="20" rx="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg> Mobile Money / Carte : <strong style="color:#0f172a;">' . number_format($encDigital, 0, ',', ' ') . ' XOF</strong></div>'
                 . '<div><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#d97706" stroke-width="2" style="display:inline; margin-right:3px; vertical-align:-2px;"><rect x="3" y="4" width="18" height="16" rx="2"></rect><line x1="7" y1="8" x2="17" y2="8"></line></svg> Chèques / Virements : <strong style="color:#0f172a;">' . number_format($encCheque, 0, ',', ' ') . ' XOF</strong></div>'
+                . ($encPortefeuille > 0 ? '<div><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#7c3aed" stroke-width="2" style="display:inline; margin-right:3px; vertical-align:-2px;"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"></path><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"></path><path d="M18 12a2 2 0 0 0 0 4h4v-4z"></path></svg> Portefeuille Client : <strong style="color:#0f172a;">' . number_format($encPortefeuille, 0, ',', ' ') . ' XOF</strong></div>' : '')
+                . ($encAutre > 0 ? '<div title="Encaissements dont le mode de règlement n\'est pas reconnu : à vérifier."><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#dc2626" stroke-width="2" style="display:inline; margin-right:3px; vertical-align:-2px;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg> Mode non identifié : <strong style="color:#dc2626;">' . number_format($encAutre, 0, ',', ' ') . ' XOF</strong></div>' : '')
                 . '</div>';
 
             // Ventilation des encaissements par type d'envoi (LB-CI, CA-CI, LB-FR, etc.)
@@ -1433,6 +1437,40 @@ final class Finance
             $submissionForm .= '</div>';
         }
 
+        // Bloc d'Impression sur Plage de Dates (rapport détaillé PDF)
+        $printDefaultDebut = !empty($filters['date_exacte']) ? (string) $filters['date_exacte'] : date('Y-m-01');
+        $printDefaultFin = !empty($filters['date_exacte']) ? (string) $filters['date_exacte'] : date('Y-m-d');
+
+        $printAgenceField = '';
+        if ($isGlobal && !empty($agences)) {
+            $printAgenceOptions = [['value' => '0', 'label' => 'Toutes les agences du réseau']];
+            foreach ($agences as $ag) {
+                $printAgenceOptions[] = ['value' => (string) $ag['id'], 'label' => 'Agence ' . $ag['name']];
+            }
+            $printAgenceField = '<div style="flex:1.4; min-width:200px;">'
+                . Form::select('agence_id', $printAgenceOptions, (string) $selectedAgenceId, ['label' => 'Périmètre'])
+                . '</div>';
+        } else {
+            $printAgenceField = Form::hidden('agence_id', (string) $selectedAgenceId);
+        }
+
+        $printRangeBlock = '<form method="get" action="' . View::url('finance/clotures/export-detaille-pdf') . '" target="_blank" style="background:#ffffff; border:1px solid #cbd5e1; border-left:4px solid #0f172a; border-radius:12px; padding:1.25rem 1.5rem; margin-bottom:1.5rem; box-shadow:0 2px 8px rgba(0,0,0,0.02);">'
+            . '<div style="display:flex; align-items:center; gap:0.75rem; margin-bottom:1rem;">'
+            . '<span style="background:#f1f5f9; padding:0.55rem; border-radius:8px; display:inline-flex; color:#0f172a;"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg></span>'
+            . '<div><strong style="color:#0f172a; font-size:1.05rem;">Imprimer les Points de Caisse Détaillés (PDF)</strong><br>'
+            . '<small style="color:#64748b;">Rapport complet ligne par ligne : noms des clients, numéros de tracking, nombre de colis, poids, montants facturés, encaissés et restant dus, modes de règlement et écarts de caisse. Choisissez une journée précise ou une plage (ex : du 10/05/2026 au 10/09/2026).</small></div>'
+            . '</div>'
+            . '<div style="display:flex; gap:1rem; align-items:flex-end; flex-wrap:wrap;">'
+            . '<div style="flex:1; min-width:160px;">' . Form::input('date_debut', ['label' => 'Du (date de début)', 'type' => 'date', 'value' => $printDefaultDebut, 'required' => true]) . '</div>'
+            . '<div style="flex:1; min-width:160px;">' . Form::input('date_fin', ['label' => 'Au (date de fin)', 'type' => 'date', 'value' => $printDefaultFin, 'required' => true]) . '</div>'
+            . $printAgenceField
+            . '<div style="display:flex; gap:0.5rem;">'
+            . Ui::button('Générer le rapport détaillé', ['type' => 'submit', 'variant' => 'accent'])
+            . '<a href="' . View::url('finance/clotures/export-detaille-pdf') . '?agence_id=' . $selectedAgenceId . '&date_debut=' . urlencode(date('Y-m-d')) . '&date_fin=' . urlencode(date('Y-m-d')) . '" target="_blank" class="finea-button finea-button--secondary">Journée d\'aujourd\'hui</a>'
+            . '</div>'
+            . '</div>'
+            . '</form>';
+
         // Formulaire de Filtre d'Historique
         $filterForm = '<form method="get" action="' . View::url('finance/clotures') . '" style="background:#ffffff; border:1px solid #cbd5e1; border-radius:12px; padding:1.25rem 1.5rem; margin-bottom:1.5rem; display:flex; gap:1rem; align-items:flex-end; flex-wrap:wrap; box-shadow:0 2px 8px rgba(0,0,0,0.02);">'
             . ($selectedAgenceId > 0 ? Form::hidden('agence_id', (string) $selectedAgenceId) : '')
@@ -1472,7 +1510,11 @@ final class Finance
                     . '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h10z"></path></svg> Bordereau'
                     . '</a>';
 
-                $actionsHtml = $pdfBtn . $bordereauBtn;
+                $detailBtn = '<a href="' . View::url('finance/clotures/export-detaille-pdf') . '?agence_id=' . $r->agenceId . '&date_debut=' . urlencode($r->dateJour) . '&date_fin=' . urlencode($r->dateJour) . '" target="_blank" class="finea-button-sm" style="display:inline-flex; align-items:center; gap:4px; background:#0f172a; color:#fff; border:1px solid #0f172a; border-radius:6px; padding:4px 8px; font-weight:700; text-decoration:none; font-size:0.75rem; margin-right:4px;" title="Rapport détaillé de la journée : clients, colis, poids, montants">'
+                    . '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg> Détail'
+                    . '</a>';
+
+                $actionsHtml = $detailBtn . $pdfBtn . $bordereauBtn;
                 if ($r->statut === 'soumis' && Auth::hasRole(['caissiere_principale', 'dg'])) {
                     $actionsHtml .= '<form method="post" action="' . View::url('finance/clotures/' . $r->id . '/consolider') . '" class="js-protect-form" style="display:inline;">'
                         . Ui::button('Consolider', ['type' => 'submit', 'variant' => 'success', 'class' => 'finea-button-sm'])
@@ -1542,6 +1584,10 @@ final class Finance
             . $agenceSelector
             . $retroBlock
             . $submissionForm
+            . '<div class="finea-section-card" style="margin-top: 1.5rem;">'
+            . '<div class="finea-section-heading"><h2 class="finea-section-title">Impression des points de caisse</h2></div>'
+            . $printRangeBlock
+            . '</div>'
             . '<div class="finea-section-card" style="margin-top: 1.5rem;">'
             . '<div class="finea-section-heading"><h2 class="finea-section-title">Historique des points de caisse</h2></div>'
             . $filterForm

@@ -32,6 +32,7 @@ $router->group('/finance', function (Router $router): void {
     $router->get('/clotures', [FinanceController::class, 'cloturesIndex']);
     $router->get('/clotures/export-pdf-global', [FinanceController::class, 'exportClotureGlobalPdf']);
     $router->get('/clotures/export-pdf-agence', [FinanceController::class, 'exportClotureAgencePdf']);
+    $router->get('/clotures/export-detaille-pdf', [FinanceController::class, 'exportPointCaisseDetaillePdf']);
     $router->post('/clotures/soumettre', [FinanceController::class, 'clotureSoumettre']);
     $router->get('/clotures/{id}/export-pdf', [FinanceController::class, 'exportCloturePdf']);
     $router->get('/clotures/{id}/bordereau-pdf', [FinanceController::class, 'exportBordereauPdf']);

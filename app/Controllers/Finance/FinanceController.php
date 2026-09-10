@@ -954,6 +954,8 @@ final class FinanceController extends FinanceBaseController
                 $activeReport['encaisseEspecesXof'] = $live['encaisse_especes_xof'] ?? 0;
                 $activeReport['encaisseDigitalXof'] = $live['encaisse_digital_xof'] ?? 0;
                 $activeReport['encaisseChequeXof'] = $live['encaisse_cheque_xof'] ?? 0;
+                $activeReport['encaissePortefeuilleXof'] = $live['encaisse_portefeuille_xof'] ?? 0;
+                $activeReport['encaisseAutreXof'] = $live['encaisse_autre_xof'] ?? 0;
                 $activeReport['invoices_details'] = $live['invoices_details'] ?? [];
             } else {
                 $activeReport = $live + [
@@ -1352,6 +1354,291 @@ final class FinanceController extends FinanceBaseController
         }
 
         require BASE_PATH . '/views/finance/bordereau_remise_pdf.php';
+    }
+
+    /**
+     * Export PDF détaillé des points de caisse sur une journée ou une plage de dates.
+     * Regroupement : par agence, puis par journée.
+     *
+     * Paramètres GET : agence_id (0 = toutes), date_debut, date_fin (Y-m-d).
+     */
+    public function exportPointCaisseDetaillePdf(): void
+    {
+        AuthMiddleware::check();
+        RoleMiddleware::check(['caissiere', 'chef_agence', 'caissiere_principale', 'dg', 'comptable', 'superviseur_general', 'superviseur_regional', 'admin']);
+
+        $userAgenceId = (int) (Auth::user()?->agenceId ?? 0);
+        $isGlobal = Auth::isAdmin() || Auth::isAssistantDg() || Auth::hasAnyRole(['caissiere_principale', 'dg', 'assistant_dg', 'assistante_dg', 'comptable', 'superviseur_general', 'superviseur_regional', 'admin']);
+
+        $dateDebut = trim((string) ($_GET['date_debut'] ?? ''));
+        $dateFin = trim((string) ($_GET['date_fin'] ?? ''));
+
+        if ($dateDebut === '') {
+            $dateDebut = date('Y-m-d');
+        }
+        if ($dateFin === '') {
+            $dateFin = $dateDebut;
+        }
+
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateDebut) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateFin)) {
+            Session::flash('error', 'Les dates de la plage sont invalides. Format attendu : JJ/MM/AAAA.');
+            header('Location: ' . View::url('finance/clotures'));
+            exit;
+        }
+
+        if ($dateDebut > $dateFin) {
+            [$dateDebut, $dateFin] = [$dateFin, $dateDebut];
+        }
+
+        // Garde-fou : une plage trop large produirait un document ingérable.
+        $nbJours = (int) ((strtotime($dateFin) - strtotime($dateDebut)) / 86400) + 1;
+        if ($nbJours > 366) {
+            Session::flash('error', 'La plage demandée dépasse 366 jours. Veuillez la réduire (par exemple année par année).');
+            header('Location: ' . View::url('finance/clotures'));
+            exit;
+        }
+
+        $agenceId = isset($_GET['agence_id']) && $_GET['agence_id'] !== '' ? (int) $_GET['agence_id'] : 0;
+
+        // Un utilisateur rattaché à une agence ne peut imprimer que sa propre caisse.
+        if (!$isGlobal) {
+            if ($userAgenceId <= 0) {
+                Session::flash('error', 'Aucune agence n\'est rattachée à votre compte.');
+                header('Location: ' . View::url('finance/clotures'));
+                exit;
+            }
+            $agenceId = $userAgenceId;
+        }
+
+        $operations = $this->etatRepo->getDetailedOperations($agenceId, $dateDebut, $dateFin);
+        $encaissements = $this->etatRepo->getDetailedEncaissements($agenceId, $dateDebut, $dateFin);
+        $etatsIndexes = $this->etatRepo->getEtatsForRangeIndexed($agenceId, $dateDebut, $dateFin);
+
+        $agencesDetail = $this->buildAgencesDetailStructure($operations, $encaissements, $etatsIndexes);
+        $summary = $this->buildDetailSummary($agencesDetail);
+
+        if ($agenceId > 0) {
+            $stmt = $this->db->prepare("SELECT name FROM company_sites WHERE id = :id LIMIT 1");
+            $stmt->execute(['id' => $agenceId]);
+            $perimetre = 'Agence ' . ($stmt->fetchColumn() ?: ('#' . $agenceId));
+        } else {
+            $perimetre = 'Toutes les agences du réseau';
+        }
+
+        $periode = [
+            'debut' => $dateDebut,
+            'fin' => $dateFin,
+            'nb_jours' => $nbJours,
+            'est_journee_unique' => $dateDebut === $dateFin,
+        ];
+
+        $editePar = Auth::user()?->fullName ?? 'Utilisateur';
+        $editeLe = date('d/m/Y à H:i');
+
+        require BASE_PATH . '/views/finance/point_caisse_detaille_pdf.php';
+    }
+
+    /**
+     * Regroupe les opérations et encaissements par agence, puis par journée.
+     *
+     * @param array<int, array<string, mixed>> $operations
+     * @param array<int, array<string, mixed>> $encaissements
+     * @param array<string, array<string, mixed>> $etatsIndexes
+     * @return array<int, array<string, mixed>>
+     */
+    private function buildAgencesDetailStructure(array $operations, array $encaissements, array $etatsIndexes): array
+    {
+        $agences = [];
+
+        $ensureJour = static function (array &$agences, int $agenceId, string $agenceName, string $date): void {
+            if (!isset($agences[$agenceId])) {
+                $agences[$agenceId] = [
+                    'agence_id' => $agenceId,
+                    'agence_name' => $agenceName,
+                    'jours' => [],
+                ];
+            }
+            if (!isset($agences[$agenceId]['jours'][$date])) {
+                $agences[$agenceId]['jours'][$date] = [
+                    'date' => $date,
+                    'operations' => [],
+                    'encaissements' => [],
+                    'etat' => null,
+                ];
+            }
+        };
+
+        foreach ($operations as $op) {
+            $agId = (int) ($op['agence_id'] ?? 0);
+            $date = substr((string) ($op['date_jour'] ?? ''), 0, 10);
+            $ensureJour($agences, $agId, (string) ($op['agence_name'] ?? ('Agence #' . $agId)), $date);
+            $agences[$agId]['jours'][$date]['operations'][] = $op;
+        }
+
+        foreach ($encaissements as $enc) {
+            $agId = (int) ($enc['agence_id'] ?? 0);
+            $date = substr((string) ($enc['date_jour'] ?? ''), 0, 10);
+            $ensureJour($agences, $agId, (string) ($enc['agence_name'] ?? ('Agence #' . $agId)), $date);
+            $agences[$agId]['jours'][$date]['encaissements'][] = $enc;
+        }
+
+        // Les journées clôturées sans aucune opération doivent tout de même figurer au rapport.
+        foreach ($etatsIndexes as $key => $etat) {
+            [$agIdStr, $date] = explode('|', $key, 2);
+            $agId = (int) $agIdStr;
+            $agenceName = (string) ($agences[$agId]['agence_name'] ?? $etat['agence_name'] ?? ('Agence #' . $agId));
+            $ensureJour($agences, $agId, $agenceName, $date);
+            $agences[$agId]['jours'][$date]['etat'] = $etat;
+        }
+
+        // Totaux par journée, puis cumul par agence.
+        foreach ($agences as $agId => &$agence) {
+            ksort($agence['jours']);
+
+            $agTotals = $this->emptyDetailTotals();
+
+            foreach ($agence['jours'] as $date => &$jour) {
+                $jourTotals = $this->emptyDetailTotals();
+
+                foreach ($jour['operations'] as $op) {
+                    $jourTotals['nb_factures']++;
+                    $jourTotals['nb_colis'] += (int) ($op['nombre_colis'] ?? 0);
+                    $jourTotals['poids'] += (float) ($op['poids_total'] ?? 0);
+                    $jourTotals['volume'] += (float) ($op['volume'] ?? 0);
+                    $jourTotals['valeur_declaree'] += (float) ($op['valeur_declaree'] ?? 0);
+
+                    $devise = strtoupper((string) ($op['devise'] ?? 'XOF'));
+                    if ($devise === 'EUR') {
+                        $jourTotals['facture_eur'] += (float) ($op['montant_total'] ?? 0);
+                    } else {
+                        $jourTotals['facture_xof'] += (float) ($op['montant_total'] ?? 0);
+                    }
+                    $jourTotals['restant'] += (float) ($op['montant_restant'] ?? 0);
+                }
+
+                foreach ($jour['encaissements'] as $enc) {
+                    $montant = (float) ($enc['montant'] ?? 0);
+                    $devise = strtoupper((string) ($enc['devise'] ?? 'XOF'));
+                    if ($devise === 'EUR') {
+                        $jourTotals['encaisse_eur'] += $montant;
+                    } else {
+                        $jourTotals['encaisse_xof'] += $montant;
+                    }
+
+                    $mode = strtoupper((string) ($enc['mode_reglement'] ?? 'ESPECES'));
+                    if (!isset($jourTotals['par_mode'][$mode])) {
+                        $jourTotals['par_mode'][$mode] = ['montant' => 0.0, 'nb' => 0];
+                    }
+                    $jourTotals['par_mode'][$mode]['montant'] += $montant;
+                    $jourTotals['par_mode'][$mode]['nb']++;
+                }
+
+                if (!empty($jour['etat'])) {
+                    $jourTotals['solde_physique'] = isset($jour['etat']['solde_physique_declare']) && is_numeric($jour['etat']['solde_physique_declare'])
+                        ? (float) $jour['etat']['solde_physique_declare']
+                        : null;
+                    $jourTotals['ecart'] = (float) ($jour['etat']['ecart_caisse'] ?? 0);
+                    $jourTotals['statut'] = (string) ($jour['etat']['statut'] ?? 'brouillon');
+                }
+
+                $jour['totals'] = $jourTotals;
+
+                $agTotals['nb_jours']++;
+                $agTotals['nb_factures'] += $jourTotals['nb_factures'];
+                $agTotals['nb_colis'] += $jourTotals['nb_colis'];
+                $agTotals['poids'] += $jourTotals['poids'];
+                $agTotals['volume'] += $jourTotals['volume'];
+                $agTotals['valeur_declaree'] += $jourTotals['valeur_declaree'];
+                $agTotals['facture_xof'] += $jourTotals['facture_xof'];
+                $agTotals['facture_eur'] += $jourTotals['facture_eur'];
+                $agTotals['encaisse_xof'] += $jourTotals['encaisse_xof'];
+                $agTotals['encaisse_eur'] += $jourTotals['encaisse_eur'];
+                $agTotals['restant'] += $jourTotals['restant'];
+                $agTotals['ecart'] += $jourTotals['ecart'];
+
+                foreach ($jourTotals['par_mode'] as $mode => $data) {
+                    if (!isset($agTotals['par_mode'][$mode])) {
+                        $agTotals['par_mode'][$mode] = ['montant' => 0.0, 'nb' => 0];
+                    }
+                    $agTotals['par_mode'][$mode]['montant'] += $data['montant'];
+                    $agTotals['par_mode'][$mode]['nb'] += $data['nb'];
+                }
+            }
+            unset($jour);
+
+            $agence['totals'] = $agTotals;
+        }
+        unset($agence);
+
+        uasort($agences, static fn(array $a, array $b): int => strcmp((string) $a['agence_name'], (string) $b['agence_name']));
+
+        return array_values($agences);
+    }
+
+    /**
+     * Cumul global de la période, toutes agences confondues.
+     *
+     * @param array<int, array<string, mixed>> $agencesDetail
+     * @return array<string, mixed>
+     */
+    private function buildDetailSummary(array $agencesDetail): array
+    {
+        $summary = $this->emptyDetailTotals();
+        $summary['nb_agences'] = count($agencesDetail);
+
+        foreach ($agencesDetail as $agence) {
+            $t = $agence['totals'];
+            $summary['nb_jours'] += $t['nb_jours'];
+            $summary['nb_factures'] += $t['nb_factures'];
+            $summary['nb_colis'] += $t['nb_colis'];
+            $summary['poids'] += $t['poids'];
+            $summary['volume'] += $t['volume'];
+            $summary['valeur_declaree'] += $t['valeur_declaree'];
+            $summary['facture_xof'] += $t['facture_xof'];
+            $summary['facture_eur'] += $t['facture_eur'];
+            $summary['encaisse_xof'] += $t['encaisse_xof'];
+            $summary['encaisse_eur'] += $t['encaisse_eur'];
+            $summary['restant'] += $t['restant'];
+            $summary['ecart'] += $t['ecart'];
+
+            foreach ($t['par_mode'] as $mode => $data) {
+                if (!isset($summary['par_mode'][$mode])) {
+                    $summary['par_mode'][$mode] = ['montant' => 0.0, 'nb' => 0];
+                }
+                $summary['par_mode'][$mode]['montant'] += $data['montant'];
+                $summary['par_mode'][$mode]['nb'] += $data['nb'];
+            }
+        }
+
+        uasort($summary['par_mode'], static fn(array $a, array $b): int => $b['montant'] <=> $a['montant']);
+
+        return $summary;
+    }
+
+    /**
+     * Squelette de totaux utilisé pour les cumuls journée / agence / période.
+     *
+     * @return array<string, mixed>
+     */
+    private function emptyDetailTotals(): array
+    {
+        return [
+            'nb_jours' => 0,
+            'nb_factures' => 0,
+            'nb_colis' => 0,
+            'poids' => 0.0,
+            'volume' => 0.0,
+            'valeur_declaree' => 0.0,
+            'facture_xof' => 0.0,
+            'facture_eur' => 0.0,
+            'encaisse_xof' => 0.0,
+            'encaisse_eur' => 0.0,
+            'restant' => 0.0,
+            'ecart' => 0.0,
+            'solde_physique' => null,
+            'statut' => null,
+            'par_mode' => [],
+        ];
     }
 
     /**

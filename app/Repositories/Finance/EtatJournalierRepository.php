@@ -7,6 +7,16 @@ use PDO;
 
 class EtatJournalierRepository
 {
+    /**
+     * Expression SQL du mode de règlement d'un paiement (alias de table attendu : `p`).
+     *
+     * `lbp_paiements.mode` est la seule colonne alimentée lors de la création d'un paiement
+     * (voir PaiementRepository::create). `mode_paiement`, ajoutée par migration avec la valeur
+     * par défaut 'ESPECES', n'est écrite par aucun code : elle ne sert donc que de repli pour
+     * d'éventuelles lignes où `mode` serait vide.
+     */
+    public const MODE_SQL = "LOWER(COALESCE(NULLIF(p.mode, ''), NULLIF(p.mode_paiement, ''), 'especes'))";
+
     public function __construct(private PDO $pdo) {}
 
     public function findById(int $id): ?EtatJournalier
@@ -230,13 +240,17 @@ class EtatJournalierRepository
         $totalFactureEur = (float) ($facRow['total_eur'] ?? 0.0);
 
         // 3. Encaissements réalisés le jour même
+        //    La ventilation s'appuie sur self::MODE_SQL : c'est `lbp_paiements.mode` qui est
+        //    réellement alimenté à chaque encaissement, `mode_paiement` ne servant que de repli.
+        $modeSql = self::MODE_SQL;
         $stmt = $this->pdo->prepare("
-            SELECT 
+            SELECT
                 SUM(CASE WHEN p.devise = 'XOF' THEN p.montant ELSE 0 END) as encaisse_xof,
                 SUM(CASE WHEN p.devise = 'EUR' THEN p.montant ELSE 0 END) as encaisse_eur,
-                SUM(CASE WHEN p.devise = 'XOF' AND (LOWER(COALESCE(p.mode, 'especes')) = 'especes' OR LOWER(COALESCE(p.mode, 'especes')) = '') THEN p.montant ELSE 0 END) as encaisse_especes_xof,
-                SUM(CASE WHEN p.devise = 'XOF' AND LOWER(COALESCE(p.mode, '')) IN ('wave', 'orange_money', 'mtn_momo', 'mobile_money', 'virement', 'carte') THEN p.montant ELSE 0 END) as encaisse_digital_xof,
-                SUM(CASE WHEN p.devise = 'XOF' AND LOWER(COALESCE(p.mode, '')) = 'cheque' THEN p.montant ELSE 0 END) as encaisse_cheque_xof
+                SUM(CASE WHEN p.devise = 'XOF' AND {$modeSql} IN ('especes', 'espece', 'cash') THEN p.montant ELSE 0 END) as encaisse_especes_xof,
+                SUM(CASE WHEN p.devise = 'XOF' AND {$modeSql} IN ('mobile_money', 'wave', 'orange_money', 'mtn_momo', 'momo', 'carte', 'carte_bancaire') THEN p.montant ELSE 0 END) as encaisse_digital_xof,
+                SUM(CASE WHEN p.devise = 'XOF' AND {$modeSql} IN ('cheque', 'virement') THEN p.montant ELSE 0 END) as encaisse_cheque_xof,
+                SUM(CASE WHEN p.devise = 'XOF' AND {$modeSql} = 'portefeuille' THEN p.montant ELSE 0 END) as encaisse_portefeuille_xof
             FROM lbp_paiements p
             JOIN lbp_factures f ON p.facture_id = f.id
             WHERE f.agence_id = :agence_id AND DATE(p.date_paiement) = :date
@@ -248,6 +262,14 @@ class EtatJournalierRepository
         $encaisseEspecesXof = (float) ($payRow['encaisse_especes_xof'] ?? 0.0);
         $encaisseDigitalXof = (float) ($payRow['encaisse_digital_xof'] ?? 0.0);
         $encaisseChequeXof = (float) ($payRow['encaisse_cheque_xof'] ?? 0.0);
+        $encaissePortefeuilleXof = (float) ($payRow['encaisse_portefeuille_xof'] ?? 0.0);
+
+        // Tout mode non reconnu reste visible plutôt que de disparaître silencieusement
+        // de la ventilation : les quatre canaux doivent toujours totaliser l'encaissé XOF.
+        $encaisseAutreXof = round(
+            $totalEncaisseXof - $encaisseEspecesXof - $encaisseDigitalXof - $encaisseChequeXof - $encaissePortefeuilleXof,
+            2
+        );
 
         // 4. Reste à payer des factures émises ce jour
         $stmt = $this->pdo->prepare("
@@ -319,6 +341,8 @@ class EtatJournalierRepository
             'encaisse_especes_xof' => $encaisseEspecesXof,
             'encaisse_digital_xof' => $encaisseDigitalXof,
             'encaisse_cheque_xof' => $encaisseChequeXof,
+            'encaisse_portefeuille_xof' => $encaissePortefeuilleXof,
+            'encaisse_autre_xof' => $encaisseAutreXof > 0.009 ? $encaisseAutreXof : 0.0,
             'total_restant_du_xof' => $totalRestantDuXof,
             'total_restant_du_eur' => $totalRestantDuEur,
             'solde_caisse_agence_xof' => $totalEncaisseXof,
@@ -361,6 +385,174 @@ class EtatJournalierRepository
             soumissionRetroactive: !empty($row['soumission_retroactive']),
             justificationRetard: $row['justification_retard'] ?? null
         );
+    }
+
+    /**
+     * Détail ligne par ligne des opérations facturées sur une plage de dates.
+     * $agenceId = 0 => toutes les agences.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function getDetailedOperations(int $agenceId, string $dateDebut, string $dateFin): array
+    {
+        $sql = "
+            SELECT
+                f.id                                AS facture_id,
+                f.numero_facture,
+                f.date_emission,
+                DATE(f.date_emission)               AS date_jour,
+                f.montant_total,
+                f.montant_encaisse,
+                f.montant_restant,
+                f.devise,
+                f.statut                            AS statut_facture,
+                f.agence_id,
+                ag.name                             AS agence_name,
+                c.numero_tracking,
+                c.nombre_colis,
+                c.poids_total,
+                c.volume,
+                c.valeur_declaree,
+                c.categorie_produit,
+                c.trajet,
+                c.destination_ville,
+                c.destination_pays,
+                exp.name                            AS expediteur_nom,
+                exp.phone                           AS expediteur_tel,
+                dest.name                           AS destinataire_nom,
+                dest.phone                          AS destinataire_tel,
+                cl.name                             AS client_paye_nom,
+                COALESCE(u_cb.full_name, u_cais.full_name, 'Agent') AS caissiere_nom,
+                COALESCE(pay.encaisse_periode, 0)   AS encaisse_periode,
+                pay.modes_reglement
+            FROM lbp_factures f
+            JOIN lbp_colis c            ON f.colis_id = c.id
+            JOIN lbp_clients cl         ON f.client_id = cl.id
+            LEFT JOIN lbp_clients exp   ON c.expediteur_id = exp.id
+            LEFT JOIN lbp_clients dest  ON c.destinataire_id = dest.id
+            LEFT JOIN company_sites ag  ON f.agence_id = ag.id
+            LEFT JOIN users u_cb        ON f.created_by = u_cb.id
+            LEFT JOIN users u_cais      ON f.caissiere_id = u_cais.id
+            LEFT JOIN (
+                SELECT
+                    p.facture_id,
+                    SUM(p.montant) AS encaisse_periode,
+                    GROUP_CONCAT(DISTINCT " . self::MODE_SQL . " SEPARATOR ', ') AS modes_reglement
+                FROM lbp_paiements p
+                WHERE DATE(p.date_paiement) BETWEEN :pay_debut AND :pay_fin
+                GROUP BY p.facture_id
+            ) pay ON pay.facture_id = f.id
+            WHERE DATE(f.date_emission) BETWEEN :date_debut AND :date_fin
+        ";
+
+        $params = [
+            'pay_debut' => $dateDebut,
+            'pay_fin' => $dateFin,
+            'date_debut' => $dateDebut,
+            'date_fin' => $dateFin,
+        ];
+
+        if ($agenceId > 0) {
+            $sql .= " AND f.agence_id = :agence_id";
+            $params['agence_id'] = $agenceId;
+        }
+
+        $sql .= " ORDER BY ag.name ASC, DATE(f.date_emission) ASC, f.date_emission ASC";
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($params);
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    }
+
+    /**
+     * Détail des encaissements réellement passés en caisse sur la plage,
+     * y compris les règlements portant sur des factures émises antérieurement.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function getDetailedEncaissements(int $agenceId, string $dateDebut, string $dateFin): array
+    {
+        $sql = "
+            SELECT
+                p.id                                AS paiement_id,
+                p.date_paiement,
+                DATE(p.date_paiement)               AS date_jour,
+                p.montant,
+                p.devise,
+                p.type                              AS type_paiement,
+                " . self::MODE_SQL . "               AS mode_reglement,
+                f.id                                AS facture_id,
+                f.numero_facture,
+                DATE(f.date_emission)               AS date_emission,
+                f.montant_total,
+                f.montant_restant,
+                f.agence_id,
+                ag.name                             AS agence_name,
+                c.numero_tracking,
+                c.nombre_colis,
+                c.poids_total,
+                cl.name                             AS client_nom,
+                cl.phone                            AS client_tel,
+                COALESCE(u_pay.full_name, 'Agent')  AS caissiere_nom
+            FROM lbp_paiements p
+            JOIN lbp_factures f         ON p.facture_id = f.id
+            JOIN lbp_colis c            ON f.colis_id = c.id
+            JOIN lbp_clients cl         ON f.client_id = cl.id
+            LEFT JOIN company_sites ag  ON f.agence_id = ag.id
+            LEFT JOIN users u_pay       ON p.caissiere_id = u_pay.id
+            WHERE DATE(p.date_paiement) BETWEEN :date_debut AND :date_fin
+        ";
+
+        $params = ['date_debut' => $dateDebut, 'date_fin' => $dateFin];
+
+        if ($agenceId > 0) {
+            $sql .= " AND f.agence_id = :agence_id";
+            $params['agence_id'] = $agenceId;
+        }
+
+        $sql .= " ORDER BY ag.name ASC, DATE(p.date_paiement) ASC, p.date_paiement ASC";
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($params);
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    }
+
+    /**
+     * États journaliers soumis/consolidés sur une plage, indexés par "agenceId|date".
+     * Sert à rapprocher le détail des opérations avec le comptage physique déclaré.
+     *
+     * @return array<string, array<string, mixed>>
+     */
+    public function getEtatsForRangeIndexed(int $agenceId, string $dateDebut, string $dateFin): array
+    {
+        $sql = "
+            SELECT e.*, u.full_name AS chef_nom, uc.full_name AS consolidateur_nom, cs.name AS agence_name
+            FROM lbp_etats_journaliers e
+            LEFT JOIN users u  ON e.chef_agence_id = u.id
+            LEFT JOIN users uc ON e.consolide_par_id = uc.id
+            LEFT JOIN company_sites cs ON e.agence_id = cs.id
+            WHERE DATE(e.date_jour) BETWEEN :date_debut AND :date_fin
+        ";
+
+        $params = ['date_debut' => $dateDebut, 'date_fin' => $dateFin];
+
+        if ($agenceId > 0) {
+            $sql .= " AND e.agence_id = :agence_id";
+            $params['agence_id'] = $agenceId;
+        }
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($params);
+
+        $indexed = [];
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) ?: [] as $row) {
+            $key = (int) $row['agence_id'] . '|' . substr((string) $row['date_jour'], 0, 10);
+            $indexed[$key] = $row;
+        }
+
+        return $indexed;
     }
 
     /**
