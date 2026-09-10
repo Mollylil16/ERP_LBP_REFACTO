@@ -199,6 +199,8 @@ final class ColisageController extends ColisageBaseController
             $customName = trim((string) ($_POST['m_custom_name'][$idx] ?? ''));
             $weight = (float) ($_POST['m_weight'][$idx] ?? 0.0);
             $prixKg = (float) ($_POST['m_prix_kg'][$idx] ?? 0.0);
+            $emballage = trim((string) ($_POST['m_emballage'][$idx] ?? ''));
+            $nbreColis = (int) ($_POST['m_nbre_colis'][$idx] ?? 1);
             $hasEmballageSpecific = ($emballage !== '' && $emballage !== 'Propre emballage client / Aucun') || ((float)($_POST['m_prix_emballage'][$idx] ?? 0.0) > 0);
 
             if (!empty($prodIds) || $customName !== '' || $weight > 0 || $prixKg > 0 || $hasEmballageSpecific) {

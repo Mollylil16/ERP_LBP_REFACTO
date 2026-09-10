@@ -291,10 +291,13 @@ final class ColisageService
             }
         }
 
-            // Update final montant_total for the colis based on the inserted marchandises or explicit amount
-            $stmtSum = $pdo->prepare("SELECT COALESCE(SUM(total_ligne), 0) FROM lbp_marchandises WHERE colis_id = ?");
+            // Update final montant_total and nombre_colis for the colis based on the inserted marchandises or explicit amount
+            $stmtSum = $pdo->prepare("SELECT COALESCE(SUM(total_ligne), 0), COALESCE(SUM(nbre_colis), 0) FROM lbp_marchandises WHERE colis_id = ?");
             $stmtSum->execute([$parcelId]);
-            $sumLines = (float) $stmtSum->fetchColumn();
+            $rowSum = $stmtSum->fetch(\PDO::FETCH_NUM);
+            $sumLines = (float) ($rowSum[0] ?? 0.0);
+            $sumColis = (int) ($rowSum[1] ?? 0);
+            $finalNombreColis = $sumColis > 0 ? $sumColis : (int) ($data['nombre_colis'] ?? 1);
             $explicitMontant = (float) ($data['montant_total'] ?? 0.0);
             
             $finalMontant = ($sumLines > 0) ? $sumLines : $explicitMontant;
@@ -328,11 +331,12 @@ final class ColisageService
                 UPDATE lbp_colis 
                 SET montant_total = ?, 
                     montant_total_eur = ?, 
+                    nombre_colis = ?,
                     marge_lbp = GREATEST(0.0, ? - COALESCE(cout_achat_dhl, 0.0)),
                     updated_at = NOW() 
                 WHERE id = ?
             ");
-            $stmtUp->execute([$finalMontant, $finalMontantEur, $finalMontant, $parcelId]);
+            $stmtUp->execute([$finalMontant, $finalMontantEur, $finalNombreColis, $finalMontant, $parcelId]);
 
             $pdo->commit();
 
