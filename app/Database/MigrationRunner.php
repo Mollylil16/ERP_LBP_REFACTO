@@ -46,6 +46,7 @@ class MigrationRunner
         $this->seedSuiviEtRecouvrementRoleAndUser();
         $this->createGestionDesFondsTables();
         $this->assignStaffRolesAndAgencies();
+        $this->syncFacturesMontantRestant();
     }
 
 
@@ -3530,6 +3531,31 @@ class MigrationRunner
             }
         } catch (\Throwable $e) {
             error_log('[MigrationRunner Warning] assignStaffRolesAndAgencies: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Resynchronise montant_restant de toutes les factures
+     * pour lesquelles la valeur ne correspond pas à (montant_total - montant_encaisse).
+     * Corrige les cas où le montant du colis a été modifié après émission de la facture
+     * sans que le solde restant n'ait été recalculé.
+     */
+    private function syncFacturesMontantRestant(): void
+    {
+        try {
+            $this->pdo->exec("
+                UPDATE lbp_factures
+                SET montant_restant = GREATEST(0, montant_total - montant_encaisse),
+                    statut = CASE
+                        WHEN montant_encaisse >= montant_total THEN 'payee'
+                        WHEN montant_encaisse > 0 THEN 'partiellement_payee'
+                        ELSE statut
+                    END,
+                    updated_at = NOW()
+                WHERE ABS(montant_restant - (montant_total - montant_encaisse)) > 0.01
+            ");
+        } catch (\Throwable $e) {
+            error_log('[MigrationRunner] syncFacturesMontantRestant: ' . $e->getMessage());
         }
     }
 }
