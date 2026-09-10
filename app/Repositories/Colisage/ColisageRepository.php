@@ -363,8 +363,24 @@ class ColisageRepository
         ]);
 
         try {
-            $invStmt = $this->pdo->prepare("UPDATE lbp_factures SET montant_total = :montant, updated_at = NOW() WHERE colis_id = :colis_id");
-            $invStmt->execute(['montant' => $montantTotal, 'colis_id' => $id]);
+            $invStmt = $this->pdo->prepare("
+                UPDATE lbp_factures 
+                SET montant_total = :montant, 
+                    montant_restant = GREATEST(0, :montant2 - montant_encaisse),
+                    statut = CASE 
+                        WHEN montant_encaisse >= :montant3 THEN 'payee'
+                        WHEN montant_encaisse > 0 THEN 'partiellement_payee'
+                        ELSE statut 
+                    END,
+                    updated_at = NOW() 
+                WHERE colis_id = :colis_id
+            ");
+            $invStmt->execute([
+                'montant' => $montantTotal, 
+                'montant2' => $montantTotal, 
+                'montant3' => $montantTotal, 
+                'colis_id' => $id,
+            ]);
         } catch (\Exception $e) {}
     }
 

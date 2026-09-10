@@ -438,8 +438,19 @@ final class ColisageService
             $stmtUp->execute([$finalMontant, $sumColis, $finalMontant, $parcelId]);
 
             try {
-                $stmtInv = $pdo->prepare("UPDATE lbp_factures SET montant_total = ?, updated_at = NOW() WHERE colis_id = ?");
-                $stmtInv->execute([$finalMontant, $parcelId]);
+                $stmtInv = $pdo->prepare("
+                    UPDATE lbp_factures 
+                    SET montant_total = ?, 
+                        montant_restant = GREATEST(0, ? - montant_encaisse),
+                        statut = CASE 
+                            WHEN montant_encaisse >= ? THEN 'payee'
+                            WHEN montant_encaisse > 0 THEN 'partiellement_payee'
+                            ELSE statut 
+                        END,
+                        updated_at = NOW() 
+                    WHERE colis_id = ?
+                ");
+                $stmtInv->execute([$finalMontant, $finalMontant, $finalMontant, $parcelId]);
             } catch (\Throwable $e) {}
 
             $pdo->commit();
