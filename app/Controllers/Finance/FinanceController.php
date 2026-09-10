@@ -351,7 +351,7 @@ final class FinanceController extends FinanceBaseController
      */
     public function factureShow(string $id): void
     {
-        RoleMiddleware::check(['caissiere', 'caissiere_principale', 'chef_agence', 'dg', 'comptable', 'superviseur_regional', 'superviseur_general', 'suivi_recouvrement']);
+        RoleMiddleware::check(['caissiere', 'caissiere_principale', 'chef_agence', 'dg', 'comptable', 'superviseur_regional', 'superviseur_general', 'suivi_recouvrement', 'agent_enregistrement']);
 
         $id = (int) $id;
         $facture = $this->factureRepo->findById($id);
@@ -968,7 +968,9 @@ final class FinanceController extends FinanceBaseController
      */
     public function cloturesIndex(): void
     {
-        RoleMiddleware::check(['caissiere', 'chef_agence', 'caissiere_principale', 'dg', 'comptable', 'superviseur_general', 'superviseur_regional', 'admin']);
+        // agent_enregistrement est admis mais absent de ROLES_CUMUL_AGENCE :
+        // il ne voit que les factures qu'il a lui-meme saisies.
+        RoleMiddleware::check(['caissiere', 'chef_agence', 'caissiere_principale', 'dg', 'comptable', 'superviseur_general', 'superviseur_regional', 'agent_enregistrement', 'admin']);
 
         $userAgenceId = Auth::agenceId();
         $dateJour = date('Y-m-d');
@@ -1477,7 +1479,7 @@ final class FinanceController extends FinanceBaseController
     public function exportPointCaisseDetaillePdf(): void
     {
         AuthMiddleware::check();
-        RoleMiddleware::check(['caissiere', 'chef_agence', 'caissiere_principale', 'dg', 'comptable', 'superviseur_general', 'superviseur_regional', 'admin']);
+        RoleMiddleware::check(['caissiere', 'chef_agence', 'caissiere_principale', 'dg', 'comptable', 'superviseur_general', 'superviseur_regional', 'agent_enregistrement', 'admin']);
 
         $userAgenceId = (int) (Auth::user()?->agenceId ?? 0);
         $isGlobal = Auth::isAdmin() || Auth::isAssistantDg() || Auth::hasAnyRole(['caissiere_principale', 'dg', 'assistant_dg', 'assistante_dg', 'comptable', 'superviseur_general', 'superviseur_regional', 'admin']);

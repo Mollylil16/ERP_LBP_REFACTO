@@ -295,6 +295,12 @@ final class ColisageController extends ColisageBaseController
     public function autoFacturer(int $id): void
     {
         AuthMiddleware::check();
+
+        // Cette route generait une facture pour tout utilisateur simplement connecte,
+        // RH ou magasinier compris. Elle est desormais alignee sur les roles habilites
+        // a facturer, agent_enregistrement inclus : il depanne quand la caissiere
+        // est absente, et la facture reste tracee a son nom via created_by.
+        RoleMiddleware::check(['caissiere', 'caissiere_principale', 'chef_agence', 'dg', 'agent_enregistrement']);
         $db = Database::getConnection();
         $factureRepo = new \App\Repositories\Finance\FactureRepository($db);
         try {
