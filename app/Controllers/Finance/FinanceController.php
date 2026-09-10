@@ -46,10 +46,15 @@ final class FinanceController extends FinanceBaseController
      *
      * Tout autre utilisateur est restreint a ce qu'il a lui-meme facture
      * (lbp_factures.created_by) et encaisse (lbp_paiements.caissiere_id).
+     *
+     * Attention : cette liste couvre aujourd'hui tous les roles que le middleware de
+     * cloturesIndex laisse entrer sur la page. Aucun utilisateur n'est donc restreint
+     * en pratique. Retirer un role d'ici suffit a le basculer sur son seul perimetre.
      */
     private const ROLES_CUMUL_AGENCE = [
         'caissiere_principale',
         'chef_agence',
+        'caissiere',
         'dg',
         'assistant_dg',
         'assistante_dg',
