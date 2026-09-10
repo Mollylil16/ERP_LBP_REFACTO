@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\View\Components;
 
+use App\Helpers\Csrf;
 use App\Helpers\View;
 
 final class PilotageDg
@@ -248,13 +249,34 @@ final class PilotageDg
                 . '<td>' . View::e((string) ($w['employee_name'] ?? '—')) . '</td>'
                 . '<td>' . View::e((string) $w['current_step']) . '</td>'
                 . '<td>' . View::e(date('d/m/Y H:i', strtotime((string) $w['created_at']))) . '</td>'
-                . '<td>' . Ui::button('Traiter', ['href' => 'rh/validations', 'variant' => 'secondary']) . '</td>'
+                . '<td>' . self::decisionForm('pilotage-dg/validations/workflow', (int) $w['id']) . '</td>'
                 . '</tr>';
         }
 
         return '<div class="finea-table-wrapper"><table class="finea-table"><thead><tr>'
             . '<th>Processus</th><th>Employé</th><th>Étape</th><th>Soumis le</th><th>Action</th>'
             . '</tr></thead><tbody>' . $rows . '</tbody></table></div>';
+    }
+
+    /**
+     * Boutons Approuver / Rejeter postant vers le Centre de Validation.
+     * La decision est ensuite deleguee a la logique metier du module concerne.
+     */
+    private static function decisionForm(string $action, int $recordId, bool $avecCommentaire = false): string
+    {
+        $champCommentaire = $avecCommentaire
+            ? '<input type="text" name="comment" placeholder="Motif (facultatif)" style="padding:5px 8px; border:1px solid #cbd5e1; border-radius:6px; font-size:0.78rem; width:150px;">'
+            : '';
+
+        $bouton = static fn(string $decision, string $libelle, string $couleur): string =>
+            '<button type="submit" name="decision" value="' . $decision . '" style="padding:5px 11px; background:' . $couleur . '; color:#fff; border:none; border-radius:6px; font-weight:700; font-size:0.78rem; cursor:pointer;">' . $libelle . '</button>';
+
+        return '<form method="post" action="' . View::url($action . '/' . $recordId) . '" class="js-protect-form" style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">'
+            . Form::hidden('_csrf_token', Csrf::token())
+            . $champCommentaire
+            . $bouton('approve', 'Approuver', '#059669')
+            . $bouton('reject', 'Rejeter', '#dc2626')
+            . '</form>';
     }
 
     /** @param array<int, array<string, mixed>> $requests */
@@ -271,7 +293,7 @@ final class PilotageDg
                 . '<td>' . View::e((string) ($r['employee_name'] ?? '—')) . '</td>'
                 . '<td>' . Ui::badge((string) $r['status'], 'warning') . '</td>'
                 . '<td>' . View::e(date('d/m/Y H:i', strtotime((string) $r['submitted_at']))) . '</td>'
-                . '<td>' . Ui::button('Traiter', ['href' => 'rh/validations', 'variant' => 'secondary']) . '</td>'
+                . '<td>' . self::decisionForm('pilotage-dg/validations/demande', (int) $r['id'], true) . '</td>'
                 . '</tr>';
         }
 
@@ -294,7 +316,14 @@ final class PilotageDg
                 . '<td>' . View::e((string) $r['motif']) . '</td>'
                 . '<td style="text-align:right;">' . number_format((float) $r['montant'], 0, ',', ' ') . ' ' . View::e((string) $r['devise']) . '</td>'
                 . '<td>' . View::e(date('d/m/Y H:i', strtotime((string) $r['date_demande']))) . '</td>'
-                . '<td>' . Ui::button('Traiter', ['href' => 'finance/depenses', 'variant' => 'secondary']) . '</td>'
+                . '<td>'
+                . '<form method="post" action="' . View::url('finance/depenses/' . (int) $r['id'] . '/valider') . '" class="js-protect-form" style="display:flex; gap:6px; align-items:center;">'
+                . Form::hidden('_csrf_token', Csrf::token())
+                . '<button type="submit" name="decision" value="approuver" style="padding:5px 11px; background:#059669; color:#fff; border:none; border-radius:6px; font-weight:700; font-size:0.78rem; cursor:pointer;">Approuver</button>'
+                . '<button type="submit" name="decision" value="rejeter" style="padding:5px 11px; background:#dc2626; color:#fff; border:none; border-radius:6px; font-weight:700; font-size:0.78rem; cursor:pointer;">Rejeter</button>'
+                . '</form>'
+                . '<small style="color:#94a3b8; font-size:0.7rem;">Traité par le module Finance (double contrôle et écritures comptables)</small>'
+                . '</td>'
                 . '</tr>';
         }
 
@@ -526,9 +555,9 @@ final class PilotageDg
         }
 
         $filterForm = '<form method="get" action="' . View::url('pilotage-dg/audit') . '" class="rh-form-grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); align-items:end;">'
-            . Form::select('entity_type', $entityOpts, $filters['entity_type'], ['label' => 'Module / Entité'])
-            . Form::input('start_date', ['label' => 'Du', 'type' => 'date', 'value' => $filters['start_date']])
-            . Form::input('end_date', ['label' => 'Au', 'type' => 'date', 'value' => $filters['end_date']])
+            . Form::select('entity_type', $entityOpts, (string) ($filters['entity_type'] ?? ''), ['label' => 'Module / Entité'])
+            . Form::input('start_date', ['label' => 'Du', 'type' => 'date', 'value' => (string) ($filters['start_date'] ?? '')])
+            . Form::input('end_date', ['label' => 'Au', 'type' => 'date', 'value' => (string) ($filters['end_date'] ?? '')])
             . '<div>' . Ui::button('Filtrer', ['type' => 'submit', 'variant' => 'primary']) . '</div>'
             . '</form>';
 
@@ -554,6 +583,77 @@ final class PilotageDg
             . '</div>';
     }
 
+    /**
+     * Rend la difference entre old_values et new_values d'une entree d'audit.
+     * Sans ce detail, le journal disait qui avait modifie quoi, mais pas ce qui avait
+     * change : un montant passe de 100 000 a 10 000 y etait indiscernable d'une
+     * correction de libelle.
+     *
+     * @param array<string, mixed> $log
+     */
+    private static function auditDiff(array $log): string
+    {
+        $decode = static function ($raw): array {
+            if (is_array($raw)) {
+                return $raw;
+            }
+            if (!is_string($raw) || trim($raw) === '') {
+                return [];
+            }
+            $decoded = json_decode($raw, true);
+            return is_array($decoded) ? $decoded : [];
+        };
+
+        $old = $decode($log['old_values'] ?? null);
+        $new = $decode($log['new_values'] ?? null);
+
+        if ($old === [] && $new === []) {
+            return '<span style="color:#94a3b8;">—</span>';
+        }
+
+        $format = static function ($v): string {
+            if ($v === null) {
+                return '∅';
+            }
+            if (is_bool($v)) {
+                return $v ? 'oui' : 'non';
+            }
+            if (is_scalar($v)) {
+                return mb_strimwidth((string) $v, 0, 40, '…');
+            }
+            return '…';
+        };
+
+        $lignes = [];
+        foreach (array_keys($new + $old) as $champ) {
+            $avant = $old[$champ] ?? null;
+            $apres = $new[$champ] ?? null;
+
+            if ($avant === $apres) {
+                continue;
+            }
+            if (is_array($avant) || is_array($apres)) {
+                continue;
+            }
+
+            $lignes[] = '<div style="white-space:nowrap;"><strong>' . View::e((string) $champ) . '</strong> : '
+                . '<span style="color:#b91c1c;">' . View::e($format($avant)) . '</span>'
+                . ' <span style="color:#94a3b8;">→</span> '
+                . '<span style="color:#15803d;">' . View::e($format($apres)) . '</span></div>';
+
+            if (count($lignes) >= 6) {
+                $lignes[] = '<div style="color:#94a3b8;">…</div>';
+                break;
+            }
+        }
+
+        if ($lignes === []) {
+            return '<span style="color:#94a3b8;">Aucun champ modifié</span>';
+        }
+
+        return '<div style="font-size:0.75rem; line-height:1.5;">' . implode('', $lignes) . '</div>';
+    }
+
     /** @param array<int, array<string, mixed>> $logs */
     private static function auditLogTable(array $logs): string
     {
@@ -568,12 +668,13 @@ final class PilotageDg
                 . '<td>' . View::e((string) ($log['user_name'] ?? ('Utilisateur #' . $log['user_id']))) . '</td>'
                 . '<td>' . Ui::badge((string) $log['action'], 'neutral') . '</td>'
                 . '<td>' . View::e((string) $log['entity_type']) . ' #' . (int) $log['entity_id'] . '</td>'
+                . '<td>' . self::auditDiff($log) . '</td>'
                 . '<td>' . View::e((string) ($log['ip_address'] ?? '—')) . '</td>'
                 . '</tr>';
         }
 
         return '<div class="finea-table-wrapper"><table class="finea-table"><thead><tr>'
-            . '<th>Date & Heure</th><th>Utilisateur</th><th>Action</th><th>Entité</th><th>IP</th>'
+            . '<th>Date & Heure</th><th>Utilisateur</th><th>Action</th><th>Entité</th><th>Modifications</th><th>IP</th>'
             . '</tr></thead><tbody>' . $rows . '</tbody></table></div>';
     }
 }

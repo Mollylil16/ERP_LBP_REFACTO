@@ -1230,6 +1230,8 @@ final class Finance
             };
 
             $encEspeces = (float) ($activeReport['encaisseEspecesXof'] ?? $activeReport['encaisse_especes_xof'] ?? 0);
+            // Le solde theorique oppose au comptage physique est le liquide attendu en tiroir.
+            $soldeTheoriqueEspeces = (float) ($activeReport['soldeCaisseAgenceXof'] ?? $activeReport['solde_caisse_agence_xof'] ?? $encEspeces);
             $encDigital = (float) ($activeReport['encaisseDigitalXof'] ?? $activeReport['encaisse_digital_xof'] ?? 0);
             $encCheque = (float) ($activeReport['encaisseChequeXof'] ?? $activeReport['encaisse_cheque_xof'] ?? 0);
             $encPortefeuille = (float) ($activeReport['encaissePortefeuilleXof'] ?? $activeReport['encaisse_portefeuille_xof'] ?? 0);
@@ -1445,8 +1447,8 @@ final class Finance
                     . '<div style="display:grid; grid-template-columns: 1fr 1fr; gap:1.25rem;">'
                     . Form::input('solde_physique_declare', ['label' => 'Total Physique Calculé (XOF)', 'type' => 'number', 'step' => '1', 'placeholder' => 'Calculé automatiquement ci-dessus', 'required' => true, 'id' => 'solde_physique_input'])
                     . '<div style="background:#f1f5f9; padding:0.8rem; border-radius:8px; display:flex; flex-direction:column; justify-content:center;">'
-                    . '<small style="color:#64748b; font-weight:600;">Solde Théorique attendu (Blind Count) :</small>'
-                    . '<strong id="blind_theo_val" style="font-size:1.1rem; color:#1e293b;">•••••• XOF <button type="button" onclick="document.getElementById(\'blind_theo_val\').innerText=\'' . number_format($totalEncaisseXof, 0, ',', ' ') . ' XOF\'" style="border:none; background:none; color:#2563eb; font-size:0.75rem; cursor:pointer; text-decoration:underline;">Afficher</button></strong>'
+                    . '<small style="color:#64748b; font-weight:600;">Espèces attendues en tiroir (Blind Count) :</small>'
+                    . '<strong id="blind_theo_val" style="font-size:1.1rem; color:#1e293b;">•••••• XOF <button type="button" onclick="document.getElementById(\'blind_theo_val\').innerText=\'' . number_format($soldeTheoriqueEspeces, 0, ',', ' ') . ' XOF\'" style="border:none; background:none; color:#2563eb; font-size:0.75rem; cursor:pointer; text-decoration:underline;">Afficher</button></strong>'
                     . '</div>'
                     . '</div>'
                     . '<div style="display:grid; grid-template-columns: 1fr 1fr; gap:1.25rem; margin-top:1rem;">'

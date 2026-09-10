@@ -5,9 +5,14 @@ declare(strict_types=1);
 namespace App\Controllers\PilotageDg;
 
 use App\Controllers\BaseController;
+use App\Helpers\Auth;
+use App\Helpers\Csrf;
+use App\Helpers\Session;
 use App\Middleware\AuthMiddleware;
 use App\Middleware\RoleMiddleware;
 use App\Models\Database;
+use App\Repositories\Rh\RhValidationRepository;
+use RuntimeException;
 use App\Repositories\PilotageDg\PilotageDgDashboardRepository;
 use App\Services\PilotageDg\PilotageDgDashboardService;
 
@@ -101,6 +106,67 @@ final class PilotageDgDashboardController extends BaseController
             'pagination' => $result['pagination'],
             'filters' => $filters,
         ]);
+    }
+
+    /**
+     * Approuver ou rejeter un workflow RH sans quitter le Centre de Validation.
+     * La decision est deleguee a RhValidationRepository : meme logique, meme tracabilite
+     * que depuis le module RH.
+     */
+    public function decideWorkflow(string $id): void
+    {
+        $this->decide(
+            fn(RhValidationRepository $repo, int $recordId, string $decision) => $repo->decideWorkflow($recordId, $decision, (int) Auth::id()),
+            $id,
+            'Le workflow a été mis à jour.'
+        );
+    }
+
+    /**
+     * Approuver ou rejeter une demande legale d'employe depuis le Centre de Validation.
+     */
+    public function decideLegalRequest(string $id): void
+    {
+        $comment = trim((string) ($_POST['comment'] ?? ''));
+
+        $this->decide(
+            fn(RhValidationRepository $repo, int $recordId, string $decision) => $repo->decideEmployeeRequest($recordId, $decision, (int) Auth::id(), $comment !== '' ? $comment : null),
+            $id,
+            'La demande a été mise à jour.'
+        );
+    }
+
+    /**
+     * Socle commun des decisions : authentification, habilitation, CSRF, puis delegation.
+     */
+    private function decide(callable $action, string $id, string $successMessage): void
+    {
+        AuthMiddleware::check();
+        RoleMiddleware::check(['dg', 'admin']);
+
+        if (!Csrf::verify($_POST['_csrf_token'] ?? null)) {
+            Session::flash('error', 'Session expirée ou requête invalide. Veuillez réessayer.');
+            $this->redirect('/pilotage-dg/validations');
+            return;
+        }
+
+        $decision = (string) ($_POST['decision'] ?? '');
+        if ($decision !== 'approve' && $decision !== 'reject') {
+            Session::flash('error', 'Décision invalide.');
+            $this->redirect('/pilotage-dg/validations');
+            return;
+        }
+
+        try {
+            $action(new RhValidationRepository(Database::getConnection()), (int) $id, $decision);
+            Session::flash('success', $successMessage);
+        } catch (RuntimeException $e) {
+            Session::flash('error', $e->getMessage());
+        } catch (\Throwable $e) {
+            Session::flash('error', 'La décision n\'a pas pu être enregistrée.');
+        }
+
+        $this->redirect('/pilotage-dg/validations');
     }
 
     /**

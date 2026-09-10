@@ -39,24 +39,47 @@ final class PilotageDgDashboardRepository extends \App\Repositories\Shared\Modul
         $ticketsOuverts = 0;
         $sitesActifs = 0;
 
-        try {
-            $caEncaisseJour = (float) $this->pdo->query("SELECT COALESCE(SUM(montant), 0) FROM lbp_paiements WHERE DATE(date_paiement) = CURDATE()")->fetchColumn();
-            $caEncaisseMois = (float) $this->pdo->query("SELECT COALESCE(SUM(montant), 0) FROM lbp_paiements WHERE YEAR(date_paiement) = YEAR(CURDATE()) AND MONTH(date_paiement) = MONTH(CURDATE())")->fetchColumn();
-            $totalImpaye = (float) $this->pdo->query("SELECT COALESCE(SUM(montant_restant), 0) FROM lbp_factures WHERE statut IN ('emise', 'partiellement_payee', 'en_retard')")->fetchColumn();
-            $colisEnTransit = (int) $this->pdo->query("SELECT COUNT(*) FROM lbp_colis WHERE statut = 'en_transit'")->fetchColumn();
-            $colisAujourdhui = (int) $this->pdo->query("SELECT COUNT(*) FROM lbp_colis WHERE DATE(created_at) = CURDATE()")->fetchColumn();
-            $effectifActif = (int) $this->pdo->query("SELECT COUNT(*) FROM rh_employees WHERE is_active = 1")->fetchColumn();
-            $presentsAujourdhui = (int) $this->pdo->query("SELECT COUNT(*) FROM rh_attendance_daily WHERE attendance_date = CURDATE() AND attendance_status = 'present'")->fetchColumn();
-            $ticketsOuverts = (int) $this->pdo->query("SELECT COUNT(*) FROM tickets WHERE status IN ('open', 'assigned', 'in_progress', 'waiting')")->fetchColumn();
-            $sitesActifs = (int) $this->pdo->query("SELECT COUNT(*) FROM company_sites WHERE is_active = 1")->fetchColumn();
-        } catch (Throwable $e) {
-            // Fallback silencieux : un module transverse ne doit jamais planter si une table est absente.
-        }
+        $caEncaisseJourEur = 0.0;
+        $caEncaisseMoisEur = 0.0;
+        $totalImpayeEur = 0.0;
+
+        // Chaque indicateur a son propre garde : auparavant les neuf requetes partageaient
+        // un seul try, si bien qu'une table absente laissait a zero tous les indicateurs
+        // suivants, sans le moindre signal. Un tableau de bord de decision doit dire
+        // « indisponible », jamais afficher un zero qui ressemble a une donnee reelle.
+        $indisponibles = [];
+        $mesure = function (string $libelle, string $sql) use (&$indisponibles) {
+            try {
+                return $this->pdo->query($sql)->fetchColumn();
+            } catch (Throwable $e) {
+                $indisponibles[] = $libelle;
+                return null;
+            }
+        };
+
+        // Les montants sont ventiles par devise : additionner 100 EUR a des XOF les comptait
+        // pour 100 XOF, soit environ 655 fois moins que leur valeur reelle.
+        $caEncaisseJour = (float) ($mesure('Encaissé aujourd\'hui', "SELECT COALESCE(SUM(montant), 0) FROM lbp_paiements WHERE devise = 'XOF' AND DATE(date_paiement) = CURDATE()") ?? 0);
+        $caEncaisseJourEur = (float) ($mesure('Encaissé aujourd\'hui (EUR)', "SELECT COALESCE(SUM(montant), 0) FROM lbp_paiements WHERE devise = 'EUR' AND DATE(date_paiement) = CURDATE()") ?? 0);
+        $caEncaisseMois = (float) ($mesure('Encaissé ce mois', "SELECT COALESCE(SUM(montant), 0) FROM lbp_paiements WHERE devise = 'XOF' AND YEAR(date_paiement) = YEAR(CURDATE()) AND MONTH(date_paiement) = MONTH(CURDATE())") ?? 0);
+        $caEncaisseMoisEur = (float) ($mesure('Encaissé ce mois (EUR)', "SELECT COALESCE(SUM(montant), 0) FROM lbp_paiements WHERE devise = 'EUR' AND YEAR(date_paiement) = YEAR(CURDATE()) AND MONTH(date_paiement) = MONTH(CURDATE())") ?? 0);
+        $totalImpaye = (float) ($mesure('Impayés', "SELECT COALESCE(SUM(montant_restant), 0) FROM lbp_factures WHERE devise = 'XOF' AND statut IN ('emise', 'partiellement_payee', 'en_retard')") ?? 0);
+        $totalImpayeEur = (float) ($mesure('Impayés (EUR)', "SELECT COALESCE(SUM(montant_restant), 0) FROM lbp_factures WHERE devise = 'EUR' AND statut IN ('emise', 'partiellement_payee', 'en_retard')") ?? 0);
+        $colisEnTransit = (int) ($mesure('Colis en transit', "SELECT COUNT(*) FROM lbp_colis WHERE statut = 'en_transit'") ?? 0);
+        $colisAujourdhui = (int) ($mesure('Colis du jour', "SELECT COUNT(*) FROM lbp_colis WHERE DATE(created_at) = CURDATE()") ?? 0);
+        $effectifActif = (int) ($mesure('Effectif actif', "SELECT COUNT(*) FROM rh_employees WHERE is_active = 1") ?? 0);
+        $presentsAujourdhui = (int) ($mesure('Présents aujourd\'hui', "SELECT COUNT(*) FROM rh_attendance_daily WHERE attendance_date = CURDATE() AND attendance_status = 'present'") ?? 0);
+        $ticketsOuverts = (int) ($mesure('Tickets ouverts', "SELECT COUNT(*) FROM tickets WHERE status IN ('open', 'assigned', 'in_progress', 'waiting')") ?? 0);
+        $sitesActifs = (int) ($mesure('Sites actifs', "SELECT COUNT(*) FROM company_sites WHERE is_active = 1") ?? 0);
+
+        $data['indicateursIndisponibles'] = $indisponibles;
+
+        $suffixeEur = static fn(float $eur): string => $eur > 0 ? ' + ' . number_format($eur, 2, ',', ' ') . ' EUR' : '';
 
         $data['kpis'] = [
-            ['label' => 'Encaissé aujourd\'hui', 'value' => number_format($caEncaisseJour, 0, ',', ' ') . ' XOF', 'meta' => 'Tous modes de paiement confondus', 'tone' => 'success'],
-            ['label' => 'Encaissé ce mois', 'value' => number_format($caEncaisseMois, 0, ',', ' ') . ' XOF', 'meta' => 'Cumul du mois en cours'],
-            ['label' => 'Impayés en cours', 'value' => number_format($totalImpaye, 0, ',', ' ') . ' XOF', 'meta' => 'Factures émises non soldées', 'tone' => $totalImpaye > 0 ? 'warning' : 'success'],
+            ['label' => 'Encaissé aujourd\'hui', 'value' => number_format($caEncaisseJour, 0, ',', ' ') . ' XOF', 'meta' => 'Tous modes de paiement' . $suffixeEur($caEncaisseJourEur), 'tone' => 'success'],
+            ['label' => 'Encaissé ce mois', 'value' => number_format($caEncaisseMois, 0, ',', ' ') . ' XOF', 'meta' => 'Cumul du mois en cours' . $suffixeEur($caEncaisseMoisEur)],
+            ['label' => 'Impayés en cours', 'value' => number_format($totalImpaye, 0, ',', ' ') . ' XOF', 'meta' => 'Factures émises non soldées' . $suffixeEur($totalImpayeEur), 'tone' => $totalImpaye > 0 ? 'warning' : 'success'],
             ['label' => 'Colis en transit', 'value' => (string) $colisEnTransit, 'meta' => 'Manifestes en cours de route'],
             ['label' => 'Colis enregistrés aujourd\'hui', 'value' => (string) $colisAujourdhui, 'meta' => 'Toutes agences confondues'],
             ['label' => 'Effectif actif', 'value' => (string) $effectifActif, 'meta' => 'Employés en poste'],
@@ -69,8 +92,9 @@ final class PilotageDgDashboardRepository extends \App\Repositories\Shared\Modul
         try {
             $stmt = $this->pdo->query("
                 SELECT s.name AS agence_name, COUNT(f.id) AS nb_factures,
-                       COALESCE(SUM(f.montant_total), 0) AS ca_total,
-                       COALESCE(SUM(f.montant_restant), 0) AS impaye
+                       COALESCE(SUM(CASE WHEN f.devise = 'EUR' THEN 0 ELSE f.montant_total END), 0) AS ca_total,
+                       COALESCE(SUM(CASE WHEN f.devise = 'EUR' THEN 0 ELSE f.montant_restant END), 0) AS impaye,
+                       COALESCE(SUM(CASE WHEN f.devise = 'EUR' THEN f.montant_total ELSE 0 END), 0) AS ca_total_eur
                 FROM company_sites s
                 LEFT JOIN lbp_factures f ON f.agence_id = s.id
                     AND YEAR(f.date_emission) = YEAR(CURDATE()) AND MONTH(f.date_emission) = MONTH(CURDATE())
@@ -186,21 +210,27 @@ final class PilotageDgDashboardRepository extends \App\Repositories\Shared\Modul
         } catch (Throwable $e) {
         }
 
+        // lbp_employee_presence_gps porte deux identites distinctes : user_id (users.id)
+        // et employee_id (rh_employees.id). La requete filtrait sur user_id tout en recevant
+        // des identifiants d'employes, puis indexait le resultat par user_id alors qu'il etait
+        // relu par identifiant d'employe. Une position pouvait donc etre attribuee a une autre
+        // personne, et penaliser son score d'integrite.
         $latestGpsByEmployee = [];
         try {
             $stmt = $this->pdo->prepare("
                 SELECT g.*
                 FROM lbp_employee_presence_gps g
                 INNER JOIN (
-                    SELECT user_id, MAX(created_at) AS max_created
+                    SELECT employee_id, MAX(created_at) AS max_created
                     FROM lbp_employee_presence_gps
-                    WHERE user_id IN ($placeholders)
-                    GROUP BY user_id
-                ) latest ON latest.user_id = g.user_id AND latest.max_created = g.created_at
+                    WHERE employee_id IN ($placeholders)
+                    GROUP BY employee_id
+                ) latest ON latest.employee_id = g.employee_id AND latest.max_created = g.created_at
+                WHERE g.employee_id IS NOT NULL
             ");
             $stmt->execute($employeeIds);
             foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) ?: [] as $row) {
-                $latestGpsByEmployee[(int) $row['user_id']] = $row;
+                $latestGpsByEmployee[(int) $row['employee_id']] = $row;
             }
         } catch (Throwable $e) {
         }
@@ -257,6 +287,7 @@ final class PilotageDgDashboardRepository extends \App\Repositories\Shared\Modul
                     SELECT modifie_par AS user_id, COUNT(*) AS nb_modifications
                     FROM factures_audit_log
                     WHERE modifie_par IN ($userPlaceholders)
+                      AND date_modification >= DATE_SUB(CURDATE(), INTERVAL 180 DAY)
                     GROUP BY modifie_par
                     HAVING nb_modifications >= 3
                 ");
@@ -278,9 +309,11 @@ final class PilotageDgDashboardRepository extends \App\Repositories\Shared\Modul
                     if ($uid === null || !in_array($uid, $userIds, true)) {
                         continue;
                     }
+                    // Le comptage physique se compare aux especes, le total declare au total
+                    // tous modes : opposer les deux au meme chiffre produisait de faux signaux.
                     $calcule = (float) $r['montant_espece_calcule'];
                     $ecartPhysique = abs(((float) $r['solde_physique_declare']) - $calcule);
-                    $ecartDeclare = abs(((float) $r['total_encaisse_xof']) - $calcule);
+                    $ecartDeclare = abs(((float) $r['total_encaisse_xof']) - ((float) $r['montant_total_calcule']));
 
                     if (!isset($rapprochementByUser[$uid])) {
                         $rapprochementByUser[$uid] = ['maxEcartPhysique' => 0.0, 'maxEcartDeclare' => 0.0];
@@ -374,10 +407,10 @@ final class PilotageDgDashboardRepository extends \App\Repositories\Shared\Modul
                 $alerts[] = ['type' => 'Écart de Caisse', 'employee' => (string) $emp['full_name'], 'detail' => "{$ecartCaisse['nb_ecarts']} écart(s) de caisse sur 180 jours, jusqu'à " . number_format((float) $ecartCaisse['max_ecart'], 0, ',', ' ') . ' XOF'];
             }
             if ($nbModifsFactures > 0) {
-                $alerts[] = ['type' => 'Factures Modifiées', 'employee' => (string) $emp['full_name'], 'detail' => "{$nbModifsFactures} modification(s) post-émission sur des factures verrouillées"];
+                $alerts[] = ['type' => 'Factures Modifiées', 'employee' => (string) $emp['full_name'], 'detail' => "{$nbModifsFactures} modification(s) post-émission sur des factures verrouillées (180 derniers jours)"];
             }
             if ($colisRatio !== null && $colisRatio['ratio_vs_moyenne'] < 85) {
-                $alerts[] = ['type' => 'Colis Suspects', 'employee' => (string) $emp['full_name'], 'detail' => "Prix moyen au kg à {$colisRatio['ratio_vs_moyenne']}% de la moyenne des pairs sur {$colisRatio['nb_colis']} colis (180 derniers jours)"];
+                $alerts[] = ['type' => 'Colis Suspects', 'employee' => (string) $emp['full_name'], 'detail' => "Prix moyen au kg à {$colisRatio['ratio_vs_moyenne']}% de la moyenne de ses pairs, sur {$colisRatio['nb_colis']} colis (180 derniers jours)"];
             }
             if ($rappro !== null && $rappro['maxEcartPhysique'] >= 5000) {
                 $alerts[] = ['type' => 'Rapprochement Caisse', 'employee' => (string) $emp['full_name'], 'detail' => 'Écart caisse physique / registre des paiements jusqu\'à ' . number_format($rappro['maxEcartPhysique'], 0, ',', ' ') . ' XOF sur 90 jours'];
@@ -459,30 +492,54 @@ final class PilotageDgDashboardRepository extends \App\Repositories\Shared\Modul
      */
     private function colisRatePerKgByAgent(): array
     {
-        $globalRate = (float) $this->pdo->query("
-            SELECT AVG(montant_total / NULLIF(poids_total, 0))
-            FROM lbp_colis
-            WHERE poids_total > 0 AND created_by IS NOT NULL
-              AND created_at >= DATE_SUB(CURDATE(), INTERVAL 180 DAY)
-        ")->fetchColumn();
+        // Les colis tarifes en EUR sont ecartes : melanges a des XOF ils ecrasaient la
+        // moyenne au kg et faisaient passer pour sous-facturant tout agent du trafic France.
+        $stmt = $this->pdo->query("
+            SELECT c.created_by AS user_id, u.full_name AS user_name,
+                   COUNT(*) AS nb_colis,
+                   AVG(c.montant_total / NULLIF(c.poids_total, 0)) AS prix_kg_moyen_agent
+            FROM lbp_colis c
+            LEFT JOIN users u ON c.created_by = u.id
+            WHERE c.created_by IS NOT NULL AND c.poids_total > 0
+              AND COALESCE(c.devise, 'XOF') = 'XOF'
+              AND c.created_at >= DATE_SUB(CURDATE(), INTERVAL 180 DAY)
+            GROUP BY c.created_by, u.full_name
+            HAVING nb_colis >= 5
+        ");
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+        // Moyenne ponderee de tous les agents retenus, puis, pour chacun, moyenne de ses
+        // seuls pairs. Comparer un agent a une moyenne qui l'inclut le rendait indetectable
+        // des qu'il enregistrait l'essentiel des colis de son agence.
+        $sommePonderee = 0.0;
+        $sommeColis = 0;
+        foreach ($rows as $row) {
+            $sommePonderee += ((float) $row['prix_kg_moyen_agent']) * ((int) $row['nb_colis']);
+            $sommeColis += (int) $row['nb_colis'];
+        }
+
+        $globalRate = $sommeColis > 0 ? $sommePonderee / $sommeColis : 0.0;
 
         $byAgent = [];
-        if ($globalRate > 0) {
-            $stmt = $this->pdo->query("
-                SELECT c.created_by AS user_id, u.full_name AS user_name,
-                       COUNT(*) AS nb_colis,
-                       AVG(c.montant_total / NULLIF(c.poids_total, 0)) AS prix_kg_moyen_agent
-                FROM lbp_colis c
-                LEFT JOIN users u ON c.created_by = u.id
-                WHERE c.created_by IS NOT NULL AND c.poids_total > 0
-                  AND c.created_at >= DATE_SUB(CURDATE(), INTERVAL 180 DAY)
-                GROUP BY c.created_by, u.full_name
-                HAVING nb_colis >= 5
-            ");
-            foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) ?: [] as $row) {
-                $row['ratio_vs_moyenne'] = round(((float) $row['prix_kg_moyen_agent']) / $globalRate * 100, 1);
-                $byAgent[(int) $row['user_id']] = $row;
+        foreach ($rows as $row) {
+            $nb = (int) $row['nb_colis'];
+            $moyenneAgent = (float) $row['prix_kg_moyen_agent'];
+
+            $colisPairs = $sommeColis - $nb;
+            if ($colisPairs <= 0) {
+                // Agent seul sur la periode : aucune comparaison possible, donc aucun signal.
+                continue;
             }
+
+            $moyennePairs = ($sommePonderee - ($moyenneAgent * $nb)) / $colisPairs;
+            if ($moyennePairs <= 0) {
+                continue;
+            }
+
+            $row['prix_kg_moyen_pairs'] = $moyennePairs;
+            $row['nb_colis_pairs'] = $colisPairs;
+            $row['ratio_vs_moyenne'] = round($moyenneAgent / $moyennePairs * 100, 1);
+            $byAgent[(int) $row['user_id']] = $row;
         }
 
         return ['globalRate' => $globalRate, 'byAgent' => $byAgent];
@@ -502,16 +559,18 @@ final class PilotageDgDashboardRepository extends \App\Repositories\Shared\Modul
             SELECT ej.id, ej.date_jour, ej.agence_id, s.name AS agence_name,
                    u.full_name AS chef_agence_name, ej.chef_agence_id AS user_id,
                    ej.total_encaisse_xof, ej.solde_physique_declare,
-                   COALESCE(esp.montant_espece_calcule, 0) AS montant_espece_calcule
+                   COALESCE(esp.montant_espece_calcule, 0) AS montant_espece_calcule,
+                   COALESCE(esp.montant_total_calcule, 0) AS montant_total_calcule
             FROM lbp_etats_journaliers ej
             LEFT JOIN company_sites s ON ej.agence_id = s.id
             LEFT JOIN users u ON ej.chef_agence_id = u.id
             LEFT JOIN (
                 SELECT f.agence_id, DATE(p.date_paiement) AS date_jour,
-                       SUM(p.montant) AS montant_espece_calcule
+                       SUM(CASE WHEN " . \App\Repositories\Finance\EtatJournalierRepository::MODE_SQL . " IN ('especes', 'espece', 'cash') THEN p.montant ELSE 0 END) AS montant_espece_calcule,
+                       SUM(p.montant) AS montant_total_calcule
                 FROM lbp_paiements p
                 INNER JOIN lbp_factures f ON p.facture_id = f.id
-                WHERE p.mode = 'especes'
+                WHERE p.devise = 'XOF'
                 GROUP BY f.agence_id, DATE(p.date_paiement)
             ) esp ON esp.agence_id = ej.agence_id AND esp.date_jour = ej.date_jour
             WHERE ej.date_jour >= DATE_SUB(CURDATE(), INTERVAL 90 DAY)
@@ -545,8 +604,9 @@ final class PilotageDgDashboardRepository extends \App\Repositories\Shared\Modul
                 LEFT JOIN company_sites s ON ej.agence_id = s.id
                 LEFT JOIN users u ON ej.chef_agence_id = u.id
                 WHERE ej.ecart_caisse != 0
-                ORDER BY ABS(ej.ecart_caisse) DESC
-                LIMIT 30
+                  AND ej.date_jour >= DATE_SUB(CURDATE(), INTERVAL 180 DAY)
+                ORDER BY ej.date_jour DESC, ABS(ej.ecart_caisse) DESC
+                LIMIT 200
             ");
             $ecartsCaisse = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
             foreach ($ecartsCaisse as $e) {
@@ -585,9 +645,11 @@ final class PilotageDgDashboardRepository extends \App\Repositories\Shared\Modul
         // 2. Audit factures (modifications répétées / suspicions)
         try {
             $stmt = $this->pdo->query("
-                SELECT fal.modifie_par, COUNT(*) AS nb_modifications, u.full_name AS user_name
+                SELECT fal.modifie_par, COUNT(*) AS nb_modifications, u.full_name AS user_name,
+                       MAX(fal.date_modification) AS derniere_modification
                 FROM factures_audit_log fal
                 LEFT JOIN users u ON fal.modifie_par = u.id
+                WHERE fal.date_modification >= DATE_SUB(CURDATE(), INTERVAL 180 DAY)
                 GROUP BY fal.modifie_par, u.full_name
                 HAVING nb_modifications >= 3
                 ORDER BY nb_modifications DESC
@@ -603,9 +665,9 @@ final class PilotageDgDashboardRepository extends \App\Repositories\Shared\Modul
                     'user_id' => $as['modifie_par'],
                     'agence' => 'Opérationnel',
                     'type' => 'Modifications Répétées de Factures',
-                    'description' => 'Cet employé a effectué ' . $as['nb_modifications'] . ' modifications post-émission sur les montants ou libellés de factures.',
+                    'description' => 'Cet employé a effectué ' . $as['nb_modifications'] . ' modifications post-émission sur les montants ou libellés de factures au cours des 180 derniers jours.',
                     'montant' => 0.0,
-                    'date' => date('Y-m-d H:i:s'),
+                    'date' => (string) ($as['derniere_modification'] ?? date('Y-m-d H:i:s')),
                 ];
             }
         } catch (Throwable $e) {
@@ -663,7 +725,7 @@ final class PilotageDgDashboardRepository extends \App\Repositories\Shared\Modul
                     'user_id' => $cs['user_id'],
                     'agence' => 'Enregistrement Colis',
                     'type' => 'Colis Systématiquement Sous-Déclarés',
-                    'description' => 'Prix moyen au kg facturé par cet agent = ' . round((float) $cs['prix_kg_moyen_agent'], 0) . ' XOF/kg, soit ' . $cs['ratio_vs_moyenne'] . '% de la moyenne des autres agents (' . round($colisRates['globalRate'], 0) . ' XOF/kg) sur ' . $cs['nb_colis'] . ' colis (180 derniers jours).',
+                    'description' => 'Prix moyen au kg facturé par cet agent = ' . round((float) $cs['prix_kg_moyen_agent'], 0) . ' XOF/kg, soit ' . $cs['ratio_vs_moyenne'] . '% de la moyenne de ses pairs (' . round((float) $cs['prix_kg_moyen_pairs'], 0) . ' XOF/kg sur ' . (int) $cs['nb_colis_pairs'] . ' colis), mesuré sur ' . $cs['nb_colis'] . ' colis en 180 jours.',
                     'montant' => 0.0,
                     'date' => date('Y-m-d H:i:s'),
                 ];
@@ -724,7 +786,12 @@ final class PilotageDgDashboardRepository extends \App\Repositories\Shared\Modul
 
                 // 5b. Total déclaré vs registre des paiements : le chef d'agence a-t-il déclaré un
                 // total encaissé cohérent avec ce que le système a réellement enregistré ce jour-là ?
-                $ecartDeclare = $declare - $calcule;
+                // Le total encaisse declare couvre tous les modes de reglement : il doit etre
+                // compare au total enregistre tous modes, pas aux seules especes. La comparaison
+                // precedente signalait pour falsification toute journee comportant du mobile
+                // money, une carte ou un virement.
+                $totalCalcule = (float) $r['montant_total_calcule'];
+                $ecartDeclare = $declare - $totalCalcule;
                 if (abs($ecartDeclare) >= 5000) {
                     $absEcart = abs($ecartDeclare);
                     $degre = 2;
@@ -749,7 +816,7 @@ final class PilotageDgDashboardRepository extends \App\Repositories\Shared\Modul
                         'user_id' => $r['user_id'] ?? 0,
                         'agence' => $r['agence_name'] ?? 'Agence',
                         'type' => 'Rapport de Caisse Incohérent avec le Registre',
-                        'description' => 'Total encaissé déclaré par ce chef d\'agence : ' . number_format($declare, 0, ',', ' ') . ' XOF. Paiements espèces réellement enregistrés dans le système : ' . number_format($calcule, 0, ',', ' ') . ' XOF. Écart : ' . number_format($ecartDeclare, 0, ',', ' ') . ' XOF — vérifier si des encaissements ont été omis ou le rapport falsifié.',
+                        'description' => 'Total encaissé déclaré par ce chef d\'agence : ' . number_format($declare, 0, ',', ' ') . ' XOF. Total réellement enregistré dans le système, tous modes de règlement confondus : ' . number_format($totalCalcule, 0, ',', ' ') . ' XOF. Écart : ' . number_format($ecartDeclare, 0, ',', ' ') . ' XOF — vérifier si des encaissements ont été omis ou le rapport falsifié.',
                         'montant' => $absEcart,
                         'date' => $r['date_jour'] . ' 18:00:00',
                     ];

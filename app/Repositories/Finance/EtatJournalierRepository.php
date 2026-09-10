@@ -292,7 +292,8 @@ class EtatJournalierRepository
                 SUM(CASE WHEN p.devise = 'XOF' AND {$modeSql} IN ('especes', 'espece', 'cash') THEN p.montant ELSE 0 END) as encaisse_especes_xof,
                 SUM(CASE WHEN p.devise = 'XOF' AND {$modeSql} IN ('mobile_money', 'wave', 'orange_money', 'mtn_momo', 'momo', 'carte', 'carte_bancaire') THEN p.montant ELSE 0 END) as encaisse_digital_xof,
                 SUM(CASE WHEN p.devise = 'XOF' AND {$modeSql} IN ('cheque', 'virement') THEN p.montant ELSE 0 END) as encaisse_cheque_xof,
-                SUM(CASE WHEN p.devise = 'XOF' AND {$modeSql} = 'portefeuille' THEN p.montant ELSE 0 END) as encaisse_portefeuille_xof
+                SUM(CASE WHEN p.devise = 'XOF' AND {$modeSql} = 'portefeuille' THEN p.montant ELSE 0 END) as encaisse_portefeuille_xof,
+                SUM(CASE WHEN p.devise = 'EUR' AND {$modeSql} IN ('especes', 'espece', 'cash') THEN p.montant ELSE 0 END) as encaisse_especes_eur
             FROM lbp_paiements p
             JOIN lbp_factures f ON p.facture_id = f.id
             WHERE f.agence_id = :agence_id AND DATE(p.date_paiement) = :date{$scopePaiement}
@@ -305,6 +306,7 @@ class EtatJournalierRepository
         $encaisseDigitalXof = (float) ($payRow['encaisse_digital_xof'] ?? 0.0);
         $encaisseChequeXof = (float) ($payRow['encaisse_cheque_xof'] ?? 0.0);
         $encaissePortefeuilleXof = (float) ($payRow['encaisse_portefeuille_xof'] ?? 0.0);
+        $encaisseEspecesEur = (float) ($payRow['encaisse_especes_eur'] ?? 0.0);
 
         // Tout mode non reconnu reste visible plutôt que de disparaître silencieusement
         // de la ventilation : les quatre canaux doivent toujours totaliser l'encaissé XOF.
@@ -384,11 +386,17 @@ class EtatJournalierRepository
             'encaisse_digital_xof' => $encaisseDigitalXof,
             'encaisse_cheque_xof' => $encaisseChequeXof,
             'encaisse_portefeuille_xof' => $encaissePortefeuilleXof,
+            'encaisse_especes_eur' => $encaisseEspecesEur,
             'encaisse_autre_xof' => $encaisseAutreXof > 0.009 ? $encaisseAutreXof : 0.0,
             'total_restant_du_xof' => $totalRestantDuXof,
             'total_restant_du_eur' => $totalRestantDuEur,
-            'solde_caisse_agence_xof' => $totalEncaisseXof,
-            'solde_caisse_agence_eur' => $totalEncaisseEur,
+            // Solde theorique de la caisse = ce qui doit se trouver dans le tiroir.
+            // Seules les especes y entrent : mobile money, carte, virement, cheque et
+            // portefeuille client ne passent jamais par le tiroir. Les y inclure rendait
+            // l'ecart de caisse mecaniquement negatif du montant encaisse hors especes,
+            // au detriment de la caissiere, et declenchait de faux signalements de fraude.
+            'solde_caisse_agence_xof' => $encaisseEspecesXof,
+            'solde_caisse_agence_eur' => $encaisseEspecesEur,
             'breakdown_by_type' => $breakdownByType,
             'invoices_details' => $invoicesDetails,
         ];
