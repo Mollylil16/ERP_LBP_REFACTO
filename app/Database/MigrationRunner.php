@@ -47,8 +47,96 @@ class MigrationRunner
         $this->createGestionDesFondsTables();
         $this->assignStaffRolesAndAgencies();
         $this->syncFacturesMontantRestant();
+        $this->createMobileDirectionTables();
     }
 
+
+    /**
+     * Tables de l'application mobile de direction (PWA) : appareils appairés avec code
+     * PIN, abonnements aux notifications push, et cle VAPID du serveur.
+     */
+    private function createMobileDirectionTables(): void
+    {
+        // Un appareil appaire = un telephone sur lequel le directeur a defini son code PIN.
+        // Le jeton d'appareil vit dans un cookie et n'est stocke ici que hashe : une fuite
+        // de la base ne permet donc pas de se faire passer pour un telephone connu.
+        if (!$this->schema->tableExists('lbp_mobile_devices')) {
+            $this->pdo->exec("
+                CREATE TABLE lbp_mobile_devices (
+                    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                    user_id INT NOT NULL,
+                    token_hash CHAR(64) NOT NULL,
+                    pin_hash VARCHAR(255) NOT NULL,
+                    label VARCHAR(120) NULL,
+                    user_agent VARCHAR(255) NULL,
+                    failed_attempts TINYINT UNSIGNED NOT NULL DEFAULT 0,
+                    locked_until DATETIME NULL,
+                    last_unlocked_at DATETIME NULL,
+                    last_seen_at DATETIME NULL,
+                    revoked_at DATETIME NULL,
+                    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE KEY uniq_mobile_device_token (token_hash),
+                    KEY idx_mobile_device_user (user_id),
+                    CONSTRAINT fk_mobile_device_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            ");
+        }
+
+        if (!$this->schema->tableExists('lbp_push_subscriptions')) {
+            $this->pdo->exec("
+                CREATE TABLE lbp_push_subscriptions (
+                    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                    user_id INT NOT NULL,
+                    device_id INT UNSIGNED NULL,
+                    endpoint VARCHAR(600) NOT NULL,
+                    endpoint_hash CHAR(64) NOT NULL,
+                    p256dh VARCHAR(255) NOT NULL,
+                    auth VARCHAR(255) NOT NULL,
+                    failure_count TINYINT UNSIGNED NOT NULL DEFAULT 0,
+                    last_success_at DATETIME NULL,
+                    last_failure_at DATETIME NULL,
+                    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE KEY uniq_push_endpoint (endpoint_hash),
+                    KEY idx_push_user (user_id),
+                    CONSTRAINT fk_push_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            ");
+        }
+
+        // Journal des notifications envoyees : sert d'historique dans l'application et
+        // evite de renvoyer deux fois la meme alerte pour le meme evenement.
+        if (!$this->schema->tableExists('lbp_mobile_notifications')) {
+            $this->pdo->exec("
+                CREATE TABLE lbp_mobile_notifications (
+                    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                    user_id INT NOT NULL,
+                    event_key VARCHAR(190) NOT NULL,
+                    categorie VARCHAR(60) NOT NULL DEFAULT 'info',
+                    titre VARCHAR(190) NOT NULL,
+                    corps TEXT NULL,
+                    url VARCHAR(255) NULL,
+                    lu_at DATETIME NULL,
+                    envoye_at DATETIME NULL,
+                    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE KEY uniq_notif_user_event (user_id, event_key),
+                    KEY idx_notif_user_date (user_id, created_at),
+                    CONSTRAINT fk_notif_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            ");
+        }
+
+        // Paire de cles VAPID du serveur, generee une seule fois : elle identifie
+        // l'application aupres des services de push d'Apple, Google et Mozilla.
+        if (!$this->schema->tableExists('lbp_mobile_settings')) {
+            $this->pdo->exec("
+                CREATE TABLE lbp_mobile_settings (
+                    cle VARCHAR(80) NOT NULL PRIMARY KEY,
+                    valeur TEXT NULL,
+                    updated_at DATETIME NULL
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            ");
+        }
+    }
 
     /**
      * Crée la table "users" si elle n'existe pas, et ajoute les colonnes nécessaires.
