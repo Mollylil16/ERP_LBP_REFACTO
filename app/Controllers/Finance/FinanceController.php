@@ -40,6 +40,25 @@ final class FinanceController extends FinanceBaseController
      */
     private const MODES_ENCAISSEMENT_GUICHET = ['especes', 'mobile_money', 'carte', 'virement', 'cheque'];
 
+    /**
+     * Roles qui voient le cumul de l'agence dans les points de caisse : leurs propres
+     * operations additionnees a celles de tous les autres agents.
+     *
+     * Tout autre utilisateur est restreint a ce qu'il a lui-meme facture
+     * (lbp_factures.created_by) et encaisse (lbp_paiements.caissiere_id).
+     */
+    private const ROLES_CUMUL_AGENCE = [
+        'caissiere_principale',
+        'chef_agence',
+        'dg',
+        'assistant_dg',
+        'assistante_dg',
+        'comptable',
+        'superviseur_general',
+        'superviseur_regional',
+        'admin',
+    ];
+
     private PDO $db;
     private FactureRepository $factureRepo;
     private PaiementRepository $paiementRepo;
@@ -927,6 +946,19 @@ final class FinanceController extends FinanceBaseController
     }
 
     /**
+     * Identifiant limitant les points de caisse aux seules operations de l'utilisateur,
+     * ou null lorsqu'il a droit au cumul de l'agence.
+     */
+    private function pointCaisseScopeUserId(): ?int
+    {
+        if (Auth::isAdmin() || Auth::isAssistantDg() || Auth::hasAnyRole(self::ROLES_CUMUL_AGENCE)) {
+            return null;
+        }
+
+        return Auth::id();
+    }
+
+    /**
      * Points de caisse et états journaliers.
      */
     public function cloturesIndex(): void
@@ -938,6 +970,9 @@ final class FinanceController extends FinanceBaseController
         $isGlobalRole = Auth::isAdmin() || Auth::isAssistantDg() || Auth::hasAnyRole(['caissiere_principale', 'dg', 'assistant_dg', 'assistante_dg', 'comptable', 'superviseur_general', 'superviseur_regional', 'admin']);
 
         $agences = $this->db->query("SELECT id, name FROM company_sites WHERE is_active = 1 ORDER BY name ASC")->fetchAll() ?: [];
+
+        // Portee : null = cumul de l'agence, sinon restriction aux operations de l'agent.
+        $scopeUserId = $this->pointCaisseScopeUserId();
 
         $selectedAgenceId = isset($_GET['agence_id']) && $_GET['agence_id'] !== '' ? (int) $_GET['agence_id'] : ($userAgenceId ? (int) $userAgenceId : 0);
 
@@ -967,28 +1002,77 @@ final class FinanceController extends FinanceBaseController
         $activeReport = null;
         if ($targetAgenceId > 0) {
             $existing = $this->etatRepo->findByAgenceAndDate($targetAgenceId, $targetDate);
-            $live = $this->etatRepo->computeTotalsForDay($targetAgenceId, $targetDate);
+            $live = $this->etatRepo->computeTotalsForDay($targetAgenceId, $targetDate, $scopeUserId);
+
+            // Le bandeau annonce une position « en temps reel » : ses compteurs sont donc
+            // toujours recalcules. Les valeurs figees dans l'etat soumis ignoraient toute
+            // facture posterieure a la soumission, alors que la liste de detail juste en
+            // dessous, elle, restait a jour : le compteur affichait moins que la liste.
+            $activeReport = $live + [
+                'statut' => 'brouillon',
+                'date_jour' => $targetDate,
+                'agence_id' => $targetAgenceId,
+            ];
+
             if ($existing) {
-                $activeReport = (array) $existing;
-                $activeReport['breakdown_by_type'] = $live['breakdown_by_type'] ?? [];
-                $activeReport['encaisseEspecesXof'] = $live['encaisse_especes_xof'] ?? 0;
-                $activeReport['encaisseDigitalXof'] = $live['encaisse_digital_xof'] ?? 0;
-                $activeReport['encaisseChequeXof'] = $live['encaisse_cheque_xof'] ?? 0;
-                $activeReport['encaissePortefeuilleXof'] = $live['encaisse_portefeuille_xof'] ?? 0;
-                $activeReport['encaisseAutreXof'] = $live['encaisse_autre_xof'] ?? 0;
-                $activeReport['invoices_details'] = $live['invoices_details'] ?? [];
-            } else {
-                $activeReport = $live + [
-                    'statut' => 'brouillon',
-                    'date_jour' => $targetDate,
-                    'agence_id' => $targetAgenceId,
-                ];
+                $etat = (array) $existing;
+
+                // Le comptage physique et l'ecart n'existent que dans l'etat soumis.
+                $activeReport['id'] = $etat['id'] ?? null;
+                $activeReport['statut'] = $etat['statut'] ?? 'brouillon';
+                $activeReport['dateSoumission'] = $etat['dateSoumission'] ?? null;
+                $activeReport['soldePhysiqueDeclare'] = $etat['soldePhysiqueDeclare'] ?? null;
+                $activeReport['ecartCaisse'] = $etat['ecartCaisse'] ?? 0.0;
+                $activeReport['explicationEcart'] = $etat['explicationEcart'] ?? null;
+                $activeReport['consolideParId'] = $etat['consolideParId'] ?? null;
+
+                // Ecart entre le total fige a la soumission et le total reel du jour :
+                // signale les operations enregistrees apres la cloture.
+                $activeReport['totalFactureSoumis'] = (float) ($etat['totalFactureXof'] ?? 0.0);
+                $activeReport['totalEncaisseSoumis'] = (float) ($etat['totalEncaisseXof'] ?? 0.0);
             }
+
+            $activeReport['scope_user_id'] = $scopeUserId;
+            $activeReport['scope_user_name'] = $scopeUserId !== null
+                ? (Auth::user()?->fullName ?? 'Mes opérations')
+                : null;
 
             // Charger le nom de l'agence pour l'en-tête
             $stmt = $this->db->prepare("SELECT name FROM company_sites WHERE id = :id LIMIT 1");
             $stmt->execute(['id' => $targetAgenceId]);
             $activeReport['agence_name'] = $stmt->fetchColumn() ?: ('Agence #' . $targetAgenceId);
+        }
+
+        // Historique : les lignes de lbp_etats_journaliers portent le cumul de l'agence.
+        // Pour un agent restreint, ses propres totaux sont recalcules journee par journee.
+        if ($scopeUserId !== null && $reports !== []) {
+            $dates = array_map(static fn($r): string => substr((string) $r->dateJour, 0, 10), $reports);
+            $userTotals = $this->etatRepo->getUserDailyTotals(
+                $scopeUserId,
+                min($dates),
+                max($dates),
+                $selectedAgenceId > 0 ? $selectedAgenceId : 0
+            );
+
+            foreach ($reports as $r) {
+                $key = $r->agenceId . '|' . substr((string) $r->dateJour, 0, 10);
+                $t = $userTotals[$key] ?? null;
+
+                $r->nbColisEnregistres = (int) ($t['nb_colis'] ?? 0);
+                $r->nbFacturesEmises = (int) ($t['nb_factures'] ?? 0);
+                $r->totalFactureXof = (float) ($t['total_facture_xof'] ?? 0.0);
+                $r->totalFactureEur = (float) ($t['total_facture_eur'] ?? 0.0);
+                $r->totalEncaisseXof = (float) ($t['total_encaisse_xof'] ?? 0.0);
+                $r->totalEncaisseEur = (float) ($t['total_encaisse_eur'] ?? 0.0);
+                $r->totalRestantDuXof = (float) ($t['total_restant_du_xof'] ?? 0.0);
+                $r->totalRestantDuEur = (float) ($t['total_restant_du_eur'] ?? 0.0);
+
+                // L'ecart de caisse porte sur le comptage physique de toute l'agence :
+                // il n'a pas de sens ramene au perimetre d'un seul agent.
+                $r->ecartCaisse = 0.0;
+                $r->explicationEcart = null;
+                $r->soldePhysiqueDeclare = null;
+            }
         }
 
         // Calculer les jours non soumis (rétroactifs) pour l'agence ciblée
@@ -1004,6 +1088,7 @@ final class FinanceController extends FinanceBaseController
             'selectedAgenceId' => $selectedAgenceId,
             'filters' => $filters,
             'joursNonSoumis' => $joursNonSoumis,
+            'scopeUserId' => $scopeUserId,
         ]);
     }
 
@@ -1046,7 +1131,9 @@ final class FinanceController extends FinanceBaseController
             exit;
         }
 
-        // Calculer les totaux en temps réel pour la date cible
+        // Calculer les totaux en temps réel pour la date cible.
+        // Toujours au niveau agence : le point de caisse soumis est un acte unique
+        // couvrant la caisse entiere, quel que soit le perimetre d'affichage de l'agent.
         $live = $this->etatRepo->computeTotalsForDay((int) $agenceId, $dateCible);
 
         // Récupérer le comptage physique et l'explication éventuelle d'écart
@@ -1430,10 +1517,15 @@ final class FinanceController extends FinanceBaseController
             $agenceId = $userAgenceId;
         }
 
-        $operations = $this->etatRepo->getDetailedOperations($agenceId, $dateDebut, $dateFin);
-        $encaissements = $this->etatRepo->getDetailedEncaissements($agenceId, $dateDebut, $dateFin);
-        $etatsIndexes = $this->etatRepo->getEtatsForRangeIndexed($agenceId, $dateDebut, $dateFin);
-        $natureBreakdown = $this->etatRepo->getNatureBreakdown($agenceId, $dateDebut, $dateFin);
+        // Un agent non habilite au cumul n'imprime que ses propres operations.
+        $scopeUserId = $this->pointCaisseScopeUserId();
+
+        $operations = $this->etatRepo->getDetailedOperations($agenceId, $dateDebut, $dateFin, $scopeUserId);
+        $encaissements = $this->etatRepo->getDetailedEncaissements($agenceId, $dateDebut, $dateFin, $scopeUserId);
+        $etatsIndexes = $scopeUserId === null
+            ? $this->etatRepo->getEtatsForRangeIndexed($agenceId, $dateDebut, $dateFin)
+            : [];
+        $natureBreakdown = $this->etatRepo->getNatureBreakdown($agenceId, $dateDebut, $dateFin, $scopeUserId);
 
         $agencesDetail = $this->buildAgencesDetailStructure($operations, $encaissements, $etatsIndexes);
         $summary = $this->buildDetailSummary($agencesDetail);
@@ -1444,6 +1536,10 @@ final class FinanceController extends FinanceBaseController
             $perimetre = 'Agence ' . ($stmt->fetchColumn() ?: ('#' . $agenceId));
         } else {
             $perimetre = 'Toutes les agences du réseau';
+        }
+
+        if ($scopeUserId !== null) {
+            $perimetre .= ' — opérations de ' . (Auth::user()?->fullName ?? 'l\'agent connecté');
         }
 
         $periode = [

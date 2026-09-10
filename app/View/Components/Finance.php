@@ -1084,8 +1084,10 @@ final class Finance
     /**
      * Point de caisse et états journaliers.
      */
-    public static function etatsJournaliersPage(array $reports, array $agences, ?array $activeReport = null, int $selectedAgenceId = 0, array $filters = [], array $joursNonSoumis = []): string
+    public static function etatsJournaliersPage(array $reports, array $agences, ?array $activeReport = null, int $selectedAgenceId = 0, array $filters = [], array $joursNonSoumis = [], ?int $scopeUserId = null): string
     {
+        // Portee : null = cumul de l'agence, sinon l'utilisateur ne voit que ses operations.
+        $estPerimetreAgent = $scopeUserId !== null;
         $header = Ui::pageHeader(
             'Points de Caisse & Suivi en Direct',
             'Consultation de la caisse en temps réel de chaque agence, soumission des états journaliers et consolidation.',
@@ -1096,6 +1098,17 @@ final class Finance
         );
 
         $isGlobal = Auth::isAdmin() || Auth::isAssistantDg() || Auth::hasAnyRole(['caissiere_principale', 'dg', 'assistant_dg', 'assistante_dg', 'comptable', 'superviseur_general', 'superviseur_regional', 'admin']);
+
+        // Bandeau de portee : dire explicitement a l'agent ce que les chiffres couvrent.
+        $scopeBanner = '';
+        if ($estPerimetreAgent) {
+            $scopeBanner = '<div style="background:#eff6ff; border:1px solid #bfdbfe; border-left:4px solid #2563eb; border-radius:10px; padding:1rem 1.25rem; margin-bottom:1.5rem; display:flex; align-items:center; gap:0.85rem;">'
+                . '<span style="width:36px; height:36px; border-radius:9px; background:rgba(37,99,235,0.12); display:inline-flex; align-items:center; justify-content:center; flex-shrink:0;"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#2563eb" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg></span>'
+                . '<div><strong style="color:#1e3a8a;">Vous consultez uniquement vos propres opérations</strong><br>'
+                . '<span style="color:#1d4ed8; font-size:0.87rem;">Les montants ci-dessous ne comptent que les factures que vous avez émises et les encaissements que vous avez enregistrés, aujourd\'hui comme sur les journées passées. Le cumul de l\'agence est consultable par le chef d\'agence et la caissière principale.</span>'
+                . '</div>'
+                . '</div>';
+        }
 
         // 1. Selector dropdown for global roles (caissière principale, DG, etc.)
         $agenceSelector = '';
@@ -1124,7 +1137,7 @@ final class Finance
 
         // 1b. Bloc de Soumission Rétroactive (si des jours non soumis existent ou pour régularisation passée)
         $retroBlock = '';
-        if (Auth::hasAnyRole(['caissiere', 'chef_agence', 'caissiere_principale'])) {
+        if (!$estPerimetreAgent && Auth::hasAnyRole(['caissiere', 'chef_agence', 'caissiere_principale'])) {
             $nbJours = count($joursNonSoumis);
             $dateOptionsHtml = '';
             foreach ($joursNonSoumis as $d) {
@@ -1224,7 +1237,7 @@ final class Finance
 
             // Alerte Clôture Tardive après 15h00
             $lateAlert = '';
-            if ((int)date('H') >= 15 && $statut === 'brouillon') {
+            if ((int)date('H') >= 15 && $statut === 'brouillon' && !$estPerimetreAgent) {
                 $lateAlert = '<div style="background:#fef2f2; border:2px solid #ef4444; border-radius:12px; padding:1.2rem 1.5rem; margin-bottom:1.5rem; display:flex; align-items:center; gap:1rem; box-shadow:0 4px 12px rgba(239,68,68,0.12);">'
                     . '<div style="width:48px; height:48px; border-radius:12px; background:rgba(239,68,68,0.15); display:flex; align-items:center; justify-content:center; flex-shrink:0;"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg></div>'
                     . '<div>'
@@ -1234,10 +1247,30 @@ final class Finance
                     . '</div>';
             }
 
+            // Le total fige lors de la soumission peut differer du total reel du jour
+            // si des factures ou encaissements ont ete enregistres apres la cloture.
+            if (!$estPerimetreAgent && isset($activeReport['totalFactureSoumis'])) {
+                $ecartFacture = round($totalFactureXof - (float) $activeReport['totalFactureSoumis'], 2);
+                $ecartEncaisse = round($totalEncaisseXof - (float) $activeReport['totalEncaisseSoumis'], 2);
+
+                if (abs($ecartFacture) > 0.01 || abs($ecartEncaisse) > 0.01) {
+                    $lateAlert .= '<div style="background:#fffbeb; border:1px solid #fcd34d; border-left:4px solid #f59e0b; border-radius:10px; padding:0.9rem 1.2rem; margin-bottom:1.25rem;">'
+                        . '<strong style="color:#92400e;">Opérations enregistrées après la soumission du point</strong><br>'
+                        . '<span style="color:#b45309; font-size:0.87rem;">Le point soumis portait '
+                        . number_format((float) $activeReport['totalFactureSoumis'], 0, ',', ' ') . ' XOF facturés et '
+                        . number_format((float) $activeReport['totalEncaisseSoumis'], 0, ',', ' ') . ' XOF encaissés. '
+                        . 'Le jour totalise aujourd\'hui ' . number_format($totalFactureXof, 0, ',', ' ') . ' XOF facturés et '
+                        . number_format($totalEncaisseXof, 0, ',', ' ') . ' XOF encaissés, soit '
+                        . ($ecartFacture >= 0 ? '+' : '') . number_format($ecartFacture, 0, ',', ' ') . ' XOF facturés et '
+                        . ($ecartEncaisse >= 0 ? '+' : '') . number_format($ecartEncaisse, 0, ',', ' ') . ' XOF encaissés depuis.</span>'
+                        . '</div>';
+                }
+            }
+
             $livePdfUrl = View::url('finance/clotures/export-pdf-agence') . '?agence_id=' . ($activeReport['agence_id'] ?? $selectedAgenceId) . '&date=' . urlencode($activeReport['date_jour'] ?? date('Y-m-d'));
             $submissionForm = $lateAlert . '<div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:1.5rem; margin-bottom:2rem; box-shadow:0 2px 10px rgba(0,0,0,0.02);">'
                 . '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:0.5rem;">'
-                . '<h3 style="margin:0; font-size:1.15rem; color:#0f172a; font-weight:800;"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#2563eb" stroke-width="2.5" style="display:inline; margin-right:6px; vertical-align:-2px;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>Position de Caisse en Temps Réel du jour — ' . $agenceTitle . '</h3>'
+                . '<h3 style="margin:0; font-size:1.15rem; color:#0f172a; font-weight:800;"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#2563eb" stroke-width="2.5" style="display:inline; margin-right:6px; vertical-align:-2px;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>' . ($estPerimetreAgent ? 'Mes Opérations du jour — ' : 'Position de Caisse en Temps Réel du jour — ') . $agenceTitle . '</h3>'
                 . '<div style="display:flex; align-items:center; gap:0.6rem;">'
                 . '<a href="' . $livePdfUrl . '" target="_blank" style="padding:0.45rem 0.95rem; background:#2563eb; color:#fff; font-weight:700; border-radius:8px; text-decoration:none; font-size:0.82rem; display:inline-flex; align-items:center; gap:6px; whitespace:nowrap; box-shadow:0 2px 6px rgba(37,99,235,0.2);">'
                 . '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:inline; margin-right:2px;"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg> PDF de la Journée'
@@ -1249,7 +1282,7 @@ final class Finance
                 . '<div><small style="color:#64748b; font-weight:600;">Colis Saisis :</small><br><strong style="font-size:1.2rem; color:#0f172a;">' . $nbColis . ' colis</strong></div>'
                 . '<div><small style="color:#64748b; font-weight:600;">Factures Émises :</small><br><strong style="font-size:1.2rem; color:#0f172a;">' . $nbFactures . ' factures</strong></div>'
                 . '<div><small style="color:#64748b; font-weight:600;">Montant Facturé Total :</small><br><strong style="font-size:1.2rem; color:#0f172a;">' . number_format($totalFactureXof, 0, ',', ' ') . ' XOF</strong></div>'
-                . '<div><small style="color:#64748b; font-weight:600;">Solde Caisse Live (Encaissé) :</small><br><strong style="font-size:1.3rem; color:#16a34a;">' . number_format($totalEncaisseXof, 0, ',', ' ') . ' XOF</strong></div>'
+                . '<div><small style="color:#64748b; font-weight:600;">' . ($estPerimetreAgent ? 'Encaissé par moi :' : 'Solde Caisse Live (Encaissé) :') . '</small><br><strong style="font-size:1.3rem; color:#16a34a;">' . number_format($totalEncaisseXof, 0, ',', ' ') . ' XOF</strong></div>'
                 . '<div><small style="color:#64748b; font-weight:600;">Reste à Recouvrer :</small><br><strong style="font-size:1.2rem; color:#dc2626;">' . number_format($totalRestantXof, 0, ',', ' ') . ' XOF</strong></div>'
                 . '</div>'
                 . '<div style="background:#f1f5f9; border:1px solid #cbd5e1; padding:0.75rem 1.25rem; font-size:0.82rem; color:#475569; display:flex; gap:1.5rem; flex-wrap:wrap; border-radius:0 0 10px 10px; margin-bottom:1rem;">'
@@ -1343,9 +1376,19 @@ final class Finance
 
             // Blind count submission form for local cashier / head cashier when brouillon
             $userAgId = Auth::agenceId();
-            $canSubmit = Auth::hasAnyRole(['caissiere', 'chef_agence', 'caissiere_principale']) &&
+            // Le comptage physique porte sur la caisse entiere de l'agence : le proposer
+            // a un agent qui ne voit que ses propres montants produirait un ecart faux.
+            $canSubmit = !$estPerimetreAgent &&
+                Auth::hasAnyRole(['caissiere', 'chef_agence', 'caissiere_principale']) &&
                 ($userAgId === null || (int) $userAgId === (int) ($activeReport['agence_id'] ?? 0)) &&
                 $statut === 'brouillon';
+
+            if ($estPerimetreAgent && $statut === 'brouillon') {
+                $submissionForm .= '<div style="background:#f8fafc; border:1px dashed #cbd5e1; border-radius:10px; padding:1rem 1.25rem; margin-top:1rem; color:#475569; font-size:0.88rem;">'
+                    . '<strong style="color:#0f172a;">Comptage de caisse</strong><br>'
+                    . 'Le décompte des billets et la soumission du point de caisse portent sur la caisse entière de l\'agence. Ils sont effectués par le chef d\'agence ou la caissière principale.'
+                    . '</div>';
+            }
 
             if ($canSubmit) {
                 // Déterminer si c'est une soumission rétroactive (date filtrée != aujourd'hui)
@@ -1529,11 +1572,17 @@ final class Finance
                     }
                 }
 
-                $ecartTone = abs($r->ecartCaisse) < 0.01 ? 'success' : 'danger';
-                $ecartBadge = Ui::badge(
-                    ($r->ecartCaisse > 0 ? '+' : '') . number_format($r->ecartCaisse, 0, ',', ' ') . ' XOF',
-                    $ecartTone
-                );
+                if ($estPerimetreAgent) {
+                    // L'ecart resulte du comptage physique de toute la caisse : il ne peut pas
+                    // etre rapporte au perimetre d'un seul agent.
+                    $ecartBadge = '<span class="muted" style="color:#94a3b8;" title="L\'écart de caisse porte sur la caisse entière de l\'agence">—</span>';
+                } else {
+                    $ecartTone = abs($r->ecartCaisse) < 0.01 ? 'success' : 'danger';
+                    $ecartBadge = Ui::badge(
+                        ($r->ecartCaisse > 0 ? '+' : '') . number_format($r->ecartCaisse, 0, ',', ' ') . ' XOF',
+                        $ecartTone
+                    );
+                }
 
                 $retroBadge = '';
                 if ($r->soumissionRetroactive) {
@@ -1564,9 +1613,9 @@ final class Finance
                 . '<tr>'
                 . '<th>Date</th>'
                 . '<th>Agence</th>'
-                . '<th>Colis / Factures</th>'
-                . '<th style="text-align:right;">Total Facturé</th>'
-                . '<th style="text-align:right;">Solde Théorique</th>'
+                . '<th>' . ($estPerimetreAgent ? 'Mes Colis / Factures' : 'Colis / Factures') . '</th>'
+                . '<th style="text-align:right;">' . ($estPerimetreAgent ? 'Facturé par moi' : 'Total Facturé') . '</th>'
+                . '<th style="text-align:right;">' . ($estPerimetreAgent ? 'Encaissé par moi' : 'Solde Théorique') . '</th>'
                 . '<th style="text-align:center;">Écart de Caisse</th>'
                 . '<th>Heure Soumission</th>'
                 . '<th>Statut</th>'
@@ -1581,6 +1630,7 @@ final class Finance
         return '<div class="finea-shell">'
             . '<div class="finea-container">'
             . $header
+            . $scopeBanner
             . $agenceSelector
             . $retroBlock
             . $submissionForm

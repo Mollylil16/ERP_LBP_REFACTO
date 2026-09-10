@@ -242,14 +242,28 @@ class EtatJournalierRepository
         return $stmt->fetchAll() ?: [];
     }
 
-    public function computeTotalsForDay(int $agenceId, string $date): array
+    /**
+     * Totaux d'une journée pour une agence.
+     *
+     * $userId restreint le calcul aux seules opérations saisies par cet utilisateur
+     * (factures et colis via `created_by`, encaissements via `caissiere_id`).
+     * Passer null pour obtenir le cumul de toute l'agence.
+     */
+    public function computeTotalsForDay(int $agenceId, string $date, ?int $userId = null): array
     {
+        // Portée : cumul agence (null) ou opérations d'un seul agent.
+        $scopeColis = $userId !== null ? ' AND created_by = :user_id' : '';
+        $scopeFacture = $userId !== null ? ' AND f.created_by = :user_id' : '';
+        $scopeFactureNoAlias = $userId !== null ? ' AND created_by = :user_id' : '';
+        $scopePaiement = $userId !== null ? ' AND p.caissiere_id = :user_id' : '';
+        $scopeParam = $userId !== null ? ['user_id' => $userId] : [];
+
         // 1. Tonnage/nb colis créés le jour même
         $stmt = $this->pdo->prepare("
             SELECT COUNT(*) FROM lbp_colis 
-            WHERE agence_depart_id = :agence_id AND DATE(created_at) = :date
+            WHERE agence_depart_id = :agence_id AND DATE(created_at) = :date{$scopeColis}
         ");
-        $stmt->execute(['agence_id' => $agenceId, 'date' => $date]);
+        $stmt->execute(['agence_id' => $agenceId, 'date' => $date] + $scopeParam);
         $nbColis = (int) $stmt->fetchColumn();
 
         // 2. Factures émises le jour même
@@ -258,10 +272,10 @@ class EtatJournalierRepository
                 COUNT(*) as nb_factures,
                 SUM(CASE WHEN devise = 'XOF' THEN montant_total ELSE 0 END) as total_xof,
                 SUM(CASE WHEN devise = 'EUR' THEN montant_total ELSE 0 END) as total_eur
-            FROM lbp_factures
-            WHERE agence_id = :agence_id AND DATE(date_emission) = :date
+            FROM lbp_factures f
+            WHERE f.agence_id = :agence_id AND DATE(f.date_emission) = :date{$scopeFacture}
         ");
-        $stmt->execute(['agence_id' => $agenceId, 'date' => $date]);
+        $stmt->execute(['agence_id' => $agenceId, 'date' => $date] + $scopeParam);
         $facRow = $stmt->fetch() ?: [];
         $nbFactures = (int) ($facRow['nb_factures'] ?? 0);
         $totalFactureXof = (float) ($facRow['total_xof'] ?? 0.0);
@@ -281,9 +295,9 @@ class EtatJournalierRepository
                 SUM(CASE WHEN p.devise = 'XOF' AND {$modeSql} = 'portefeuille' THEN p.montant ELSE 0 END) as encaisse_portefeuille_xof
             FROM lbp_paiements p
             JOIN lbp_factures f ON p.facture_id = f.id
-            WHERE f.agence_id = :agence_id AND DATE(p.date_paiement) = :date
+            WHERE f.agence_id = :agence_id AND DATE(p.date_paiement) = :date{$scopePaiement}
         ");
-        $stmt->execute(['agence_id' => $agenceId, 'date' => $date]);
+        $stmt->execute(['agence_id' => $agenceId, 'date' => $date] + $scopeParam);
         $payRow = $stmt->fetch() ?: [];
         $totalEncaisseXof = (float) ($payRow['encaisse_xof'] ?? 0.0);
         $totalEncaisseEur = (float) ($payRow['encaisse_eur'] ?? 0.0);
@@ -305,9 +319,9 @@ class EtatJournalierRepository
                 SUM(CASE WHEN devise = 'XOF' THEN montant_restant ELSE 0 END) as restant_xof,
                 SUM(CASE WHEN devise = 'EUR' THEN montant_restant ELSE 0 END) as restant_eur
             FROM lbp_factures
-            WHERE agence_id = :agence_id AND DATE(date_emission) = :date
+            WHERE agence_id = :agence_id AND DATE(date_emission) = :date{$scopeFactureNoAlias}
         ");
-        $stmt->execute(['agence_id' => $agenceId, 'date' => $date]);
+        $stmt->execute(['agence_id' => $agenceId, 'date' => $date] + $scopeParam);
         $restRow = $stmt->fetch() ?: [];
         $totalRestantDuXof = (float) ($restRow['restant_xof'] ?? 0.0);
         $totalRestantDuEur = (float) ($restRow['restant_eur'] ?? 0.0);
@@ -331,10 +345,10 @@ class EtatJournalierRepository
                 WHERE DATE(date_paiement) = :date1
                 GROUP BY facture_id
             ) p_sub ON p_sub.facture_id = f.id
-            WHERE f.agence_id = :agence_id AND DATE(f.date_emission) = :date2
+            WHERE f.agence_id = :agence_id AND DATE(f.date_emission) = :date2{$scopeFacture}
             GROUP BY code_type
         ");
-        $stmtType->execute(['agence_id' => $agenceId, 'date1' => $date, 'date2' => $date]);
+        $stmtType->execute(['agence_id' => $agenceId, 'date1' => $date, 'date2' => $date] + $scopeParam);
         $breakdownByType = $stmtType->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
         // Fetch detailed invoice records for daily operations traceability
@@ -353,10 +367,10 @@ class EtatJournalierRepository
             JOIN lbp_colis c ON f.colis_id = c.id
             JOIN lbp_clients cl ON f.client_id = cl.id
             LEFT JOIN users u ON f.created_by = u.id
-            WHERE f.agence_id = :agence_id AND DATE(f.date_emission) = :date
+            WHERE f.agence_id = :agence_id AND DATE(f.date_emission) = :date{$scopeFacture}
             ORDER BY f.date_emission DESC
         ");
-        $stmtDetails->execute(['agence_id' => $agenceId, 'date' => $date]);
+        $stmtDetails->execute(['agence_id' => $agenceId, 'date' => $date] + $scopeParam);
         $invoicesDetails = $stmtDetails->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
         return [
@@ -421,7 +435,7 @@ class EtatJournalierRepository
      *
      * @return array<int, array<string, mixed>>
      */
-    public function getDetailedOperations(int $agenceId, string $dateDebut, string $dateFin): array
+    public function getDetailedOperations(int $agenceId, string $dateDebut, string $dateFin, ?int $userId = null): array
     {
         $sql = "
             SELECT
@@ -489,6 +503,11 @@ class EtatJournalierRepository
             $params['agence_id'] = $agenceId;
         }
 
+        if ($userId !== null) {
+            $sql .= " AND f.created_by = :user_id";
+            $params['user_id'] = $userId;
+        }
+
         $sql .= " ORDER BY ag.name ASC, DATE(f.date_emission) ASC, f.date_emission ASC";
 
         $stmt = $this->pdo->prepare($sql);
@@ -503,7 +522,7 @@ class EtatJournalierRepository
      *
      * @return array<int, array<string, mixed>>
      */
-    public function getDetailedEncaissements(int $agenceId, string $dateDebut, string $dateFin): array
+    public function getDetailedEncaissements(int $agenceId, string $dateDebut, string $dateFin, ?int $userId = null): array
     {
         $sql = "
             SELECT
@@ -546,6 +565,11 @@ class EtatJournalierRepository
             $params['agence_id'] = $agenceId;
         }
 
+        if ($userId !== null) {
+            $sql .= " AND p.caissiere_id = :user_id";
+            $params['user_id'] = $userId;
+        }
+
         $sql .= " ORDER BY ag.name ASC, DATE(p.date_paiement) ASC, p.date_paiement ASC";
 
         $stmt = $this->pdo->prepare($sql);
@@ -555,12 +579,117 @@ class EtatJournalierRepository
     }
 
     /**
+     * Totaux journaliers des seules operations d'un agent, sur une plage de dates,
+     * indexes par "agenceId|date".
+     *
+     * Sert a recalculer l'historique des points de caisse dans la portee de
+     * l'utilisateur : les lignes de `lbp_etats_journaliers` portent le cumul de
+     * l'agence et ne conviennent donc pas a un agent restreint a ses operations.
+     *
+     * Deux requetes agregees seulement, quelle que soit la longueur de l'historique.
+     *
+     * @return array<string, array<string, mixed>>
+     */
+    public function getUserDailyTotals(int $userId, string $dateDebut, string $dateFin, int $agenceId = 0): array
+    {
+        $totals = [];
+
+        $ensure = static function (array &$totals, int $agId, string $date): void {
+            $key = $agId . '|' . $date;
+            if (!isset($totals[$key])) {
+                $totals[$key] = [
+                    'agence_id' => $agId,
+                    'date_jour' => $date,
+                    'nb_colis' => 0,
+                    'nb_factures' => 0,
+                    'total_facture_xof' => 0.0,
+                    'total_facture_eur' => 0.0,
+                    'total_encaisse_xof' => 0.0,
+                    'total_encaisse_eur' => 0.0,
+                    'total_restant_du_xof' => 0.0,
+                    'total_restant_du_eur' => 0.0,
+                ];
+            }
+        };
+
+        // Factures emises par l'agent, avec les colis rattaches
+        $sqlFac = "
+            SELECT
+                f.agence_id,
+                DATE(f.date_emission) AS date_jour,
+                COUNT(*) AS nb_factures,
+                SUM(COALESCE(c.nombre_colis, 0)) AS nb_colis,
+                SUM(CASE WHEN f.devise = 'EUR' THEN 0 ELSE f.montant_total END) AS facture_xof,
+                SUM(CASE WHEN f.devise = 'EUR' THEN f.montant_total ELSE 0 END) AS facture_eur,
+                SUM(CASE WHEN f.devise = 'EUR' THEN 0 ELSE f.montant_restant END) AS restant_xof,
+                SUM(CASE WHEN f.devise = 'EUR' THEN f.montant_restant ELSE 0 END) AS restant_eur
+            FROM lbp_factures f
+            LEFT JOIN lbp_colis c ON f.colis_id = c.id
+            WHERE DATE(f.date_emission) BETWEEN :date_debut AND :date_fin
+              AND f.created_by = :user_id
+        ";
+        $paramsFac = ['date_debut' => $dateDebut, 'date_fin' => $dateFin, 'user_id' => $userId];
+        if ($agenceId > 0) {
+            $sqlFac .= " AND f.agence_id = :agence_id";
+            $paramsFac['agence_id'] = $agenceId;
+        }
+        $sqlFac .= " GROUP BY f.agence_id, date_jour";
+
+        $stmt = $this->pdo->prepare($sqlFac);
+        $stmt->execute($paramsFac);
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) ?: [] as $row) {
+            $agId = (int) $row['agence_id'];
+            $date = substr((string) $row['date_jour'], 0, 10);
+            $ensure($totals, $agId, $date);
+            $key = $agId . '|' . $date;
+            $totals[$key]['nb_factures'] = (int) $row['nb_factures'];
+            $totals[$key]['nb_colis'] = (int) $row['nb_colis'];
+            $totals[$key]['total_facture_xof'] = (float) $row['facture_xof'];
+            $totals[$key]['total_facture_eur'] = (float) $row['facture_eur'];
+            $totals[$key]['total_restant_du_xof'] = (float) $row['restant_xof'];
+            $totals[$key]['total_restant_du_eur'] = (float) $row['restant_eur'];
+        }
+
+        // Encaissements passes en caisse par l'agent
+        $sqlPay = "
+            SELECT
+                f.agence_id,
+                DATE(p.date_paiement) AS date_jour,
+                SUM(CASE WHEN p.devise = 'EUR' THEN 0 ELSE p.montant END) AS encaisse_xof,
+                SUM(CASE WHEN p.devise = 'EUR' THEN p.montant ELSE 0 END) AS encaisse_eur
+            FROM lbp_paiements p
+            JOIN lbp_factures f ON p.facture_id = f.id
+            WHERE DATE(p.date_paiement) BETWEEN :date_debut AND :date_fin
+              AND p.caissiere_id = :user_id
+        ";
+        $paramsPay = ['date_debut' => $dateDebut, 'date_fin' => $dateFin, 'user_id' => $userId];
+        if ($agenceId > 0) {
+            $sqlPay .= " AND f.agence_id = :agence_id";
+            $paramsPay['agence_id'] = $agenceId;
+        }
+        $sqlPay .= " GROUP BY f.agence_id, date_jour";
+
+        $stmt = $this->pdo->prepare($sqlPay);
+        $stmt->execute($paramsPay);
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) ?: [] as $row) {
+            $agId = (int) $row['agence_id'];
+            $date = substr((string) $row['date_jour'], 0, 10);
+            $ensure($totals, $agId, $date);
+            $key = $agId . '|' . $date;
+            $totals[$key]['total_encaisse_xof'] = (float) $row['encaisse_xof'];
+            $totals[$key]['total_encaisse_eur'] = (float) $row['encaisse_eur'];
+        }
+
+        return $totals;
+    }
+
+    /**
      * Répartition des expéditions par nature de marchandise sur une plage de dates.
      * Alimente la synthèse de période du rapport détaillé des points de caisse.
      *
      * @return array<int, array<string, mixed>>
      */
-    public function getNatureBreakdown(int $agenceId, string $dateDebut, string $dateFin): array
+    public function getNatureBreakdown(int $agenceId, string $dateDebut, string $dateFin, ?int $userId = null): array
     {
         $sql = "
             SELECT
@@ -581,6 +710,11 @@ class EtatJournalierRepository
         if ($agenceId > 0) {
             $sql .= " AND f.agence_id = :agence_id";
             $params['agence_id'] = $agenceId;
+        }
+
+        if ($userId !== null) {
+            $sql .= " AND f.created_by = :user_id";
+            $params['user_id'] = $userId;
         }
 
         $sql .= " GROUP BY nature ORDER BY montant DESC, nb_colis DESC";
