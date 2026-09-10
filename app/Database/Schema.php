@@ -38,6 +38,30 @@ class Schema
         return (int) $stmt->fetchColumn() > 0;
     }
 
+    /**
+     * Retourne la définition SQL du type d'une colonne (ex: "enum('a','b')"),
+     * ou null si la colonne n'existe pas.
+     */
+    public function columnType(string $table, string $column): ?string
+    {
+        $stmt = $this->pdo->prepare("
+            SELECT column_type
+            FROM information_schema.columns
+            WHERE table_schema = DATABASE()
+            AND table_name = :table
+            AND column_name = :column
+            LIMIT 1
+        ");
+        $stmt->execute([
+            'table' => $table,
+            'column' => $column
+        ]);
+
+        $type = $stmt->fetchColumn();
+
+        return $type === false ? null : (string) $type;
+    }
+
     public function indexExists(string $table, string $index): bool
     {
         $stmt = $this->pdo->prepare("

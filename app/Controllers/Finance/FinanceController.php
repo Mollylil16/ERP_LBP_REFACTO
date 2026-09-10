@@ -32,6 +32,14 @@ use PDO;
 
 final class FinanceController extends FinanceBaseController
 {
+    /**
+     * Modes de règlement acceptés au guichet, alignés sur l'ENUM `lbp_paiements.mode`
+     * et sur les options proposées par le formulaire d'encaissement.
+     * 'portefeuille' en est volontairement exclu : il est réservé au règlement
+     * automatique par portefeuille client, jamais saisi à la main.
+     */
+    private const MODES_ENCAISSEMENT_GUICHET = ['especes', 'mobile_money', 'carte', 'virement', 'cheque'];
+
     private PDO $db;
     private FactureRepository $factureRepo;
     private PaiementRepository $paiementRepo;
@@ -414,11 +422,20 @@ final class FinanceController extends FinanceBaseController
         }
 
         $montant = (float) ($_POST['montant'] ?? 0.0);
-        $mode = (string) ($_POST['mode'] ?? 'especes');
+        $mode = strtolower(trim((string) ($_POST['mode'] ?? 'especes')));
         $dateEcheance = !empty($_POST['date_echeance_solde']) ? $_POST['date_echeance_solde'] . ' 12:00:00' : null;
 
         if ($montant <= 0 || $montant > $facture->montantRestant) {
             Session::flash('error', 'Montant d\'encaissement invalide.');
+            header('Location: ' . View::url('finance/factures/' . $id));
+            exit;
+        }
+
+        // Le mode arrive du formulaire et alimente directement une colonne ENUM :
+        // sans contrôle, une valeur inattendue est soit rejetée par MySQL en mode strict,
+        // soit stockée en chaîne vide et faussée ensuite dans la ventilation de caisse.
+        if (!in_array($mode, self::MODES_ENCAISSEMENT_GUICHET, true)) {
+            Session::flash('error', 'Mode d\'encaissement invalide.');
             header('Location: ' . View::url('finance/factures/' . $id));
             exit;
         }
@@ -550,7 +567,10 @@ final class FinanceController extends FinanceBaseController
             $stmtDeduct->execute(['montant' => $montantAPayer, 'id' => $wallet['id']]);
 
             // Transaction de portefeuille
-            $stmtTx = $pdo->prepare("INSERT INTO lbp_client_wallet_transactions (wallet_id, type, montant_xof, mode_paiement, reference_transac, motif) VALUES (:wallet_id, 'DEBIT', :montant, 'Portefeuille Client', :ref, :motif)");
+            // 'DEBIT_FACTURE' est la valeur déclarée par l'ENUM `type` de la table.
+            // 'DEBIT' y était écrit alors qu'elle n'en fait pas partie : rejetée en
+            // sql_mode strict (le règlement complet échouait), tronquée en chaîne vide sinon.
+            $stmtTx = $pdo->prepare("INSERT INTO lbp_client_wallet_transactions (wallet_id, type, montant_xof, mode_paiement, reference_transac, motif) VALUES (:wallet_id, 'DEBIT_FACTURE', :montant, 'Portefeuille Client', :ref, :motif)");
             $stmtTx->execute([
                 'wallet_id' => $wallet['id'],
                 'montant' => $montantAPayer,

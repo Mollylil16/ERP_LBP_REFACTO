@@ -2077,6 +2077,38 @@ class MigrationRunner
         }
     }
 
+    /**
+     * Élargit l'ENUM d'une colonne lorsqu'au moins une des valeurs attendues y manque.
+     *
+     * run() étant exécuté à chaque requête, la définition courante est d'abord lue dans
+     * information_schema : sans ce garde-fou, la table serait reconstruite par un ALTER
+     * à chaque page servie. L'ALTER est capturé car un échec ne doit jamais interrompre
+     * l'application — le schéma reste alors tel quel.
+     *
+     * @param array<int, string> $expectedValues
+     */
+    private function widenEnumIfMissingValues(string $table, string $column, array $expectedValues, string $definition): void
+    {
+        if (!$this->schema->tableExists($table) || !$this->schema->columnExists($table, $column)) {
+            return;
+        }
+
+        $currentType = $this->schema->columnType($table, $column);
+        if ($currentType === null) {
+            return;
+        }
+
+        foreach ($expectedValues as $value) {
+            if (!str_contains($currentType, "'" . $value . "'")) {
+                try {
+                    $this->pdo->exec("ALTER TABLE {$table} MODIFY COLUMN {$column} {$definition}");
+                } catch (\Throwable $e) {}
+
+                return;
+            }
+        }
+    }
+
     private function addIndexIfMissing(string $table, string $index, string $columns): void
     {
         if (!$this->schema->indexExists($table, $index)) {
@@ -2347,6 +2379,19 @@ class MigrationRunner
 
         if ($this->schema->tableExists('lbp_paiements')) {
             $this->addColumnIfMissing('lbp_paiements', 'mode_paiement', "ENUM('ESPECES', 'WAVE', 'ORANGE_MONEY', 'MTN_MOMO', 'CARTE', 'VIREMENT') NOT NULL DEFAULT 'ESPECES'");
+
+            // `mode` est la seule colonne réellement alimentée lors d'un encaissement
+            // (PaiementRepository::create). Le règlement par portefeuille client y écrit
+            // 'portefeuille', valeur absente de l'ENUM d'origine : rejetée en sql_mode
+            // strict (le paiement échouait alors intégralement), tronquée en chaîne vide
+            // sinon (le montant basculait à tort dans les espèces en tiroir).
+            // 'cheque' est ajouté pour que le canal « Chèques / Virements » puisse exister.
+            $this->widenEnumIfMissingValues(
+                'lbp_paiements',
+                'mode',
+                ['portefeuille', 'cheque'],
+                "ENUM('especes', 'mobile_money', 'carte', 'virement', 'cheque', 'portefeuille') NOT NULL DEFAULT 'especes'"
+            );
         }
 
         if ($this->schema->tableExists('lbp_client_wallets')) {
