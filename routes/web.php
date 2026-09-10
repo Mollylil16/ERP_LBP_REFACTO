@@ -25,6 +25,7 @@ require __DIR__ . '/flotte_transport.php';
 require __DIR__ . '/portefeuille_clients.php';
 require __DIR__ . '/agents_correspondants.php';
 require __DIR__ . '/pilotage_dg.php';
+require __DIR__ . '/mobile.php';
 require __DIR__ . '/surveillance.php';
 require __DIR__ . '/admin.php';
 require __DIR__ . '/call_center.php';
