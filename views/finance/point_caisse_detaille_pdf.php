@@ -3,6 +3,7 @@
 use App\Helpers\View;
 
 /** @var array<int, array<string, mixed>> $agencesDetail */
+/** @var array<int, array<string, mixed>> $natureBreakdown */
 /** @var array<string, mixed> $summary */
 /** @var array<string, mixed> $periode */
 /** @var string $perimetre */
@@ -27,6 +28,22 @@ $libelleMode = static function (string $mode): string {
         'CHEQUE' => 'Chèque',
         default => ucfirst(strtolower(str_replace('_', ' ', $mode))),
     };
+};
+
+/**
+ * Nature du contenu d'un colis : les marchandises saisies au colisage font foi,
+ * `categorie_produit` ne servant que de repli.
+ */
+$natureColis = static function (array $row, bool $avecEmballage = true): string {
+    $valeur = $avecEmballage
+        ? (string) ($row['natures_detail'] ?? $row['natures'] ?? '')
+        : (string) ($row['natures'] ?? '');
+
+    if (trim($valeur) === '') {
+        $valeur = (string) ($row['categorie_produit'] ?? '');
+    }
+
+    return trim($valeur) !== '' ? $valeur : '—';
 };
 
 $titrePeriode = $periode['est_journee_unique']
@@ -241,6 +258,49 @@ $titrePeriode = $periode['est_journee_unique']
             </table>
         <?php endif; ?>
 
+        <h3 class="sub-section">Répartition par nature de marchandise</h3>
+        <?php if (empty($natureBreakdown)): ?>
+            <div class="empty">Aucune marchandise détaillée n'a été saisie au colisage sur la période.</div>
+        <?php else: ?>
+            <?php
+            $totalNatureMontant = array_sum(array_map(static fn($n) => (float) $n['montant'], $natureBreakdown));
+            $totalNatureColis = array_sum(array_map(static fn($n) => (int) $n['nb_colis'], $natureBreakdown));
+            $totalNaturePoids = array_sum(array_map(static fn($n) => (float) $n['poids'], $natureBreakdown));
+            ?>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Nature de la marchandise</th>
+                        <th class="text-right">Expéditions</th>
+                        <th class="text-right">Nb colis</th>
+                        <th class="text-right">Poids (kg)</th>
+                        <th class="text-right">Montant (XOF)</th>
+                        <th class="text-right">Part</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($natureBreakdown as $n): ?>
+                        <tr>
+                            <td><strong><?= View::e($n['nature']) ?></strong></td>
+                            <td class="text-right"><?= (int) $n['nb_colis_distincts'] ?></td>
+                            <td class="text-right"><?= $fmtXof($n['nb_colis']) ?></td>
+                            <td class="text-right"><?= $fmtKg($n['poids']) ?></td>
+                            <td class="text-right"><?= $fmtXof($n['montant']) ?></td>
+                            <td class="text-right"><?= $totalNatureMontant > 0 ? number_format(((float) $n['montant'] / $totalNatureMontant) * 100, 1, ',', ' ') : '0,0' ?> %</td>
+                        </tr>
+                    <?php endforeach; ?>
+                    <tr class="total-row">
+                        <td>TOTAL</td>
+                        <td class="text-right"><?= count($natureBreakdown) ?> nature(s)</td>
+                        <td class="text-right"><?= $fmtXof($totalNatureColis) ?></td>
+                        <td class="text-right"><?= $fmtKg($totalNaturePoids) ?></td>
+                        <td class="text-right"><?= $fmtXof($totalNatureMontant) ?></td>
+                        <td class="text-right">100,0 %</td>
+                    </tr>
+                </tbody>
+            </table>
+        <?php endif; ?>
+
         <h3 class="sub-section">Récapitulatif par agence</h3>
         <table>
             <thead>
@@ -376,6 +436,7 @@ $titrePeriode = $periode['est_journee_unique']
                                         <th>N° Tracking</th>
                                         <th>Expéditeur</th>
                                         <th>Destinataire</th>
+                                        <th>Nature du contenu</th>
                                         <th>Destination</th>
                                         <th class="text-right">Nb colis</th>
                                         <th class="text-right">Poids (kg)</th>
@@ -413,9 +474,12 @@ $titrePeriode = $periode['est_journee_unique']
                                                 <?php if (!empty($op['destinataire_tel'])): ?><div class="muted"><?= View::e($op['destinataire_tel']) ?></div><?php endif; ?>
                                             </td>
                                             <td>
-                                                <?= View::e($destination) ?>
-                                                <?php if (!empty($op['categorie_produit'])): ?><div class="muted"><?= View::e($op['categorie_produit']) ?></div><?php endif; ?>
+                                                <strong><?= View::e($natureColis($op)) ?></strong>
+                                                <?php if ((int) ($op['nb_lignes_marchandise'] ?? 0) > 1): ?>
+                                                    <div class="muted"><?= (int) $op['nb_lignes_marchandise'] ?> natures distinctes</div>
+                                                <?php endif; ?>
                                             </td>
+                                            <td><?= View::e($destination) ?></td>
                                             <td class="text-right"><?= (int) ($op['nombre_colis'] ?? 0) ?></td>
                                             <td class="text-right"><?= $fmtKg($op['poids_total'] ?? 0) ?></td>
                                             <td class="text-right"><?= $fmtMontant($op['montant_total'] ?? 0) ?> <?= View::e($devise) ?></td>
@@ -426,7 +490,7 @@ $titrePeriode = $periode['est_journee_unique']
                                         </tr>
                                     <?php endforeach; ?>
                                     <tr class="total-row">
-                                        <td colspan="6">TOTAL DU JOUR</td>
+                                        <td colspan="7">TOTAL DU JOUR</td>
                                         <td class="text-right"><?= $fmtXof($jt['nb_colis']) ?></td>
                                         <td class="text-right"><?= $fmtKg($jt['poids']) ?></td>
                                         <td class="text-right"><?= $fmtXof($jt['facture_xof']) ?> XOF</td>
@@ -450,6 +514,7 @@ $titrePeriode = $periode['est_journee_unique']
                                         <th>Émise le</th>
                                         <th>Client</th>
                                         <th>N° Tracking</th>
+                                        <th>Nature du contenu</th>
                                         <th class="text-right">Nb colis</th>
                                         <th class="text-right">Poids (kg)</th>
                                         <th>Type</th>
@@ -478,6 +543,7 @@ $titrePeriode = $periode['est_journee_unique']
                                                 <?php if (!empty($enc['client_tel'])): ?><div class="muted"><?= View::e($enc['client_tel']) ?></div><?php endif; ?>
                                             </td>
                                             <td class="nowrap"><?= View::e($enc['numero_tracking'] ?? '—') ?></td>
+                                            <td><?= View::e($natureColis($enc, false)) ?></td>
                                             <td class="text-right"><?= (int) ($enc['nombre_colis'] ?? 0) ?></td>
                                             <td class="text-right"><?= $fmtKg($enc['poids_total'] ?? 0) ?></td>
                                             <td><?= View::e(ucfirst((string) ($enc['type_paiement'] ?? 'total'))) ?></td>
@@ -488,7 +554,7 @@ $titrePeriode = $periode['est_journee_unique']
                                         </tr>
                                     <?php endforeach; ?>
                                     <tr class="total-row">
-                                        <td colspan="9">TOTAL ENCAISSÉ DU JOUR</td>
+                                        <td colspan="10">TOTAL ENCAISSÉ DU JOUR</td>
                                         <td class="text-right"><?= $fmtXof($jt['encaisse_xof']) ?> XOF</td>
                                         <td colspan="2"><?php if ($jt['encaisse_eur'] > 0): ?><span class="muted">dont <?= $fmtEur($jt['encaisse_eur']) ?> EUR</span><?php endif; ?></td>
                                     </tr>

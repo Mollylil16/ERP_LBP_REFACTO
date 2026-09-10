@@ -1433,6 +1433,7 @@ final class FinanceController extends FinanceBaseController
         $operations = $this->etatRepo->getDetailedOperations($agenceId, $dateDebut, $dateFin);
         $encaissements = $this->etatRepo->getDetailedEncaissements($agenceId, $dateDebut, $dateFin);
         $etatsIndexes = $this->etatRepo->getEtatsForRangeIndexed($agenceId, $dateDebut, $dateFin);
+        $natureBreakdown = $this->etatRepo->getNatureBreakdown($agenceId, $dateDebut, $dateFin);
 
         $agencesDetail = $this->buildAgencesDetailStructure($operations, $encaissements, $etatsIndexes);
         $summary = $this->buildDetailSummary($agencesDetail);

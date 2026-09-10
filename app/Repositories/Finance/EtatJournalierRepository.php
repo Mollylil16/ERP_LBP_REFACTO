@@ -17,6 +17,34 @@ class EtatJournalierRepository
      */
     public const MODE_SQL = "LOWER(COALESCE(NULLIF(p.mode, ''), NULLIF(p.mode_paiement, ''), 'especes'))";
 
+    /**
+     * Sous-requête donnant la nature du contenu de chaque colis.
+     *
+     * La nature réelle des marchandises est portée par `lbp_marchandises.description`
+     * (« VÊTEMENTS ET ACCESSOIRES », « ATTIÉKÉ »…), à raison d'une ligne par nature de
+     * produit. La colonne `lbp_colis.categorie_produit` existe mais n'est alimentée par
+     * aucun formulaire : elle ne sert que de repli.
+     */
+    private const MARCHANDISES_SUBQUERY = "
+                SELECT
+                    m.colis_id,
+                    GROUP_CONCAT(m.description ORDER BY m.id SEPARATOR ' | ') AS natures,
+                    GROUP_CONCAT(
+                        CONCAT(
+                            m.description,
+                            CASE
+                                WHEN COALESCE(m.emballage, '') <> ''
+                                THEN CONCAT(' (', m.qte_emballage, ' ', m.emballage, ')')
+                                ELSE ''
+                            END
+                        )
+                        ORDER BY m.id SEPARATOR ' | '
+                    ) AS natures_detail,
+                    COUNT(*) AS nb_lignes_marchandise
+                FROM lbp_marchandises m
+                GROUP BY m.colis_id
+            ";
+
     public function __construct(private PDO $pdo) {}
 
     public function findById(int $id): ?EtatJournalier
@@ -414,6 +442,9 @@ class EtatJournalierRepository
                 c.volume,
                 c.valeur_declaree,
                 c.categorie_produit,
+                mar.natures,
+                mar.natures_detail,
+                mar.nb_lignes_marchandise,
                 c.trajet,
                 c.destination_ville,
                 c.destination_pays,
@@ -433,6 +464,7 @@ class EtatJournalierRepository
             LEFT JOIN company_sites ag  ON f.agence_id = ag.id
             LEFT JOIN users u_cb        ON f.created_by = u_cb.id
             LEFT JOIN users u_cais      ON f.caissiere_id = u_cais.id
+            LEFT JOIN (" . self::MARCHANDISES_SUBQUERY . ") mar ON mar.colis_id = c.id
             LEFT JOIN (
                 SELECT
                     p.facture_id,
@@ -492,6 +524,8 @@ class EtatJournalierRepository
                 c.numero_tracking,
                 c.nombre_colis,
                 c.poids_total,
+                c.categorie_produit,
+                mar.natures,
                 cl.name                             AS client_nom,
                 cl.phone                            AS client_tel,
                 COALESCE(u_pay.full_name, 'Agent')  AS caissiere_nom
@@ -501,6 +535,7 @@ class EtatJournalierRepository
             JOIN lbp_clients cl         ON f.client_id = cl.id
             LEFT JOIN company_sites ag  ON f.agence_id = ag.id
             LEFT JOIN users u_pay       ON p.caissiere_id = u_pay.id
+            LEFT JOIN (" . self::MARCHANDISES_SUBQUERY . ") mar ON mar.colis_id = c.id
             WHERE DATE(p.date_paiement) BETWEEN :date_debut AND :date_fin
         ";
 
@@ -512,6 +547,43 @@ class EtatJournalierRepository
         }
 
         $sql .= " ORDER BY ag.name ASC, DATE(p.date_paiement) ASC, p.date_paiement ASC";
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($params);
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    }
+
+    /**
+     * Répartition des expéditions par nature de marchandise sur une plage de dates.
+     * Alimente la synthèse de période du rapport détaillé des points de caisse.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function getNatureBreakdown(int $agenceId, string $dateDebut, string $dateFin): array
+    {
+        $sql = "
+            SELECT
+                UPPER(TRIM(m.description))      AS nature,
+                COUNT(DISTINCT c.id)            AS nb_colis_distincts,
+                SUM(m.nbre_colis)               AS nb_colis,
+                SUM(m.poids_unitaire * m.nbre_colis) AS poids,
+                SUM(m.total_ligne)              AS montant
+            FROM lbp_marchandises m
+            JOIN lbp_colis c    ON m.colis_id = c.id
+            JOIN lbp_factures f ON f.colis_id = c.id
+            WHERE DATE(f.date_emission) BETWEEN :date_debut AND :date_fin
+              AND TRIM(COALESCE(m.description, '')) <> ''
+        ";
+
+        $params = ['date_debut' => $dateDebut, 'date_fin' => $dateFin];
+
+        if ($agenceId > 0) {
+            $sql .= " AND f.agence_id = :agence_id";
+            $params['agence_id'] = $agenceId;
+        }
+
+        $sql .= " GROUP BY nature ORDER BY montant DESC, nb_colis DESC";
 
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute($params);
