@@ -204,6 +204,14 @@ final class FinanceController extends FinanceBaseController
     {
         RoleMiddleware::check(['caissiere', 'caissiere_principale', 'chef_agence', 'dg']);
 
+        // Sans ce controle, une page piegee peut declencher cette action a l insu
+        // de l utilisateur connecte, avec ses propres droits.
+        if (!Csrf::verify($_POST['_csrf_token'] ?? null)) {
+            Session::flash('error', 'Session expiree ou requete invalide. Veuillez reessayer.');
+            header('Location: ' . View::url('finance/factures'));
+            exit;
+        }
+
         $colisId = (int) ($_POST['colis_id'] ?? 0);
         $devise = (string) ($_POST['devise'] ?? 'XOF');
         $tauxChange = isset($_POST['taux_change']) && $_POST['taux_change'] !== '' ? (float) $_POST['taux_change'] : null;
@@ -548,6 +556,14 @@ final class FinanceController extends FinanceBaseController
     {
         RoleMiddleware::check(['caissiere', 'caissiere_principale', 'chef_agence', 'dg']);
 
+        // Sans ce controle, une page piegee peut declencher cette action a l insu
+        // de l utilisateur connecte, avec ses propres droits.
+        if (!Csrf::verify($_POST['_csrf_token'] ?? null)) {
+            Session::flash('error', 'Session expiree ou requete invalide. Veuillez reessayer.');
+            header('Location: ' . View::url('finance/factures'));
+            exit;
+        }
+
         $id = (int) $id;
         $facture = $this->factureRepo->findById($id);
 
@@ -703,6 +719,14 @@ final class FinanceController extends FinanceBaseController
     {
         RoleMiddleware::check(['caissiere', 'caissiere_principale', 'chef_agence', 'dg', 'suivi_recouvrement']);
 
+        // Sans ce controle, une page piegee peut declencher cette action a l insu
+        // de l utilisateur connecte, avec ses propres droits.
+        if (!Csrf::verify($_POST['_csrf_token'] ?? null)) {
+            Session::flash('error', 'Session expiree ou requete invalide. Veuillez reessayer.');
+            header('Location: ' . View::url('finance/factures'));
+            exit;
+        }
+
         $id = (int) $id;
         $facture = $this->factureRepo->findById($id);
 
@@ -763,6 +787,14 @@ final class FinanceController extends FinanceBaseController
     public function factureRelancerTout(): void
     {
         RoleMiddleware::check(['caissiere', 'caissiere_principale', 'chef_agence', 'dg', 'comptable', 'suivi_recouvrement']);
+
+        // Sans ce controle, une page piegee peut declencher cette action a l insu
+        // de l utilisateur connecte, avec ses propres droits.
+        if (!Csrf::verify($_POST['_csrf_token'] ?? null)) {
+            Session::flash('error', 'Session expiree ou requete invalide. Veuillez reessayer.');
+            header('Location: ' . View::url('finance/factures'));
+            exit;
+        }
 
         $unpaid = $this->factureRepo->getUnpaidFacturesForRelance();
         if (empty($unpaid)) {
@@ -835,6 +867,14 @@ final class FinanceController extends FinanceBaseController
     {
         RoleMiddleware::check(['superviseur_regional', 'superviseur_general', 'dg']);
 
+        // Sans ce controle, une page piegee peut declencher cette action a l insu
+        // de l utilisateur connecte, avec ses propres droits.
+        if (!Csrf::verify($_POST['_csrf_token'] ?? null)) {
+            Session::flash('error', 'Session expiree ou requete invalide. Veuillez reessayer.');
+            header('Location: ' . View::url('finance/depenses'));
+            exit;
+        }
+
         $prestataireId = (int) ($_POST['prestataire_id'] ?? 0);
         $montant = (float) ($_POST['montant'] ?? 0.0);
         $devise = (string) ($_POST['devise'] ?? 'XOF');
@@ -873,6 +913,14 @@ final class FinanceController extends FinanceBaseController
     public function depenseValider(string $id): void
     {
         RoleMiddleware::check(['caissiere_principale', 'dg']);
+
+        // Sans ce controle, une page piegee peut declencher cette action a l insu
+        // de l utilisateur connecte, avec ses propres droits.
+        if (!Csrf::verify($_POST['_csrf_token'] ?? null)) {
+            Session::flash('error', 'Session expiree ou requete invalide. Veuillez reessayer.');
+            header('Location: ' . View::url('finance/depenses'));
+            exit;
+        }
 
         $id = (int) $id;
         $demande = $this->demandeRepo->findById($id);
@@ -1106,6 +1154,14 @@ final class FinanceController extends FinanceBaseController
     {
         RoleMiddleware::check(['caissiere', 'chef_agence', 'caissiere_principale', 'dg']);
 
+        // Sans ce controle, une page piegee peut declencher cette action a l insu
+        // de l utilisateur connecte, avec ses propres droits.
+        if (!Csrf::verify($_POST['_csrf_token'] ?? null)) {
+            Session::flash('error', 'Session expiree ou requete invalide. Veuillez reessayer.');
+            header('Location: ' . View::url('finance/clotures'));
+            exit;
+        }
+
         $agenceId = Auth::agenceId() ?? (!empty($_POST['agence_id']) ? (int) $_POST['agence_id'] : null);
         if ($agenceId === null) {
             Session::flash('error', 'Veuillez sélectionner l\'agence pour laquelle vous soumettez le point de caisse.');
@@ -1256,6 +1312,14 @@ final class FinanceController extends FinanceBaseController
     public function clotureConsolider(string $id): void
     {
         RoleMiddleware::check(['caissiere_principale', 'dg']);
+
+        // Sans ce controle, une page piegee peut declencher cette action a l insu
+        // de l utilisateur connecte, avec ses propres droits.
+        if (!Csrf::verify($_POST['_csrf_token'] ?? null)) {
+            Session::flash('error', 'Session expiree ou requete invalide. Veuillez reessayer.');
+            header('Location: ' . View::url('finance/clotures'));
+            exit;
+        }
 
         $id = (int) $id;
         $report = $this->etatRepo->findById($id);
@@ -1812,6 +1876,14 @@ final class FinanceController extends FinanceBaseController
     {
         RoleMiddleware::check(['comptable', 'dg']);
 
+        // Sans ce controle, une page piegee peut declencher cette action a l insu
+        // de l utilisateur connecte, avec ses propres droits.
+        if (!Csrf::verify($_POST['_csrf_token'] ?? null)) {
+            Session::flash('error', 'Session expiree ou requete invalide. Veuillez reessayer.');
+            header('Location: ' . View::url('finance/comptabilite'));
+            exit;
+        }
+
         $dateEcriture = trim((string) ($_POST['date_ecriture'] ?? date('Y-m-d')));
         $journal = trim((string) ($_POST['journal'] ?? 'OD'));
         $compteDebit = trim((string) ($_POST['compte_debit'] ?? ''));
@@ -1860,6 +1932,14 @@ final class FinanceController extends FinanceBaseController
     {
         RoleMiddleware::check(['comptable', 'dg']);
 
+        // Sans ce controle, une page piegee peut declencher cette action a l insu
+        // de l utilisateur connecte, avec ses propres droits.
+        if (!Csrf::verify($_POST['_csrf_token'] ?? null)) {
+            Session::flash('error', 'Session expiree ou requete invalide. Veuillez reessayer.');
+            header('Location: ' . View::url('finance/comptabilite'));
+            exit;
+        }
+
         $ids = $_POST['ids'] ?? [];
         $code = trim((string) ($_POST['code'] ?? ''));
 
@@ -1881,6 +1961,14 @@ final class FinanceController extends FinanceBaseController
     public function contrePasser(string $id): void
     {
         RoleMiddleware::check(['comptable', 'dg']);
+
+        // Sans ce controle, une page piegee peut declencher cette action a l insu
+        // de l utilisateur connecte, avec ses propres droits.
+        if (!Csrf::verify($_POST['_csrf_token'] ?? null)) {
+            Session::flash('error', 'Session expiree ou requete invalide. Veuillez reessayer.');
+            header('Location: ' . View::url('finance/comptabilite'));
+            exit;
+        }
 
         $id = (int) $id;
         $motif = trim((string) ($_POST['motif'] ?? 'Annulation/Erreur de saisie'));
@@ -1933,6 +2021,14 @@ final class FinanceController extends FinanceBaseController
     public function planComptableStore(): void
     {
         RoleMiddleware::check(['comptable', 'dg']);
+
+        // Sans ce controle, une page piegee peut declencher cette action a l insu
+        // de l utilisateur connecte, avec ses propres droits.
+        if (!Csrf::verify($_POST['_csrf_token'] ?? null)) {
+            Session::flash('error', 'Session expiree ou requete invalide. Veuillez reessayer.');
+            header('Location: ' . View::url('finance/plan-comptable'));
+            exit;
+        }
 
         $code = trim((string) ($_POST['code'] ?? ''));
         $libelle = trim((string) ($_POST['libelle'] ?? ''));

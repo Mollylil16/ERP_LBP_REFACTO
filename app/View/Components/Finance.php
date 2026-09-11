@@ -259,7 +259,7 @@ final class Finance
                 'eyebrow' => 'Invoicing & Receivables',
                 'class' => 'rh-hero-white',
                 'actions' => [
-                    '<form method="post" action="' . View::url('finance/factures/relancer-tout') . '" style="display:inline;" onsubmit="return confirm(\'Lancer la relance SMS / WhatsApp automatique pour toutes les factures impayées ?\');">' . Ui::button('<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="margin-right:6px; vertical-align:-2px;"><path d="M22 2L11 13"></path><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg> Relancer tous les impayés', ['type' => 'submit', 'variant' => 'secondary']) . '</form>',
+                    '<form method="post" action="' . View::url('finance/factures/relancer-tout') . '" style="display:inline;" onsubmit="return confirm(\'Lancer la relance SMS / WhatsApp automatique pour toutes les factures impayées ?\');">' . Ui::button('<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="margin-right:6px; vertical-align:-2px;"><path d="M22 2L11 13"></path><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg> Relancer tous les impayés', ['type' => 'submit', 'variant' => 'secondary'])  . Form::hidden('_csrf_token', Csrf::token()) . '</form>',
                     Ui::button('Créer une Facture', [
                         'href' => 'finance/factures/nouveau',
                         'variant' => 'accent',
@@ -552,6 +552,7 @@ final class Finance
         ]);
 
         $formContent = '<form method="post" action="' . View::url('finance/factures/enregistrer') . '" class="js-protect-form">'
+            . Form::hidden('_csrf_token', Csrf::token())
             . '<div style="display:grid; grid-template-columns:1fr; gap:1.5rem;">'
             . $colisSelect
             . '<div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">'
@@ -836,6 +837,7 @@ final class Finance
                 . '<h4>Rappels & Relances automatiques</h4>'
                 . '<p style="color:#475569; font-size:0.85rem; margin-bottom:1rem;">Envoyer un lien de paiement dynamique et un avis de relance par SMS/WhatsApp au client pour régler le solde restant.</p>'
                 . '<form method="post" action="' . View::url('finance/factures/' . $facture->id . '/relancer') . '" class="js-protect-form">'
+                . Form::hidden('_csrf_token', Csrf::token())
                 . '<div style="display:flex; gap:0.5rem; align-items:center;">'
                 . Form::select('canal', [
                     ['value' => 'sms', 'label' => 'SMS Pro'],
@@ -853,6 +855,7 @@ final class Finance
         $walletPayForm = '';
         if ($clientWalletBalance > 0 && $facture->montantRestant > 0 && $facture->statut !== 'payee') {
             $walletPayForm = '<form method="post" action="' . View::url('finance/factures/' . $facture->id . '/payer-portefeuille') . '" class="js-protect-form" style="background:#ecfdf5; border:2px solid #10b981; padding:1.25rem 1.5rem; border-radius:12px; margin-bottom:1.5rem; display:flex; justify-content:space-between; align-items:center; box-shadow:0 4px 12px rgba(16,185,129,0.1);">'
+                . Form::hidden('_csrf_token', Csrf::token())
                 . '<div style="display:flex; align-items:center; gap:0.75rem;">'
                 . '<div style="width:42px; height:42px; border-radius:10px; background:rgba(16,185,129,0.15); display:flex; align-items:center; justify-content:center; flex-shrink:0;">'
                 . '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>'
@@ -938,6 +941,7 @@ final class Finance
             }
 
             $formCreate = '<form method="post" action="' . View::url('finance/depenses/enregistrer') . '" class="js-protect-form" style="margin-bottom:2rem;">'
+                . Form::hidden('_csrf_token', Csrf::token())
                 . '<h3>Nouvelle Demande de Règlement</h3>'
                 . '<div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:1rem; margin-top:0.75rem;">'
                 . Form::select('prestataire_id', $prestOpts, '', ['label' => 'Prestataire', 'required' => true])
@@ -1015,10 +1019,12 @@ final class Finance
                         if ($d->superviseurRegionalId !== Auth::id()) {
                             $actionsHtml = '<div style="display:flex; gap:0.5rem;">'
                                 . '<form method="post" action="' . View::url('finance/depenses/' . $d->id . '/valider') . '" class="js-protect-form">'
+                                . Form::hidden('_csrf_token', Csrf::token())
                                 . '<input type="hidden" name="decision" value="approuver">'
                                 . Ui::button('Payer', ['type' => 'submit', 'variant' => 'success', 'class' => 'finea-button-sm'])
                                 . '</form>'
                                 . '<form method="post" action="' . View::url('finance/depenses/' . $d->id . '/valider') . '" class="js-protect-form">'
+                                . Form::hidden('_csrf_token', Csrf::token())
                                 . '<input type="hidden" name="decision" value="rejeter">'
                                 . Ui::button('Rejeter', ['type' => 'submit', 'variant' => 'danger', 'class' => 'finea-button-sm'])
                                 . '</form>'
@@ -1427,6 +1433,7 @@ final class Finance
                 }
 
                 $submissionForm .= '<form method="post" action="' . View::url('finance/clotures/soumettre') . '" enctype="multipart/form-data" class="js-protect-form" style="background:#fff; border:1px solid #cbd5e1; padding:1.5rem; border-radius:12px; margin-top:1rem; box-shadow: 0 4px 14px rgba(15,23,42,0.03);">'
+                    . Form::hidden('_csrf_token', Csrf::token())
                     . Form::hidden('agence_id', (string) ($activeReport['agence_id'] ?? ''))
                     . $retroHiddenFields
                     . $retroInfoBanner
@@ -1562,6 +1569,7 @@ final class Finance
                 $actionsHtml = $detailBtn . $pdfBtn . $bordereauBtn;
                 if ($r->statut === 'soumis' && Auth::hasRole(['caissiere_principale', 'dg'])) {
                     $actionsHtml .= '<form method="post" action="' . View::url('finance/clotures/' . $r->id . '/consolider') . '" class="js-protect-form" style="display:inline;">'
+                        . Form::hidden('_csrf_token', Csrf::token())
                         . Ui::button('Consolider', ['type' => 'submit', 'variant' => 'success', 'class' => 'finea-button-sm'])
                         . '</form>';
                 }

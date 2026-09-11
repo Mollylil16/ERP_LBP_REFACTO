@@ -86,6 +86,17 @@ final class PaymentApiController extends BaseController
     {
         // Lire le JSON posté
         $rawPayload = file_get_contents('php://input');
+        $rawPayload = $rawPayload === false ? '' : $rawPayload;
+
+        // Cet appel marque des factures comme payées et écrit au grand livre : il doit
+        // prouver son origine. Sans cette vérification, n'importe qui sur Internet
+        // pouvait solder une facture en postant un JSON.
+        $authentification = \App\Security\WebhookSignature::verifier($rawPayload, $this->db);
+        if (!$authentification['ok']) {
+            Response::json(['ok' => false, 'message' => 'Appel non authentifié.'], 401);
+            exit;
+        }
+
         $data = json_decode($rawPayload, true) ?: [];
 
         $factureId = (int) ($data['facture_id'] ?? 0);

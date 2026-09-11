@@ -63,7 +63,19 @@ final class TrackingApiController extends BaseController
     {
         header('Content-Type: application/json; charset=utf-8');
 
-        $input = json_decode(file_get_contents('php://input') ?: '[]', true) ?: $_POST;
+        $corpsBrut = file_get_contents('php://input');
+        $corpsBrut = $corpsBrut === false ? '' : $corpsBrut;
+
+        // Modifier l'état d'acheminement d'un colis engage le suivi client et les
+        // indicateurs : l'appelant doit prouver son origine.
+        $authentification = \App\Security\WebhookSignature::verifier($corpsBrut, \App\Models\Database::getConnection());
+        if (!$authentification['ok']) {
+            http_response_code(401);
+            echo json_encode(['ok' => false, 'message' => 'Appel non authentifié.'], JSON_UNESCAPED_UNICODE);
+            return;
+        }
+
+        $input = json_decode($corpsBrut !== '' ? $corpsBrut : '[]', true) ?: $_POST;
 
         $tracking = trim((string) ($input['tracking_number'] ?? $input['numero_tracking'] ?? ''));
         $event = trim((string) ($input['event'] ?? $input['statut'] ?? 'STATUS_UPDATE'));
