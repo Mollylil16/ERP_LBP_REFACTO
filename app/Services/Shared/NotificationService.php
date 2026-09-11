@@ -323,7 +323,7 @@ class NotificationService
                             <!-- CTA Button -->
                             <div style="text-align: center; margin: 30px 0 20px 0;">
                                 <a href="{$trackingUrl}" target="_blank" style="background-color: #2563eb; color: #ffffff; font-size: 15px; font-weight: 700; padding: 14px 28px; text-decoration: none; border-radius: 8px; display: inline-block; box-shadow: 0 4px 12px rgba(37,99,235,0.25);">
-                                    🔍 Suivre mon colis en direct sur le site
+                                    Suivre mon colis en direct sur le site
                                 </a>
                             </div>
                             <p style="text-align: center; color: #94a3b8; font-size: 12px; margin: 0;">

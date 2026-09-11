@@ -168,7 +168,7 @@ $statutLabels = [
               <td style="padding:.7rem 1rem;color:#64748b;"><?= htmlspecialchars((string)($a['agent_name'] ?? '')) ?></td>
               <td style="padding:.7rem 1rem;">
                 <?php if ($a['satisfaction_score']): ?>
-                  <span style="color:#f97316;"><?= str_repeat('★', (int)$a['satisfaction_score']) ?><?= str_repeat('☆', 5 - (int)$a['satisfaction_score']) ?></span>
+                  <span style="color:#f97316;"><?= str_repeat('', (int)$a['satisfaction_score']) ?><?= str_repeat('', 5 - (int)$a['satisfaction_score']) ?></span>
                 <?php else: ?>
                   <span style="color:#d1d5db;">—</span>
                 <?php endif; ?>

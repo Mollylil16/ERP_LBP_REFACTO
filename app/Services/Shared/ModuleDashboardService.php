@@ -346,7 +346,7 @@ final class ModuleDashboardService
                 ['key' => 'balance_comptes', 'label' => 'Balance des Comptes', 'icon' => 'BAL', 'url' => '/finance/balance-comptes', 'available' => true, 'group' => 'Analyse & Comptabilité'],
                 ['key' => 'comptabilite', 'label' => 'Livre Journal', 'icon' => 'CPT', 'url' => '/finance/comptabilite', 'available' => true, 'group' => 'Analyse & Comptabilité'],
                 ['key' => 'plan_comptable', 'label' => 'Plan Comptable', 'icon' => 'SYS', 'url' => '/finance/plan-comptable', 'available' => true, 'group' => 'Analyse & Comptabilité'],
-                ['key' => 'guide', 'label' => '📖 Guide & Formation', 'icon' => 'HLP', 'url' => '/finance/guide', 'available' => true, 'group' => 'Aide'],
+                ['key' => 'guide', 'label' => 'Guide & Formation', 'icon' => 'HLP', 'url' => '/finance/guide', 'available' => true, 'group' => 'Aide'],
             ];
         }
 

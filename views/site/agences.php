@@ -100,7 +100,7 @@ document.addEventListener("DOMContentLoaded", function () {
             '<strong style="color:#0f172a; font-size:0.95rem; display:block; margin-bottom:4px;">' + agency.name + '</strong>' +
             '<small style="color:#64748b; display:block; margin-bottom:6px;">' + agency.city + '</small>' +
             '<span style="font-size:0.75rem; background:#eff6ff; color:#2563eb; padding:2px 6px; border-radius:4px; font-weight:700;">' + agency.services + '</span><br>' +
-            '<a href="tel:' + agency.phone + '" style="color:#10b981; font-weight:700; text-decoration:none; margin-top:6px; display:inline-block;">📞 ' + agency.phone + '</a>' +
+            '<a href="tel:' + agency.phone + '" style="color:#10b981; font-weight:700; text-decoration:none; margin-top:6px; display:inline-block;">' + agency.phone + '</a>' +
             '</div>'
         );
         bounds.push([agency.lat, agency.lng]);

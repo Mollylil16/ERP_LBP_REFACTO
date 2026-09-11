@@ -156,10 +156,10 @@ final class FacturationFilterController extends FacturationBaseController
 
         $categorieText = $this->getCategorieLabel($selectedCategorie);
         $statutText = match($selectedStatutPaiement) {
-            'impayes' => '🔴 Impayés (Reste > 0)',
-            'partiellement_payee' => '🟡 Partiellement Payés',
-            'payee' => '🟢 Payés en Totalité',
-            default => '⚪ Tous les Statuts',
+            'impayes' => 'Impayés (Reste > 0)',
+            'partiellement_payee' => 'Partiellement Payés',
+            'payee' => 'Payés en Totalité',
+            default => 'Tous les Statuts',
         };
 
         $kpis = [
@@ -508,18 +508,18 @@ final class FacturationFilterController extends FacturationBaseController
     {
         return match($code) {
             'all'            => 'Toutes les catégories',
-            'groupage_cargo' => '✈️ Tout le Groupage Cargo',
-            'colis_rapide'   => '⚡ Tout le Colis Rapide',
-            'dhl'            => '🚚 DHL / Express',
+            'groupage_cargo' => 'Tout le Groupage Cargo',
+            'colis_rapide'   => 'Tout le Colis Rapide',
+            'dhl'            => 'DHL / Express',
             'autres'         => 'Autres / Transit',
-            'LB-CI'          => 'LB-CI : Abidjan ➔ France',
-            'LB-FR'          => 'LB-FR : France ➔ Abidjan',
-            'S-FR'           => 'S-FR : Sénégal ➔ France',
-            'S-CI'           => 'S-CI : Sénégal ➔ Côte d\'Ivoire',
-            'LB-CA'          => 'LB-CA : Abidjan ➔ Canada',
-            'F-SN'           => 'F-SN : France ➔ Sénégal',
-            'CA-CI'          => 'CA-CI : Abidjan ➔ Paris (Rapide)',
-            'CA-FR'          => 'CA-FR : Paris ➔ Abidjan (Rapide)',
+            'LB-CI'          => 'LB-CI : Abidjan → France',
+            'LB-FR'          => 'LB-FR : France → Abidjan',
+            'S-FR'           => 'S-FR : Sénégal → France',
+            'S-CI'           => 'S-CI : Sénégal → Côte d\'Ivoire',
+            'LB-CA'          => 'LB-CA : Abidjan → Canada',
+            'F-SN'           => 'F-SN : France → Sénégal',
+            'CA-CI'          => 'CA-CI : Abidjan → Paris (Rapide)',
+            'CA-FR'          => 'CA-FR : Paris → Abidjan (Rapide)',
             default          => $code,
         };
     }

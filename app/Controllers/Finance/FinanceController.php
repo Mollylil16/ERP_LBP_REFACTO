@@ -819,7 +819,7 @@ final class FinanceController extends FinanceBaseController
 
         AuditLogService::log('batch_payment_reminders', 'lbp_factures', 0, null, ['count' => $count, 'total' => $totalMontant]);
 
-        Session::flash('success', "📲 Relance automatique envoyée avec succès à {$count} client(s) pour un solde total de " . number_format($totalMontant, 0, ',', ' ') . " XOF.");
+        Session::flash('success', "Relance automatique envoyée avec succès à {$count} client(s) pour un solde total de " . number_format($totalMontant, 0, ',', ' ') . " XOF.");
         header('Location: ' . View::url('finance/factures'));
         exit;
     }
@@ -933,7 +933,7 @@ final class FinanceController extends FinanceBaseController
 
         // Séparation des tâches (SoD) : Le décideur ne doit pas être l'auteur
         if ($demande->superviseurRegionalId === Auth::id() && !Auth::hasRole('dg')) {
-            Session::flash('error', '🚨 Double contrôle (SoD) : Vous ne pouvez pas approuver une demande dont vous êtes l\'auteur.');
+            Session::flash('error', 'Double contrôle (SoD) : Vous ne pouvez pas approuver une demande dont vous êtes l\'auteur.');
             header('Location: ' . View::url('finance/depenses'));
             exit;
         }
@@ -1258,7 +1258,7 @@ final class FinanceController extends FinanceBaseController
 
         // Contrôle d'écart obligatoire
         if (abs($ecart) > 0.01 && $explication === '') {
-            Session::flash('error', '🚨 Écart de caisse détecté (' . ($ecart > 0 ? '+' : '') . number_format($ecart, 0, ',', ' ') . ' XOF). Une explication détaillée est obligatoirement requise avant de pouvoir soumettre.');
+            Session::flash('error', 'Écart de caisse détecté (' . ($ecart > 0 ? '+' : '') . number_format($ecart, 0, ',', ' ') . ' XOF). Une explication détaillée est obligatoirement requise avant de pouvoir soumettre.');
             header('Location: ' . View::url('finance/clotures'));
             exit;
         }
@@ -1388,7 +1388,7 @@ final class FinanceController extends FinanceBaseController
 
         // Séparation des tâches (SoD) : La consolidatrice ne doit pas être la caissière qui a soumis le point
         if ($report->chefAgenceId === Auth::id() && !Auth::hasRole('dg')) {
-            Session::flash('error', '🚨 Double contrôle (SoD) : Vous ne pouvez pas consolider un point de caisse que vous avez vous-même soumis.');
+            Session::flash('error', 'Double contrôle (SoD) : Vous ne pouvez pas consolider un point de caisse que vous avez vous-même soumis.');
             header('Location: ' . View::url('finance/clotures'));
             exit;
         }

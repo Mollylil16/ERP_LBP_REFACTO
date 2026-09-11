@@ -23,7 +23,7 @@ final class Crm
             . '<p style="font-size: 1.05rem; color: #94a3b8; max-width: 650px; margin: 0 0 24px 0; line-height: 1.6;">Suivi personnalisé des comptes importateurs, gestion du pipeline d\'opportunités, historique des interactions et relances téléphoniques Call Center.</p>'
             . '<div style="display: flex; gap: 14px; flex-wrap: wrap;">'
             . Ui::button('+ Nouveau Client / Prospect', ['href' => 'crm/clients/nouveau', 'variant' => 'accent', 'style' => 'background: #2563eb; padding: 12px 24px; border-radius: 10px; font-weight: 700; color: #ffffff; text-decoration: none; display: inline-flex; align-items: center; gap: 8px;'])
-            . Ui::button('Consulter l\'Annuaire Clients ➔', ['href' => 'crm/clients', 'variant' => 'secondary', 'style' => 'background: rgba(255, 255, 255, 0.1); color: #ffffff; border: 1px solid rgba(255, 255, 255, 0.2); padding: 12px 24px; border-radius: 10px; font-weight: 600; text-decoration: none; backdrop-filter: blur(8px);'])
+            . Ui::button('Consulter l\'Annuaire Clients →', ['href' => 'crm/clients', 'variant' => 'secondary', 'style' => 'background: rgba(255, 255, 255, 0.1); color: #ffffff; border: 1px solid rgba(255, 255, 255, 0.2); padding: 12px 24px; border-radius: 10px; font-weight: 600; text-decoration: none; backdrop-filter: blur(8px);'])
             . '</div>'
             . '</div>';
 
@@ -200,7 +200,7 @@ final class Crm
 
                 . '<div style="display: flex; align-items: center; justify-content: space-between; padding-top: 14px; border-top: 1px solid #f1f5f9;">'
                 . '<span style="font-size: 0.8rem; color: #64748b;">Responsable : <strong style="color: #0f172a;">' . View::e($owner) . '</strong></span>'
-                . Ui::button('Consulter ➔', ['href' => 'crm/clients/' . $c['id'], 'variant' => 'accent', 'style' => 'background: #1d2b57; color: #fff; font-size: 0.82rem; font-weight: 700; border-radius: 8px; padding: 8px 16px;'])
+                . Ui::button('Consulter →', ['href' => 'crm/clients/' . $c['id'], 'variant' => 'accent', 'style' => 'background: #1d2b57; color: #fff; font-size: 0.82rem; font-weight: 700; border-radius: 8px; padding: 8px 16px;'])
                 . '</div>'
                 . '</article>';
         }
@@ -282,7 +282,7 @@ final class Crm
             . 'Fiche Client CRM'
             . '</span>'
             . '<h1 style="font-size: 2rem; font-weight: 800; margin: 8px 0 4px 0; color: #ffffff;">' . View::e((string)$client['name']) . '</h1>'
-            . '<p style="color: #94a3b8; font-size: 0.95rem; margin: 0;">📞 ' . View::e((string) ($client['phone'] ?? 'Non renseigné')) . ' · ✉️ ' . View::e((string) ($client['email'] ?? 'Non renseigné')) . '</p>'
+            . '<p style="color: #94a3b8; font-size: 0.95rem; margin: 0;">' . View::e((string) ($client['phone'] ?? 'Non renseigné')) . ' · ' . View::e((string) ($client['email'] ?? 'Non renseigné')) . '</p>'
             . '</div>'
             . Ui::badge(ucfirst((string) $client['crm_status']), self::crmStatusTone((string) $client['crm_status']))
             . '</div>';

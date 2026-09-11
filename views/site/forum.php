@@ -32,7 +32,7 @@ ob_start();
                 <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
             </div>
             <strong style="font-size:1rem; color:#0f172a; display:block;">Fret Europe & Transit</strong>
-            <span style="font-size:0.82rem; color:#64748b;">Envois France ➔ Afrique, dédouanement et suivi colis.</span>
+            <span style="font-size:0.82rem; color:#64748b;">Envois France → Afrique, dédouanement et suivi colis.</span>
         </div>
         <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:14px; padding:18px; box-shadow:0 4px 12px rgba(0,0,0,0.03);">
             <div style="width:36px; height:36px; border-radius:10px; background:#ecfdf5; color:#059669; display:flex; align-items:center; justify-content:center; margin-bottom:10px;">

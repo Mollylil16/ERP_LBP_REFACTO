@@ -192,8 +192,8 @@ $dateDisplay = ($dateStart === $dateEnd)
                         <td><?= View::e($p['destinataire_phone'] ?: '-') ?></td>
                         <td class="text-center font-bold"><?= (int) $p['nombre_colis'] ?></td>
                         <td class="text-right font-bold"><?= number_format((float) $p['poids_total'], 2, ',', ' ') ?></td>
-                        <td><?= View::e(str_replace('_', ' ➔ ', $trajetDisplay)) ?></td>
-                        <td><?= View::e($p['agence_depart_name'] ?: '-') ?> ➔ <?= View::e($p['agence_arrivee_name'] ?: '-') ?></td>
+                        <td><?= View::e(str_replace('_', ' → ', $trajetDisplay)) ?></td>
+                        <td><?= View::e($p['agence_depart_name'] ?: '-') ?> → <?= View::e($p['agence_arrivee_name'] ?: '-') ?></td>
                         <td><?= View::e($p['agent_name']) ?></td>
                         <td><?= View::e($p['statut']) ?></td>
                     </tr>

@@ -32,7 +32,7 @@ final class ColisageNavigation
                 'group' => 'Opération',
                 'subgroup' => 'Groupage Cargo',
                 'key' => 'op_lb_ci',
-                'label' => 'LB-CI : Abidjan ➔ France',
+                'label' => 'LB-CI : Abidjan → France',
                 'icon' => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.8 19.2L16 11l3.5-3.5C21 6 21.5 4 21 3.5c-.5-.5-2.5 0-4 1.5L13.5 8.5 5.3 6.7c-.5-.1-1.1.1-1.4.6l-.6.9c-.3.4-.2 1 .2 1.3L8 13l-3 3-2-1c-.4-.2-.9-.1-1.2.2l-.6.6c-.3.3-.3.8 0 1.1l2.5 2.5c.3.3.8.3 1.1 0l.6-.6c.3-.3.4-.8.2-1.2l-1-2 3-3 3.5 4.5c.3.4.9.5 1.3.2l.9-.6c.5-.3.7-.9.6-1.4z"></path></svg>',
                 'url' => 'operation/LB-CI/saisir',
                 'available' => true
@@ -41,7 +41,7 @@ final class ColisageNavigation
                 'group' => 'Opération',
                 'subgroup' => 'Groupage Cargo',
                 'key' => 'op_lb_fr',
-                'label' => 'LB-FR : France ➔ Abidjan',
+                'label' => 'LB-FR : France → Abidjan',
                 'icon' => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.8 19.2L16 11l3.5-3.5C21 6 21.5 4 21 3.5c-.5-.5-2.5 0-4 1.5L13.5 8.5 5.3 6.7c-.5-.1-1.1.1-1.4.6l-.6.9c-.3.4-.2 1 .2 1.3L8 13l-3 3-2-1c-.4-.2-.9-.1-1.2.2l-.6.6c-.3.3-.3.8 0 1.1l2.5 2.5c.3.3.8.3 1.1 0l.6-.6c.3-.3.4-.8.2-1.2l-1-2 3-3 3.5 4.5c.3.4.9.5 1.3.2l.9-.6c.5-.3.7-.9.6-1.4z"></path></svg>',
                 'url' => 'operation/LB-FR/saisir',
                 'available' => true
@@ -50,7 +50,7 @@ final class ColisageNavigation
                 'group' => 'Opération',
                 'subgroup' => 'Groupage Cargo',
                 'key' => 'op_s_fr',
-                'label' => 'S-FR : Sénégal ➔ France',
+                'label' => 'S-FR : Sénégal → France',
                 'icon' => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.8 19.2L16 11l3.5-3.5C21 6 21.5 4 21 3.5c-.5-.5-2.5 0-4 1.5L13.5 8.5 5.3 6.7c-.5-.1-1.1.1-1.4.6l-.6.9c-.3.4-.2 1 .2 1.3L8 13l-3 3-2-1c-.4-.2-.9-.1-1.2.2l-.6.6c-.3.3-.3.8 0 1.1l2.5 2.5c.3.3.8.3 1.1 0l.6-.6c.3-.3.4-.8.2-1.2l-1-2 3-3 3.5 4.5c.3.4.9.5 1.3.2l.9-.6c.5-.3.7-.9.6-1.4z"></path></svg>',
                 'url' => 'operation/S-FR/saisir',
                 'available' => true
@@ -59,7 +59,7 @@ final class ColisageNavigation
                 'group' => 'Opération',
                 'subgroup' => 'Groupage Cargo',
                 'key' => 'op_s_ci',
-                'label' => 'S-CI : Sénégal ➔ Côte d\'Ivoire',
+                'label' => 'S-CI : Sénégal → Côte d\'Ivoire',
                 'icon' => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.8 19.2L16 11l3.5-3.5C21 6 21.5 4 21 3.5c-.5-.5-2.5 0-4 1.5L13.5 8.5 5.3 6.7c-.5-.1-1.1.1-1.4.6l-.6.9c-.3.4-.2 1 .2 1.3L8 13l-3 3-2-1c-.4-.2-.9-.1-1.2.2l-.6.6c-.3.3-.3.8 0 1.1l2.5 2.5c.3.3.8.3 1.1 0l.6-.6c.3-.3.4-.8.2-1.2l-1-2 3-3 3.5 4.5c.3.4.9.5 1.3.2l.9-.6c.5-.3.7-.9.6-1.4z"></path></svg>',
                 'url' => 'operation/S-CI/saisir',
                 'available' => true
@@ -68,7 +68,7 @@ final class ColisageNavigation
                 'group' => 'Opération',
                 'subgroup' => 'Groupage Cargo',
                 'key' => 'op_lb_ca',
-                'label' => 'LB-CA : Abidjan ➔ Canada',
+                'label' => 'LB-CA : Abidjan → Canada',
                 'icon' => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.8 19.2L16 11l3.5-3.5C21 6 21.5 4 21 3.5c-.5-.5-2.5 0-4 1.5L13.5 8.5 5.3 6.7c-.5-.1-1.1.1-1.4.6l-.6.9c-.3.4-.2 1 .2 1.3L8 13l-3 3-2-1c-.4-.2-.9-.1-1.2.2l-.6.6c-.3.3-.3.8 0 1.1l2.5 2.5c.3.3.8.3 1.1 0l.6-.6c.3-.3.4-.8.2-1.2l-1-2 3-3 3.5 4.5c.3.4.9.5 1.3.2l.9-.6c.5-.3.7-.9.6-1.4z"></path></svg>',
                 'url' => 'operation/LB-CA/saisir',
                 'available' => true
@@ -77,7 +77,7 @@ final class ColisageNavigation
                 'group' => 'Opération',
                 'subgroup' => 'Groupage Cargo',
                 'key' => 'op_f_sn',
-                'label' => 'F-SN : France ➔ Sénégal',
+                'label' => 'F-SN : France → Sénégal',
                 'icon' => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.8 19.2L16 11l3.5-3.5C21 6 21.5 4 21 3.5c-.5-.5-2.5 0-4 1.5L13.5 8.5 5.3 6.7c-.5-.1-1.1.1-1.4.6l-.6.9c-.3.4-.2 1 .2 1.3L8 13l-3 3-2-1c-.4-.2-.9-.1-1.2.2l-.6.6c-.3.3-.3.8 0 1.1l2.5 2.5c.3.3.8.3 1.1 0l.6-.6c.3-.3.4-.8.2-1.2l-1-2 3-3 3.5 4.5c.3.4.9.5 1.3.2l.9-.6c.5-.3.7-.9.6-1.4z"></path></svg>',
                 'url' => 'operation/F-SN/saisir',
                 'available' => true
@@ -88,7 +88,7 @@ final class ColisageNavigation
                 'group' => 'Opération',
                 'subgroup' => 'Colis Rapide',
                 'key' => 'op_ca_ci',
-                'label' => 'CA-CI : Abidjan ➔ Paris',
+                'label' => 'CA-CI : Abidjan → Paris',
                 'icon' => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>',
                 'url' => 'operation/CA-CI/saisir',
                 'available' => true
@@ -97,7 +97,7 @@ final class ColisageNavigation
                 'group' => 'Opération',
                 'subgroup' => 'Colis Rapide',
                 'key' => 'op_ca_fr',
-                'label' => 'CA-FR : Paris ➔ Abidjan',
+                'label' => 'CA-FR : Paris → Abidjan',
                 'icon' => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>',
                 'url' => 'operation/CA-FR/saisir',
                 'available' => true
@@ -106,7 +106,7 @@ final class ColisageNavigation
                 'group' => 'Opération',
                 'subgroup' => 'Colis Rapide',
                 'key' => 'op_ca_sn',
-                'label' => 'CA-SN : Sénégal ➔ CI',
+                'label' => 'CA-SN : Sénégal → CI',
                 'icon' => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>',
                 'url' => 'operation/CA-SN/saisir',
                 'available' => true
@@ -115,7 +115,7 @@ final class ColisageNavigation
                 'group' => 'Opération',
                 'subgroup' => 'Colis Rapide',
                 'key' => 'op_ca_is',
-                'label' => 'CA-IS : CI ➔ Sénégal',
+                'label' => 'CA-IS : CI → Sénégal',
                 'icon' => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>',
                 'url' => 'operation/CA-IS/saisir',
                 'available' => true
@@ -124,7 +124,7 @@ final class ColisageNavigation
                 'group' => 'Opération',
                 'subgroup' => 'Colis Rapide',
                 'key' => 'op_ca_ic',
-                'label' => 'CA-IC : CI ➔ Canada',
+                'label' => 'CA-IC : CI → Canada',
                 'icon' => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>',
                 'url' => 'operation/CA-IC/saisir',
                 'available' => true
@@ -133,7 +133,7 @@ final class ColisageNavigation
                 'group' => 'Opération',
                 'subgroup' => 'Colis Rapide',
                 'key' => 'op_ca_cc',
-                'label' => 'CA-CC : Canada ➔ Abidjan',
+                'label' => 'CA-CC : Canada → Abidjan',
                 'icon' => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>',
                 'url' => 'operation/CA-CC/saisir',
                 'available' => true

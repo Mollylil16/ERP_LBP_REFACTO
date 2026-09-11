@@ -145,7 +145,7 @@ $statusBadges = [
                 <!-- Boutons Filtrer / Réinitialiser -->
                 <div style="display: flex; gap: 6px;">
                     <button type="submit" class="finea-button finea-button--primary" style="padding: 0.55rem 1rem; border-radius: 6px; font-weight: 700; font-size: 0.85rem; flex: 1; background: #0f172a;">Filtrer</button>
-                    <a href="<?= View::url('finance/fonds') ?>" class="finea-button finea-button--secondary" style="padding: 0.55rem 0.8rem; border-radius: 6px; font-size: 0.85rem; text-decoration: none; color: #475569; background: #fff; border: 1px solid #cbd5e1;">✕</a>
+                    <a href="<?= View::url('finance/fonds') ?>" class="finea-button finea-button--secondary" style="padding: 0.55rem 0.8rem; border-radius: 6px; font-size: 0.85rem; text-decoration: none; color: #475569; background: #fff; border: 1px solid #cbd5e1;"></a>
                 </div>
             </form>
         </div>
@@ -252,7 +252,7 @@ $statusBadges = [
                                                 <form method="post" action="<?= View::url('finance/fonds/' . $item->id . '/supprimer') ?>" style="display: inline;" onsubmit="return confirm('Confirmer la suppression de cette demande de fonds ?');">
                                                     <?= Csrf::field() ?>
                                                     <button type="submit" style="background: #fee2e2; border: 1px solid #fca5a5; color: #dc2626; border-radius: 5px; padding: 5px 8px; cursor: pointer; font-size: 0.78rem; font-weight: 700;" title="Supprimer">
-                                                        ✕
+                                                        
                                                     </button>
                                                 </form>
                                             <?php endif; ?>

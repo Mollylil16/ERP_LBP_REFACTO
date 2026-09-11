@@ -24,11 +24,11 @@ final class Rayon
     public function badgeLabel(): string
     {
         return match($this->typeRayon) {
-            'EXPRESS' => '⚡ Express',
-            'CARGO_LOURD' => '🐘 Cargo Lourd',
-            'FRAGILE' => '🍷 Fragile',
-            'SECU_VALEUR' => '🔒 Sécurisé / Valeur',
-            default => '📦 Standard'
+            'EXPRESS' => 'Express',
+            'CARGO_LOURD' => 'Cargo Lourd',
+            'FRAGILE' => 'Fragile',
+            'SECU_VALEUR' => 'Sécurisé / Valeur',
+            default => 'Standard'
         };
     }
 

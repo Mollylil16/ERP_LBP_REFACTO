@@ -213,7 +213,7 @@ function fmt_kg(float $val): string {
                       <span style="color:#94a3b8;font-size:.75rem;"> (<?= $cr['nb_credits_non_regle'] ?>)</span>
                     <?php endif; ?>
                   <?php else: ?>
-                    <span style="color:#22c55e;">✓ 0</span>
+                    <span style="color:#22c55e;">0</span>
                   <?php endif; ?>
                 </td>
                 <td style="padding:.75rem 1rem;text-align:right;">

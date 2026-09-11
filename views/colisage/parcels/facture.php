@@ -592,7 +592,7 @@ $operatorName = \App\Helpers\Auth::user() ? \App\Helpers\Auth::user()->fullName 
                     <td colspan="7" style="border: none;"></td>
                     <td style="text-align: right; border: 1px solid #cbd5e1; background: #f8fafc; font-weight: 700; font-size: 10px;">STATUT PAIEMENT</td>
                     <td style="text-align: right; border: 1px solid #cbd5e1; background: #f8fafc; font-weight: 900; font-size: 10.5px; color: <?= $facture->statut === 'payee' ? '#15803d' : ($facture->statut === 'partiellement_payee' ? '#d97706' : '#2563eb') ?>;">
-                        <?= $facture->statut === 'payee' ? '✅ FACTURE PAYÉE' : ($facture->statut === 'partiellement_payee' ? '⚠️ PAYÉE PARTIELLEMENT' : 'ℹ️ FACTURE ÉMISE / IMPAYÉE') ?>
+                        <?= $facture->statut === 'payee' ? 'FACTURE PAYÉE' : ($facture->statut === 'partiellement_payee' ? 'PAYÉE PARTIELLEMENT' : 'FACTURE ÉMISE / IMPAYÉE') ?>
                     </td>
                 </tr>
                 <?php endif; ?>

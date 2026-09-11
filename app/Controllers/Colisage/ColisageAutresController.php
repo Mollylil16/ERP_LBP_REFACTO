@@ -233,7 +233,7 @@ final class ColisageAutresController extends ColisageBaseController
         ];
         $trafic = $traficMap[$type] ?? 'Envoi Express';
         if ($trajet) {
-            $trajetLabel = str_replace('_', ' ➔ ', $trajet);
+            $trajetLabel = str_replace('_', ' → ', $trajet);
             $trafic .= ' (' . $trajetLabel . ')';
         }
 

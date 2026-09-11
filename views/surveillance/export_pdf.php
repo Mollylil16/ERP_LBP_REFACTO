@@ -47,7 +47,7 @@ $fin = date('d/m/Y', strtotime($filters['end_date']));
 </head>
 <body>
 
-<button class="btn-print" onclick="window.print()">🖨️ Imprimer / Sauvegarder en PDF</button>
+<button class="btn-print" onclick="window.print()">Imprimer / Sauvegarder en PDF</button>
 
 <div class="header">
     <div>
@@ -60,7 +60,7 @@ $fin = date('d/m/Y', strtotime($filters['end_date']));
     </div>
 </div>
 
-<div class="confidential">⚠️ CONFIDENTIEL — DOCUMENT STRICTEMENT RÉSERVÉ À LA DIRECTION GÉNÉRALE</div>
+<div class="confidential">CONFIDENTIEL — DOCUMENT STRICTEMENT RÉSERVÉ À LA DIRECTION GÉNÉRALE</div>
 
 <div class="kpi-row">
     <div class="kpi-card">

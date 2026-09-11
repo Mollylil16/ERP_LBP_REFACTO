@@ -111,7 +111,7 @@ $qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=130x130&data=' . urle
 </head>
 <body>
 
-<button class="btn-print" onclick="window.print()">🖨️ Imprimer le Bon de Sortie (PDF)</button>
+<button class="btn-print" onclick="window.print()">Imprimer le Bon de Sortie (PDF)</button>
 
 <!-- Header -->
 <div class="header">
@@ -154,7 +154,7 @@ $qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=130x130&data=' . urle
         </div>
     </div>
     <div style="font-size: 14px; font-weight: 800; color: #0f172a; margin-bottom: 12px;">
-        👤 <?= View::e($demandeurNom) ?>
+        <?= View::e($demandeurNom) ?>
     </div>
 
     <div style="font-size: 10px; font-weight: 800; text-transform: uppercase; color: #64748b; margin-bottom: 2px;">

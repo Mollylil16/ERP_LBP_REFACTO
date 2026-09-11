@@ -50,7 +50,7 @@ $tauxGlobal = $totalMontantGlobal > 0 ? round(($totalPayeGlobal / $totalMontantG
 <body>
     <div class="no-print" style="margin-bottom: 20px; text-align: right;">
         <button onclick="window.print()" style="padding: 10px 20px; background: #2563eb; color: #fff; border: none; border-radius: 6px; font-weight: 800; cursor: pointer;">
-            🖨️ Imprimer / Sauvegarder en PDF
+            Imprimer / Sauvegarder en PDF
         </button>
     </div>
 

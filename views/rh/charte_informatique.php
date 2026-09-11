@@ -41,7 +41,7 @@ $header = Ui::pageHeader(
             </div>
 
             <div style="background:#eff6ff; border-left:4px solid #2563eb; padding:1.25rem; border-radius:6px; margin-bottom:2rem; color:#1e40af;">
-                <strong style="display:block; font-size:1rem; margin-bottom:4px;"> ⚠️ AVIS JURIDIQUE & PROTECTION DU DIRECTEUR GÉNÉRAL</strong>
+                <strong style="display:block; font-size:1rem; margin-bottom:4px;"> AVIS JURIDIQUE & PROTECTION DU DIRECTEUR GÉNÉRAL</strong>
                 En application de la législation sociale de la République de Côte d'Ivoire, l'utilisation de l'ERP LBP Transit et des terminaux d'agences s'effectue sous traçabilité automatisée. Tout agent accédant au système reconnaît l'opposabilité juridique de la présente charte.
             </div>
 

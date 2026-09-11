@@ -106,8 +106,8 @@ final class Facturation
                 'eyebrow' => 'Facturation • Pilotage des Encaissements & Impayés',
                 'class' => 'rh-hero-white',
                 'actions' => [
-                    Ui::button('🖨️ Export PDF Officiel', ['href' => 'facturation/filtre/export-pdf?' . $exportQuery, 'variant' => 'danger', 'target' => '_blank']),
-                    Ui::button('📊 Export Excel (CSV UTF-8)', ['href' => 'facturation/filtre/export-excel?' . $exportQuery, 'variant' => 'accent']),
+                    Ui::button('Export PDF Officiel', ['href' => 'facturation/filtre/export-pdf?' . $exportQuery, 'variant' => 'danger', 'target' => '_blank']),
+                    Ui::button('Export Excel (CSV UTF-8)', ['href' => 'facturation/filtre/export-excel?' . $exportQuery, 'variant' => 'accent']),
                 ],
             ]
         );
@@ -135,25 +135,25 @@ final class Facturation
         // Catégories groupées avec optgroup
         $categoriesGroups = [
             ['value' => 'all', 'label' => 'Toutes les catégories'],
-            ['value' => 'groupage_cargo', 'label' => '✈️ Tout le Groupage Cargo (Tous codes)'],
-            ['value' => 'colis_rapide', 'label' => '⚡ Tout le Colis Rapide (Tous codes)'],
-            ['value' => 'dhl', 'label' => '🚚 DHL / Express'],
+            ['value' => 'groupage_cargo', 'label' => 'Tout le Groupage Cargo (Tous codes)'],
+            ['value' => 'colis_rapide', 'label' => 'Tout le Colis Rapide (Tous codes)'],
+            ['value' => 'dhl', 'label' => 'DHL / Express'],
             ['value' => 'autres', 'label' => 'Autres / Transit'],
-            ['value' => 'LB-CI', 'label' => '↳ LB-CI : Abidjan ➔ France'],
-            ['value' => 'LB-FR', 'label' => '↳ LB-FR : France ➔ Abidjan'],
-            ['value' => 'S-FR', 'label' => '↳ S-FR : Sénégal ➔ France'],
-            ['value' => 'S-CI', 'label' => '↳ S-CI : Sénégal ➔ Côte d\'Ivoire'],
-            ['value' => 'LB-CA', 'label' => '↳ LB-CA : Abidjan ➔ Canada'],
-            ['value' => 'F-SN', 'label' => '↳ F-SN : France ➔ Sénégal'],
-            ['value' => 'CA-CI', 'label' => '↳ CA-CI : Abidjan ➔ Paris (Rapide)'],
-            ['value' => 'CA-FR', 'label' => '↳ CA-FR : Paris ➔ Abidjan (Rapide)'],
+            ['value' => 'LB-CI', 'label' => '↳ LB-CI : Abidjan → France'],
+            ['value' => 'LB-FR', 'label' => '↳ LB-FR : France → Abidjan'],
+            ['value' => 'S-FR', 'label' => '↳ S-FR : Sénégal → France'],
+            ['value' => 'S-CI', 'label' => '↳ S-CI : Sénégal → Côte d\'Ivoire'],
+            ['value' => 'LB-CA', 'label' => '↳ LB-CA : Abidjan → Canada'],
+            ['value' => 'F-SN', 'label' => '↳ F-SN : France → Sénégal'],
+            ['value' => 'CA-CI', 'label' => '↳ CA-CI : Abidjan → Paris (Rapide)'],
+            ['value' => 'CA-FR', 'label' => '↳ CA-FR : Paris → Abidjan (Rapide)'],
         ];
 
         $statutPaiementOpts = [
             ['value' => 'all', 'label' => 'Tous les statuts'],
-            ['value' => 'impayes', 'label' => '🔴 Impayés uniquement (Reste > 0)'],
-            ['value' => 'partiellement_payee', 'label' => '🟡 Partiellement payés'],
-            ['value' => 'payee', 'label' => '🟢 Payés en totalité'],
+            ['value' => 'impayes', 'label' => 'Impayés uniquement (Reste > 0)'],
+            ['value' => 'partiellement_payee', 'label' => 'Partiellement payés'],
+            ['value' => 'payee', 'label' => 'Payés en totalité'],
         ];
 
         $filterForm = '<form method="get" action="' . View::url('facturation/filtre') . '" style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:1.25rem;">'
@@ -198,7 +198,7 @@ final class Facturation
             // Boutons Filtrer & Reset
             . '<div style="display:flex; gap:6px;">'
             . '<button type="submit" class="finea-button finea-button--primary" style="flex:1; padding:0.55rem 1rem; border-radius:6px; font-weight:700; background:#0f172a;">Filtrer</button>'
-            . '<a href="' . View::url('facturation/filtre') . '" class="finea-button finea-button--secondary" style="padding:0.55rem 0.8rem; border-radius:6px; text-decoration:none; color:#64748b; background:#fff; border:1px solid #cbd5e1;">✕</a>'
+            . '<a href="' . View::url('facturation/filtre') . '" class="finea-button finea-button--secondary" style="padding:0.55rem 0.8rem; border-radius:6px; text-decoration:none; color:#64748b; background:#fff; border:1px solid #cbd5e1;"></a>'
             . '</div>'
 
             . '</div></form>';

@@ -161,7 +161,7 @@ $dateFormatted = date('d/m/Y', strtotime($date));
                         <td class="text-right text-blue" style="font-weight:600;"><?= number_format((float) $r['ca_xof'], 0, ',', ' ') ?></td>
                         <td class="text-right"><?= (float) $r['ca_eur'] > 0 ? number_format((float) $r['ca_eur'], 2, ',', ' ') . ' €' : '—' ?></td>
                         <td class="text-right <?= $horsDelai > 0 ? 'text-danger' : 'text-success' ?>" style="font-weight:600;"><?= $horsDelai ?></td>
-                        <td class="text-right <?= $nonRegle > 0 ? 'text-danger' : '' ?>"><?= $nonRegle > 0 ? number_format($nonRegle, 0, ',', ' ') . ' XOF' : '✓ 0' ?></td>
+                        <td class="text-right <?= $nonRegle > 0 ? 'text-danger' : '' ?>"><?= $nonRegle > 0 ? number_format($nonRegle, 0, ',', ' ') . ' XOF' : '0' ?></td>
                         <td class="text-right <?= $regleJour > 0 ? 'text-success' : '' ?>"><?= $regleJour > 0 ? '+' . number_format($regleJour, 0, ',', ' ') . ' XOF' : '—' ?></td>
                     </tr>
                 <?php endforeach; ?>

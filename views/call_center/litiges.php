@@ -211,7 +211,7 @@ $statutLabels = [
               <td style="padding:.7rem 1rem;">
                 <?php if ($canManage): ?>
                   <?php if (in_array($l['statut'], ['nouveau', 'en_cours'], true)): ?>
-                    <button onclick="document.getElementById('modal-resolve-<?= $l['id'] ?>').style.display='flex'" style="background:#22c55e;color:#fff;border:none;border-radius:.4rem;padding:.3rem .8rem;font-size:.8rem;cursor:pointer;font-weight:600;">✓ Traiter</button>
+                    <button onclick="document.getElementById('modal-resolve-<?= $l['id'] ?>').style.display='flex'" style="background:#22c55e;color:#fff;border:none;border-radius:.4rem;padding:.3rem .8rem;font-size:.8rem;cursor:pointer;font-weight:600;">Traiter</button>
                   <?php else: ?>
                     <span style="color:#94a3b8;font-size:.8rem;"><?= $l['date_resolution'] ? date('d/m/Y', strtotime($l['date_resolution'])) : '—' ?></span>
                   <?php endif; ?>

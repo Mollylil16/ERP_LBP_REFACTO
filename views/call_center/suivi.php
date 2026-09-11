@@ -27,7 +27,7 @@ $csrfToken = Csrf::token();
           </div>
         </div>
         <a href="/call-center/suivi-departs" style="background:#fff;color:#0369a1;padding:.6rem 1.2rem;border-radius:.5rem;font-weight:700;text-decoration:none;font-size:.875rem;display:inline-flex;align-items:center;gap:.4rem;box-shadow:0 2px 4px rgba(0,0,0,.1);">
-          📦 Bilan Départs & Colis Restés
+          Bilan Départs & Colis Restés
         </a>
       </div>
     </div>

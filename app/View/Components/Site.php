@@ -108,7 +108,7 @@ final class Site
                 . '</div>'
                 . '<h3 style="font-size:1.15rem; font-weight:800; color:#0f172a; margin:0 0 8px 0;">Marketplace en cours d\'approvisionnement</h3>'
                 . '<p style="color:#64748b; font-size:0.92rem; max-width:540px; margin:0 auto 20px auto; line-height:1.5;">La Direction Générale et l\'équipe logistique publieront prochainement les tarifs officiels de kits d\'emballage export et de réservation de fret.</p>'
-                . '<a href="' . View::url('site/contact') . '" style="display:inline-flex; align-items:center; gap:8px; background:#0C2A4A; color:#ffffff; font-weight:700; padding:12px 24px; border-radius:12px; text-decoration:none; font-size:0.92rem;">Demander un devis sur mesure ➔</a>'
+                . '<a href="' . View::url('site/contact') . '" style="display:inline-flex; align-items:center; gap:8px; background:#0C2A4A; color:#ffffff; font-weight:700; padding:12px 24px; border-radius:12px; text-decoration:none; font-size:0.92rem;">Demander un devis sur mesure →</a>'
                 . '</div>';
         }
 
@@ -147,7 +147,7 @@ final class Site
                 . '</div>'
                 . '<h3 style="font-size:1.15rem; font-weight:800; color:#0f172a; margin:0 0 8px 0;">Aucune discussion publique pour le moment</h3>'
                 . '<p style="color:#64748b; font-size:0.92rem; max-width:540px; margin:0 auto 20px auto; line-height:1.5;">Soyez le premier expéditeur à démarrer un fil de discussion ou posez vos questions douanières directement à nos conseillers en agence.</p>'
-                . '<a href="' . View::url('site/contact') . '" style="display:inline-flex; align-items:center; gap:8px; background:#10b981; color:#ffffff; font-weight:700; padding:12px 24px; border-radius:12px; text-decoration:none; font-size:0.92rem;">Contacter un expert agence ➔</a>'
+                . '<a href="' . View::url('site/contact') . '" style="display:inline-flex; align-items:center; gap:8px; background:#10b981; color:#ffffff; font-weight:700; padding:12px 24px; border-radius:12px; text-decoration:none; font-size:0.92rem;">Contacter un expert agence →</a>'
                 . '</div>';
         }
 

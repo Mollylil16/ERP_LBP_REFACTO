@@ -37,7 +37,7 @@ ob_start();
             <?php else: ?>
                 <?php
                 $empOpts = array_merge(
-                    [['value' => '0', 'label' => '⚡ Création directe d’urgence (Sans dossier RH préalable)']],
+                    [['value' => '0', 'label' => 'Création directe d’urgence (Sans dossier RH préalable)']],
                     array_filter($page->employeeOptions, fn($o) => !empty($o['value']))
                 );
                 ?>

@@ -19,7 +19,7 @@ ob_start();
             </div>
             <h2 style="font-size:1.3rem; font-weight:800; color:#0f172a; margin:0 0 10px 0;">Marketplace en cours d'approvisionnement</h2>
             <p style="color:#64748b; font-size:0.98rem; max-width:580px; margin:0 auto 24px auto; line-height:1.6;">Aucune offre ou fourniture n'est publiée pour le moment. La Direction Générale et l'équipe logistique ajouteront prochainement les matériels d'emballage export et tarifs de transport.</p>
-            <a href="<?= \App\Helpers\View::url('site/devis') ?>" style="display:inline-flex; align-items:center; gap:8px; background:#0C2A4A; color:#ffffff; font-weight:700; padding:14px 28px; border-radius:12px; text-decoration:none; font-size:0.95rem;">Demander une cotation personnalisée ➔</a>
+            <a href="<?= \App\Helpers\View::url('site/devis') ?>" style="display:inline-flex; align-items:center; gap:8px; background:#0C2A4A; color:#ffffff; font-weight:700; padding:14px 28px; border-radius:12px; text-decoration:none; font-size:0.95rem;">Demander une cotation personnalisée →</a>
         </div>
     <?php endif; ?>
 </div>

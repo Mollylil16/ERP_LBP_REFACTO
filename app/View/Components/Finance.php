@@ -621,7 +621,7 @@ final class Finance
                 . "• Reste à Payer : " . number_format($facture->montantRestant, 0, ',', ' ') . " " . $facture->devise . "\n"
                 . "Consultez et téléchargez votre reçu officiel PDF ici : " . View::url('finance/factures/' . $facture->id . '/recu-pdf');
             
-            $waMsg2 = "⚠️ RAPPEL DE SOLDE — LBP Logistics & Transit\n"
+            $waMsg2 = "RAPPEL DE SOLDE — LBP Logistics & Transit\n"
                 . "Bonjour " . ($client['name'] ?? 'Client') . ",\n"
                 . "Nous vous rappelons que votre facture N° " . $facture->numeroFacture . " présente un solde restant dû de " . number_format($facture->montantRestant, 0, ',', ' ') . " " . $facture->devise . ".\n"
                 . "Échéance : " . ($facture->dateEcheanceSolde ?? 'À réception') . ".\n"
@@ -894,7 +894,7 @@ final class Finance
         if ($facture->statut === 'payee') {
             $timelineSteps .= '<div style="display:flex; align-items:flex-start; gap:12px; position:relative; padding-left:18px; margin-left:10px;">'
                 . '<div style="position:absolute; left:-9px; top:2px; width:15px; height:15px; background:#10b981; border-radius:50%;"></div>'
-                . '<div><strong style="color:#065f46; font-size:0.95rem;">🎉 Facture Entièrement Soldée</strong><br><small style="color:#047857;">Aucun reliquat impayé sur cette facture.</small></div>'
+                . '<div><strong style="color:#065f46; font-size:0.95rem;">Facture Entièrement Soldée</strong><br><small style="color:#047857;">Aucun reliquat impayé sur cette facture.</small></div>'
                 . '</div>';
         }
 
@@ -1030,7 +1030,7 @@ final class Finance
                                 . '</form>'
                                 . '</div>';
                         } else {
-                            $actionsHtml = '<span style="color:#e11d48; font-weight:600; font-size:0.8rem;">🚨 Blocage SoD (Auteur)</span>';
+                            $actionsHtml = '<span style="color:#e11d48; font-weight:600; font-size:0.8rem;">Blocage SoD (Auteur)</span>';
                         }
                     } else {
                         $actionsHtml = '<span style="color:#64748b; font-size:0.8rem;">En attente de caisse</span>';
@@ -1596,7 +1596,7 @@ final class Finance
 
                 $retroBadge = '';
                 if ($r->soumissionRetroactive) {
-                    $retroBadge = '<br>' . Ui::badge('<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" style="display:inline; vertical-align:-2px; margin-right:3px;"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>Rétroactif', 'warning');
+                    $retroBadge = '<br>' . Ui::badge('Rétroactif', 'warning', ['icon' => '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" style="display:inline; vertical-align:-2px; margin-right:3px;"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>']);
                     if ($r->justificationRetard) {
                         $retroBadge .= '<br><small style="color:#92400e; font-size:0.72rem;" title="' . View::e($r->justificationRetard) . '">' . View::e($r->justificationRetard) . '</small>';
                     }
@@ -1889,15 +1889,15 @@ final class Finance
             . '</div>'
             . '<div class="section-title">Sélectionnez votre moyen de paiement</div>'
             . '<div class="providers-grid">'
-            . '<div class="provider-card selected" data-provider="wave"><span class="provider-logo">🌊</span><span class="provider-name">Wave</span></div>'
-            . '<div class="provider-card" data-provider="orange"><span class="provider-logo">🍊</span><span class="provider-name">Orange Money</span></div>'
-            . '<div class="provider-card" data-provider="mtn"><span class="provider-logo">🟡</span><span class="provider-name">MTN MoMo</span></div>'
+            . '<div class="provider-card selected" data-provider="wave"><span class="provider-logo"></span><span class="provider-name">Wave</span></div>'
+            . '<div class="provider-card" data-provider="orange"><span class="provider-logo"></span><span class="provider-name">Orange Money</span></div>'
+            . '<div class="provider-card" data-provider="mtn"><span class="provider-logo"></span><span class="provider-name">MTN MoMo</span></div>'
             . '</div>'
             . '<div class="form-group"><label class="form-label" for="phone-input">Numéro de téléphone mobile money</label><input type="tel" id="phone-input" class="form-input" value="' . $clientPhone . '" placeholder="Ex: 0707070707"></div>'
             . '<button class="btn-pay" id="btn-pay">Payer ' . $montantFormat . ' ' . $devise . '</button>'
             . '</div>'
             . '<div id="processing-screen" class="state-screen"><div class="spinner"></div><h3 class="success-title">Paiement en cours</h3><p class="success-desc">Veuillez valider la notification de paiement sur votre téléphone mobile.</p></div>'
-            . '<div id="success-screen" class="state-screen"><div class="state-icon">✓</div><h3 class="success-title" style="color: var(--accent-success)">Paiement Réussi !</h3><p class="success-desc">Votre paiement a été traité avec succès et votre solde a été mis à jour dans notre système.<br><br>Vous pouvez fermer cet onglet.</p><button class="btn-pay" onclick="window.close()" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: var(--text-primary); box-shadow: none;">Fermer le portail</button></div>'
+            . '<div id="success-screen" class="state-screen"><div class="state-icon"></div><h3 class="success-title" style="color: var(--accent-success)">Paiement Réussi !</h3><p class="success-desc">Votre paiement a été traité avec succès et votre solde a été mis à jour dans notre système.<br><br>Vous pouvez fermer cet onglet.</p><button class="btn-pay" onclick="window.close()" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: var(--text-primary); box-shadow: none;">Fermer le portail</button></div>'
             . '</div>'
             . '<script>'
             . 'document.addEventListener("DOMContentLoaded", function() {'
@@ -2565,10 +2565,10 @@ final class Finance
             . '<div class="guide-card">'
             . '<h3><span class="guide-step-badge">1</span> Bienvenue dans le Module Finance ERP LBP</h3>'
             . '<p style="color:#475569; line-height:1.6;">Le module Finance assure la traçabilité intégrale des flux d\'argent de La Belle Porte (LBP), de la saisie d\'encaissement au guichet jusqu\'à la génération du bilan comptable SYSCOHADA.</p>'
-            . '<div class="guide-alert guide-alert--info">💡 <strong>Objectif principal :</strong> Garantir une étanchéité totale entre la gestion opérationnelle de la caisse (Caissières), le contrôle de centralisation (Caissière Principale) et le livre-journal légal (Comptables).</div>'
+            . '<div class="guide-alert guide-alert--info"><strong>Objectif principal :</strong> Garantir une étanchéité totale entre la gestion opérationnelle de la caisse (Caissières), le contrôle de centralisation (Caissière Principale) et le livre-journal légal (Comptables).</div>'
             . '</div>'
             . '<div class="guide-card">'
-            . '<h3>🔒 Séparation des Tâches (SoD - Segregation of Duties)</h3>'
+            . '<h3>Séparation des Tâches (SoD - Segregation of Duties)</h3>'
             . '<ul class="guide-list">'
             . '<li><strong>Principe de Double Contrôle :</strong> Une caissière qui soumet son point de caisse d\'agence ne peut pas le valider/consolider elle-même. La consolidation est réservée à la Caissière Principale.</li>'
             . '<li><strong>Règlement des Dépenses :</strong> Un superviseur régional qui formule une demande de paiement prestataire ne peut pas effectuer le décaissement lui-même.</li>'
@@ -2576,7 +2576,7 @@ final class Finance
             . '</ul>'
             . '</div>'
             . '<div class="guide-card">'
-            . '<h3>🔀 Gestion Multi-devises (XOF & EUR)</h3>'
+            . '<h3>Gestion Multi-devises (XOF & EUR)</h3>'
             . '<p style="color:#475569;">LBP gère les opérations en <strong>XOF (Franc CFA)</strong> et en <strong>EUR (Euro)</strong> pour les colis en provenance/destination de France ou du Canada. Toutes les sommes sont converties automatiquement au taux officiel (1 EUR = 655.957 XOF) dans le grand-livre pour la comptabilité locale.</p>'
             . '</div>'
             . '</div>';
@@ -2596,18 +2596,18 @@ final class Finance
             . '<div class="guide-card">'
             . '<h3><span class="guide-step-badge">2</span> Consultation de la Position Live & PDF de la Journée</h3>'
             . '<p style="color:#475569;">À tout moment de la journée, accédez à la page <strong>Points de Caisse</strong> (`/finance/clotures`).</p>'
-            . '<div class="guide-alert guide-alert--success">🖨️ <strong>Nouveauté PDF Temps Réel :</strong> Cliquez sur le bouton bleu <strong>"🖨️ PDF de la Journée"</strong> dans l\'en-tête de votre position pour imprimer une fiche de caisse intermédiaire non officielle à n\'importe quelle heure.</div>'
+            . '<div class="guide-alert guide-alert--success"><strong>Nouveauté PDF Temps Réel :</strong> Cliquez sur le bouton bleu <strong>"PDF de la Journée"</strong> dans l\'en-tête de votre position pour imprimer une fiche de caisse intermédiaire non officielle à n\'importe quelle heure.</div>'
             . '</div>'
             . '<div class="guide-card">'
             . '<h3><span class="guide-step-badge">3</span> Clôture & Décompte Physique des Billets (Le Soir)</h3>'
-            . '<div class="guide-alert guide-alert--warning">⚠️ <strong>Procédure de Fin de Journée :</strong></div>'
+            . '<div class="guide-alert guide-alert--warning"><strong>Procédure de Fin de Journée :</strong></div>'
             . '<ol class="guide-list">'
             . '<li>Remplissez la grille de comptage de billets (ex: 10 billets de 10 000 XOF, 5 de 5 000 XOF...).</li>'
             . '<li>Le système calcule le <strong>Solde Physique Déclaré</strong> en temps réel.</li>'
             . '<li>En cas d\'écart avec le solde théorique calculé par les factures, saisissez obligatoire une <strong>explication d\'écart</strong>.</li>'
             . '<li>Cliquez sur <strong>"Soumettre et Verrouiller ma Caisse"</strong>. Une confirmation s\'affiche pour éviter les clics accidentels.</li>'
             . '</ol>'
-            . '<div class="guide-alert guide-alert--danger">⛔ <strong>Attention :</strong> Une fois la caisse soumise, elle est verrouillée pour la journée et passe en attente de validation par la Caissière Principale.</div>'
+            . '<div class="guide-alert guide-alert--danger"><strong>Attention :</strong> Une fois la caisse soumise, elle est verrouillée pour la journée et passe en attente de validation par la Caissière Principale.</div>'
             . '</div>'
             . '</div>';
 
@@ -2641,7 +2641,7 @@ final class Finance
             . '<div class="guide-card">'
             . '<h3><span class="guide-step-badge">1</span> Consultation du Livre-Journal</h3>'
             . '<p style="color:#475569;">Accédez au menu <strong>Livre Journal</strong> (`/finance/comptabilite`). Filtrer par journal (Ventes, Caisses, Achats, Banque, OD), compte ou période.</p>'
-            . '<div class="guide-alert guide-alert--success">📊 <strong>Ligne de Totaux `tfoot` :</strong> Le bas du tableau affiche le nombre d\'écritures filtrées et le montant total cumulé en XOF.</div>'
+            . '<div class="guide-alert guide-alert--success"><strong>Ligne de Totaux `tfoot` :</strong> Le bas du tableau affiche le nombre d\'écritures filtrées et le montant total cumulé en XOF.</div>'
             . '</div>'
             . '<div class="guide-card">'
             . '<h3><span class="guide-step-badge">2</span> Saisie d\'Écritures Manuelles (OD / Régularisations)</h3>'
@@ -2675,7 +2675,7 @@ final class Finance
             . '<li>Le cumul total des Crédits</li>'
             . '<li>Le <strong>Solde Débiteur</strong> (en bleu) ou <strong>Solde Créditeur</strong> (en rouge)</li>'
             . '</ul>'
-            . '<div class="guide-alert guide-alert--info">⚖️ <strong>Vérification d\'Équilibre :</strong> Le pied de page confirme que le total général des débits est exactement égal au total général des crédits.</div>'
+            . '<div class="guide-alert guide-alert--info"><strong>Vérification d\'Équilibre :</strong> Le pied de page confirme que le total général des débits est exactement égal au total général des crédits.</div>'
             . '</div>'
             . '<div class="guide-card">'
             . '<h3><span class="guide-step-badge">2</span> Nomenclature du Plan Comptable SYSCOHADA</h3>'
@@ -2708,12 +2708,12 @@ final class Finance
             . '</div>';
 
         $navigation = '<div class="guide-tab-bar">'
-            . '<button class="guide-tab-btn active-tab" onclick="openGuideTab(event, \'tab-intro\')">🏠 Vue d\'Ensemble & SoD</button>'
-            . '<button class="guide-tab-btn" onclick="openGuideTab(event, \'tab-caissiere\')">💵 Guide Caissière</button>'
-            . '<button class="guide-tab-btn" onclick="openGuideTab(event, \'tab-principale\')">📑 Caissière Principale</button>'
-            . '<button class="guide-tab-btn" onclick="openGuideTab(event, \'tab-comptable\')">📊 Guide Comptable</button>'
-            . '<button class="guide-tab-btn" onclick="openGuideTab(event, \'tab-balance\')">⚖️ Balance & Plan SYSCOHADA</button>'
-            . '<button class="guide-tab-btn" onclick="openGuideTab(event, \'tab-pilotage\')">📈 Pilotage & Trésorerie</button>'
+            . '<button class="guide-tab-btn active-tab" onclick="openGuideTab(event, \'tab-intro\')">Vue d\'Ensemble & SoD</button>'
+            . '<button class="guide-tab-btn" onclick="openGuideTab(event, \'tab-caissiere\')">Guide Caissière</button>'
+            . '<button class="guide-tab-btn" onclick="openGuideTab(event, \'tab-principale\')">Caissière Principale</button>'
+            . '<button class="guide-tab-btn" onclick="openGuideTab(event, \'tab-comptable\')">Guide Comptable</button>'
+            . '<button class="guide-tab-btn" onclick="openGuideTab(event, \'tab-balance\')">Balance & Plan SYSCOHADA</button>'
+            . '<button class="guide-tab-btn" onclick="openGuideTab(event, \'tab-pilotage\')">Pilotage & Trésorerie</button>'
             . '</div>';
 
         return $script

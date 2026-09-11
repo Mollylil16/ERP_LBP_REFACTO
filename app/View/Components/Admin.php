@@ -230,7 +230,7 @@ final class Admin
             . '</div><form method="post" action="' . View::url('admin/users/' . (int) $page->user->id . '/reset-password')
             . '" onsubmit="return confirm(\'Êtes-vous sûr de vouloir réinitialiser le mot de passe de cet utilisateur à lbp2026 ?\');">'
             . Csrf::input()
-            . Ui::button('🔑 Réinitialiser (lbp2026)', ['variant' => 'secondary', 'type' => 'submit'])
+            . Ui::button('Réinitialiser (lbp2026)', ['variant' => 'secondary', 'type' => 'submit'])
             . '</form></section>';
     }
 

@@ -33,7 +33,7 @@ ob_start();
                 <div style="margin-bottom:20px;">
                     <?= Form::input('password', ['label' => 'Mot de passe', 'type' => 'password', 'required' => true, 'placeholder' => '••••••••']) ?>
                 </div>
-                <?= Ui::button('Se connecter ➔', ['variant' => 'primary', 'type' => 'submit', 'style' => 'width:100%; padding:12px; font-weight:700; border-radius:10px;']) ?>
+                <?= Ui::button('Se connecter →', ['variant' => 'primary', 'type' => 'submit', 'style' => 'width:100%; padding:12px; font-weight:700; border-radius:10px;']) ?>
             </form>
 
             <!-- Register Form -->
@@ -52,7 +52,7 @@ ob_start();
                 <div style="margin-bottom:20px;">
                     <?= Form::input('password', ['label' => 'Mot de passe (8 car. min)', 'type' => 'password', 'required' => true, 'minlength' => 8, 'placeholder' => '••••••••']) ?>
                 </div>
-                <?= Ui::button('Créer mon compte gratuit ➔', ['variant' => 'accent', 'type' => 'submit', 'style' => 'width:100%; padding:12px; font-weight:700; border-radius:10px;']) ?>
+                <?= Ui::button('Créer mon compte gratuit →', ['variant' => 'accent', 'type' => 'submit', 'style' => 'width:100%; padding:12px; font-weight:700; border-radius:10px;']) ?>
             </form>
         </div>
     </section>
@@ -100,7 +100,7 @@ ob_start();
         <?php if (empty($page->parcels)): ?>
             <div style="background:#f8fafc; border:1px dashed #cbd5e1; padding:30px; border-radius:12px; text-align:center;">
                 <p style="color:#64748b; margin:0 0 12px 0;">Aucun colis enregistré sous votre email (<code><?= View::e((string)$page->customer['email']) ?></code>) pour le moment.</p>
-                <a href="<?= View::url('site/tracking') ?>" style="background:#2563eb; color:#ffffff; font-weight:700; padding:10px 20px; border-radius:8px; text-decoration:none; display:inline-block; font-size:0.88rem;">Suivre un colis par N° de tracking ➔</a>
+                <a href="<?= View::url('site/tracking') ?>" style="background:#2563eb; color:#ffffff; font-weight:700; padding:10px 20px; border-radius:8px; text-decoration:none; display:inline-block; font-size:0.88rem;">Suivre un colis par N° de tracking →</a>
             </div>
         <?php else: ?>
             <div style="overflow-x:auto;">
@@ -123,7 +123,7 @@ ob_start();
                                     </code>
                                 </td>
                                 <td style="padding:14px 16px; font-weight:600; color:#0f172a;">
-                                    <?= View::e((string)($p['agence_depart_name'] ?? 'Agence départ')) ?> ➔ <?= View::e((string)($p['agence_arrivee_name'] ?? 'Agence arrivée')) ?>
+                                    <?= View::e((string)($p['agence_depart_name'] ?? 'Agence départ')) ?> → <?= View::e((string)($p['agence_arrivee_name'] ?? 'Agence arrivée')) ?>
                                 </td>
                                 <td style="padding:14px 16px; color:#64748b;">
                                     <?= View::e(date('d/m/Y H:i', strtotime((string)$p['created_at']))) ?>
@@ -162,8 +162,8 @@ ob_start();
                 <?= Form::textarea('message', ['label' => 'Votre message', 'rows' => 3, 'placeholder' => 'Posez une question ou demandez un suivi sur votre dossier...']) ?>
                 <div style="margin-top:10px;"><?= Form::dropzone('attachment', 'Joindre un média', ['accept' => 'image/jpeg,image/png,image/webp,video/mp4,video/webm,audio/mpeg,audio/ogg,audio/webm,audio/mp4', 'hint' => 'Image, vidéo ou note vocale · 20 Mo max.']) ?></div>
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-top:14px; flex-wrap:wrap; gap:10px;">
-                    <button class="site-voice-button" type="button" data-voice-record style="background:#f1f5f9; border:1px solid #cbd5e1; color:#334155; padding:8px 16px; border-radius:8px; font-weight:600; cursor:pointer;">🎤 Note vocale</button>
-                    <?= Ui::button('Envoyer le message ➔', ['variant' => 'primary', 'type' => 'submit']) ?>
+                    <button class="site-voice-button" type="button" data-voice-record style="background:#f1f5f9; border:1px solid #cbd5e1; color:#334155; padding:8px 16px; border-radius:8px; font-weight:600; cursor:pointer;">Note vocale</button>
+                    <?= Ui::button('Envoyer le message →', ['variant' => 'primary', 'type' => 'submit']) ?>
                 </div>
             </form>
         </div>

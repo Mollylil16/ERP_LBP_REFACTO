@@ -29,7 +29,7 @@ final class PilotageDg
             . Ui::button('Centre de Validation', ['href' => View::url('pilotage-dg/validations'), 'variant' => 'secondary'])
             . Ui::button('Anomalies & Fraude', ['href' => View::url('pilotage-dg/anomalies'), 'variant' => 'secondary'])
             . Ui::button('Journal d\'Audit', ['href' => View::url('pilotage-dg/audit'), 'variant' => 'secondary'])
-            . Ui::button('📜 Charte Informatique (Protection DG)', ['href' => View::url('rh/charte-informatique'), 'variant' => 'accent'])
+            . Ui::button('Charte Informatique (Protection DG)', ['href' => View::url('rh/charte-informatique'), 'variant' => 'accent'])
             . '</div>';
 
         $agenceStats = (array) ($module['agenceStats'] ?? []);
@@ -94,7 +94,7 @@ final class PilotageDg
         return '<div class="finea-shell">'
             . '<div class="finea-container">'
             . $header
-            . '<div style="margin-bottom: 1.5rem;">' . Ui::section('🏆 Tableau d\'Honneur DG - Employés Modèles & Primes Recommandées', $honnetesHtml) . '</div>'
+            . '<div style="margin-bottom: 1.5rem;">' . Ui::section('Tableau d\'Honneur DG - Employés Modèles & Primes Recommandées', $honnetesHtml) . '</div>'
             . '<div style="margin-bottom: 1.5rem;">' . Ui::section('Alertes personnel (' . count($alerts) . ')', $alertsHtml) . '</div>'
             . Ui::section('Effectif actif & Score d\'Intégrité (' . count($employees) . ')', $tableHtml)
             . '</div>'
@@ -112,9 +112,9 @@ final class PilotageDg
         foreach ($topHonnetes as $idx => $emp) {
             $rank = $idx + 1;
             $medaille = match ($rank) {
-                1 => '🥇 Rang 1',
-                2 => '🥈 Rang 2',
-                3 => '🥉 Rang 3',
+                1 => 'Rang 1',
+                2 => 'Rang 2',
+                3 => 'Rang 3',
                 default => '#' . $rank,
             };
             $score = (int) ($emp['score_integrite'] ?? 85);
@@ -181,10 +181,10 @@ final class PilotageDg
             $gpsStatut = $emp['gps_statut'] ?? 'inconnu';
             $gpsDist = $emp['gps_distance_km'] ?? null;
             $gpsBadge = match ($gpsStatut) {
-                'sur_site' => Ui::badge('🟢 SUR SITE', 'success'),
-                'proximite' => Ui::badge('🟡 PROXIMITÉ (' . round((float)$gpsDist, 1) . ' km)', 'warning'),
-                'hors_site' => Ui::badge('🔴 HORS SITE (' . round((float)$gpsDist, 1) . ' km)', 'danger'),
-                default => Ui::badge('⚪ Non géolocalisé', 'neutral'),
+                'sur_site' => Ui::badge('SUR SITE', 'success'),
+                'proximite' => Ui::badge('PROXIMITÉ (' . round((float)$gpsDist, 1) . ' km)', 'warning'),
+                'hors_site' => Ui::badge('HORS SITE (' . round((float)$gpsDist, 1) . ' km)', 'danger'),
+                default => Ui::badge('Non géolocalisé', 'neutral'),
             };
 
             $rows .= '<tr>'

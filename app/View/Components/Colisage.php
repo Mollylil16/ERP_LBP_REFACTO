@@ -209,12 +209,12 @@ final class Colisage
             . '<div id="trajet_container" style="display:none;">'
             . Form::select('trajet', [
                 ['value' => '', 'label' => '-- Sélectionner le trajet --'],
-                ['value' => 'CIV_SEN', 'label' => 'CIV ➔ SEN'],
-                ['value' => 'SEN_CIV', 'label' => 'SEN ➔ CIV'],
-                ['value' => 'CIV_FR', 'label' => 'CIV ➔ FR'],
-                ['value' => 'FR_CIV', 'label' => 'FR ➔ CIV'],
-                ['value' => 'SEN_FR', 'label' => 'SEN ➔ FR'],
-                ['value' => 'FR_SEN', 'label' => 'FR ➔ SEN'],
+                ['value' => 'CIV_SEN', 'label' => 'CIV → SEN'],
+                ['value' => 'SEN_CIV', 'label' => 'SEN → CIV'],
+                ['value' => 'CIV_FR', 'label' => 'CIV → FR'],
+                ['value' => 'FR_CIV', 'label' => 'FR → CIV'],
+                ['value' => 'SEN_FR', 'label' => 'SEN → FR'],
+                ['value' => 'FR_SEN', 'label' => 'FR → SEN'],
             ], '', ['label' => 'Trajet inter-pays'])
             . '</div>'
             . Form::selectSearch('agence_depart_id', $siteOpts, '', ['label' => 'Agence de départ'])
@@ -223,7 +223,7 @@ final class Colisage
             . Form::input('nombre_colis', ['label' => 'Nombre total de colis', 'type' => 'number', 'min' => 1, 'value' => '1', 'required' => true])
             . Form::input('poids_total', ['label' => 'Poids total (kg)', 'type' => 'number', 'step' => '0.01', 'required' => true, 'id' => 'poids_total_input'])
             . '<div style="grid-column: span 3; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:0.8rem 1rem; margin-top:0.25rem;">'
-            . '<small style="font-weight:700; color:#334155;">📐 Calculateur de Poids Volumétrique (Norme IATA : L x l x h / 5000)</small>'
+            . '<small style="font-weight:700; color:#334155;">Calculateur de Poids Volumétrique (Norme IATA : L x l x h / 5000)</small>'
             . '<div style="display:grid; grid-template-columns: 1fr 1fr 1fr 1.5fr; gap:0.75rem; margin-top:0.5rem;">'
             . '<input type="number" step="0.1" placeholder="Long. L (cm)" id="dim_l" style="padding:6px; border:1px solid #cbd5e1; border-radius:6px; font-weight:600;">'
             . '<input type="number" step="0.1" placeholder="Larg. l (cm)" id="dim_w" style="padding:6px; border:1px solid #cbd5e1; border-radius:6px; font-weight:600;">'
@@ -794,7 +794,7 @@ final class Colisage
             . '        var planeSvg = \"<svg viewBox=\\\"0 0 24 24\\\" fill=\\\"none\\\" stroke=\\\"currentColor\\\" stroke-width=\\\"2.2\\\"><path d=\\\"M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.7 5.2c.3.4.8.5 1.3.3l.5-.3c.4-.2.6-.6.5-1.1z\\\"/></svg>\";'
             . '        var planeIcon = L.divIcon({ className:"", html:"<div class=\"lbp-track-vehicle-marker\">" + planeSvg + "</div>", iconSize:[40,40], iconAnchor:[20,20] });'
             . '        var planePos = [27.1, -0.8];'
-            . '        L.marker(planePos, {icon: planeIcon}).addTo(map).bindPopup("<b>Vol Vol LB-CI en Transit Aérien</b><br>Abidjan ➔ Paris (65% effectué)");'
+            . '        L.marker(planePos, {icon: planeIcon}).addTo(map).bindPopup("<b>Vol Vol LB-CI en Transit Aérien</b><br>Abidjan → Paris (65% effectué)");'
             . '    }'
             . '    initOpMap();'
             . '});'
@@ -2275,7 +2275,7 @@ final class Colisage
             foreach ($balances as $b) {
                 $rows .= '<tr>'
                     . '<td><strong>' . View::e($b['agence_creanciere']) . '</strong></td>'
-                    . '<td><span style="color:#dc2626;"> owes to ➔ </span><strong>' . View::e($b['agence_debitrice']) . '</strong></td>'
+                    . '<td><span style="color:#dc2626;"> owes to → </span><strong>' . View::e($b['agence_debitrice']) . '</strong></td>'
                     . '<td style="text-align:right; font-weight:700; color:#dc2626;">' . number_format((float) $b['total_montant'], 0, ',', '.') . ' ' . View::e($b['devise']) . '</td>'
                     . '</tr>';
             }
@@ -2305,7 +2305,7 @@ final class Colisage
                         . Form::hidden('_csrf_token', \App\Helpers\Csrf::token())
                         . '<button type="submit" class="finea-button finea-button--accent finea-button-sm">Marquer réglé</button></form>';
                 } else {
-                    $actionHtml = '<span style="color:var(--lbp-success); font-weight:600; font-size:0.85rem;">✓ Compensé</span>';
+                    $actionHtml = '<span style="color:var(--lbp-success); font-weight:600; font-size:0.85rem;">Compensé</span>';
                 }
 
                 $rows .= '<tr>'
@@ -2422,7 +2422,7 @@ final class Colisage
                 $label = $d['avg_days'] <= 7 ? 'Excellent' : 'Normal';
                 $tone = $d['avg_days'] <= 7 ? 'success' : 'warning';
                 $rows .= '<tr>'
-                    . '<td><strong>Axe Inter-Agences #' . (int) $d['agence_depart_id'] . ' ➔ #' . (int) $d['agence_arrivee_id'] . '</strong></td>'
+                    . '<td><strong>Axe Inter-Agences #' . (int) $d['agence_depart_id'] . ' → #' . (int) $d['agence_arrivee_id'] . '</strong></td>'
                     . '<td style="text-align:center; font-weight:700; color:var(--lbp-blue-light);">' . number_format((float) $d['avg_days'], 1) . ' jours</td>'
                     . '<td>' . Ui::badge($label, $tone) . '</td>'
                     . '</tr>';
@@ -2546,7 +2546,7 @@ final class Colisage
             foreach ($manifests as $m) {
                 $rows .= '<tr>'
                     . '<td><strong>' . View::e($m['reference']) . '</strong></td>'
-                    . '<td><small>' . View::e($m['agence_depart_name']) . ' ➔ ' . View::e($m['agence_arrivee_name']) . '</small></td>'
+                    . '<td><small>' . View::e($m['agence_depart_name']) . ' → ' . View::e($m['agence_arrivee_name']) . '</small></td>'
                     . '<td style="text-align:center;">' . Ui::badge((string) (int) $m['colis_count'], 'neutral') . '</td>'
                     . '<td style="text-align:right;">' . Ui::button('Visualiser / Éditer', ['href' => 'colisage/groupage/' . $m['id'], 'variant' => 'secondary', 'class' => 'finea-button-sm']) . '</td>'
                     . '</tr>';
@@ -2617,7 +2617,7 @@ final class Colisage
             foreach ($items as $item) {
                 $rows .= '<tr>'
                     . '<td><strong style="font-family:monospace; color:#0f172a;">' . View::e($item['ref']) . '</strong><br><small style="color:#64748b;">' . View::e($item['type']) . '</small></td>'
-                    . '<td>' . View::e($item['origin']) . ' ➔ ' . View::e($item['dest']) . '</td>'
+                    . '<td>' . View::e($item['origin']) . ' → ' . View::e($item['dest']) . '</td>'
                     . '<td>' . Ui::badge(View::e($item['status']), 'primary') . '</td>'
                     . '<td style="text-align:right;"><a href="' . View::e($item['url']) . '" class="finea-button-sm finea-button-secondary" target="_blank">Suivre en direct</a></td>'
                     . '</tr>';
@@ -2981,7 +2981,7 @@ final class Colisage
                 . Form::input('recup_telephone', ['label' => 'Téléphone récupérateur', 'required' => true, 'placeholder' => 'Ex: 05050505'])
                 . '</div>';
 
-            $form = '<p style="color:#64748b; font-size:0.9rem; margin-bottom:1rem;">⚠️ Vérification obligatoire de la CNI du récupérateur (Responsabilité Juridique)</p>'
+            $form = '<p style="color:#64748b; font-size:0.9rem; margin-bottom:1rem;">Vérification obligatoire de la CNI du récupérateur (Responsabilité Juridique)</p>'
                 . '<form method="post" action="' . View::url('colisage/parcels/' . $colis['id'] . '/retirer') . '" id="form-retrait">'
                 . Form::hidden('_csrf_token', \App\Helpers\Csrf::token())
                 . $fields
@@ -3076,10 +3076,10 @@ final class Colisage
         } else {
             foreach ($parcels as $p) {
                 $catLabel = match ($p['type_expediteur']) {
-                    'export_aerien' => '✈️ Export Aérien',
-                    'export_maritime' => '🚢 Export Maritime',
-                    'import_aerien' => '✈️ Import Aérien',
-                    'import_maritime' => '🚢 Import Maritime',
+                    'export_aerien' => 'Export Aérien',
+                    'export_maritime' => 'Export Maritime',
+                    'import_aerien' => 'Import Aérien',
+                    'import_maritime' => 'Import Maritime',
                     default => $p['type_expediteur']
                 };
                 $tone = match ($p['statut']) {
@@ -3112,7 +3112,7 @@ final class Colisage
         } else {
             foreach ($expeditions as $e) {
                 $icon = match ($e['type_transport']) {
-                    'AÉRIEN' => '✈️ Aérien', 'MARITIME' => '🚢 Maritime', 'TERRESTRE' => '🚛 Terrestre', default => $e['type_transport']
+                    'AÉRIEN' => 'Aérien', 'MARITIME' => 'Maritime', 'TERRESTRE' => 'Terrestre', default => $e['type_transport']
                 };
                 $tone = match ($e['statut']) {
                     'ARRIVÉ' => 'success', 'EN_TRANSIT' => 'primary', 'BROUILLON' => 'warning', default => 'neutral'
@@ -3147,18 +3147,18 @@ final class Colisage
             ])
             . Form::selectSearch('type_expediteur', 'Transporteur / Service', [
                 ['value' => '', 'label' => 'Tous les services'],
-                ['value' => 'dhl', 'label' => '📦 DHL Express'],
-                ['value' => 'colis_rapide_export', 'label' => '⚡ Colis Rapide Export'],
-                ['value' => 'colis_rapide_import', 'label' => '⚡ Colis Rapide Import']
+                ['value' => 'dhl', 'label' => 'DHL Express'],
+                ['value' => 'colis_rapide_export', 'label' => 'Colis Rapide Export'],
+                ['value' => 'colis_rapide_import', 'label' => 'Colis Rapide Import']
             ], $filters['type_expediteur'] ?? '')
             . Form::selectSearch('trajet', 'Trajet (Colis Rapide)', [
                 ['value' => '', 'label' => 'Tous les trajets'],
-                ['value' => 'CIV_SEN', 'label' => 'CIV ➔ SEN'],
-                ['value' => 'SEN_CIV', 'label' => 'SEN ➔ CIV'],
-                ['value' => 'CIV_FR', 'label' => 'CIV ➔ FR'],
-                ['value' => 'FR_CIV', 'label' => 'FR ➔ CIV'],
-                ['value' => 'SEN_FR', 'label' => 'SEN ➔ FR'],
-                ['value' => 'FR_SEN', 'label' => 'FR ➔ SEN']
+                ['value' => 'CIV_SEN', 'label' => 'CIV → SEN'],
+                ['value' => 'SEN_CIV', 'label' => 'SEN → CIV'],
+                ['value' => 'CIV_FR', 'label' => 'CIV → FR'],
+                ['value' => 'FR_CIV', 'label' => 'FR → CIV'],
+                ['value' => 'SEN_FR', 'label' => 'SEN → FR'],
+                ['value' => 'FR_SEN', 'label' => 'FR → SEN']
             ], $filters['trajet'] ?? '')
             . Form::selectSearch('statut', 'Statut', [
                 ['value' => '', 'label' => 'Tous les statuts'],
@@ -3186,13 +3186,13 @@ final class Colisage
         } else {
             foreach ($parcels as $p) {
                 $srv = match ($p['type_expediteur']) {
-                    'dhl' => '📦 DHL Express',
-                    'colis_rapide_export' => '⚡ Colis Rapide Export',
-                    'colis_rapide_import' => '⚡ Colis Rapide Import',
+                    'dhl' => 'DHL Express',
+                    'colis_rapide_export' => 'Colis Rapide Export',
+                    'colis_rapide_import' => 'Colis Rapide Import',
                     default => $p['type_expediteur']
                 };
                 $trajetHtml = $p['trajet']
-                    ? '<span class="finea-badge finea-badge--info" style="font-size:0.75rem; text-transform:none;">' . str_replace('_', ' ➔ ', $p['trajet']) . '</span>'
+                    ? '<span class="finea-badge finea-badge--info" style="font-size:0.75rem; text-transform:none;">' . str_replace('_', ' → ', $p['trajet']) . '</span>'
                     : '<span style="color:#94a3b8;">—</span>';
                 $tone = match ($p['statut']) {
                     'RETIRÉ', 'LIVRÉ' => 'success', 'RÉCEPTIONNÉ' => 'info', 'EN_TRANSIT' => 'primary', 'ARRIVÉ' => 'accent', default => 'neutral'
@@ -3502,12 +3502,12 @@ final class Colisage
             . '@media print { body { background: #fff; padding: 0; } .manifest-card { border: none; box-shadow: none; padding: 0; width: 100%; max-width: none; } .print-btn-bar { display: none; } }'
             . '</style></head>'
             . '<body>'
-            . '<div class="print-btn-bar"><button class="print-btn" onclick="window.print()">🖨️ Imprimer le Manifeste Douane (A4)</button></div>'
+            . '<div class="print-btn-bar"><button class="print-btn" onclick="window.print()">Imprimer le Manifeste Douane (A4)</button></div>'
             . '<div class="manifest-card">'
             . '<div class="header"><div><div class="brand-title">LA BELLE PORTE LOGISTICS</div><div class="brand-sub">Compagnie de Transit & Fret International — MAWB / LTA</div></div><div class="doc-title-box"><div class="doc-title">MANIFESTE DE CHARGE</div><div class="doc-ref">N° REF : ' . View::e($ref) . '</div></div></div>'
-            . '<div class="grid-info"><div><div class="info-item"><span class="info-label">ITINÉRAIRE D\'EXPÉDITION :</span> <span class="info-val">' . View::e($depAgency) . ' ➔ ' . View::e($arrAgency) . '</span></div>'
+            . '<div class="grid-info"><div><div class="info-item"><span class="info-label">ITINÉRAIRE D\'EXPÉDITION :</span> <span class="info-val">' . View::e($depAgency) . ' → ' . View::e($arrAgency) . '</span></div>'
             . '<div class="info-item"><span class="info-label">DATES :</span> <span class="info-val">Départ : ' . $dateDepart . ' | Arrivée estimée : ' . $dateArrivee . '</span></div></div>'
-            . '<div><div class="info-label">MODE DE TRANSPORT :</div><div class="transport-badge">✈️ FRET ' . View::e($typeTransport) . '</div></div></div>'
+            . '<div><div class="info-label">MODE DE TRANSPORT :</div><div class="transport-badge">FRET ' . View::e($typeTransport) . '</div></div></div>'
             . '<div class="table-section"><div style="font-size:11px; font-weight:800; text-transform:uppercase; margin-bottom:4px;">RELEVÉ CONSOLIDÉ DES COLIS & MARCHANDISES (' . count($parcels) . ' EXPÉDITIONS)</div>'
             . '<table class="manifest-table"><thead><tr><th style="width:30px;">N°</th><th>N° TRACKING</th><th>EXPÉDITEUR</th><th>DESTINATAIRE & CONTACT</th><th style="text-align:center;">NBRE COLIS</th><th style="text-align:right;">POIDS (KG)</th><th style="text-align:right;">VALEUR DÉCLARÉE</th></tr></thead>'
             . '<tbody>' . $tableRows . '</tbody></table></div>'
@@ -3546,7 +3546,7 @@ final class Colisage
                 'eyebrow' => 'Finance & Opérations DHL',
                 'class' => 'rh-hero-white',
                 'actions' => [
-                    Ui::button('📦 Saisir un Envoi DHL', ['href' => 'operation/DHL/saisir', 'variant' => 'accent']),
+                    Ui::button('Saisir un Envoi DHL', ['href' => 'operation/DHL/saisir', 'variant' => 'accent']),
                     Ui::button('<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:5px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg> Exporter en CSV', ['href' => $exportUrl, 'variant' => 'secondary'])
                 ]
             ]
@@ -3559,7 +3559,7 @@ final class Colisage
             . '<div style="display:flex; justify-content:space-between; align-items:flex-start;">'
             . '<div><small style="color:#64748b; font-weight:700; text-transform:uppercase; font-size:0.75rem; letter-spacing:0.5px;">Nombre d\'Envois DHL</small>'
             . '<h2 style="font-size:2.2rem; font-weight:900; color:#1e293b; margin:0.35rem 0 0;">' . number_format($totalEnvois, 0, ',', ' ') . '</h2></div>'
-            . '<span style="background:#eff6ff; color:#2563eb; width:44px; height:44px; border-radius:10px; display:inline-flex; align-items:center; justify-content:center; font-size:1.3rem;">📦</span>'
+            . '<span style="background:#eff6ff; color:#2563eb; width:44px; height:44px; border-radius:10px; display:inline-flex; align-items:center; justify-content:center; font-size:1.3rem;"></span>'
             . '</div>'
             . '<p style="margin:0.5rem 0 0; font-size:0.8rem; color:#64748b;">Expéditions partenaires enregistrées</p>'
             . '</div>'
@@ -3568,7 +3568,7 @@ final class Colisage
             . '<div style="display:flex; justify-content:space-between; align-items:flex-start;">'
             . '<div><small style="color:#64748b; font-weight:700; text-transform:uppercase; font-size:0.75rem; letter-spacing:0.5px;">Chiffre d\'Affaires (Ventes LBP)</small>'
             . '<h2 style="font-size:2rem; font-weight:900; color:#065f46; margin:0.35rem 0 0;">' . number_format($caTotal, 0, ',', ' ') . ' <span style="font-size:1rem; font-weight:700; color:#059669;">FCFA</span></h2></div>'
-            . '<span style="background:#ecfdf5; color:#059669; width:44px; height:44px; border-radius:10px; display:inline-flex; align-items:center; justify-content:center; font-size:1.3rem;">💵</span>'
+            . '<span style="background:#ecfdf5; color:#059669; width:44px; height:44px; border-radius:10px; display:inline-flex; align-items:center; justify-content:center; font-size:1.3rem;"></span>'
             . '</div>'
             . '<p style="margin:0.5rem 0 0; font-size:0.8rem; color:#64748b;">Total facturé aux clients expéditeurs</p>'
             . '</div>'
@@ -3577,7 +3577,7 @@ final class Colisage
             . '<div style="display:flex; justify-content:space-between; align-items:flex-start;">'
             . '<div><small style="color:#64748b; font-weight:700; text-transform:uppercase; font-size:0.75rem; letter-spacing:0.5px;">Coût d\'Achat Total DHL (Achats)</small>'
             . '<h2 style="font-size:2rem; font-weight:900; color:#b45309; margin:0.35rem 0 0;">' . number_format($coutTotalDhl, 0, ',', ' ') . ' <span style="font-size:1rem; font-weight:700; color:#d97706;">FCFA</span></h2></div>'
-            . '<span style="background:#fffbeb; color:#d97706; width:44px; height:44px; border-radius:10px; display:inline-flex; align-items:center; justify-content:center; font-size:1.3rem;">🚚</span>'
+            . '<span style="background:#fffbeb; color:#d97706; width:44px; height:44px; border-radius:10px; display:inline-flex; align-items:center; justify-content:center; font-size:1.3rem;"></span>'
             . '</div>'
             . '<p style="margin:0.5rem 0 0; font-size:0.8rem; color:#64748b;">Montant reversé / débours DHL</p>'
             . '</div>'
@@ -3586,7 +3586,7 @@ final class Colisage
             . '<div style="display:flex; justify-content:space-between; align-items:flex-start;">'
             . '<div><small style="color:#64748b; font-weight:700; text-transform:uppercase; font-size:0.75rem; letter-spacing:0.5px;">Bénéfice Net Total LBP</small>'
             . '<h2 style="font-size:2rem; font-weight:900; color:#5b21b6; margin:0.35rem 0 0;">' . number_format($beneficeTotal, 0, ',', ' ') . ' <span style="font-size:1rem; font-weight:700; color:#7c3aed;">FCFA</span></h2></div>'
-            . '<span style="background:#f3e8ff; color:#7c3aed; width:44px; height:44px; border-radius:10px; display:inline-flex; align-items:center; justify-content:center; font-size:1.3rem;">📈</span>'
+            . '<span style="background:#f3e8ff; color:#7c3aed; width:44px; height:44px; border-radius:10px; display:inline-flex; align-items:center; justify-content:center; font-size:1.3rem;"></span>'
             . '</div>'
             . '<div style="margin-top:0.5rem; display:flex; align-items:center; gap:0.5rem;">'
             . '<span style="background:#dcfce7; color:#15803d; font-weight:800; font-size:0.8rem; padding:2px 8px; border-radius:4px;">Taux de marge : ' . $tauxMarge . '%</span>'
@@ -3627,7 +3627,7 @@ final class Colisage
         $tableRows = '';
         if (empty($items)) {
             $tableRows = '<tr><td colspan="13" style="text-align:center; padding:3rem; color:#94a3b8; font-size:1rem;">'
-                . '<div style="font-size:2.5rem; margin-bottom:0.5rem;">📦</div>'
+                . '<div style="font-size:2.5rem; margin-bottom:0.5rem;"></div>'
                 . 'Aucun envoi DHL Express trouvé pour ces critères de recherche.'
                 . '</td></tr>';
         } else {
@@ -3645,11 +3645,11 @@ final class Colisage
 
                 $tableRows .= '<tr>'
                     . '<td><a href="' . View::url('colisage/parcels/' . $c['id']) . '" style="font-weight:800; color:#1e40af; text-decoration:none;">' . View::e($c['numero_tracking']) . '</a></td>'
-                    . '<td>' . (!empty($c['awb_dhl']) ? '<span style="background:#fffbeb; color:#b45309; border:1px solid #fde68a; font-family:monospace; font-weight:800; font-size:0.85rem; padding:2px 8px; border-radius:4px;">✈️ ' . View::e($c['awb_dhl']) . '</span>' : '<span style="color:#94a3b8; font-size:0.8rem;">—</span>') . '</td>'
+                    . '<td>' . (!empty($c['awb_dhl']) ? '<span style="background:#fffbeb; color:#b45309; border:1px solid #fde68a; font-family:monospace; font-weight:800; font-size:0.85rem; padding:2px 8px; border-radius:4px;">' . View::e($c['awb_dhl']) . '</span>' : '<span style="color:#94a3b8; font-size:0.8rem;">—</span>') . '</td>'
                     . '<td><small style="color:#64748b; font-weight:600;">' . date('d/m/Y', strtotime((string)$c['created_at'])) . '</small></td>'
                     . '<td><strong>' . View::e($c['expediteur_name']) . '</strong><br><small style="color:#64748b;">' . View::e($c['expediteur_phone'] ?? '') . '</small></td>'
                     . '<td><strong>' . View::e($c['destinataire_name']) . '</strong><br><small style="color:#64748b;">' . View::e($c['destinataire_phone'] ?? '') . '</small></td>'
-                    . '<td><small style="font-weight:600;">' . View::e($c['agence_depart_name'] ?? '—') . ' ➔ ' . View::e($c['agence_arrivee_name'] ?? '—') . '</small></td>'
+                    . '<td><small style="font-weight:600;">' . View::e($c['agence_depart_name'] ?? '—') . ' → ' . View::e($c['agence_arrivee_name'] ?? '—') . '</small></td>'
                     . '<td style="text-align:right; font-weight:700;">' . number_format((float)$c['poids_total'], 2, ',', ' ') . ' kg</td>'
                     . '<td style="text-align:right; font-weight:800; color:#065f46;">' . number_format($prixVente, 0, ',', ' ') . ' FCFA</td>'
                     . '<td style="text-align:right; font-weight:700; color:#b45309;">' . number_format($coutAchat, 0, ',', ' ') . ' FCFA</td>'
@@ -3673,7 +3673,7 @@ final class Colisage
             . '<th>Date</th>'
             . '<th>Expéditeur</th>'
             . '<th>Destinataire</th>'
-            . '<th>Axe (Départ ➔ Arrivée)</th>'
+            . '<th>Axe (Départ → Arrivée)</th>'
             . '<th style="text-align:right;">Poids (kg)</th>'
             . '<th style="text-align:right;">Prix Vente (FCFA)</th>'
             . '<th style="text-align:right;">Coût Achat DHL (FCFA)</th>'

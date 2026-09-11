@@ -45,7 +45,7 @@ ob_start();
                         <div>
                             <?php 
                             $tone = $r['action_recommandee'] === 'suspendre_compte' ? 'danger' : 'warning';
-                            $label = $r['action_recommandee'] === 'suspendre_compte' ? '🚫 Demande de Suspension' : '⚠️ Qualification de Fraude';
+                            $label = $r['action_recommandee'] === 'suspendre_compte' ? 'Demande de Suspension' : 'Qualification de Fraude';
                             echo Ui::badge($label, $tone);
                             ?>
                             <span style="font-size:0.8rem; color:#64748b; margin-left:0.5rem;">Suggéré le <?= date('d/m/Y H:i', strtotime($r['created_at'])) ?></span>
@@ -61,12 +61,12 @@ ob_start();
                         <!-- Action Approuver -->
                         <form method="post" action="<?= View::url('surveillance/recommandations/' . $r['id'] . '/approuver') ?>" style="display:inline;">
                             <input type="hidden" name="_csrf_token" value="<?= View::e(\App\Helpers\Csrf::token()) ?>">
-                            <?= Ui::button('✔️ Appliquer la recommandation', ['type' => 'submit', 'variant' => 'primary', 'class' => 'finea-button-sm']) ?>
+                            <?= Ui::button('Appliquer la recommandation', ['type' => 'submit', 'variant' => 'primary', 'class' => 'finea-button-sm']) ?>
                         </form>
                         <!-- Action Rejeter -->
                         <form method="post" action="<?= View::url('surveillance/recommandations/' . $r['id'] . '/rejeter') ?>" style="display:inline;">
                             <input type="hidden" name="_csrf_token" value="<?= View::e(\App\Helpers\Csrf::token()) ?>">
-                            <?= Ui::button('❌ Rejeter', ['type' => 'submit', 'variant' => 'secondary', 'class' => 'finea-button-sm']) ?>
+                            <?= Ui::button('Rejeter', ['type' => 'submit', 'variant' => 'secondary', 'class' => 'finea-button-sm']) ?>
                         </form>
                     </div>
                 </div>

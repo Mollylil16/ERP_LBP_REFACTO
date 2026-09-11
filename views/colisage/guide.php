@@ -121,11 +121,11 @@ $header = Ui::pageHeader(
 
         <!-- Navigation par onglets -->
         <div class="guide-tabs">
-            <button class="guide-tab-btn active" data-target="pane-saisie">📝 1. Saisie de Colis</button>
-            <button class="guide-tab-btn" data-target="pane-trajets">🚚 2. Types & Trajets</button>
-            <button class="guide-tab-btn" data-target="pane-tarifs">🧮 3. Tarification & Emballages</button>
-            <button class="guide-tab-btn" data-target="pane-retrait">🔄 4. Retrait & Gardiennage</button>
-            <button class="guide-tab-btn" data-target="pane-ia">🛡️ 5. Règles Anti-Fraude</button>
+            <button class="guide-tab-btn active" data-target="pane-saisie">1. Saisie de Colis</button>
+            <button class="guide-tab-btn" data-target="pane-trajets">2. Types & Trajets</button>
+            <button class="guide-tab-btn" data-target="pane-tarifs">3. Tarification & Emballages</button>
+            <button class="guide-tab-btn" data-target="pane-retrait">4. Retrait & Gardiennage</button>
+            <button class="guide-tab-btn" data-target="pane-ia">5. Règles Anti-Fraude</button>
         </div>
 
         <!-- Contenu des Onglets -->
@@ -133,7 +133,7 @@ $header = Ui::pageHeader(
         <!-- 1. SAISIE DE COLIS -->
         <div class="guide-pane active" id="pane-saisie">
             <div class="info-box">
-                <h4>📌 Raccourci Opérationnel</h4>
+                <h4>Raccourci Opérationnel</h4>
                 <p>Pour éviter toute erreur de trajet, naviguez via la section <strong>"Opérations"</strong> dans le menu latéral gauche pour saisir directement un colis sur un vol/cargo spécifique. Cela verrouille le trajet et empêche toute modification accidentelle.</p>
             </div>
 
@@ -175,7 +175,7 @@ $header = Ui::pageHeader(
                     <p><span class="step-badge">3</span> Indiquer le poids et la valeur déclarée globale.</p>
                     <p><span class="step-badge">4</span> Ajouter les lignes de marchandises (produit, quantité, poids unitaire, emballage).</p>
                     <p><span class="step-badge">5</span> Cliquer sur <strong>Enregistrer le Colis</strong>. L'ERP génère le tracking unique.</p>
-                    <p><span class="step-badge">6</span> Sur la fiche colis, cliquer sur <strong>⚡ Facturer (1-Clic)</strong> pour finaliser la facturation.</p>
+                    <p><span class="step-badge">6</span> Sur la fiche colis, cliquer sur <strong>Facturer (1-Clic)</strong> pour finaliser la facturation.</p>
                 </div>
             </section>
         </div>
@@ -183,23 +183,23 @@ $header = Ui::pageHeader(
         <!-- 2. TYPES & TRAJETS -->
         <div class="guide-pane" id="pane-trajets">
             <div class="warning-box">
-                <h4>⚠️ Fret Aérien vs Maritime</h4>
+                <h4>Fret Aérien vs Maritime</h4>
                 <p>Assurez-vous de bien sélectionner le bon trajet. Les tarifs aériens sont appliqués au kilogramme sur les marchandises légères et de valeur, tandis que les conteneurs maritimes tolèrent de plus grands volumes mais appliquent des délais plus longs.</p>
             </div>
 
             <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:1rem; margin-bottom:1.5rem;">
                 <div class="scenario-card">
-                    <h4>🚢 Maritime Standard (`LB-CI`)</h4>
+                    <h4>Maritime Standard (`LB-CI`)</h4>
                     <p><strong>Exemple</strong> : Sacs de vêtements d'Abidjan vers la France.</p>
                     <p>Saisir le poids total (ex: 75 kg) et sélectionner l'emballage <em>Sac Bôrô</em> dans le tableau. Le système calculera la douane et le fret selon le tarif au kg spécifique.</p>
                 </div>
                 <div class="scenario-card">
-                    <h4>✈️ Aérien Urgent (`CA-CI`)</h4>
+                    <h4>Aérien Urgent (`CA-CI`)</h4>
                     <p><strong>Exemple</strong> : Ordinateur portable ou smartphones.</p>
                     <p>Cocher l'assurance (2% de la valeur) et utiliser du <em>Papier film</em>. Renseigner scrupuleusement la marque et la valeur pour la douane aérienne.</p>
                 </div>
                 <div class="scenario-card">
-                    <h4>✉️ Express International (`DHL`)</h4>
+                    <h4>Express International (`DHL`)</h4>
                     <p><strong>Exemple</strong> : Documents ou enveloppe.</p>
                     <p>Appliquer le forfait fixe DHL (ex: 25 000 XOF) et utiliser l'emballage carton DHL officiel. Conserver le bordereau DHL dans la description.</p>
                 </div>
@@ -239,7 +239,7 @@ $header = Ui::pageHeader(
                     </tbody>
                 </table>
                 <div class="warning-box" style="margin-top:1.5rem;">
-                    <h4>⚠️ Règle de cohérence des prix de ligne</h4>
+                    <h4>Règle de cohérence des prix de ligne</h4>
                     <p>Si vous sélectionnez plusieurs produits sur une même ligne du tableau (multi-select), ils doivent obligatoirement avoir le même tarif/kg configuré. Si ce n'est pas le cas, le système affichera un message d'erreur et bloquera la validation. Vous devez créer une ligne distincte.</p>
                 </div>
             </section>
@@ -303,11 +303,11 @@ $header = Ui::pageHeader(
                 
                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:1.5rem; margin-top:1rem;">
                     <div style="border-left: 4px solid #ef4444; padding-left: 1rem;">
-                        <h4 style="color:#ef4444; margin-top:0;">🚫 Interdiction de sous-déclaration</h4>
+                        <h4 style="color:#ef4444; margin-top:0;">Interdiction de sous-déclaration</h4>
                         <p style="font-size:0.9rem; color:#475569;">Ne diminuez pas artificiellement la valeur déclarée des colis lourds. L'IA compare le ratio valeur/poids avec l'historique et signale toute anomalie.</p>
                     </div>
                     <div style="border-left: 4px solid #ef4444; padding-left: 1rem;">
-                        <h4 style="color:#ef4444; margin-top:0;">🚫 Non-cumul des tâches (SoD)</h4>
+                        <h4 style="color:#ef4444; margin-top:0;">Non-cumul des tâches (SoD)</h4>
                         <p style="font-size:0.9rem; color:#475569;">L'agent ayant saisi le colis ne peut pas encaisser le paiement. L'encaissement doit être effectué par la caissière ou un autre utilisateur qualifié.</p>
                     </div>
                 </div>
@@ -318,7 +318,7 @@ $header = Ui::pageHeader(
                         <p style="font-size:0.9rem; color:#475569;">La création ou la modification de colis et factures la nuit ou les week-ends sans autorisation est enregistrée comme suspecte par le système.</p>
                     </div>
                     <div style="border-left: 4px solid #d97706; padding-left: 1rem;">
-                        <h4 style="color:#d97706; margin-top:0;">🔒 Modifications Post-Validation</h4>
+                        <h4 style="color:#d97706; margin-top:0;">Modifications Post-Validation</h4>
                         <p style="font-size:0.9rem; color:#475569;">Modifier des données d'un colis ou d'une facture déjà clôturée/payée déclenche une alerte de sécurité. Obtenez toujours l'accord écrit du DG.</p>
                     </div>
                 </div>

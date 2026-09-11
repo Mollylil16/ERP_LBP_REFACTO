@@ -11,7 +11,7 @@ use App\Helpers\View;
 
 $months = View::monthNames();
 
-$periodeStr = $months[$startMonth] . ' ' . $startYear . ' ➔ ' . $months[$endMonth] . ' ' . $endYear;
+$periodeStr = $months[$startMonth] . ' ' . $startYear . ' → ' . $months[$endMonth] . ' ' . $endYear;
 
 $totalFactures = count($results);
 $totalMontant = 0.0;

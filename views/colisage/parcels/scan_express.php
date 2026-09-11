@@ -214,7 +214,7 @@ function handleScanSubmit(e) {
         if (data.success) {
             feedback.className = 'lbp-scan-feedback is-success';
             var trackingUrl = '<?= View::url('site/tracking') ?>?ref=' + encodeURIComponent(data.tracking);
-            feedback.innerHTML = data.message + ' <a href="' + trackingUrl + '" target="_blank" style="margin-left:10px; color:#2563eb; text-decoration:underline; font-weight:800;">[ 👁️ Ouvrir le suivi public sur le site ]</a>';
+            feedback.innerHTML = data.message + ' <a href="' + trackingUrl + '" target="_blank" style="margin-left:10px; color:#2563eb; text-decoration:underline; font-weight:800;">[ Ouvrir le suivi public sur le site ]</a>';
             addHistoryRow(data);
         } else {
             feedback.className = 'lbp-scan-feedback is-error';

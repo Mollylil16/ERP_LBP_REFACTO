@@ -124,11 +124,20 @@ final class Ui
         return '<button' . Html::attrs($buttonAttrs) . '>' . $labelContent . '</button>';
     }
 
-    /** @param array<string,mixed> $options */
+    /**
+     * Pastille de statut.
+     *
+     * Le libelle est toujours echappe : il vient souvent de la base. Pour y joindre
+     * une icone, passer son trace SVG dans l option « icon » plutot que de le glisser
+     * dans le libelle, ou il s afficherait en clair au lieu d etre rendu.
+     *
+     * @param array<string,mixed> $options
+     */
     public static function badge(string $label, string $tone = 'neutral', array $options = []): string
     {
         $unstyled = (bool) ($options['unstyled'] ?? false);
         $customClass = (string) ($options['class'] ?? '');
+        $icone = (string) ($options['icon'] ?? '');
 
         $class = Html::classes([
             'finea-badge' => !$unstyled,
@@ -136,7 +145,13 @@ final class Ui
             $customClass,
         ]);
 
-        return '<span class="' . View::e($class) . '">' . View::e($label) . '</span>';
+        // L icone est du balisage ecrit par le developpeur, jamais une donnee saisie :
+        // elle est donc rendue telle quelle, contrairement au libelle.
+        $prefixe = $icone !== ''
+            ? '<span style="display:inline-flex; vertical-align:-2px; margin-right:4px;">' . $icone . '</span>'
+            : '';
+
+        return '<span class="' . View::e($class) . '">' . $prefixe . View::e($label) . '</span>';
     }
 
     public static function emptyState(string $title, string $message = ''): string

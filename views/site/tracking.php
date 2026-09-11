@@ -379,7 +379,7 @@ $statusClass = match(strtoupper($current['status'] ?? '')) {
                     <?php endif; ?>
                 </div>
                 <div class="lbp-track-hud__info">
-                    <strong><?= View::e($current['origin']) ?> ➔ <?= View::e($current['destination']) ?></strong>
+                    <strong><?= View::e($current['origin']) ?> → <?= View::e($current['destination']) ?></strong>
                     <small>Progression : <strong><?= $progressPct ?>%</strong> &bull; Position : <?= View::e($current['lastLocation'] ?? 'En transit') ?></small>
                 </div>
             </div>

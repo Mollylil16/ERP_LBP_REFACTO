@@ -28,9 +28,9 @@ ob_start();
                 <?= View::e((string)($article['author_name'] ?? 'Équipe LBP')) ?>
             </span>
             <div style="font-size:0.78rem; opacity:0.9; display:flex; align-items:center; gap:8px;">
-                <span>📅 <?= View::e($dateStr) ?></span>
+                <span><?= View::e($dateStr) ?></span>
                 <span>•</span>
-                <span>⏱️ <?= $readTime ?> min de lecture</span>
+                <span><?= $readTime ?> min de lecture</span>
             </div>
         </div>
         <div style="padding:22px; flex:1; display:flex; flex-direction:column; justify-content:space-between;">

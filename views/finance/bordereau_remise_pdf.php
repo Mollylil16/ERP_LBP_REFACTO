@@ -95,7 +95,7 @@ use App\Helpers\View;
 
     <?php if (!empty($report['explication_ecart'])): ?>
         <div class="box" style="margin-top:16px; background:#fff1f2; border-color:#fecdd3;">
-            <strong style="color:#991b1b;">📝 Motifs & Explication de l'écart déclarés par la caissière :</strong>
+            <strong style="color:#991b1b;">Motifs & Explication de l'écart déclarés par la caissière :</strong>
             <p style="margin:4px 0 0 0; color:#7f1d1d;"><?= View::e($report['explication_ecart']) ?></p>
         </div>
     <?php endif; ?>

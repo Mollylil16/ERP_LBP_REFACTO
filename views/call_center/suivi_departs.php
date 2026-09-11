@@ -118,12 +118,12 @@ foreach ($grouped as $g) {
                     <?= !empty($g['trajet']) ? ' (' . htmlspecialchars($g['trajet']) . ')' : '' ?>
                   </span>
                   <?php if (!empty($g['agence_depart'])): ?>
-                    <span style="color:#64748b;font-size:.8rem;">📍 Agence départ : <strong><?= htmlspecialchars($g['agence_depart']) ?></strong></span>
+                    <span style="color:#64748b;font-size:.8rem;">Agence départ : <strong><?= htmlspecialchars($g['agence_depart']) ?></strong></span>
                   <?php endif; ?>
                 </div>
                 <div style="font-size:.825rem;color:#475569;margin-top:.3rem;">
-                  Expéditeur : 📞 <strong><?= htmlspecialchars($g['expediteur_phone'] ?: '—') ?></strong> |
-                  Destinataire : <strong><?= htmlspecialchars($g['destinataire_name']) ?></strong> (📞 <?= htmlspecialchars($g['destinataire_phone'] ?: '—') ?>)
+                  Expéditeur : <strong><?= htmlspecialchars($g['expediteur_phone'] ?: '—') ?></strong> |
+                  Destinataire : <strong><?= htmlspecialchars($g['destinataire_name']) ?></strong> (<?= htmlspecialchars($g['destinataire_phone'] ?: '—') ?>)
                 </div>
               </div>
 
@@ -132,16 +132,16 @@ foreach ($grouped as $g) {
                 <!-- Badges recap -->
                 <div style="display:flex;gap:.5rem;align-items:center;">
                   <span style="background:#dcfce7;color:#15803d;padding:.3rem .7rem;border-radius:999px;font-weight:700;font-size:.8rem;">
-                    🟢 <?= $g['nb_partis'] ?> / <?= $g['total_colis'] ?> Parti(s)
+                    <?= $g['nb_partis'] ?> / <?= $g['total_colis'] ?> Parti(s)
                   </span>
                   <?php if ($g['nb_restes'] > 0): ?>
                     <span style="background:#fee2e2;color:#b91c1c;padding:.3rem .7rem;border-radius:999px;font-weight:700;font-size:.8rem;">
-                      🟠 <?= $g['nb_restes'] ?> Resté(s)
+                      <?= $g['nb_restes'] ?> Resté(s)
                     </span>
                   <?php endif; ?>
                   <?php if ($g['nb_attente'] > 0): ?>
                     <span style="background:#f1f5f9;color:#64748b;padding:.3rem .7rem;border-radius:999px;font-weight:600;font-size:.8rem;">
-                      ⚪ <?= $g['nb_attente'] ?> En attente
+                      <?= $g['nb_attente'] ?> En attente
                     </span>
                   <?php endif; ?>
                 </div>
@@ -253,10 +253,10 @@ function generateMessage(group) {
   let text = `Bonjour ${group.expediteur_name},\n\nPoint d'expédition pour vos colis (Service ${group.type_expediteur}) :\n`;
   
   if (group.nb_partis > 0) {
-    text += `✅ ${group.nb_partis} colis sur ${group.total_colis} sont PARTIS (En transit).\n`;
+    text += `${group.nb_partis} colis sur ${group.total_colis} sont PARTIS (En transit).\n`;
   }
   if (group.nb_restes > 0) {
-    text += `⚠️ ${group.nb_restes} colis est/sont RESTÉ(S) à l'agence de départ.\n`;
+    text += `${group.nb_restes} colis est/sont RESTÉ(S) à l'agence de départ.\n`;
     group.colis.forEach(c => {
       if (c.statut_depart === 'RESTE') {
         text += `  • Tracking ${c.numero_tracking}${c.motif_reste ? ' (Motif: ' + c.motif_reste + ')' : ''}\n`;

@@ -231,7 +231,7 @@ final class ModuleCatalog
                 . View::e((string) ($module['maintenance_reason'] ?? '')) . '</span>' : '')
             . '<span class="finea-module-footer"><span class="finea-module-status" style="font-size: 0.8rem; font-weight: 700; color: #059669;">'
             . View::e((string) ($module['status'] ?? 'Disponible'))
-            . '</span><span class="finea-module-open">' . ($maintenance ? 'Indisponible' : 'Ouvrir ➔') . '</span></span>';
+            . '</span><span class="finea-module-open">' . ($maintenance ? 'Indisponible' : 'Ouvrir →') . '</span></span>';
 
         $body = $maintenance
             ? '<div class="finea-module-link" aria-disabled="true">' . $content . '</div>'

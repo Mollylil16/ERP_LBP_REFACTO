@@ -23,7 +23,7 @@ final class Surveillance
     ): string {
         $trainBtn = '<form method="post" action="' . View::url('surveillance/train-ml') . '" style="display:inline; margin-right:0.5rem;">'
             . '<input type="hidden" name="_csrf_token" value="' . View::e(\App\Helpers\Csrf::token()) . '">'
-            . Ui::button('🔄 Ré-entraîner les modèles IA', ['type' => 'submit', 'variant' => 'accent', 'class' => 'finea-button-sm'])
+            . Ui::button('Ré-entraîner les modèles IA', ['type' => 'submit', 'variant' => 'accent', 'class' => 'finea-button-sm'])
             . '</form>';
 
         $header = Ui::pageHeader(
@@ -33,8 +33,8 @@ final class Surveillance
                 'eyebrow' => 'Pilotage DG',
                 'actions' => [
                     $trainBtn,
-                    Ui::button('📁 Exporter PDF (Mensuel)', ['href' => 'surveillance/export-pdf', 'variant' => 'secondary', 'class' => 'finea-button-sm']),
-                    Ui::button('📥 Exporter Excel (CSV)', ['href' => 'surveillance/export-excel?' . http_build_query($filters), 'variant' => 'secondary', 'class' => 'finea-button-sm']),
+                    Ui::button('Exporter PDF (Mensuel)', ['href' => 'surveillance/export-pdf', 'variant' => 'secondary', 'class' => 'finea-button-sm']),
+                    Ui::button('Exporter Excel (CSV)', ['href' => 'surveillance/export-excel?' . http_build_query($filters), 'variant' => 'secondary', 'class' => 'finea-button-sm']),
                 ]
             ]
         );
@@ -245,8 +245,8 @@ final class Surveillance
             . '  <div><label style="font-size:0.8rem; font-weight:700; color:#475569; display:block; margin-bottom:0.25rem;">Date Fin</label>'
             . '    <input type="date" name="end_date" value="' . View::e($filters['end_date']) . '" style="width:100%; padding:0.5rem; border:1px solid #cbd5e1; border-radius:6px; font-size:0.9rem;"></div>'
             . '  <div style="display:flex; gap:0.5rem;">'
-            . '    ' . Ui::button('🔍 Filtrer', ['type' => 'submit', 'variant' => 'primary', 'style' => 'flex:1; padding:0.55rem;'])
-            . '    ' . Ui::button('🔄 Reset', ['href' => 'surveillance', 'variant' => 'secondary', 'style' => 'padding:0.55rem;'])
+            . '    ' . Ui::button('Filtrer', ['type' => 'submit', 'variant' => 'primary', 'style' => 'flex:1; padding:0.55rem;'])
+            . '    ' . Ui::button('Reset', ['href' => 'surveillance', 'variant' => 'secondary', 'style' => 'padding:0.55rem;'])
             . '  </div>'
             . '</form>'
             . '</div>';
@@ -274,7 +274,7 @@ final class Surveillance
                 'nouvelle' => '<span style="color:#ef4444; background:#fef2f2; border:1px solid #fca5a5; padding:2px 8px; border-radius:12px; font-size:0.75rem; font-weight:700;">Nouvelle</span>',
                 'en_cours' => '<span style="color:#f59e0b; background:#fffbeb; border:1px solid #fcd34d; padding:2px 8px; border-radius:12px; font-size:0.75rem; font-weight:700;">En cours</span>',
                 'justifiee' => '<span style="color:#64748b; background:#f1f5f9; border:1px solid #cbd5e1; padding:2px 8px; border-radius:12px; font-size:0.75rem; font-weight:700;">Justifiée</span>',
-                'confirmee' => '<span style="color:#b91c1c; background:#fef2f2; border:1px solid #dc2626; padding:2px 8px; border-radius:12px; font-size:0.75rem; font-weight:700;">⚠️ Confirmée</span>',
+                'confirmee' => '<span style="color:#b91c1c; background:#fef2f2; border:1px solid #dc2626; padding:2px 8px; border-radius:12px; font-size:0.75rem; font-weight:700;">Confirmée</span>',
                 default => $a['statut'],
             };
 
@@ -308,9 +308,9 @@ final class Surveillance
         foreach ($employees as $idx => $emp) {
             $rank = $idx + 1;
             $medaille = match ($rank) {
-                1 => '🥇 ',
-                2 => '🥈 ',
-                3 => '🥉 ',
+                1 => '',
+                2 => '',
+                3 => '',
                 default => '#' . $rank . ' ',
             };
 
@@ -328,7 +328,7 @@ final class Surveillance
         }
 
         return '<div class="finea-table-wrapper"><table class="finea-table"><thead><tr>'
-            . '<th>Pos.</th><th>Collaborateur</th><th style="text-align:center;">Score Intégrité</th><th style="text-align:center;">🔴 TG</th>'
+            . '<th>Pos.</th><th>Collaborateur</th><th style="text-align:center;">Score Intégrité</th><th style="text-align:center;">TG</th>'
             . '</tr></thead><tbody>' . $rows . '</tbody></table></div>';
     }
 
@@ -441,8 +441,8 @@ final class Surveillance
                 . '    <input type="hidden" name="_csrf_token" value="' . View::e(\App\Helpers\Csrf::token()) . '">'
                 . '    <div style="margin-bottom:1rem;">'
                 . '      <label style="font-weight:700; display:block; margin-bottom:0.5rem;">Décision de qualification :</label>'
-                . '      <label style="margin-right:1.5rem; cursor:pointer;"><input type="radio" name="statut" value="justifiee" checked> 🟢 <strong>Justifiée / Erreur</strong> (Exclure du score employé, pas de vol)</label>'
-                . '      <label style="cursor:pointer;"><input type="radio" name="statut" value="confirmee"> 🔴 <strong>Confirmée / Comportement Suspect</strong> (Appliquer pénalité sur le score et logger la fraude)</label>'
+                . '      <label style="margin-right:1.5rem; cursor:pointer;"><input type="radio" name="statut" value="justifiee" checked> <strong>Justifiée / Erreur</strong> (Exclure du score employé, pas de vol)</label>'
+                . '      <label style="cursor:pointer;"><input type="radio" name="statut" value="confirmee"> <strong>Confirmée / Comportement Suspect</strong> (Appliquer pénalité sur le score et logger la fraude)</label>'
                 . '    </div>'
                 . '    <div style="margin-bottom:1.5rem;">'
                 . '      <label style="font-weight:700; display:block; margin-bottom:0.5rem;">Commentaire / Justification DG :</label>'
@@ -595,8 +595,8 @@ final class Surveillance
                 . '      <label style="display:block; font-weight:700; margin-bottom:0.25rem;">Gravité de l\'alerte :</label>'
                 . '      <select name="gravite" style="padding:0.5rem; border:1px solid #cbd5e1; border-radius:6px; font-size:0.9rem;">'
                 . '        <option value="moyen"' . ($r['gravite'] === 'moyen' ? ' selected' : '') . '>Neutral / Moyen</option>'
-                . '        <option value="grave"' . ($r['gravite'] === 'grave' ? ' selected' : '') . '>⚠️ Grave</option>'
-                . '        <option value="tres_grave"' . ($r['gravite'] === 'tres_grave' ? ' selected' : '') . '>🚨 Très Grave</option>'
+                . '        <option value="grave"' . ($r['gravite'] === 'grave' ? ' selected' : '') . '>Grave</option>'
+                . '        <option value="tres_grave"' . ($r['gravite'] === 'tres_grave' ? ' selected' : '') . '>Très Grave</option>'
                 . '      </select>'
                 . '    </div>'
                 . '    <div style="margin-bottom:1rem;">'
@@ -620,7 +620,7 @@ final class Surveillance
                 default => 'neutral',
             };
 
-            $titleBadge = Ui::badge(strtoupper($r['gravite']), $badgeTone) . ' ' . ($isActive ? '🟢 Active' : '🔴 Désactivée');
+            $titleBadge = Ui::badge(strtoupper($r['gravite']), $badgeTone) . ' ' . ($isActive ? 'Active' : 'Désactivée');
 
             $html .= '<div style="margin-bottom:1.5rem;">' 
                 . Ui::section(View::html($r['titre']), $ruleContent, View::html($titleBadge)) 

@@ -87,10 +87,10 @@ $preRoute = $_GET['route'] ?? 'CIV_FR';
         </div>
 
         <div style="background:#eff6ff; border-radius:18px; border:1px solid #bfdbfe; padding:24px; color:#1e40af;">
-            <strong style="font-size:1rem; display:block; margin-bottom:6px; font-weight:800;">💡 Besoin d'assistance immédiate ?</strong>
+            <strong style="font-size:1rem; display:block; margin-bottom:6px; font-weight:800;">Besoin d'assistance immédiate ?</strong>
             <p style="font-size:0.85rem; margin:0 0 14px 0; color:#1e3a8a;">Contactez directement un déclarant en douane ou conseiller fret de notre équipe.</p>
             <a href="tel:+22507000001" style="background:#2563eb; color:#ffffff; font-weight:700; padding:10px 16px; border-radius:8px; text-decoration:none; display:inline-flex; align-items:center; gap:6px; font-size:0.85rem;">
-                📞 Appeler un conseiller
+                Appeler un conseiller
             </a>
         </div>
     </aside>

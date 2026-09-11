@@ -746,7 +746,7 @@ function renderAdjustments() {
         html += "<div style=\"display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--finea-border);\">"
             + "<span><strong>" + a.label + "</strong> <small style=\"color:var(--finea-text-muted);\">" + a.nature + "</small></span>"
             + "<span style=\"display:flex;align-items:center;gap:12px;\"><strong>" + a.amount.toLocaleString("fr-FR") + " XOF</strong>"
-            + "<button type=\"button\" onclick=\"removeAdjustment(" + i + ")\" style=\"background:none;border:none;color:var(--finea-danger);cursor:pointer;font-size:16px;\">✕</button></span>"
+            + "<button type=\"button\" onclick=\"removeAdjustment(" + i + ")\" style=\"background:none;border:none;color:var(--finea-danger);cursor:pointer;font-size:16px;\"></button></span>"
             + "</div>";
     });
     list.innerHTML = html + "</div>";

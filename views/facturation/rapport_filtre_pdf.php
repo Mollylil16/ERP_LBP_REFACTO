@@ -81,7 +81,7 @@ $totalColis = (int) ($kpis['totalColis'] ?? 0);
 </head>
 <body>
 
-<button class="btn-print" onclick="window.print()">🖨️ Imprimer / Sauvegarder PDF</button>
+<button class="btn-print" onclick="window.print()">Imprimer / Sauvegarder PDF</button>
 
 <!-- Header -->
 <div class="header">

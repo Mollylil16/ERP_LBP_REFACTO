@@ -64,9 +64,9 @@ ob_start();
                     <div>
                         <label style="display:block; font-size:0.8rem; font-weight:700; color:#475569; margin-bottom:6px;">TRAJET EXPÉDITION</label>
                         <select id="home-calc-route" style="width:100%; padding:12px 14px; border-radius:10px; border:1px solid #cbd5e1; background:#f8fafc; font-weight:700; font-size:0.9rem; outline:none;">
-                            <option value="CIV_FR">Côte d'Ivoire (Abidjan) ➔ France (Paris-Bobigny)</option>
-                            <option value="FR_CIV">France (Paris-Bobigny) ➔ Côte d'Ivoire (Abidjan)</option>
-                            <option value="CIV_SEN">Côte d'Ivoire (Abidjan) ➔ Sénégal (Dakar)</option>
+                            <option value="CIV_FR">Côte d'Ivoire (Abidjan) → France (Paris-Bobigny)</option>
+                            <option value="FR_CIV">France (Paris-Bobigny) → Côte d'Ivoire (Abidjan)</option>
+                            <option value="CIV_SEN">Côte d'Ivoire (Abidjan) → Sénégal (Dakar)</option>
                         </select>
                     </div>
                     <div>

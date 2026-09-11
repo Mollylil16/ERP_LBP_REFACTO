@@ -474,8 +474,8 @@ final class Logistique
                 . '<td>' . View::e($p['destinataire_name'] ?: 'Non renseigné') . (!empty($p['destinataire_phone']) ? '<br><small>' . View::e($p['destinataire_phone']) . '</small>' : '') . '</td>'
                 . '<td style="text-align:center;"><strong>' . (int) $p['nombre_colis'] . '</strong></td>'
                 . '<td style="text-align:right;"><strong>' . number_format((float) $p['poids_total'], 2, ',', ' ') . '</strong></td>'
-                . '<td>' . Ui::badge(str_replace('_', ' ➔ ', (string) $trajetDisplay), 'primary') . '</td>'
-                . '<td><div>' . View::e($p['agence_depart_name'] ?: 'Départ non défini') . '</div><small>➔ ' . View::e($p['agence_arrivee_name'] ?: 'Destination non définie') . '</small></td>'
+                . '<td>' . Ui::badge(str_replace('_', ' → ', (string) $trajetDisplay), 'primary') . '</td>'
+                . '<td><div>' . View::e($p['agence_depart_name'] ?: 'Départ non défini') . '</div><small>→ ' . View::e($p['agence_arrivee_name'] ?: 'Destination non définie') . '</small></td>'
                 . '<td>' . View::e($p['agent_name']) . '</td>'
                 . '<td>' . Ui::badge((string) $p['statut'], 'neutral') . '</td>'
                 . '</tr>';
@@ -532,11 +532,11 @@ final class Logistique
             . Form::input('code', ['label' => 'Code Article (ex: CART-XL, BORO-50KG)', 'placeholder' => 'ex: CART-XL', 'required' => true])
             . Form::input('libelle', ['label' => 'Libellé de l\'Emballage', 'placeholder' => 'ex: Grand Carton Renforcé LBP', 'required' => true])
             . Form::select('type', [
-                ['value' => 'Carton', 'label' => '📦 Carton'],
-                ['value' => 'Bôrô', 'label' => '🎒 Sac Tissé Bôrô'],
-                ['value' => 'Valise', 'label' => '🧳 Valise / Malle Fret'],
-                ['value' => 'Sac', 'label' => '🛍️ Sac Scellé Sécurisé'],
-                ['value' => 'Consommable', 'label' => '🎗️ Consommable (Scotch, Film)'],
+                ['value' => 'Carton', 'label' => 'Carton'],
+                ['value' => 'Bôrô', 'label' => 'Sac Tissé Bôrô'],
+                ['value' => 'Valise', 'label' => 'Valise / Malle Fret'],
+                ['value' => 'Sac', 'label' => 'Sac Scellé Sécurisé'],
+                ['value' => 'Consommable', 'label' => 'Consommable (Scotch, Film)'],
             ], 'Carton', ['label' => 'Catégorie d\'emballage', 'required' => true])
             . Form::input('dimensions', ['label' => 'Dimensions / Format', 'placeholder' => 'ex: 60x60x60 cm ou 50kg'])
             . Form::input('prix_vente_xof', ['label' => 'Prix de Vente Client (XOF)', 'type' => 'number', 'value' => '0', 'required' => true])
@@ -553,10 +553,10 @@ final class Logistique
             . Form::select('emballage_id', $embOpts ?: [['value' => '', 'label' => 'Veuillez créer un emballage au préalable']], '', ['label' => 'Article / Emballage', 'required' => true])
             . Form::select('agence_id', array_slice($siteOpts, 1), '1', ['label' => 'Agence de destination', 'required' => true])
             . Form::select('type_mouvement', [
-                ['value' => 'APPROVISIONNEMENT', 'label' => '📥 Approvisionnement / Entrée de Stock (Fournisseur/Achat)'],
-                ['value' => 'SORTIE_COLISAGE', 'label' => '📤 Sortie / Consommation Client (Colisage)'],
-                ['value' => 'TRANSFERT', 'label' => '🔄 Transfert inter-agences'],
-                ['value' => 'PERTE', 'label' => '⚠️ Démarque / Pertes / Endommagé'],
+                ['value' => 'APPROVISIONNEMENT', 'label' => 'Approvisionnement / Entrée de Stock (Fournisseur/Achat)'],
+                ['value' => 'SORTIE_COLISAGE', 'label' => 'Sortie / Consommation Client (Colisage)'],
+                ['value' => 'TRANSFERT', 'label' => 'Transfert inter-agences'],
+                ['value' => 'PERTE', 'label' => 'Démarque / Pertes / Endommagé'],
             ], 'APPROVISIONNEMENT', ['label' => 'Type de Mouvement', 'required' => true])
             . Form::input('quantite', ['label' => 'Quantité (unités)', 'type' => 'number', 'value' => '10', 'required' => true])
             . Form::input('motif', ['label' => 'Motif / N° Commande / Note', 'placeholder' => 'Ex: Réception livraison initiale cartons']);

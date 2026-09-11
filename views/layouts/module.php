@@ -77,7 +77,7 @@ $moduleIconKey = $moduleTheme['iconKey'] ?? strtolower((string) ($moduleCode ?? 
     <?php if (!Auth::isAdmin() && !Auth::hasRole('dg')): ?>
     <div id="lbp-gps-blocker" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #0f172a; color: #ffffff; z-index: 999999; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2rem; text-align: center; font-family: 'Inter', sans-serif;">
         <div style="background: #1e293b; padding: 2.5rem; border-radius: 16px; border: 1px solid rgba(255, 255, 255, 0.1); max-width: 500px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);">
-            <div style="font-size: 3.5rem; margin-bottom: 1.5rem;">📡</div>
+            <div style="font-size: 3.5rem; margin-bottom: 1.5rem;"></div>
             <h2 style="font-size: 1.5rem; font-weight: 800; margin-bottom: 1rem; color: #ffffff;">Géolocalisation Obligatoire</h2>
             <p id="lbp-gps-status" style="color: #94a3b8; font-size: 0.95rem; line-height: 1.6; margin-bottom: 1.5rem;">
                 Recherche de votre position géographique en cours...<br>
@@ -164,7 +164,7 @@ $moduleIconKey = $moduleTheme['iconKey'] ?? strtolower((string) ($moduleCode ?? 
 
         if (!("geolocation" in navigator)) {
             if (!isValidated) {
-                status.innerHTML = "⚠️ Erreur : Votre navigateur ne supporte pas la géolocalisation. Veuillez utiliser un navigateur moderne (Chrome, Safari, Firefox).";
+                status.innerHTML = "Erreur : Votre navigateur ne supporte pas la géolocalisation. Veuillez utiliser un navigateur moderne (Chrome, Safari, Firefox).";
                 loader.style.display = 'none';
             }
             return;
@@ -200,13 +200,13 @@ $moduleIconKey = $moduleTheme['iconKey'] ?? strtolower((string) ($moduleCode ?? 
                         blocker.style.display = 'none';
                     } else {
                         if (!isSilent) {
-                            status.innerHTML = "⚠️ Erreur de validation : " + (data.message || "Erreur serveur");
+                            status.innerHTML = "Erreur de validation : " + (data.message || "Erreur serveur");
                             loader.style.display = 'none';
                             retryBtn.style.display = 'inline-block';
                         } else {
                             // Si la tentative silencieuse échoue, afficher l'écran de blocage avec l'erreur
                             blocker.style.display = 'flex';
-                            status.innerHTML = "⚠️ Erreur de validation : " + (data.message || "Erreur serveur");
+                            status.innerHTML = "Erreur de validation : " + (data.message || "Erreur serveur");
                             loader.style.display = 'none';
                             retryBtn.style.display = 'inline-block';
                         }
@@ -214,7 +214,7 @@ $moduleIconKey = $moduleTheme['iconKey'] ?? strtolower((string) ($moduleCode ?? 
                 })
                 .catch(err => {
                     if (!isSilent) {
-                        status.innerHTML = "⚠️ Erreur réseau lors de l'enregistrement de votre position.";
+                        status.innerHTML = "Erreur réseau lors de l'enregistrement de votre position.";
                         loader.style.display = 'none';
                         retryBtn.style.display = 'inline-block';
                     }
@@ -231,7 +231,7 @@ $moduleIconKey = $moduleTheme['iconKey'] ?? strtolower((string) ($moduleCode ?? 
                 
                 // Si la géolocalisation est refusée/indisponible, forcer l'affichage du blocage et vider le cache
                 blocker.style.display = 'flex';
-                status.innerHTML = "⚠️ Accès refusé ou impossible :<br><br>" + msg;
+                status.innerHTML = "Accès refusé ou impossible :<br><br>" + msg;
                 loader.style.display = 'none';
                 retryBtn.style.display = 'inline-block';
                 sessionStorage.removeItem('lbp_gps_validated');

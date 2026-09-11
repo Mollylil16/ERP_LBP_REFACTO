@@ -354,7 +354,7 @@ final class WebsiteController extends BaseController
     private function demoNews(): array
     {
         return [
-            ['title' => 'Liaison Fret Aérien Paris ➔ Abidjan : Départs Quotidiens', 'date' => 'Juin 2026'],
+            ['title' => 'Liaison Fret Aérien Paris → Abidjan : Départs Quotidiens', 'date' => 'Juin 2026'],
             ['title' => 'Suivi GPS Colis en temps réel disponible 24/7', 'date' => 'Juin 2026'],
             ['title' => 'Optimisation du Dédouanement au Port Autonome d’Abidjan', 'date' => 'Mai 2026'],
         ];
