@@ -337,14 +337,15 @@ class EtatJournalierRepository
                     'AUTRES'
                 )) as code_type,
                 COUNT(DISTINCT f.id) as nb_factures,
-                SUM(f.montant_total) as total_facture,
+                SUM(CASE WHEN f.devise = 'EUR' THEN 0 ELSE f.montant_total END) as total_facture,
+                SUM(CASE WHEN f.devise = 'EUR' THEN f.montant_total ELSE 0 END) as total_facture_eur,
                 SUM(COALESCE(p_sub.total_pay, 0)) as total_encaisse
             FROM lbp_factures f
             JOIN lbp_colis c ON f.colis_id = c.id
             LEFT JOIN (
-                SELECT facture_id, SUM(montant) as total_pay 
-                FROM lbp_paiements 
-                WHERE DATE(date_paiement) = :date1
+                SELECT facture_id, SUM(montant) as total_pay
+                FROM lbp_paiements
+                WHERE DATE(date_paiement) = :date1 AND devise = 'XOF'
                 GROUP BY facture_id
             ) p_sub ON p_sub.facture_id = f.id
             WHERE f.agence_id = :agence_id AND DATE(f.date_emission) = :date2{$scopeFacture}

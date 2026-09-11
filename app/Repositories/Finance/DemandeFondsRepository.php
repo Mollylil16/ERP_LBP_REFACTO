@@ -589,8 +589,10 @@ final class DemandeFondsRepository
                 SUM(CASE WHEN statut = 'decaissee' THEN 1 ELSE 0 END) AS total_decaissees,
                 SUM(CASE WHEN statut = 'imputee' THEN 1 ELSE 0 END) AS total_imputees,
                 SUM(CASE WHEN statut = 'rejetee' THEN 1 ELSE 0 END) AS total_rejetees,
-                COALESCE(SUM(montant), 0) AS montant_total_demande,
-                COALESCE(SUM(CASE WHEN statut IN ('decaissee', 'imputee') THEN montant ELSE 0 END), 0) AS montant_total_decaisse
+                COALESCE(SUM(CASE WHEN devise = 'EUR' THEN 0 ELSE montant END), 0) AS montant_total_demande,
+                COALESCE(SUM(CASE WHEN devise = 'EUR' THEN montant ELSE 0 END), 0) AS montant_total_demande_eur,
+                COALESCE(SUM(CASE WHEN statut IN ('decaissee', 'imputee') AND devise <> 'EUR' THEN montant ELSE 0 END), 0) AS montant_total_decaisse,
+                COALESCE(SUM(CASE WHEN statut IN ('decaissee', 'imputee') AND devise = 'EUR' THEN montant ELSE 0 END), 0) AS montant_total_decaisse_eur
             FROM lbp_demandes_fonds
             WHERE {$whereSql}
         ";

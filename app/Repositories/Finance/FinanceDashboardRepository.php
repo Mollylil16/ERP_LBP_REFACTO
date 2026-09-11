@@ -166,6 +166,7 @@ final class FinanceDashboardRepository extends \App\Repositories\Shared\ModuleDa
                    SUM(montant) as total
             FROM lbp_paiements
             WHERE date_paiement >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+              AND devise = 'XOF'
             GROUP BY DATE(date_paiement), mode_paiement
             ORDER BY date_p ASC
         ");

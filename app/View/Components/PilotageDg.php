@@ -576,13 +576,18 @@ final class PilotageDg
         foreach ($agences as $a) {
             $montantTotal = (float) $a['montant_total'];
             $montantImpaye = (float) $a['montant_impaye'];
+            // Le chiffre d affaires en euros est desormais separe : il s affiche a part
+            // plutot que d etre fondu dans le total en francs, comme auparavant.
+            $montantTotalEur = (float) ($a['montant_total_eur'] ?? 0);
             $taux = $montantTotal > 0 ? round(($montantImpaye / $montantTotal) * 100, 1) : 0.0;
             $tone = $taux >= 30 ? 'danger' : ($taux >= 15 ? 'warning' : 'success');
 
             $rows .= '<tr>'
                 . '<td><strong>' . View::e((string) $a['agence_name']) . '</strong></td>'
                 . '<td style="text-align:center;">' . (int) $a['nb_factures'] . '</td>'
-                . '<td style="text-align:right;">' . number_format($montantTotal, 0, ',', ' ') . ' XOF</td>'
+                . '<td style="text-align:right;">' . number_format($montantTotal, 0, ',', ' ') . ' XOF'
+                . ($montantTotalEur > 0 ? '<br><small style="color:#64748b;">' . number_format($montantTotalEur, 2, ',', ' ') . ' EUR</small>' : '')
+                . '</td>'
                 . '<td style="text-align:right;">' . number_format($montantImpaye, 0, ',', ' ') . ' XOF</td>'
                 . '<td style="text-align:center;">' . Ui::badge($taux . '%', $tone) . '</td>'
                 . '</tr>';

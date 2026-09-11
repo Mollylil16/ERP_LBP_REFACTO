@@ -678,8 +678,9 @@ final class PilotageDgDashboardRepository extends \App\Repositories\Shared\Modul
             $stmt = $this->pdo->query("
                 SELECT s.name AS agence_name,
                        COUNT(f.id) AS nb_factures,
-                       COALESCE(SUM(f.montant_total), 0) AS montant_total,
-                       COALESCE(SUM(f.montant_restant), 0) AS montant_impaye
+                       COALESCE(SUM(CASE WHEN f.devise = 'EUR' THEN 0 ELSE f.montant_total END), 0) AS montant_total,
+                       COALESCE(SUM(CASE WHEN f.devise = 'EUR' THEN 0 ELSE f.montant_restant END), 0) AS montant_impaye,
+                       COALESCE(SUM(CASE WHEN f.devise = 'EUR' THEN f.montant_total ELSE 0 END), 0) AS montant_total_eur
                 FROM lbp_factures f
                 INNER JOIN company_sites s ON f.agence_id = s.id
                 GROUP BY s.id, s.name
