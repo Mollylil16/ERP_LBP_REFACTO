@@ -130,6 +130,7 @@ $audit['par_jour'] = $lire("
         e.solde_caisse_agence_xof AS solde_theorique,
         e.solde_physique_declare,
         e.ecart_caisse,
+        e.explication_ecart,
         e.statut,
         ROUND(j.paiements_reels_xof - COALESCE(e.total_encaisse_xof, 0), 2) AS ecart_point
     FROM (
@@ -168,6 +169,31 @@ $audit['par_encaisseur'] = $lire("
       {$filtreAgence}
     GROUP BY encaisseur, s.name
     ORDER BY total_xof DESC
+", ['depuis' => $depuis] + $paramAgence);
+
+// =========================================================================
+// C bis. Qui a encaissé, jour par jour
+// =========================================================================
+/*
+ * Le cumul par personne ne suffit pas quand un seul jour pose question : il faut
+ * pouvoir dire, pour ce jour-là, qui a pris quoi.
+ */
+$audit['par_jour_encaisseur'] = $lire("
+    SELECT
+        DATE(p.date_paiement) AS jour,
+        s.name AS agence,
+        COALESCE(u.full_name, CONCAT('NON IDENTIFIÉ (id ', COALESCE(p.caissiere_id, 0), ')')) AS encaisseur,
+        COUNT(*) AS nb,
+        SUM(CASE WHEN p.devise = 'XOF' THEN p.montant ELSE 0 END) AS total_xof,
+        SUM(CASE WHEN DATE(p.date_paiement) <> DATE(f.date_emission) THEN p.montant ELSE 0 END) AS dont_anteriorite
+    FROM lbp_paiements p
+    JOIN lbp_factures f ON f.id = p.facture_id
+    LEFT JOIN users u ON u.id = p.caissiere_id
+    LEFT JOIN company_sites s ON s.id = f.agence_id
+    WHERE DATE(p.date_paiement) >= :depuis
+      {$filtreAgence}
+    GROUP BY jour, s.name, encaisseur
+    ORDER BY jour ASC, total_xof DESC
 ", ['depuis' => $depuis] + $paramAgence);
 
 // =========================================================================
@@ -356,19 +382,46 @@ function rapport(array $audit, string $depuis, int $agence): string
     $l[] = '';
     $l[] = '2. JOUR PAR JOUR — PAIEMENTS RÉELS CONTRE POINT DE CAISSE ENREGISTRÉ';
     $l[] = $fin;
-    $l[] = sprintf('   %-12s %-26s %14s %6s %14s %14s %12s %-11s',
-        'JOUR', 'AGENCE', 'PAIEMENTS', 'NB', 'POINT SAISI', 'PHYSIQUE', 'ÉCART', 'STATUT');
+    $l[] = 'PAIEMENTS  : ce que le système a enregistré comme encaissé ce jour-là.';
+    $l[] = 'THÉORIQUE  : ce qui devrait se trouver dans le tiroir (espèces uniquement).';
+    $l[] = 'PHYSIQUE   : ce que la caissière a réellement compté et déclaré.';
+    $l[] = 'ÉCART CAISSE : physique moins théorique. C\'est le seul écart qui parle d\'argent manquant.';
+    $l[] = 'Δ SYSTÈME  : paiements réels moins point enregistré. Un écart ici signale une';
+    $l[] = '             opération saisie après la soumission du point, pas un manquant.';
+    $l[] = '';
+    $l[] = sprintf('   %-12s %-24s %13s %4s %13s %13s %13s %13s %-10s',
+        'JOUR', 'AGENCE', 'PAIEMENTS', 'NB', 'THÉORIQUE', 'PHYSIQUE', 'ÉCART CAISSE', 'Δ SYSTÈME', 'STATUT');
 
     foreach ($audit['par_jour'] as $r) {
-        $l[] = sprintf('   %-12s %-26s %14s %6d %14s %14s %12s %-11s',
+        $soumis = $r['point_enregistre'] !== null;
+        $physique = $r['solde_physique_declare'];
+
+        // L'écart de caisse est recalculé ici, et non repris tel quel : la
+        // valeur figée à la soumission peut dater d'avant la correction du
+        // solde théorique. Recalculer donne l'écart réel d'aujourd'hui.
+        $ecartCaisse = ($soumis && $physique !== null)
+            ? round((float) $physique - (float) $r['solde_theorique'], 2)
+            : null;
+
+        $l[] = sprintf('   %-12s %-24s %13s %4d %13s %13s %13s %13s %-10s',
             (string) $r['jour'],
-            mb_strimwidth((string) ($r['agence'] ?? '—'), 0, 26),
+            mb_strimwidth((string) ($r['agence'] ?? '—'), 0, 24),
             $argent((float) $r['paiements_reels_xof']),
             (int) $r['nb_paiements'],
-            $r['point_enregistre'] !== null ? $argent((float) $r['point_enregistre']) : 'non soumis',
-            $r['solde_physique_declare'] !== null ? $argent((float) $r['solde_physique_declare']) : '—',
-            $r['point_enregistre'] !== null ? $argent((float) $r['ecart_point']) : '—',
+            $soumis ? $argent((float) $r['solde_theorique']) : '—',
+            $physique !== null ? $argent((float) $physique) : '—',
+            $ecartCaisse !== null ? $argent($ecartCaisse) : '—',
+            $soumis ? $argent((float) $r['ecart_point']) : '—',
             (string) ($r['statut'] ?? 'aucun'));
+
+        // L'explication écrite par la caissière est souvent la réponse : on la
+        // montre sous la ligne plutôt que de la laisser dans la base.
+        $explication = trim((string) ($r['explication_ecart'] ?? ''));
+        if ($explication !== '') {
+            $l[] = '                  → explication déclarée : ' . $explication;
+        } elseif ($ecartCaisse !== null && abs($ecartCaisse) > 0.01) {
+            $l[] = '                  → écart non expliqué.';
+        }
     }
 
     // --- C ---
@@ -386,6 +439,29 @@ function rapport(array $audit, string $depuis, int $agence): string
             $argent((float) $r['total_xof']),
             (string) $r['premier_jour'],
             (string) $r['dernier_jour']);
+    }
+
+    // --- C bis ---
+    $l[] = '';
+    $l[] = '3 bis. QUI A ENCAISSÉ, JOUR PAR JOUR';
+    $l[] = $fin;
+    $l[] = 'La colonne « dont antériorité » isole ce qui règle une facture d\'un autre jour :';
+    $l[] = 'c\'est de l\'argent bien encaissé ce jour, mais absent du facturé du jour.';
+    $l[] = '';
+    $l[] = sprintf('   %-12s %-24s %-34s %4s %14s %16s',
+        'JOUR', 'AGENCE', 'ENCAISSEUR', 'NB', 'TOTAL XOF', 'DONT ANTÉRIORITÉ');
+
+    $jourPrecedent = '';
+    foreach ($audit['par_jour_encaisseur'] as $r) {
+        $jour = (string) $r['jour'];
+        $l[] = sprintf('   %-12s %-24s %-34s %4d %14s %16s',
+            $jour === $jourPrecedent ? '' : $jour,
+            $jour === $jourPrecedent ? '' : mb_strimwidth((string) ($r['agence'] ?? '—'), 0, 24),
+            mb_strimwidth((string) $r['encaisseur'], 0, 34),
+            (int) $r['nb'],
+            $argent((float) $r['total_xof']),
+            (float) $r['dont_anteriorite'] > 0 ? $argent((float) $r['dont_anteriorite']) : '—');
+        $jourPrecedent = $jour;
     }
 
     // --- D ---
