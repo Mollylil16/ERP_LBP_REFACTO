@@ -70,6 +70,9 @@ $ecrans = [
     'Guide de saisie' => '/colisage/guide',
     'Demandes de fonds' => '/finance/fonds',
     'Nouvelle demande de fonds' => '/finance/fonds/nouveau',
+    'Prise en compte caisse' => '/finance/fonds/prise-en-compte',
+    'Imputation (a justifier)' => '/finance/fonds/imputation?statut=decaissee',
+    'Imputation (cloturees)' => '/finance/fonds/imputation?statut=imputee',
 
     // Écrans touchés indirectement (navigation, filtres, icônes)
     'Recherche facturation' => '/facturation/filtre',

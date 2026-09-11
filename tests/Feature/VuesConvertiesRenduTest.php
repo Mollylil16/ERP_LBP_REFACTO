@@ -7,6 +7,7 @@ namespace Tests\Feature;
 use App\Models\Finance\DemandeFonds;
 use App\View\Components\ColisageGuide;
 use App\View\Components\FinanceFonds;
+use App\View\Components\FinanceFondsFile;
 use Tests\TestCase;
 
 /**
@@ -133,6 +134,90 @@ final class VuesConvertiesRenduTest extends TestCase
         );
 
         self::assertStringNotContainsString('<script>alert(1)</script>', $html);
+    }
+
+    // ------------------------------------------------------------------
+    // Files d'attente et creation
+    // ------------------------------------------------------------------
+
+    public function test_les_files_d_attente_se_rendent_a_vide(): void
+    {
+        $caisse = FinanceFondsFile::priseEnComptePage([], 0, 1, $this->filtres(), []);
+        $imputation = FinanceFondsFile::imputationPage([], 0, 1, $this->filtres(), [], 'decaissee');
+
+        self::assertStringContainsString('Rien à décaisser', $caisse);
+        self::assertStringContainsString('Rien à justifier', $imputation);
+    }
+
+    public function test_la_file_de_caisse_propose_le_geste_de_decaissement(): void
+    {
+        $html = FinanceFondsFile::priseEnComptePage(
+            [$this->demande('DF-7', 'validee', 120000.0)],
+            1,
+            1,
+            $this->filtres(),
+            [['id' => 1, 'name' => 'Agence Abidjan', 'code' => 'ABJ']]
+        );
+
+        self::assertStringContainsString('Décaisser', $html);
+        self::assertStringContainsString('120 000 XOF', $html);
+        self::assertStringContainsString('Demandée le', $html);
+    }
+
+    public function test_l_onglet_courant_de_l_imputation_survit_au_filtrage(): void
+    {
+        // Sans ce champ cache, filtrer depuis l'onglet « cloturees » renverrait
+        // l'utilisateur sur la file « a justifier ».
+        $html = FinanceFondsFile::imputationPage([], 0, 1, $this->filtres(), [], 'imputee');
+
+        self::assertStringContainsString('name="statut"', $html);
+        self::assertStringContainsString('value="imputee"', $html);
+        self::assertStringContainsString('Dossiers clôturés', $html);
+    }
+
+    public function test_le_formulaire_de_creation_porte_un_jeton_et_ses_champs(): void
+    {
+        $html = FinanceFondsFile::creationPage(
+            [['id' => 3, 'name' => 'Agence Abidjan', 'code' => 'ABJ']],
+            ['S-IM00379/26', 'S-IM00380/26'],
+            'DF-2026-014',
+            3
+        );
+
+        self::assertStringContainsString('_csrf_token', $html);
+        self::assertStringContainsString('DF-2026-014', $html);
+        self::assertStringContainsString('name="montant"', $html);
+        self::assertStringContainsString('name="motif"', $html);
+        self::assertStringContainsString('S-IM00379/26', $html, 'Les dossiers récents alimentent la saisie assistée.');
+    }
+
+    public function test_l_agence_de_l_utilisateur_est_preselectionnee(): void
+    {
+        $html = FinanceFondsFile::creationPage(
+            [
+                ['id' => 1, 'name' => 'Agence Abidjan', 'code' => 'ABJ'],
+                ['id' => 3, 'name' => 'Agence Adjamé', 'code' => 'ADJ'],
+            ],
+            [],
+            'DF-1',
+            3
+        );
+
+        self::assertMatchesRegularExpression(
+            '/<option value="3"[^>]*\bselected\b/',
+            $html,
+            'L\'agent doit retrouver son agence sans la rechercher.'
+        );
+    }
+
+    public function test_le_champ_dossier_se_desactive_hors_traitement_de_dossier(): void
+    {
+        // Un champ obligatoire mais masque bloque la soumission sans rien dire :
+        // le script doit retirer « required » en meme temps qu'il masque.
+        $html = FinanceFondsFile::creationPage([], [], 'DF-1', 1);
+
+        self::assertStringContainsString('removeAttribute("required")', $html);
+        self::assertStringContainsString('data-fonds-cadre', $html);
     }
 
     // ------------------------------------------------------------------
