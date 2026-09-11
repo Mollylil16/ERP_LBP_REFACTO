@@ -21,10 +21,12 @@ use App\View\Pages\Colisage\ColisageIndexPage;
 final class ColisageController extends ColisageBaseController
 {
     private ColisageService $service;
+    private \PDO $pdo;
 
     public function __construct()
     {
-        $this->service = new ColisageService(new ColisageRepository(Database::getConnection()));
+        $this->pdo = Database::getConnection();
+        $this->service = new ColisageService(new ColisageRepository($this->pdo));
     }
 
     public function index(): void
@@ -481,8 +483,66 @@ final class ColisageController extends ColisageBaseController
             exit;
         }
 
-        // We load this without the base module layout so it's clean and printable
+        /*
+         * La facture liée et la contre-valeur en euros étaient calculées dans la
+         * vue, qui ouvrait pour cela sa propre connexion à la base. Elles sont
+         * préparées ici, où est la place de l'accès aux données.
+         */
+        $facture = (new \App\Repositories\Finance\FactureRepository($this->pdo))
+            ->findByColisId((int) $colis['id']);
+
+        $data = [
+            'colis' => $colis,
+            'facture' => $facture,
+            'montantEur' => $this->contrevaleurEuro($colis),
+            'operatorName' => Auth::user()?->fullName ?? 'Service Transit',
+        ];
+
+        // Rendue sans le gabarit du module : le document doit s'imprimer seul.
+        extract($data, EXTR_SKIP);
         require BASE_PATH . '/views/colisage/parcels/facture.php';
+    }
+
+    /**
+     * Contre-valeur en euros du montant facturé.
+     *
+     * Le taux vient des paramètres société ; à défaut, la parité fixe du franc
+     * CFA, qui est une constante légale et non une estimation.
+     *
+     * @param array<string, mixed> $colis
+     */
+    private function contrevaleurEuro(array $colis): float
+    {
+        $montantEur = (float) ($colis['montant_total_eur'] ?? 0.0);
+        if ($montantEur > 0.0) {
+            return $montantEur;
+        }
+
+        $devise = (string) ($colis['devise'] ?? 'XOF');
+        $montant = (float) ($colis['montant_total'] ?? 0.0);
+
+        if ($devise === 'EUR') {
+            return $montant;
+        }
+
+        if ($devise !== 'XOF' || $montant <= 0.0) {
+            return 0.0;
+        }
+
+        $taux = 655.957;
+        try {
+            $valeur = $this->pdo
+                ->query("SELECT setting_value FROM company_settings WHERE setting_key = 'taux_change_eur' LIMIT 1")
+                ?->fetchColumn();
+
+            if (is_numeric($valeur) && (float) $valeur > 0) {
+                $taux = (float) $valeur;
+            }
+        } catch (\Throwable) {
+            // Paramètre absent : la parité fixe fait foi.
+        }
+
+        return round($montant / $taux, 2);
     }
 
     public function printLabel(int $id): void

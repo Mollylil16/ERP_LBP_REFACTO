@@ -99,7 +99,7 @@ class TransitDouaneDashboardRepository extends \App\Repositories\Shared\ModuleDa
      */
     public function colisEnTransit(?int $agenceId): array
     {
-        $filtre = $agenceId !== null ? ' AND (c.agence_depart_id = :agence OR c.agence_arrivee_id = :agence)' : '';
+        $filtre = $agenceId !== null ? ' AND (c.agence_depart_id = :agence_depart OR c.agence_arrivee_id = :agence_arrivee)' : '';
 
         $sql = "
             SELECT
@@ -117,7 +117,7 @@ class TransitDouaneDashboardRepository extends \App\Repositories\Shared\ModuleDa
             ORDER BY poids_kg DESC
         ";
 
-        return $this->lignes($sql, $agenceId !== null ? ['agence' => $agenceId] : []);
+        return $this->lignes($sql, $agenceId !== null ? ['agence_depart' => $agenceId, 'agence_arrivee' => $agenceId] : []);
     }
 
     /**
@@ -131,7 +131,16 @@ class TransitDouaneDashboardRepository extends \App\Repositories\Shared\ModuleDa
             $stmt->execute($parametres);
 
             return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
-        } catch (Throwable) {
+        } catch (Throwable $e) {
+            /*
+             * Une table absente ne doit pas faire tomber tout l'ecran : la
+             * section concernee s'affiche vide et les autres restent lisibles.
+             * Mais une requete fautive produit exactement le meme silence. On la
+             * trace, sinon un tableau vide se lit comme « aucune donnee » alors
+             * que la requete n'est jamais partie.
+             */
+            error_log('[LBP] Lecture impossible dans ' . static::class . ' : ' . $e->getMessage());
+
             return [];
         }
     }

@@ -390,8 +390,11 @@ final class FinanceController extends FinanceBaseController
         $clientWalletBalance = 0.0;
         if ($clientName !== '' || $clientPhone !== '') {
             try {
-                $stmtW = $this->db->prepare("SELECT solde_xof FROM lbp_client_wallets WHERE (client_nom = :c_name AND :c_name != '') OR (telephone = :c_phone AND :c_phone != '') LIMIT 1");
-                $stmtW->execute(['c_name' => $clientName, 'c_phone' => $clientPhone]);
+                $stmtW = $this->db->prepare("SELECT solde_xof FROM lbp_client_wallets WHERE (:c_name <> '' AND client_nom = :c_name_match) OR (:c_phone <> '' AND telephone = :c_phone_match) LIMIT 1");
+                $stmtW->execute([
+                    'c_name' => $clientName, 'c_name_match' => $clientName,
+                    'c_phone' => $clientPhone, 'c_phone_match' => $clientPhone,
+                ]);
                 $clientWalletBalance = (float) ($stmtW->fetchColumn() ?: 0.0);
             } catch (\Throwable $e) {}
         }
@@ -582,8 +585,11 @@ final class FinanceController extends FinanceBaseController
         $cPhone = trim((string)($clientInfo['phone'] ?? ''));
 
         $pdo = \App\Models\Database::getConnection();
-        $stmt = $pdo->prepare("SELECT * FROM lbp_client_wallets WHERE (client_nom = :c_name AND :c_name != '') OR (telephone = :c_phone AND :c_phone != '') LIMIT 1");
-        $stmt->execute(['c_name' => $cName, 'c_phone' => $cPhone]);
+        $stmt = $pdo->prepare("SELECT * FROM lbp_client_wallets WHERE (:c_name <> '' AND client_nom = :c_name_match) OR (:c_phone <> '' AND telephone = :c_phone_match) LIMIT 1");
+        $stmt->execute([
+            'c_name' => $cName, 'c_name_match' => $cName,
+            'c_phone' => $cPhone, 'c_phone_match' => $cPhone,
+        ]);
         $wallet = $stmt->fetch();
 
         if (!$wallet || (float)($wallet['solde_xof'] ?? 0) <= 0) {

@@ -69,7 +69,7 @@ class FlotteTransportDashboardRepository extends \App\Repositories\Shared\Module
             ORDER BY u.full_name ASC
         ";
 
-        return $this->lignes($sql, $agenceId !== null ? ['agence' => $agenceId] : []);
+        return $this->lignes($sql, $agenceId !== null ? ['agence_depart' => $agenceId, 'agence_arrivee' => $agenceId] : []);
     }
 
     /**
@@ -80,7 +80,7 @@ class FlotteTransportDashboardRepository extends \App\Repositories\Shared\Module
     public function missions(?int $agenceId, int $limite = 60): array
     {
         $limite = max(1, min($limite, 300));
-        $filtre = $agenceId !== null ? ' AND (e.agence_depart_id = :agence OR e.agence_arrivee_id = :agence)' : '';
+        $filtre = $agenceId !== null ? ' AND (e.agence_depart_id = :agence_depart OR e.agence_arrivee_id = :agence_arrivee)' : '';
 
         $sql = "
             SELECT
@@ -122,7 +122,7 @@ class FlotteTransportDashboardRepository extends \App\Repositories\Shared\Module
             LIMIT {$limite}
         ";
 
-        return $this->lignes($sql, $agenceId !== null ? ['agence' => $agenceId] : []);
+        return $this->lignes($sql, $agenceId !== null ? ['agence_depart' => $agenceId, 'agence_arrivee' => $agenceId] : []);
     }
 
     /**
@@ -133,7 +133,7 @@ class FlotteTransportDashboardRepository extends \App\Repositories\Shared\Module
     public function missionsTerminees(?int $agenceId, int $limite = 20): array
     {
         $limite = max(1, min($limite, 100));
-        $filtre = $agenceId !== null ? ' AND (e.agence_depart_id = :agence OR e.agence_arrivee_id = :agence)' : '';
+        $filtre = $agenceId !== null ? ' AND (e.agence_depart_id = :agence_depart OR e.agence_arrivee_id = :agence_arrivee)' : '';
 
         $sql = "
             SELECT
@@ -156,7 +156,7 @@ class FlotteTransportDashboardRepository extends \App\Repositories\Shared\Module
             LIMIT {$limite}
         ";
 
-        return $this->lignes($sql, $agenceId !== null ? ['agence' => $agenceId] : []);
+        return $this->lignes($sql, $agenceId !== null ? ['agence_depart' => $agenceId, 'agence_arrivee' => $agenceId] : []);
     }
 
     /**
@@ -170,7 +170,16 @@ class FlotteTransportDashboardRepository extends \App\Repositories\Shared\Module
             $stmt->execute($parametres);
 
             return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
-        } catch (Throwable) {
+        } catch (Throwable $e) {
+            /*
+             * Une table absente ne doit pas faire tomber tout l'ecran : la
+             * section concernee s'affiche vide et les autres restent lisibles.
+             * Mais une requete fautive produit exactement le meme silence. On la
+             * trace, sinon un tableau vide se lit comme « aucune donnee » alors
+             * que la requete n'est jamais partie.
+             */
+            error_log('[LBP] Lecture impossible dans ' . static::class . ' : ' . $e->getMessage());
+
             return [];
         }
     }

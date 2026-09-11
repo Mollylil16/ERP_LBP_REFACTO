@@ -384,12 +384,13 @@ final class SurveillanceController extends BaseController
                         user_id, regle_code, gravite, entity_type, entity_id, 
                         contexte, statut, origine_decision, commentaire_dg, created_at, traite_at, traite_par
                     ) VALUES (
-                        :user_id, 'IA_FRAUDE_QUALIFIEE', 'grave', 'users', :user_id,
+                        :user_id, 'IA_FRAUDE_QUALIFIEE', 'grave', 'users', :entity_id,
                         :contexte, 'confirmee', 'validee_dg', :commentaire, NOW(), NOW(), :dg_id
                     )
                 ");
                 $insAlert->execute([
                     'user_id' => (int) $rec['user_id'],
+                    'entity_id' => (int) $rec['user_id'],
                     'contexte' => json_encode(['explication_ia' => $rec['explication']], JSON_UNESCAPED_UNICODE),
                     'commentaire' => 'Approuvé par le DG depuis la recommandation IA.',
                     'dg_id' => (int) Auth::id()

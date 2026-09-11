@@ -72,8 +72,9 @@ final class PaymentApiController extends BaseController
             exit;
         }
 
-        $paymentUrl = View::url('api/paiements/pay/' . $facture->id);
-        $qrServerUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=' . urlencode($paymentUrl);
+        // Un QR code est lu par un appareil qui ne connait pas le domaine :
+        // l'adresse encodee doit etre absolue.
+        $qrServerUrl = View::qrCodeFor('api/paiements/pay/' . $facture->id);
 
         header('Location: ' . $qrServerUrl);
         exit;

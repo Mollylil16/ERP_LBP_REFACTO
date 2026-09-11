@@ -3309,8 +3309,9 @@ final class Colisage
         $statutRaw = (string) ($colis['statut'] ?? 'en_transit');
         $createdAt = !empty($colis['created_at']) ? date('d/m/Y H:i', strtotime((string) $colis['created_at'])) : date('d/m/Y H:i');
 
-        $siteUrl = 'https://labelleporte.net';
-        $qrCodeUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=' . urlencode($siteUrl);
+        // Suivi du colis plutot que la page d'accueil : le destinataire qui
+        // scanne l'etiquette cherche son colis, pas le site vitrine.
+        $qrCodeUrl = View::qrCodeFor('site/tracking?ref=' . urlencode((string) $colis['numero_tracking']), 180);
 
         $barcodePattern = '';
         for ($i = 0; $i < strlen($trackingNum); $i++) {
@@ -3441,8 +3442,8 @@ final class Colisage
             $totalValeurEur += $valEur;
         }
 
-        $verificationUrl = View::url('site/tracking?ref=' . urlencode($ref));
-        $qrCodeUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=' . urlencode($verificationUrl);
+        // Adresse absolue : le QR code est scanne hors du navigateur.
+        $qrCodeUrl = View::qrCodeFor('site/tracking?ref=' . urlencode($ref), 180);
 
         $tableRows = '';
         if (empty($parcels)) {

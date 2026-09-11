@@ -3238,9 +3238,13 @@ class MigrationRunner
                     $stmtColis = $this->pdo->prepare("
                         UPDATE lbp_colis
                         SET agence_depart_id = :dokui_id
-                        WHERE created_by = :user_id AND (agence_depart_id IS NULL OR agence_depart_id != :dokui_id)
+                        WHERE created_by = :user_id AND (agence_depart_id IS NULL OR agence_depart_id <> :dokui_exclu)
                     ");
-                    $stmtColis->execute(['dokui_id' => $dokuiId, 'user_id' => $siakaUserId]);
+                    $stmtColis->execute([
+                        'dokui_id' => $dokuiId,
+                        'dokui_exclu' => $dokuiId,
+                        'user_id' => $siakaUserId,
+                    ]);
                 }
             }
         } catch (\Throwable $e) {}

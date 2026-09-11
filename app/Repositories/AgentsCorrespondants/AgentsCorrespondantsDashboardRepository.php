@@ -57,7 +57,16 @@ class AgentsCorrespondantsDashboardRepository extends \App\Repositories\Shared\M
             $stmt->execute($parametres);
 
             return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
-        } catch (Throwable) {
+        } catch (Throwable $e) {
+            /*
+             * Une table absente ne doit pas faire tomber tout l'ecran : la
+             * section concernee s'affiche vide et les autres restent lisibles.
+             * Mais une requete fautive produit exactement le meme silence. On la
+             * trace, sinon un tableau vide se lit comme « aucune donnee » alors
+             * que la requete n'est jamais partie.
+             */
+            error_log('[LBP] Lecture impossible dans ' . static::class . ' : ' . $e->getMessage());
+
             return [];
         }
     }
@@ -136,7 +145,16 @@ class AgentsCorrespondantsDashboardRepository extends \App\Repositories\Shared\M
             ");
 
             return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
-        } catch (Throwable) {
+        } catch (Throwable $e) {
+            /*
+             * Une table absente ne doit pas faire tomber tout l'ecran : la
+             * section concernee s'affiche vide et les autres restent lisibles.
+             * Mais une requete fautive produit exactement le meme silence. On la
+             * trace, sinon un tableau vide se lit comme « aucune donnee » alors
+             * que la requete n'est jamais partie.
+             */
+            error_log('[LBP] Lecture impossible dans ' . static::class . ' : ' . $e->getMessage());
+
             return [];
         }
     }

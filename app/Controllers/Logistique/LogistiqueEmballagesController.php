@@ -89,13 +89,19 @@ final class LogistiqueEmballagesController extends LogistiqueBaseController
         // 1. Mettre à jour la quantité disponible en stock
         if ($typeMvt === 'APPROVISIONNEMENT') {
             $stmtStock = $pdo->prepare("INSERT INTO lbp_emballages_stocks (emballage_id, agence_id, quantite_disponible, updated_at)
-                                        VALUES (:emb, :site, :qte, NOW())
-                                        ON DUPLICATE KEY UPDATE quantite_disponible = quantite_disponible + :qte, updated_at = NOW()");
-            $stmtStock->execute(['emb' => $emballageId, 'site' => $agenceId, 'qte' => $quantite]);
+                                        VALUES (:emb, :site, :qte_initiale, NOW())
+                                        ON DUPLICATE KEY UPDATE quantite_disponible = quantite_disponible + :qte_ajout, updated_at = NOW()");
+            $stmtStock->execute([
+                'emb' => $emballageId, 'site' => $agenceId,
+                'qte_initiale' => $quantite, 'qte_ajout' => $quantite,
+            ]);
         } else {
             // Sortie / Consommation
             $stmtStock = $pdo->prepare("UPDATE lbp_emballages_stocks SET quantite_disponible = GREATEST(0, quantite_disponible - :qte), updated_at = NOW() WHERE emballage_id = :emb AND agence_id = :site");
-            $stmtStock->execute(['emb' => $emballageId, 'site' => $agenceId, 'qte' => $quantite]);
+            $stmtStock->execute([
+                'emb' => $emballageId, 'site' => $agenceId,
+                'qte_initiale' => $quantite, 'qte_ajout' => $quantite,
+            ]);
         }
 
         // 2. Enregistrer le mouvement de stock

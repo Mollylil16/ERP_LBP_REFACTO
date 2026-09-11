@@ -417,14 +417,15 @@ final class CallCenterController extends BaseController
                 LEFT JOIN logistique_rayons r ON c.rayon_id = r.id
                 LEFT JOIN lbp_clients dest ON c.destinataire_id = dest.id
                 WHERE c.numero_tracking = :q
-                   OR dest.phone LIKE :q_like
-                   OR dest.name LIKE :q_like
+                   OR dest.phone LIKE :q_phone
+                   OR dest.name LIKE :q_nom
                 ORDER BY c.id DESC
                 LIMIT 1
             ");
             $stmt->execute([
                 'q' => $query,
-                'q_like' => '%' . $query . '%',
+                'q_phone' => '%' . $query . '%',
+                'q_nom' => '%' . $query . '%',
             ]);
             $row = $stmt->fetch(PDO::FETCH_ASSOC);
             if ($row) {

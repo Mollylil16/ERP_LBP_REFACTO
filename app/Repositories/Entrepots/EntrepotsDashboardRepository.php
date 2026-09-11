@@ -242,9 +242,16 @@ class EntrepotsDashboardRepository extends \App\Repositories\Shared\ModuleDashbo
             $stmt->execute($parametres);
 
             return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
-        } catch (Throwable) {
-            // Une table absente ne doit pas faire tomber tout le tableau de bord :
-            // la section concernée s'affiche vide, les autres restent lisibles.
+        } catch (Throwable $e) {
+            /*
+             * Une table absente ne doit pas faire tomber tout le tableau de bord :
+             * la section concernée s'affiche vide, les autres restent lisibles.
+             * Mais une requête fautive produit exactement le même silence. On la
+             * trace, sinon un tableau vide se lit comme « aucune donnée » alors
+             * que la requête n'est jamais partie.
+             */
+            error_log('[LBP] Lecture impossible dans ' . static::class . ' : ' . $e->getMessage());
+
             return [];
         }
     }
