@@ -8,10 +8,13 @@ use Tests\TestCase;
 
 final class DashboardClickableAdoptionTest extends TestCase
 {
+    use ResoudLesComposantsDeVue;
+
     public function test_all_main_dashboards_define_kpi_destinations(): void
     {
         foreach ($this->dashboardViews() as $file) {
-            $source = (string) file_get_contents(BASE_PATH . '/' . $file);
+            $source = $this->sourceAvecComposants($file);
+
             self::assertTrue(
                 str_contains($source, "'href'")
                 || str_contains($source, 'Dashboard::businessModuleDashboard'),
@@ -26,30 +29,5 @@ final class DashboardClickableAdoptionTest extends TestCase
         foreach (['rh-contract-form', 'rh-assignment-form', 'rh-evaluation-form', 'rh-training-form', 'rh-discipline-form'] as $id) {
             self::assertStringContainsString("Modal::render('{$id}'", $source);
         }
-    }
-
-    /** @return array<int, string> */
-    private function dashboardViews(): array
-    {
-        return [
-            'views/finance/dashboard.php',
-            'views/rh/dashboard.php',
-            'views/admin/dashboard.php',
-            'views/employee/dashboard.php',
-            'views/colisage/dashboard.php',
-            'views/logistique/dashboard.php',
-            'views/crm/dashboard.php',
-            'views/tickets/dashboard.php',
-            'views/site_admin/dashboard.php',
-            'views/transit_douane/dashboard.php',
-            'views/tracking_colis/dashboard.php',
-            'views/facturation/dashboard.php',
-            'views/entrepots/dashboard.php',
-            'views/flotte_transport/dashboard.php',
-            'views/portefeuille_clients/dashboard.php',
-            'views/agents_correspondants/dashboard.php',
-            'views/pilotage_dg/dashboard.php',
-            'views/dashboard/index.php',
-        ];
     }
 }
