@@ -308,6 +308,27 @@ body.module-body {
   color: rgba(255, 255, 255, 0.78);
 }
 
+/* Icone et pastille de l en-tete : rendues par Ui::pageHeader, les options
+   existaient deja mais n etaient pas dessinees. */
+.finea-page-header-lead {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  min-width: 0;
+}
+
+.finea-page-header-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.finea-page-header-badge {
+  display: inline-flex;
+  align-items: center;
+}
+
 .finea-header-actions {
   display: flex;
   flex-wrap: wrap;

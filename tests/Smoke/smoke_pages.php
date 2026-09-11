@@ -84,6 +84,26 @@ $ecrans = [
     'Admin' => '/admin/dashboard',
 ];
 
+/*
+ * Les fiches de detail n existent que s il y a une ligne a afficher. On prend la
+ * premiere venue, en lecture seule : le script ne doit jamais ecrire dans la
+ * base sur laquelle on le lance.
+ */
+foreach ([
+    'Fiche demande de fonds' => ['lbp_demandes_fonds', '/finance/fonds/'],
+    'Fiche colis' => ['lbp_colis', '/colisage/parcels/'],
+] as $nom => [$table, $prefixe]) {
+    try {
+        $id = Database::getConnection()->query("SELECT id FROM {$table} ORDER BY id DESC LIMIT 1")->fetchColumn();
+    } catch (\Throwable) {
+        $id = false;
+    }
+
+    if ($id !== false && $id !== null) {
+        $ecrans[$nom] = $prefixe . (int) $id;
+    }
+}
+
 $echecs = [];
 $ligne = str_repeat('-', 78);
 

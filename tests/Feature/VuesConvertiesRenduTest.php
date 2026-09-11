@@ -135,6 +135,109 @@ final class VuesConvertiesRenduTest extends TestCase
         self::assertStringNotContainsString('<script>alert(1)</script>', $html);
     }
 
+    // ------------------------------------------------------------------
+    // Fiche d'une demande de fonds
+    // ------------------------------------------------------------------
+
+    /**
+     * Les cinq statuts possibles doivent tous produire une page lisible : c'est
+     * là que se cachent les oublis, un bloc conditionnel n'étant visible que
+     * dans un état sur cinq.
+     */
+    public function test_la_fiche_se_rend_dans_les_cinq_statuts(): void
+    {
+        foreach (['en_attente', 'validee', 'decaissee', 'imputee', 'rejetee'] as $statut) {
+            $html = FinanceFonds::fichePage($this->demande('DF-1', $statut, 250000.0), [], true, true, true);
+
+            self::assertStringContainsString('finea-shell', $html, "Statut {$statut}.");
+            self::assertStringContainsString('DF-1', $html, "Statut {$statut}.");
+        }
+    }
+
+    public function test_chaque_bloc_d_action_n_apparait_que_dans_son_statut(): void
+    {
+        $attendus = [
+            'en_attente' => 'Décision de la direction',
+            'validee' => 'Prise en compte caisse',
+            'decaissee' => 'Imputation comptable',
+        ];
+
+        foreach ($attendus as $statut => $titre) {
+            foreach (array_keys($attendus) as $autre) {
+                $html = FinanceFonds::fichePage($this->demande('DF-1', $autre, 1000.0), [], true, true, true);
+
+                if ($statut === $autre) {
+                    self::assertStringContainsString($titre, $html, "« {$titre} » manque au statut {$statut}.");
+                } else {
+                    self::assertStringNotContainsString($titre, $html, "« {$titre} » ne doit pas s'afficher au statut {$autre}.");
+                }
+            }
+        }
+    }
+
+    public function test_les_blocs_d_action_disparaissent_sans_habilitation(): void
+    {
+        // Sans droit, le formulaire ne doit pas être rendu du tout : le masquer
+        // en CSS laisserait la route POST atteignable depuis la page.
+        $html = FinanceFonds::fichePage($this->demande('DF-1', 'en_attente', 1000.0), [], false, false, false);
+
+        self::assertStringNotContainsString('Décision de la direction', $html);
+        self::assertStringNotContainsString('/valider', $html);
+        self::assertStringNotContainsString('/rejeter', $html);
+    }
+
+    public function test_les_formulaires_de_la_fiche_portent_un_jeton_csrf(): void
+    {
+        foreach (['en_attente', 'validee', 'decaissee'] as $statut) {
+            $html = FinanceFonds::fichePage($this->demande('DF-1', $statut, 1000.0), [], true, true, true);
+
+            $formulaires = substr_count($html, '<form method="post"');
+            $jetons = substr_count($html, '_csrf_token');
+
+            self::assertGreaterThan(0, $formulaires, "Statut {$statut}.");
+            self::assertGreaterThanOrEqual(
+                $formulaires,
+                $jetons,
+                "Statut {$statut} : un formulaire POST sans jeton CSRF serait refusé par le contrôleur."
+            );
+        }
+    }
+
+    public function test_le_journal_de_tracabilite_affiche_les_evenements(): void
+    {
+        $html = FinanceFonds::fichePage(
+            $this->demande('DF-1', 'validee', 1000.0),
+            [
+                ['action' => 'CREATION', 'user_nom' => 'M. Diarra', 'commentaire' => 'Demande déposée', 'created_at' => '2026-09-01 09:00:00'],
+                ['action' => 'VALIDATION', 'user_nom' => 'DG', 'commentaire' => 'Accord', 'created_at' => '2026-09-02 11:30:00'],
+            ],
+            true,
+            true,
+            true
+        );
+
+        self::assertStringContainsString('CREATION', $html);
+        self::assertStringContainsString('M. Diarra', $html);
+        self::assertStringContainsString('02/09/2026 à 11:30', $html);
+    }
+
+    public function test_le_journal_vide_s_explique(): void
+    {
+        $html = FinanceFonds::fichePage($this->demande('DF-1', 'en_attente', 1000.0), [], true, true, true);
+
+        self::assertStringContainsString('Aucun historique', $html);
+    }
+
+    public function test_le_reliquat_ne_transporte_pas_le_montant_dans_le_javascript(): void
+    {
+        // Le montant engagé passe par un attribut de données, pas par une
+        // interpolation dans un gestionnaire inline.
+        $html = FinanceFonds::fichePage($this->demande('DF-1', 'decaissee', 750000.0), [], true, true, true);
+
+        self::assertStringContainsString('data-fonds-engage="750000"', $html);
+        self::assertStringNotContainsString('calculerReliquat(', $html);
+    }
+
     /**
      * @return array<string, mixed>
      */

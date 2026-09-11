@@ -33,12 +33,19 @@ final class Ui
             if (!is_string($actions) && !is_array($actions)) {
                 $actions = '';
             }
+            // Icone et pastille sont du balisage ecrit par le developpeur, jamais
+            // saisi par un utilisateur : ils sont rendus tels quels, comme l option
+            // « icon » de Ui::badge.
+            $icon = (string) ($options['icon'] ?? '');
+            $badge = (string) ($options['badge'] ?? '');
             $attrs = $options;
-            unset($attrs['eyebrow'], $attrs['actions']);
+            unset($attrs['eyebrow'], $attrs['actions'], $attrs['icon'], $attrs['badge']);
         } else {
             $eyebrow = $titleOrEyebrow;
             $title = $subtitleOrTitle;
             $subtitle = $subtitleOrOptions;
+            $icon = '';
+            $badge = '';
         }
 
         $class = Html::classes(['finea-page-header', (string) ($attrs['class'] ?? '')]);
@@ -54,9 +61,19 @@ final class Ui
                 : '<div class="finea-header-actions">' . $renderedActions . '</div>';
         }
 
-        return '<section class="' . View::e($class) . '"><div>' . $eyebrowHtml . '<h1>' . View::e($title) . '</h1>'
+        $titreHtml = '<h1>' . View::e($title) . '</h1>'
+            . ($badge !== '' ? '<span class="finea-page-header-badge">' . $badge . '</span>' : '');
+
+        $corps = '<div>' . $eyebrowHtml
+            . ($badge !== '' ? '<div class="finea-page-header-title">' . $titreHtml . '</div>' : $titreHtml)
             . ($subtitle !== '' ? '<p>' . View::e($subtitle) . '</p>' : '')
-            . '</div>' . $actionsHtml . '</section>';
+            . '</div>';
+
+        if ($icon !== '') {
+            $corps = '<div class="finea-page-header-lead">' . $icon . $corps . '</div>';
+        }
+
+        return '<section class="' . View::e($class) . '">' . $corps . $actionsHtml . '</section>';
     }
 
     /** @param array<string,mixed> $attrs */
