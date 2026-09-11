@@ -307,11 +307,17 @@ final class Surveillance
         $rows = '';
         foreach ($employees as $idx => $emp) {
             $rank = $idx + 1;
+            /*
+             * Le rang est toujours ecrit. Les trois premiers recoivent en plus
+             * une medaille dessinee : les emoji qui les distinguaient ont ete
+             * retires sans remplacement, et leurs trois cellules sont restees
+             * vides pendant que les suivantes affichaient « #4 ».
+             */
             $medaille = match ($rank) {
-                1 => '',
-                2 => '',
-                3 => '',
-                default => '#' . $rank . ' ',
+                1 => self::medaille('#d4af37') . '#1',
+                2 => self::medaille('#9ca3af') . '#2',
+                3 => self::medaille('#b45309') . '#3',
+                default => '#' . $rank,
             };
 
             $score = (float) $emp['score_global'];
@@ -697,5 +703,20 @@ final class Surveillance
             . $brokenTable
             . '</div>'
             . '</div>';
+    }
+
+    /**
+     * Medaille de podium, tracee en SVG pour rester identique d'un poste a
+     * l'autre et suivre la couleur qu'on lui donne.
+     */
+    private static function medaille(string $couleur): string
+    {
+        return '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="'
+            . View::e($couleur) . '" stroke-width="2" stroke-linecap="round"'
+            . ' stroke-linejoin="round" aria-hidden="true"'
+            . ' style="vertical-align:-2px; margin-right:4px;">'
+            . '<circle cx="12" cy="15" r="6"></circle>'
+            . '<polyline points="8.5 9.5 6 2 10 2 12 6 14 2 18 2 15.5 9.5"></polyline>'
+            . '</svg>';
     }
 }

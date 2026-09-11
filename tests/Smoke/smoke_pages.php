@@ -75,6 +75,12 @@ $ecrans = [
     'Imputation (cloturees)' => '/finance/fonds/imputation?statut=imputee',
 
     // Écrans touchés indirectement (navigation, filtres, icônes)
+    'Call Center' => '/call-center/dashboard',
+    'Call Center — rayons' => '/call-center/rayons',
+    'Call Center — appels' => '/call-center/appels',
+    'Call Center — litiges' => '/call-center/litiges',
+    'Call Center — suivi' => '/call-center/suivi',
+    'Call Center — departs' => '/call-center/suivi-departs',
     'Recherche facturation' => '/facturation/filtre',
     'Tableau de bord Finance' => '/finance/dashboard',
     'Points de caisse' => '/finance/clotures',
