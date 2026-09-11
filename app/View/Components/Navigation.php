@@ -126,7 +126,13 @@ final class Navigation
 
     private static function chevron(): string
     {
-        return '<span aria-hidden="true">⌄</span>';
+        // Un chevron dessine avec le caractere U+2304 change de forme et de
+        // chasse selon la police installee, et ne suit pas la couleur du theme.
+        return '<span class="finea-nav-chevron" aria-hidden="true">'
+            . '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor"'
+            . ' stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
+            . '<polyline points="4 6 8 10 12 6"></polyline></svg>'
+            . '</span>';
     }
 
     private static function defaultGroup(string $key): string

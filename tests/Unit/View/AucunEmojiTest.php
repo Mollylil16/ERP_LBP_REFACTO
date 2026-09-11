@@ -18,8 +18,22 @@ use Tests\TestCase;
  */
 final class AucunEmojiTest extends TestCase
 {
-    /** Plages Unicode couvrant les emoji et pictogrammes decoratifs. */
-    private const PLAGES = '[\x{1F300}-\x{1FAFF}\x{2600}-\x{27BF}\x{2B00}-\x{2BFF}\x{FE0F}]';
+    /**
+     * Plages Unicode couvrant les emoji et pictogrammes decoratifs.
+     *
+     * Le bloc U+2300-U+23FF n'est pas pris en entier : il contient a la fois des
+     * emoji (montre, sablier, boutons de lecture) et des symboles techniques
+     * legitimes. Seules les sous-plages qui se rendent en emoji sur les systemes
+     * courants sont refusees. Un sablier U+23F3 avait ainsi traverse le guide de
+     * saisie sans etre vu.
+     *
+     * Les fleches typographiques (U+2190-U+21FF) et les puces geometriques
+     * (U+25A0-U+25FF) restent autorisees : elles suivent la police et la couleur
+     * du texte, ce qui est exactement ce qu'on reproche aux emoji de ne pas faire.
+     */
+    private const PLAGES = '[\x{1F300}-\x{1FAFF}\x{2600}-\x{27BF}\x{2B00}-\x{2BFF}\x{FE0F}'
+        . '\x{231A}-\x{231B}\x{2328}\x{23CF}\x{23E9}-\x{23FA}'
+        . '\x{21EA}\x{2304}\x{2049}\x{203C}\x{2122}\x{2139}\x{3030}\x{303D}\x{3297}\x{3299}]';
 
     public function test_aucun_emoji_dans_les_composants_et_les_vues(): void
     {

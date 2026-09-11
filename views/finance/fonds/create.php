@@ -119,7 +119,7 @@ use App\Helpers\View;
 
                 <!-- Alert info -->
                 <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem; display: flex; gap: 10px; align-items: flex-start;">
-                    <span style="font-size: 1.2rem;"></span>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink:0; color:#16a34a;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
                     <div style="font-size: 0.82rem; color: #166534; line-height: 1.4;">
                         <strong>Circuit de validation :</strong> Une fois enregistrée, la demande sera envoyée à la Direction (Assistante DG / DG) pour validation. Après validation, la caisse pourra procéder au décaissement et éditer votre <strong>Bon de Sortie de Caisse</strong>.
                     </div>

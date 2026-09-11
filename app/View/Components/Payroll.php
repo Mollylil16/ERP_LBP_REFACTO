@@ -746,7 +746,7 @@ function renderAdjustments() {
         html += "<div style=\"display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--finea-border);\">"
             + "<span><strong>" + a.label + "</strong> <small style=\"color:var(--finea-text-muted);\">" + a.nature + "</small></span>"
             + "<span style=\"display:flex;align-items:center;gap:12px;\"><strong>" + a.amount.toLocaleString("fr-FR") + " XOF</strong>"
-            + "<button type=\"button\" onclick=\"removeAdjustment(" + i + ")\" style=\"background:none;border:none;color:var(--finea-danger);cursor:pointer;font-size:16px;\"></button></span>"
+            + "<button type=\"button\" onclick=\"removeAdjustment(" + i + ")\" style=\"background:none;border:none;color:var(--finea-danger);cursor:pointer;font-size:16px;\" aria-label=\"Retirer cette ligne\" title=\"Retirer\"><svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><polyline points=\"3 6 5 6 21 6\"></polyline><path d=\"M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2\"></path></svg></button></span>"
             + "</div>";
     });
     list.innerHTML = html + "</div>";

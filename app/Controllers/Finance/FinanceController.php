@@ -65,6 +65,7 @@ final class FinanceController extends FinanceBaseController
     ];
 
     private PDO $db;
+    private \App\Repositories\Finance\FinanceDashboardRepository $dashboardRepo;
     private FactureRepository $factureRepo;
     private PaiementRepository $paiementRepo;
     private EtatJournalierRepository $etatRepo;

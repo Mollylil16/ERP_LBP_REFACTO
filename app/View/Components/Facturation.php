@@ -198,7 +198,7 @@ final class Facturation
             // Boutons Filtrer & Reset
             . '<div style="display:flex; gap:6px;">'
             . '<button type="submit" class="finea-button finea-button--primary" style="flex:1; padding:0.55rem 1rem; border-radius:6px; font-weight:700; background:#0f172a;">Filtrer</button>'
-            . '<a href="' . View::url('facturation/filtre') . '" class="finea-button finea-button--secondary" style="padding:0.55rem 0.8rem; border-radius:6px; text-decoration:none; color:#64748b; background:#fff; border:1px solid #cbd5e1;"></a>'
+            . '<a href="' . View::url('facturation/filtre') . '" class="finea-button finea-button--secondary" style="padding:0.55rem 0.8rem; border-radius:6px; text-decoration:none; color:#64748b; background:#fff; border:1px solid #cbd5e1;">' . '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:-2px; margin-right:5px;"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>' . 'Réinitialiser</a>'
             . '</div>'
 
             . '</div></form>';
