@@ -200,8 +200,28 @@ final class IntegrityRuleEngine
     ): void {
         try {
             $pdo = Database::getConnection();
+            /*
+             * La règle s'intitule « Même utilisateur qui crée, valide ET
+             * encaisse » : elle décrit trois rôles. Le code en exigeait deux,
+             * donc plus strict que la règle qu'il applique.
+             *
+             * À deux, tout agent qui facture puis encaisse son client était
+             * signalé « grave ». Dans les agences sans caissière dédiée, c'est
+             * le fonctionnement normal, imposé par l'effectif : la règle
+             * accusait les gens de faire leur travail, et noyait les vrais
+             * signaux sous le bruit.
+             *
+             * À trois, le cumul signalé est celui qui compte : facturer, prendre
+             * l'argent, et valider son propre point de caisse. Là, plus personne
+             * ne contrôle personne.
+             *
+             * Réglable sans toucher au code, par lbp_regles_config :
+             *   UPDATE lbp_regles_config
+             *   SET parametres_json = '{"min_roles_cumules":2}'
+             *   WHERE code = 'CUMUL_ROLES_TRANSACTION';
+             */
             $params = self::ruleParams('CUMUL_ROLES_TRANSACTION');
-            $minRoles = (int) ($params['min_roles_cumules'] ?? 2);
+            $minRoles = (int) ($params['min_roles_cumules'] ?? 3);
 
             // Chercher les actions distinctes de ce user sur cette facture
             $stmt = $pdo->prepare("

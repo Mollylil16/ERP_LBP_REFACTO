@@ -41,6 +41,34 @@ final class FinanceController extends FinanceBaseController
     private const MODES_ENCAISSEMENT_GUICHET = ['especes', 'mobile_money', 'carte', 'virement', 'cheque'];
 
     /**
+     * Rôles qui tiennent le guichet : ils facturent le client et encaissent.
+     *
+     * Dans les agences sans caissière dédiée — Adjamé aujourd'hui — c'est
+     * l'agent lui-même qui établit la facture et prend l'argent. Lui refuser
+     * l'encaissement revenait à empêcher l'agence de travailler.
+     *
+     * Les actes de contrôle ne sont pas dans cette liste et restent au chef
+     * d'agence : supprimer une facture, réinitialiser un encaissement,
+     * consolider un point de caisse soumis par quelqu'un d'autre. Celui qui
+     * encaisse ne doit pas pouvoir effacer sa propre trace.
+     *
+     * Avant d'y ajouter un rôle : la règle d'intégrité CUMUL_ROLES_TRANSACTION
+     * signale l'utilisateur qui cumule création, encaissement et validation sur
+     * une même facture. Son seuil se règle dans lbp_regles_config.
+     *
+     * @var array<int, string>
+     */
+    private const ROLES_GUICHET = [
+        'caissiere',
+        'caissiere_principale',
+        'chef_agence',
+        'dg',
+        'agent_saisie',
+        'agent_enregistrement',
+        'gestionnaire_caisse',
+    ];
+
+    /**
      * Roles qui voient le cumul de l'agence dans les points de caisse : leurs propres
      * operations additionnees a celles de tous les autres agents.
      *
@@ -95,7 +123,7 @@ final class FinanceController extends FinanceBaseController
      */
     public function facturesIndex(): void
     {
-        RoleMiddleware::check(['caissiere', 'caissiere_principale', 'chef_agence', 'dg', 'comptable', 'superviseur_regional', 'superviseur_general', 'suivi_recouvrement']);
+        RoleMiddleware::check([...self::ROLES_GUICHET, 'comptable', 'superviseur_regional', 'superviseur_general', 'suivi_recouvrement']);
 
         $userAgId = Auth::agenceId();
         $selectedAgence = $_GET['agence_id'] ?? null;
@@ -158,7 +186,7 @@ final class FinanceController extends FinanceBaseController
      */
     public function factureCreate(): void
     {
-        RoleMiddleware::check(['caissiere', 'caissiere_principale', 'chef_agence', 'dg']);
+        RoleMiddleware::check(self::ROLES_GUICHET);
 
         // Récupérer les colis réceptionnés sans facture dans le scope de l'utilisateur
         $agenceId = Auth::agenceId();
@@ -197,7 +225,7 @@ final class FinanceController extends FinanceBaseController
      */
     public function factureStore(): void
     {
-        RoleMiddleware::check(['caissiere', 'caissiere_principale', 'chef_agence', 'dg']);
+        RoleMiddleware::check(self::ROLES_GUICHET);
 
         // Sans ce controle, une page piegee peut declencher cette action a l insu
         // de l utilisateur connecte, avec ses propres droits.
@@ -354,7 +382,7 @@ final class FinanceController extends FinanceBaseController
      */
     public function factureShow(string $id): void
     {
-        RoleMiddleware::check(['caissiere', 'caissiere_principale', 'chef_agence', 'dg', 'comptable', 'superviseur_regional', 'superviseur_general', 'suivi_recouvrement', 'agent_enregistrement']);
+        RoleMiddleware::check([...self::ROLES_GUICHET, 'comptable', 'superviseur_regional', 'superviseur_general', 'suivi_recouvrement']);
 
         $id = (int) $id;
         $facture = $this->factureRepo->findById($id);
@@ -418,7 +446,7 @@ final class FinanceController extends FinanceBaseController
      */
     public function factureEncaisser(string $id): void
     {
-        RoleMiddleware::check(['caissiere', 'caissiere_principale', 'chef_agence', 'dg', 'agent_groupage', 'suivi_recouvrement']);
+        RoleMiddleware::check([...self::ROLES_GUICHET, 'agent_groupage', 'suivi_recouvrement']);
 
         if (!Csrf::verify($_POST['_csrf_token'] ?? null)) {
             Session::flash('error', 'Session expirée ou requête invalide (CSRF). Veuillez réessayer.');
@@ -552,7 +580,7 @@ final class FinanceController extends FinanceBaseController
      */
     public function facturePayerPortefeuille(string $id): void
     {
-        RoleMiddleware::check(['caissiere', 'caissiere_principale', 'chef_agence', 'dg']);
+        RoleMiddleware::check(self::ROLES_GUICHET);
 
         // Sans ce controle, une page piegee peut declencher cette action a l insu
         // de l utilisateur connecte, avec ses propres droits.
@@ -718,7 +746,7 @@ final class FinanceController extends FinanceBaseController
      */
     public function factureRelancer(string $id): void
     {
-        RoleMiddleware::check(['caissiere', 'caissiere_principale', 'chef_agence', 'dg', 'suivi_recouvrement']);
+        RoleMiddleware::check([...self::ROLES_GUICHET, 'suivi_recouvrement']);
 
         // Sans ce controle, une page piegee peut declencher cette action a l insu
         // de l utilisateur connecte, avec ses propres droits.
@@ -1083,10 +1111,8 @@ final class FinanceController extends FinanceBaseController
          * cumul de l agence (voir ROLES_CUMUL_AGENCE).
          */
         RoleMiddleware::check([
-            'caissiere', 'chef_agence', 'caissiere_principale', 'dg', 'comptable',
-            'superviseur_general', 'superviseur_regional',
-            'agent_enregistrement', 'agent_saisie', 'gestionnaire_caisse',
-            'admin',
+            ...self::ROLES_GUICHET,
+            'comptable', 'superviseur_general', 'superviseur_regional', 'admin',
         ]);
 
         $userAgenceId = Auth::agenceId();
@@ -1221,7 +1247,7 @@ final class FinanceController extends FinanceBaseController
      */
     public function clotureSoumettre(): void
     {
-        RoleMiddleware::check(['caissiere', 'chef_agence', 'caissiere_principale', 'dg']);
+        RoleMiddleware::check(self::ROLES_GUICHET);
 
         // Sans ce controle, une page piegee peut declencher cette action a l insu
         // de l utilisateur connecte, avec ses propres droits.
@@ -1628,7 +1654,7 @@ final class FinanceController extends FinanceBaseController
     public function exportPointCaisseDetaillePdf(): void
     {
         AuthMiddleware::check();
-        RoleMiddleware::check(['caissiere', 'chef_agence', 'caissiere_principale', 'dg', 'comptable', 'superviseur_general', 'superviseur_regional', 'agent_enregistrement', 'admin']);
+        RoleMiddleware::check([...self::ROLES_GUICHET, 'comptable', 'superviseur_general', 'superviseur_regional', 'admin']);
 
         $userAgenceId = (int) (Auth::user()?->agenceId ?? 0);
         $isGlobal = Auth::isAdmin() || Auth::isAssistantDg() || Auth::hasAnyRole(['caissiere_principale', 'dg', 'assistant_dg', 'assistante_dg', 'comptable', 'superviseur_general', 'superviseur_regional', 'admin']);
@@ -2792,7 +2818,7 @@ final class FinanceController extends FinanceBaseController
 
     public function guideIndex(): void
     {
-        RoleMiddleware::check(['caissiere', 'caissiere_principale', 'chef_agence', 'dg', 'comptable', 'superviseur_regional', 'superviseur_general', 'suivi_recouvrement']);
+        RoleMiddleware::check([...self::ROLES_GUICHET, 'comptable', 'superviseur_regional', 'superviseur_general', 'suivi_recouvrement']);
 
         $dashService = new \App\Services\Shared\ModuleDashboardService();
         $module = $dashService->dashboard('finance');

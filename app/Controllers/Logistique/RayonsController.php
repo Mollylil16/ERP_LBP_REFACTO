@@ -59,7 +59,9 @@ final class RayonsController extends LogistiqueBaseController
     public function store(): void
     {
         AuthMiddleware::check();
-        RoleMiddleware::check(['admin', 'chef_agence', 'agent', 'caissiere', 'magasinier', 'agent_logistique', 'superviseur_general', 'suivi_recouvrement']);
+        RoleMiddleware::check(['admin', 'chef_agence', 'agent', 'caissiere', 'magasinier', 'agent_logistique',
+            'agent_saisie', 'agent_enregistrement', 'agent_groupage',
+            'superviseur_general', 'suivi_recouvrement']);
 
         if (!Csrf::verify($_POST['_csrf_token'] ?? null)) {
             Session::flash('error', 'Session expirée ou requête invalide (CSRF). Veuillez réessayer.');
@@ -99,7 +101,9 @@ final class RayonsController extends LogistiqueBaseController
     public function delete(string $id): void
     {
         AuthMiddleware::check();
-        RoleMiddleware::check(['admin', 'chef_agence', 'agent', 'caissiere', 'magasinier', 'agent_logistique', 'superviseur_general', 'suivi_recouvrement']);
+        RoleMiddleware::check(['admin', 'chef_agence', 'agent', 'caissiere', 'magasinier', 'agent_logistique',
+            'agent_saisie', 'agent_enregistrement', 'agent_groupage',
+            'superviseur_general', 'suivi_recouvrement']);
 
         if (!Csrf::verify($_POST['_csrf_token'] ?? null)) {
             Session::flash('error', 'Session expirée ou requête invalide (CSRF). Veuillez réessayer.');
