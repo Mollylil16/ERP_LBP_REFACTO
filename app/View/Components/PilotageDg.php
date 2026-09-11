@@ -343,13 +343,14 @@ final class PilotageDg
      * @param array<int, array<string, mixed>> $colisSuspects
      * @param array<int, array<string, mixed>> $rapprochementIndependant
      */
-    public static function anomaliesPage(array $ecartsCaisse, array $agentsSuspects, array $agencesImpayes, array $signalements = [], array $colisSuspects = [], array $rapprochementIndependant = []): string
+    public static function anomaliesPage(array $ecartsCaisse, array $agentsSuspects, array $agencesImpayes, array $signalements = [], array $colisSuspects = [], array $rapprochementIndependant = [], int $aTraiter = 0, int $traites = 0): string
     {
-        $nbGraves = count(array_filter($signalements, fn($s) => (int) $s['degre'] >= 3));
+        $nbGraves = count(array_filter($signalements, fn($s) => (int) $s['degre'] >= 3 && !($s['clos'] ?? false)));
 
         $header = Ui::pageHeader(
             'Anomalies & Anti-Fraude',
-            'Signalements classés par degré de gravité — ' . count($signalements) . ' signalement(s) dont ' . $nbGraves . ' grave(s) ou très grave(s).',
+            $aTraiter . ' signalement(s) à traiter dont ' . $nbGraves . ' grave(s) ou très grave(s)'
+                . ($traites > 0 ? ', ' . $traites . ' déjà traité(s) ou classé(s) sans suite' : '') . '.',
             ['eyebrow' => 'Pilotage DG', 'class' => 'rh-hero-white']
         );
 
@@ -446,19 +447,78 @@ final class PilotageDg
 
         $rows = '';
         foreach ($signalements as $s) {
-            $rows .= '<tr>'
-                . '<td>' . Ui::badge((string) $s['gravite'], (string) $s['badgeTone']) . '</td>'
+            $cle = (string) ($s['id'] ?? '');
+            $clos = (bool) ($s['clos'] ?? false);
+            $statut = (string) ($s['statut_traitement'] ?? 'nouveau');
+
+            $rows .= '<tr' . ($clos ? ' style="opacity:.55;"' : '') . '>'
+                . '<td>' . Ui::badge((string) $s['gravite'], (string) $s['badgeTone']) . self::etatTraitement($statut, $s) . '</td>'
                 . '<td>' . View::e((string) $s['type']) . '</td>'
                 . '<td><strong>' . View::e((string) $s['employee']) . '</strong><br><small style="color:#64748b;">' . View::e((string) $s['agence']) . '</small></td>'
                 . '<td>' . View::e((string) $s['description']) . '</td>'
                 . '<td style="text-align:right;">' . ((float) $s['montant'] > 0 ? number_format((float) $s['montant'], 0, ',', ' ') . ' XOF' : '—') . '</td>'
                 . '<td>' . View::e(date('d/m/Y', strtotime((string) $s['date']))) . '</td>'
+                . '<td>' . self::actionsTraitement($cle, $clos) . '</td>'
                 . '</tr>';
         }
 
         return '<div class="finea-table-wrapper"><table class="finea-table"><thead><tr>'
-            . '<th>Gravité</th><th>Type</th><th>Agent / Agence</th><th>Description</th><th style="text-align:right;">Montant</th><th>Date</th>'
+            . '<th>Gravité</th><th>Type</th><th>Agent / Agence</th><th>Description</th><th style="text-align:right;">Montant</th><th>Date</th><th>Traitement</th>'
             . '</tr></thead><tbody>' . $rows . '</tbody></table></div>';
+    }
+
+    /**
+     * Etat de traitement affiche sous la gravite.
+     *
+     * @param array<string, mixed> $signalement
+     */
+    private static function etatTraitement(string $statut, array $signalement): string
+    {
+        if ($statut === 'nouveau') {
+            return '';
+        }
+
+        $libelle = match ($statut) {
+            'traite' => 'Traité',
+            'classe' => 'Classé sans suite',
+            default => 'Vu',
+        };
+
+        $par = $signalement['traitement_par'] ?? null;
+        $date = $signalement['traitement_date'] ?? null;
+        $infobulle = trim(($par !== null ? 'Par ' . (string) $par : '')
+            . ($date !== null ? ' le ' . date('d/m/Y', strtotime((string) $date)) : ''));
+
+        $commentaire = $signalement['traitement_commentaire'] ?? null;
+
+        return '<br><small style="color:#64748b; font-weight:700;" title="' . View::e($infobulle) . '">' . View::e($libelle) . '</small>'
+            . ($commentaire !== null ? '<br><small style="color:#94a3b8; font-style:italic;">' . View::e((string) $commentaire) . '</small>' : '');
+    }
+
+    /**
+     * Boutons de traitement d'un signalement.
+     */
+    private static function actionsTraitement(string $cle, bool $clos): string
+    {
+        if ($cle === '') {
+            return '';
+        }
+
+        $bouton = static function (string $statut, string $libelle, string $fond, string $couleur) use ($cle): string {
+            return '<form method="post" action="' . View::url('pilotage-dg/anomalies/traiter') . '" class="js-protect-form" style="display:inline;">'
+                . Form::hidden('_csrf_token', Csrf::token())
+                . Form::hidden('cle', $cle)
+                . Form::hidden('statut', $statut)
+                . '<button type="submit" style="padding:4px 9px; margin:0 3px 3px 0; background:' . $fond . '; color:' . $couleur . '; border:1px solid ' . $couleur . '33; border-radius:6px; font-size:.72rem; font-weight:700; cursor:pointer;">' . $libelle . '</button>'
+                . '</form>';
+        };
+
+        if ($clos) {
+            return $bouton('rouvrir', 'Rouvrir', '#f1f5f9', '#0f172a');
+        }
+
+        return $bouton('traite', 'Traité', '#ecfdf5', '#047857')
+            . $bouton('classe', 'Sans suite', '#f1f5f9', '#475569');
     }
 
     /** @param array<int, array<string, mixed>> $ecarts */

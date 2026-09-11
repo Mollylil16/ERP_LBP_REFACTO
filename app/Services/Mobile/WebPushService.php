@@ -20,7 +20,7 @@ use Throwable;
  * Le projet ne déclare aucune dépendance de production ; tout repose donc sur les
  * extensions openssl et curl, déjà requises par ailleurs.
  */
-final class WebPushService
+final class WebPushService implements EnvoiPushInterface
 {
     private const CLE_PUBLIQUE = 'vapid_public_key';
     private const CLE_PRIVEE = 'vapid_private_key';

@@ -13,6 +13,7 @@ use App\Helpers\View;
 use App\Models\Database;
 use App\Repositories\Mobile\MobileDeviceRepository;
 use App\Repositories\PilotageDg\PilotageDgDashboardRepository;
+use App\Repositories\PilotageDg\SignalementTraitementRepository;
 use App\Repositories\Rh\RhValidationRepository;
 use App\Services\Mobile\MobileAuthService;
 use App\View\Components\MobileDirection;
@@ -232,7 +233,49 @@ JS;
         $depot = new PilotageDgDashboardRepository(Database::getConnection());
         $anomalies = $depot->anomalies();
 
-        echo MobileDirectionEcrans::pageAnomalies($anomalies['signalements'] ?? []);
+        $suivi = (new SignalementTraitementRepository(Database::getConnection()))
+            ->enrichir($anomalies['signalements'] ?? []);
+
+        echo MobileDirectionEcrans::pageAnomalies(
+            $suivi['signalements'],
+            $suivi['aTraiter'],
+            $suivi['traites'],
+            isset($_GET['tout']),
+            Session::getFlash('success')
+        );
+    }
+
+    /**
+     * Traitement d'un signalement depuis le telephone.
+     */
+    public function traiterSignalement(): void
+    {
+        if (!$this->garde()) {
+            return;
+        }
+
+        if (!Csrf::verify($_POST['_csrf_token'] ?? null)) {
+            Session::flash('error', 'Session expirée.');
+            $this->redirect('/mobile/anomalies');
+            return;
+        }
+
+        $cle = trim((string) ($_POST['cle'] ?? ''));
+        $statut = trim((string) ($_POST['statut'] ?? ''));
+
+        if ($cle !== '') {
+            $depot = new SignalementTraitementRepository(Database::getConnection());
+
+            if ($statut === 'rouvrir') {
+                $depot->rouvrir($cle);
+                Session::flash('success', 'Signalement rouvert.');
+            } elseif (in_array($statut, SignalementTraitementRepository::STATUTS, true)) {
+                $depot->marquer($cle, $statut, (int) Auth::id(), null);
+                Session::flash('success', $statut === 'classe' ? 'Classé sans suite.' : 'Marqué comme traité.');
+            }
+        }
+
+        $this->redirect('/mobile/anomalies');
     }
 
     public function reglages(): void

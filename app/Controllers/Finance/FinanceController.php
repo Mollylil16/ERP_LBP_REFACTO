@@ -1228,6 +1228,22 @@ final class FinanceController extends FinanceBaseController
 
         AuditLogService::log('submit_cash_report', 'lbp_etats_journaliers', $reportId, null, $live + ['ecart' => $ecart, 'retroactif' => $isRetroactif, 'justification_retard' => $justificationRetard]);
 
+        // Alerte immédiate sur le téléphone de la direction si l'écart dépasse le seuil.
+        // L'envoi ne doit jamais empêcher la soumission d'aboutir : une panne du service
+        // de notification ne peut pas bloquer la clôture d'une caisse.
+        if (abs($ecart) >= \App\Services\Mobile\NotificationDirectionService::SEUIL_ECART_XOF) {
+            try {
+                $stmtAg = $this->db->prepare("SELECT name FROM company_sites WHERE id = :id LIMIT 1");
+                $stmtAg->execute(['id' => $agenceId]);
+                $nomAgence = (string) ($stmtAg->fetchColumn() ?: ('Agence #' . $agenceId));
+
+                \App\Services\Mobile\NotificationDirectionService::creer($this->db)
+                    ->ecartDeCaisse($reportId, $nomAgence, $dateCible, $ecart, $explication !== '' ? $explication : null);
+            } catch (\Throwable $e) {
+                error_log('[LBP] Alerte écart de caisse non envoyée : ' . $e->getMessage());
+            }
+        }
+
         $msgRetro = $isRetroactif ? ' (soumission rétroactive pour le ' . date('d/m/Y', strtotime($dateCible)) . ')' : '';
         Session::flash('success', 'Le point de caisse avec rapprochement a été soumis et verrouillé avec succès' . $msgRetro . '.');
         header('Location: ' . View::url('finance/clotures'));

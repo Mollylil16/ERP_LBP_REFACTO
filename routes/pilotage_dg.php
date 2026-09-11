@@ -19,4 +19,7 @@ $router->group('/pilotage-dg', function (Router $router): void {
     // du module RH : ces routes s'y delegent, elles ne la reimplementent pas.
     $router->post('/validations/workflow/{id}', [PilotageDgDashboardController::class, 'decideWorkflow']);
     $router->post('/validations/demande/{id}', [PilotageDgDashboardController::class, 'decideLegalRequest']);
+
+    // Cycle de vie d'un signalement : vu, traite, classe sans suite, ou reouvert
+    $router->post('/anomalies/traiter', [PilotageDgDashboardController::class, 'traiterSignalement']);
 });

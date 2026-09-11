@@ -16,7 +16,7 @@ $signalements ??= [];
 $colisSuspects ??= [];
 $rapprochementIndependant ??= [];
 ob_start();
-echo PilotageDg::anomaliesPage($ecartsCaisse, $agentsSuspects, $agencesImpayes, $signalements, $colisSuspects, $rapprochementIndependant);
+echo PilotageDg::anomaliesPage($ecartsCaisse, $agentsSuspects, $agencesImpayes, $signalements, $colisSuspects, $rapprochementIndependant, (int) ($signalementsATraiter ?? 0), (int) ($signalementsTraites ?? 0));
 $content = ob_get_clean();
 
 require BASE_PATH . '/views/layouts/module.php';

@@ -11,6 +11,7 @@ use App\Helpers\Session;
 use App\Middleware\AuthMiddleware;
 use App\Middleware\RoleMiddleware;
 use App\Models\Database;
+use App\Repositories\PilotageDg\SignalementTraitementRepository;
 use App\Repositories\Rh\RhValidationRepository;
 use RuntimeException;
 use App\Repositories\PilotageDg\PilotageDgDashboardRepository;
@@ -75,8 +76,15 @@ final class PilotageDgDashboardController extends BaseController
         $module = $this->service->moduleMeta();
         $anomalies = $this->service->anomalies();
 
+        // Un signalement regularise ne doit plus remonter indefiniment : son
+        // traitement est rattache a sa cle deterministe.
+        $suivi = (new SignalementTraitementRepository(Database::getConnection()))
+            ->enrichir($anomalies['signalements'] ?? []);
+
         $this->view('pilotage_dg/anomalies', $this->viewData($module, 'anomalies') + [
-            'signalements' => $anomalies['signalements'] ?? [],
+            'signalementsATraiter' => $suivi['aTraiter'],
+            'signalementsTraites' => $suivi['traites'],
+            'signalements' => $suivi['signalements'],
             'ecartsCaisse' => $anomalies['ecartsCaisse'],
             'agentsSuspects' => $anomalies['agentsSuspects'],
             'agencesImpayes' => $anomalies['agencesImpayes'],
@@ -106,6 +114,50 @@ final class PilotageDgDashboardController extends BaseController
             'pagination' => $result['pagination'],
             'filters' => $filters,
         ]);
+    }
+
+    /**
+     * Enregistre le traitement d'un signalement : vu, traite, classe sans suite,
+     * ou reouverture.
+     */
+    public function traiterSignalement(): void
+    {
+        AuthMiddleware::check();
+        RoleMiddleware::check(['dg', 'admin']);
+
+        if (!Csrf::verify($_POST['_csrf_token'] ?? null)) {
+            Session::flash('error', 'Session expirée ou requête invalide.');
+            $this->redirect('/pilotage-dg/anomalies');
+            return;
+        }
+
+        $cle = trim((string) ($_POST['cle'] ?? ''));
+        $statut = trim((string) ($_POST['statut'] ?? ''));
+        $commentaire = trim((string) ($_POST['commentaire'] ?? ''));
+
+        if ($cle === '') {
+            Session::flash('error', 'Signalement introuvable.');
+            $this->redirect('/pilotage-dg/anomalies');
+            return;
+        }
+
+        $depot = new SignalementTraitementRepository(Database::getConnection());
+
+        if ($statut === 'rouvrir') {
+            $depot->rouvrir($cle);
+            Session::flash('success', 'Signalement rouvert.');
+        } elseif (in_array($statut, SignalementTraitementRepository::STATUTS, true)) {
+            $depot->marquer($cle, $statut, (int) Auth::id(), $commentaire !== '' ? $commentaire : null);
+            Session::flash('success', match ($statut) {
+                'traite' => 'Signalement marqué comme traité.',
+                'classe' => 'Signalement classé sans suite.',
+                default => 'Signalement marqué comme vu.',
+            });
+        } else {
+            Session::flash('error', 'Action inconnue.');
+        }
+
+        $this->redirect('/pilotage-dg/anomalies');
     }
 
     /**

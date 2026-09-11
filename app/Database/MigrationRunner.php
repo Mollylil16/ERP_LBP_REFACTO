@@ -48,8 +48,37 @@ class MigrationRunner
         $this->assignStaffRolesAndAgencies();
         $this->syncFacturesMontantRestant();
         $this->createMobileDirectionTables();
+        $this->createSignalementsTraitementTable();
     }
 
+
+    /**
+     * Suivi du traitement des signalements anti-fraude.
+     *
+     * Les signalements sont recalcules a chaque affichage a partir des donnees brutes :
+     * ils n ont pas d existence propre en base. Cette table leur donne un cycle de vie,
+     * indexe par leur cle deterministe (EC-12, CS-7, RI-P-3...), pour qu un ecart
+     * explique et regularise cesse de remonter indefiniment au directeur.
+     */
+    private function createSignalementsTraitementTable(): void
+    {
+        if (!$this->schema->tableExists('lbp_signalements_traitement')) {
+            $this->pdo->exec("
+                CREATE TABLE lbp_signalements_traitement (
+                    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                    signalement_key VARCHAR(80) NOT NULL,
+                    statut ENUM('vu', 'traite', 'classe') NOT NULL DEFAULT 'vu',
+                    commentaire VARCHAR(500) NULL,
+                    traite_par INT NULL,
+                    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME NULL,
+                    UNIQUE KEY uniq_signalement_key (signalement_key),
+                    KEY idx_signalement_statut (statut),
+                    CONSTRAINT fk_signalement_traite_par FOREIGN KEY (traite_par) REFERENCES users(id) ON DELETE SET NULL
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            ");
+        }
+    }
 
     /**
      * Tables de l'application mobile de direction (PWA) : appareils appairés avec code

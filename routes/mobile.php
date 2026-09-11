@@ -39,6 +39,7 @@ $router->group('/mobile', function (Router $router): void {
     $router->get('/validations', [MobileAppController::class, 'validations']);
     $router->get('/personnel', [MobileAppController::class, 'personnel']);
     $router->get('/anomalies', [MobileAppController::class, 'anomalies']);
+    $router->post('/anomalies/traiter', [MobileAppController::class, 'traiterSignalement']);
     $router->get('/reglages', [MobileAppController::class, 'reglages']);
 
     // Décisions prises depuis le téléphone : délèguent à la logique métier existante

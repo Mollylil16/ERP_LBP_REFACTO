@@ -12,7 +12,7 @@ use PDO;
  * Le directeur ouvre l'application sur plusieurs appareils : chacun produit son
  * propre abonnement, et une alerte part vers tous ceux qui sont encore valides.
  */
-final class PushSubscriptionRepository
+final class PushSubscriptionRepository implements AbonnementsPushInterface
 {
     public function __construct(private PDO $pdo) {}
 

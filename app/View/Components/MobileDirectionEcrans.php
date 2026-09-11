@@ -243,29 +243,53 @@ final class MobileDirectionEcrans
     /**
      * @param array<int, array<string, mixed>> $signalements
      */
-    public static function pageAnomalies(array $signalements): string
+    public static function pageAnomalies(array $signalements, int $aTraiter = 0, int $traites = 0, bool $toutAfficher = false, ?string $succes = null): string
     {
-        if ($signalements === []) {
-            return self::coqueApp('Anomalies', 'anomalies', self::vide(
+        $entete = $succes !== null ? MobileDirection::alerte($succes, 'info') : '';
+
+        // Par defaut, seuls les signalements encore ouverts sont montres : un ecart
+        // regularise il y a six mois n'a pas a occuper l'ecran du directeur.
+        $visibles = $toutAfficher
+            ? $signalements
+            : array_values(array_filter($signalements, static fn(array $s): bool => !($s['clos'] ?? false)));
+
+        if ($visibles === []) {
+            $corpsVide = $entete . self::vide(
                 'valider',
-                'Aucun signalement',
-                'Aucune anomalie détectée sur la période analysée.'
-            ));
+                $traites > 0 ? 'Tout est traité' : 'Aucun signalement',
+                $traites > 0
+                    ? $traites . ' signalement(s) ont été traités ou classés sans suite.'
+                    : 'Aucune anomalie détectée sur la période analysée.'
+            );
+
+            if ($traites > 0 && !$toutAfficher) {
+                $corpsVide .= '<a href="' . View::url('mobile/anomalies') . '?tout=1" class="bouton bouton--fantome">Voir les signalements traités</a>';
+            }
+
+            return self::coqueApp('Anomalies', 'anomalies', $corpsVide);
         }
 
         $parDegre = [4 => 0, 3 => 0, 2 => 0];
-        foreach ($signalements as $s) {
+        foreach ($visibles as $s) {
             $d = (int) $s['degre'];
             if (isset($parDegre[$d])) {
                 $parDegre[$d]++;
             }
         }
 
-        $corps = '<div class="grille-kpi grille-kpi--trio">'
+        $signalements = $visibles;
+
+        $corps = $entete . '<div class="grille-kpi grille-kpi--trio">'
             . '<div class="kpi kpi--danger"><span class="kpi-libelle">Très graves</span><strong class="kpi-valeur">' . $parDegre[4] . '</strong></div>'
             . '<div class="kpi kpi--warning"><span class="kpi-libelle">Graves</span><strong class="kpi-valeur">' . $parDegre[3] . '</strong></div>'
             . '<div class="kpi"><span class="kpi-libelle">Moyens</span><strong class="kpi-valeur">' . $parDegre[2] . '</strong></div>'
             . '</div>';
+
+        if ($traites > 0) {
+            $corps .= '<a href="' . View::url('mobile/anomalies') . ($toutAfficher ? '' : '?tout=1') . '" class="lien-filtre">'
+                . ($toutAfficher ? 'Masquer les signalements traités' : 'Voir aussi les ' . $traites . ' traité(s)')
+                . '</a>';
+        }
 
         $cartes = '';
         foreach (array_slice($signalements, 0, 60) as $s) {
@@ -281,6 +305,7 @@ final class MobileDirectionEcrans
                 . '<div class="carte-qui">' . View::e((string) $s['employee']) . ' · ' . View::e((string) $s['agence']) . '</div>'
                 . '<p class="carte-detail">' . View::e((string) $s['description']) . '</p>'
                 . '<small class="carte-date">' . View::e(self::dateCourte((string) $s['date'])) . '</small>'
+                . self::actionsSignalement((string) ($s['id'] ?? ''), (bool) ($s['clos'] ?? false), (string) ($s['statut_traitement'] ?? 'nouveau'))
                 . '</div>';
         }
 
@@ -401,6 +426,37 @@ final class MobileDirectionEcrans
             . '<button type="submit" name="decision" value="reject" class="btn-decision btn-decision--rejet">Rejeter</button>'
             . '<button type="submit" name="decision" value="approve" class="btn-decision btn-decision--accord">Approuver</button>'
             . '</form>'
+            . '</div>';
+    }
+
+    /**
+     * Boutons de traitement d'un signalement, depuis le telephone.
+     */
+    private static function actionsSignalement(string $cle, bool $clos, string $statut): string
+    {
+        if ($cle === '') {
+            return '';
+        }
+
+        $formulaire = static function (string $nouveauStatut, string $libelle, string $classe) use ($cle): string {
+            return '<form method="post" action="' . View::url('mobile/anomalies/traiter') . '" style="flex:1;">'
+                . Form::hidden('_csrf_token', Csrf::token())
+                . Form::hidden('cle', $cle)
+                . Form::hidden('statut', $nouveauStatut)
+                . '<button type="submit" class="btn-decision ' . $classe . '" style="width:100%;">' . $libelle . '</button>'
+                . '</form>';
+        };
+
+        if ($clos) {
+            return '<div class="etat-traite">'
+                . '<span>' . ($statut === 'classe' ? 'Classé sans suite' : 'Traité') . '</span>'
+                . $formulaire('rouvrir', 'Rouvrir', 'btn-decision--rejet')
+                . '</div>';
+        }
+
+        return '<div class="actions-decision">'
+            . $formulaire('classe', 'Sans suite', 'btn-decision--rejet')
+            . $formulaire('traite', 'Traité', 'btn-decision--accord')
             . '</div>';
     }
 
@@ -536,6 +592,9 @@ final class MobileDirectionEcrans
 .bloc-bouton{margin-top:14px}
 .bouton--danger{background:#fff;color:var(--rouge);border:1.5px solid #fecaca}
 
+.lien-filtre{display:block;text-align:center;margin-top:12px;padding:10px;font-size:.84rem;font-weight:600;color:var(--marine);text-decoration:none;background:var(--blanc);border:1px solid var(--bord);border-radius:var(--r-sm)}
+.etat-traite{display:flex;align-items:center;gap:10px;margin-top:12px;padding-top:11px;border-top:1px solid var(--bord)}
+.etat-traite>span{flex:1;font-size:.82rem;font-weight:700;color:var(--vert)}
 .etat-vide{display:flex;flex-direction:column;align-items:center;text-align:center;gap:7px;padding:52px 24px;color:var(--gris-clair)}
 .etat-vide strong{font-size:1.04rem;color:var(--encre)}
 .etat-vide small{font-size:.85rem;line-height:1.5;max-width:280px}
