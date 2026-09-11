@@ -387,17 +387,18 @@ final class MobileDirectionEcrans
                 . '</a>';
         }
 
-        $contenu = '<div class="app">'
+        $contenu = '<div class="app" data-ecran="' . View::e($ongletActif) . '">'
+            . '<div class="barre-progression" id="progression" hidden></div>'
             . '<header class="app-entete">'
             . '<img src="' . View::asset('images/mobile/icone-192.png') . '" alt="" class="entete-logo">'
-            . '<h1>' . View::e($titre) . '</h1>'
+            . '<h1 id="titre-ecran">' . View::e($titre) . '</h1>'
             . '</header>'
-            . '<main class="app-corps">' . $corps . '</main>'
+            . '<main class="app-corps" id="corps">' . $corps . '</main>'
             . '<nav class="app-nav">' . $nav . '</nav>'
             . '</div>';
 
         return MobileDirection::coque($titre, $contenu, [
-            'scripts' => self::stylesApp() . $scripts,
+            'scripts' => self::stylesApp() . self::scriptNavigation() . $scripts,
         ]);
     }
 
@@ -592,6 +593,12 @@ final class MobileDirectionEcrans
 .bloc-bouton{margin-top:14px}
 .bouton--danger{background:#fff;color:var(--rouge);border:1.5px solid #fecaca}
 
+.barre-progression{position:fixed;top:0;left:0;right:0;height:2.5px;z-index:60;background:transparent;overflow:hidden}
+.barre-progression::after{content:'';display:block;height:100%;width:40%;background:var(--or);border-radius:2px;animation:glisser .9s ease-in-out infinite}
+@keyframes glisser{0%{transform:translateX(-100%)}100%{transform:translateX(350%)}}
+.app-corps{animation:apparition .18s ease-out}
+@keyframes apparition{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.app-corps.sortant{opacity:.4;transition:opacity .12s}
 .lien-filtre{display:block;text-align:center;margin-top:12px;padding:10px;font-size:.84rem;font-weight:600;color:var(--marine);text-decoration:none;background:var(--blanc);border:1px solid var(--bord);border-radius:var(--r-sm)}
 .etat-traite{display:flex;align-items:center;gap:10px;margin-top:12px;padding-top:11px;border-top:1px solid var(--bord)}
 .etat-traite>span{flex:1;font-size:.82rem;font-weight:700;color:var(--vert)}
@@ -628,6 +635,153 @@ CSS;
         $css = str_replace(['\\', '`', '${'], ['\\\\', '\\`', '\\${'], $css);
 
         return "(function(){var s=document.createElement('style');s.textContent=`{$css}`;document.head.appendChild(s);})();";
+    }
+
+    /**
+     * Navigation sans rechargement : le contenu est echange, l en-tete et la barre
+     * d onglets restent en place. Sur une connexion mobile, un rechargement complet
+     * fait clignoter toute l interface a chaque changement d onglet.
+     *
+     * Tout repose sur des liens et des formulaires ordinaires : si le script echoue
+     * ou que le navigateur ne suit pas, la navigation classique fonctionne toujours.
+     */
+    private static function scriptNavigation(): string
+    {
+        $portee = View::url('mobile/');
+
+        return <<<JS
+(function(){
+  if(!window.history||!window.fetch||!document.querySelector){return;}
+
+  var PORTEE='{$portee}';
+  var corps=document.getElementById('corps');
+  var titre=document.getElementById('titre-ecran');
+  var barre=document.getElementById('progression');
+  var app=document.querySelector('.app');
+  if(!corps||!app){return;}
+
+  var enCours=null;
+
+  function interne(url){
+    try{
+      var u=new URL(url, location.href);
+      return u.origin===location.origin && u.pathname.indexOf(PORTEE)===0;
+    }catch(e){return false;}
+  }
+
+  function progression(actif){ if(barre){barre.hidden=!actif;} }
+
+  function activerOnglet(ecran){
+    document.querySelectorAll('.onglet').forEach(function(a){
+      var cible=a.getAttribute('href')||'';
+      a.classList.toggle('actif', ecran && cible.indexOf('/'+ecran)!==-1);
+    });
+  }
+
+  function appliquer(html, url){
+    var doc=new DOMParser().parseFromString(html,'text/html');
+    var nouveauCorps=doc.getElementById('corps');
+    var nouvelleApp=doc.querySelector('.app');
+
+    // Reponse inattendue (redirection vers le verrouillage, page d erreur) :
+    // on laisse le navigateur faire, plutot que d afficher un ecran incoherent.
+    if(!nouveauCorps||!nouvelleApp){ location.href=url; return; }
+
+    corps.innerHTML=nouveauCorps.innerHTML;
+    corps.classList.remove('sortant');
+    // Relance l animation d entree
+    corps.style.animation='none'; void corps.offsetWidth; corps.style.animation='';
+
+    var ecran=nouvelleApp.getAttribute('data-ecran');
+    app.setAttribute('data-ecran', ecran||'');
+    activerOnglet(ecran);
+
+    var nouveauTitre=doc.getElementById('titre-ecran');
+    if(titre&&nouveauTitre){titre.textContent=nouveauTitre.textContent;}
+    if(doc.title){document.title=doc.title;}
+
+    window.scrollTo(0,0);
+    executerScripts(doc);
+  }
+
+  // Les ecrans peuvent embarquer leur propre script (la bascule des notifications).
+  function executerScripts(doc){
+    var scripts=doc.querySelectorAll('body > script');
+    scripts.forEach(function(src){
+      if(!src.textContent||src.textContent.indexOf('bascule-push')===-1){return;}
+      var el=document.createElement('script');
+      el.textContent=src.textContent;
+      document.body.appendChild(el);
+      document.body.removeChild(el);
+    });
+  }
+
+  function aller(url, empiler){
+    if(enCours){enCours.abort&&enCours.abort();}
+    var ctrl=(window.AbortController)?new AbortController():null;
+    enCours=ctrl;
+
+    progression(true);
+    corps.classList.add('sortant');
+
+    fetch(url,{headers:{'X-Navigation-Interne':'1'},credentials:'same-origin',signal:ctrl?ctrl.signal:undefined})
+      .then(function(r){
+        if(!r.ok||r.redirected){ location.href=r.url||url; return null; }
+        return r.text();
+      })
+      .then(function(html){
+        if(html===null){return;}
+        if(empiler){history.pushState({url:url},'',url);}
+        appliquer(html,url);
+      })
+      .catch(function(err){
+        if(err&&err.name==='AbortError'){return;}
+        location.href=url;
+      })
+      .finally(function(){ progression(false); enCours=null; corps.classList.remove('sortant'); });
+  }
+
+  document.addEventListener('click',function(e){
+    if(e.defaultPrevented||e.button!==0||e.metaKey||e.ctrlKey||e.shiftKey||e.altKey){return;}
+    var lien=e.target.closest?e.target.closest('a'):null;
+    if(!lien||lien.target==='_blank'||lien.hasAttribute('download'))
+      {return;}
+    var href=lien.getAttribute('href');
+    if(!href||href.charAt(0)==='#'||!interne(href)){return;}
+
+    e.preventDefault();
+    aller(lien.href,true);
+  });
+
+  // Les decisions et traitements sont des formulaires : on les envoie sans
+  // recharger, puis on suit la redirection du serveur.
+  document.addEventListener('submit',function(e){
+    var form=e.target;
+    if(!form||form.method.toLowerCase()!=='post'||!interne(form.action)){return;}
+    if(form.hasAttribute('data-classique')){return;}
+
+    e.preventDefault();
+    progression(true);
+    corps.classList.add('sortant');
+
+    fetch(form.action,{method:'POST',body:new FormData(form),credentials:'same-origin',headers:{'X-Navigation-Interne':'1'}})
+      .then(function(r){
+        var cible=r.url||form.action;
+        return r.text().then(function(html){return {html:html,url:cible,ok:r.ok};});
+      })
+      .then(function(res){
+        if(!res.ok){ location.href=res.url; return; }
+        history.replaceState({url:res.url},'',res.url);
+        appliquer(res.html,res.url);
+      })
+      .catch(function(){ form.setAttribute('data-classique','1'); form.submit(); })
+      .finally(function(){ progression(false); corps.classList.remove('sortant'); });
+  });
+
+  window.addEventListener('popstate',function(){ aller(location.href,false); });
+  history.replaceState({url:location.href},'',location.href);
+})();
+JS;
     }
 
     private static function scriptPush(): string
