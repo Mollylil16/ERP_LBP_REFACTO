@@ -86,6 +86,66 @@ $lire = static function (string $sql, array $params = []) use ($pdo): array {
 $audit = [];
 
 // =========================================================================
+// Z. Synthèse par agence
+// =========================================================================
+/*
+ * Toutes les agences actives figurent ici, y compris celles qui n'ont rien
+ * produit sur la période : une agence absente d'un rapport se lit comme une
+ * agence oubliée, alors qu'une agence à zéro est une information en soi.
+ *
+ * Le facturé part des factures émises, l'encaissé des paiements reçus. Les deux
+ * ne portent pas sur les mêmes pièces et ne doivent pas être confondus.
+ */
+$audit['par_agence'] = $lire("
+    SELECT
+        s.id,
+        s.name AS agence,
+        COALESCE(c.nb_colis, 0) AS nb_colis,
+        COALESCE(f.nb_factures, 0) AS nb_factures,
+        COALESCE(f.total_facture, 0) AS total_facture,
+        COALESCE(f.total_restant, 0) AS reste_a_recouvrer,
+        COALESCE(p.encaisse_periode, 0) AS encaisse_periode,
+        COALESCE(p.nb_paiements, 0) AS nb_paiements,
+        COALESCE(p.nb_encaisseurs, 0) AS nb_encaisseurs,
+        GREATEST(COALESCE(f.derniere_facture, '1970-01-01 00:00:00'),
+                 COALESCE(p.dernier_paiement, '1970-01-01 00:00:00')) AS derniere_activite
+    FROM company_sites s
+    LEFT JOIN (
+        SELECT agence_id,
+               COUNT(*) AS nb_factures,
+               SUM(CASE WHEN devise = 'XOF' THEN montant_total ELSE 0 END) AS total_facture,
+               SUM(CASE WHEN devise = 'XOF' THEN montant_restant ELSE 0 END) AS total_restant,
+               MAX(date_emission) AS derniere_facture
+        FROM lbp_factures
+        WHERE DATE(date_emission) >= :depuis_facture
+        GROUP BY agence_id
+    ) f ON f.agence_id = s.id
+    LEFT JOIN (
+        SELECT fa.agence_id,
+               SUM(CASE WHEN pa.devise = 'XOF' THEN pa.montant ELSE 0 END) AS encaisse_periode,
+               COUNT(*) AS nb_paiements,
+               COUNT(DISTINCT pa.caissiere_id) AS nb_encaisseurs,
+               MAX(pa.date_paiement) AS dernier_paiement
+        FROM lbp_paiements pa
+        JOIN lbp_factures fa ON fa.id = pa.facture_id
+        WHERE DATE(pa.date_paiement) >= :depuis_paiement
+        GROUP BY fa.agence_id
+    ) p ON p.agence_id = s.id
+    LEFT JOIN (
+        SELECT agence_depart_id, COUNT(*) AS nb_colis
+        FROM lbp_colis
+        WHERE DATE(created_at) >= :depuis_colis
+        GROUP BY agence_depart_id
+    ) c ON c.agence_depart_id = s.id
+    WHERE s.is_active = 1
+    ORDER BY encaisse_periode DESC, s.name ASC
+", [
+    'depuis_facture' => $depuis,
+    'depuis_paiement' => $depuis,
+    'depuis_colis' => $depuis,
+]);
+
+// =========================================================================
 // A. Facture contre paiements : le compteur figé est-il juste ?
 // =========================================================================
 /*
@@ -349,6 +409,57 @@ function rapport(array $audit, string $depuis, int $agence): string
     $l[] = $trait;
 
     // --- A ---
+    $l[] = '';
+    // --- Z : synthèse par agence ---
+    $l[] = '';
+    $l[] = '0. SYNTHÈSE PAR AGENCE';
+    $l[] = $fin;
+    $l[] = 'FACTURÉ  : montant des factures émises sur la période.';
+    $l[] = 'ENCAISSÉ : argent reçu sur la période, y compris sur des factures plus anciennes.';
+    $l[] = 'Les deux ne portent pas sur les mêmes pièces : leur écart n\'est pas une anomalie.';
+    $l[] = '';
+    $l[] = sprintf('   %-26s %6s %9s %14s %14s %16s %5s %-18s',
+        'AGENCE', 'COLIS', 'FACTURES', 'FACTURÉ', 'ENCAISSÉ', 'RESTE À RECOUVRER', 'PERS.', 'DERNIÈRE ACTIVITÉ');
+
+    $actives = 0;
+    $dormantes = [];
+
+    foreach ($audit['par_agence'] as $r) {
+        $aBouge = (int) $r['nb_factures'] > 0 || (int) $r['nb_paiements'] > 0 || (int) $r['nb_colis'] > 0;
+
+        if (!$aBouge) {
+            $dormantes[] = (string) $r['agence'];
+            continue;
+        }
+
+        $actives++;
+        $derniere = (string) $r['derniere_activite'];
+
+        $l[] = sprintf('   %-26s %6d %9d %14s %14s %16s %5d %-18s',
+            mb_strimwidth((string) $r['agence'], 0, 26),
+            (int) $r['nb_colis'],
+            (int) $r['nb_factures'],
+            $argent((float) $r['total_facture']),
+            $argent((float) $r['encaisse_periode']),
+            $argent((float) $r['reste_a_recouvrer']),
+            (int) $r['nb_encaisseurs'],
+            str_starts_with($derniere, '1970') ? '—' : date('d/m/Y H:i', (int) strtotime($derniere)));
+    }
+
+    if ($actives === 0) {
+        $l[] = '   Aucune agence n\'a enregistré la moindre opération sur la période.';
+    }
+
+    if ($dormantes !== []) {
+        $l[] = '';
+        $l[] = '   Agences actives dans le paramétrage mais sans aucune opération sur la période :';
+        foreach ($dormantes as $nom) {
+            $l[] = '      ' . $nom;
+        }
+        $l[] = '   Ni colis saisi, ni facture émise, ni encaissement. À confirmer : agence réellement';
+        $l[] = '   à l\'arrêt, ou agents qui n\'arrivent pas à travailler dans l\'outil.';
+    }
+
     $l[] = '';
     $l[] = '1. COMPTEUR DE LA FACTURE CONTRE PAIEMENTS RÉELS';
     $l[] = $fin;
