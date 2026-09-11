@@ -261,12 +261,30 @@ final class CallCenterController extends BaseController
         $stmtColis = $this->db->query("SELECT id, numero_tracking FROM lbp_colis ORDER BY id DESC LIMIT 200");
         $colis = $stmtColis ? $stmtColis->fetchAll(PDO::FETCH_ASSOC) : [];
 
+        /*
+         * Litige en cours de traitement, désigné par l'URL. L'écran n'ouvre
+         * alors qu'un seul formulaire de résolution, au lieu d'en cacher un par
+         * litige ouvert dans la page.
+         */
+        $aTraiter = null;
+        $demande = (int) ($_GET['traiter'] ?? 0);
+        if ($demande > 0) {
+            foreach ($litiges as $litige) {
+                if ((int) $litige['id'] === $demande
+                    && in_array($litige['statut'], ['nouveau', 'en_cours'], true)) {
+                    $aTraiter = $litige;
+                    break;
+                }
+            }
+        }
+
         $this->callCenterView('call_center/litiges', 'Réclamations & Litiges', 'litiges', [
             'litiges'       => $litiges,
             'clients'       => $clients,
             'colis'         => $colis,
             'statutFilter'  => $statutFilter,
             'graviteFilter' => $graviteFilter,
+            'aTraiter'      => $aTraiter,
         ]);
     }
 

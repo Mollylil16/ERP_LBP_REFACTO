@@ -145,6 +145,249 @@ final class CallCenterRenduTest extends TestCase
         self::assertStringContainsString('_csrf_token', $avec);
     }
 
+    // ------------------------------------------------------------------
+    // Relances : le defaut de l'apostrophe
+    // ------------------------------------------------------------------
+
+    /**
+     * Les données du colis passaient par un gestionnaire onclick interpolé.
+     * htmlspecialchars encode l'apostrophe en &#039;, que le navigateur décode
+     * avant que JavaScript ne lise l'attribut : lancerAppel(1, 2, 'N'DRIN')
+     * est une erreur de syntaxe, et le bouton ne faisait plus rien. Les noms à
+     * apostrophe sont courants ici (N'Dri, N'Guessan).
+     */
+    public function test_un_nom_a_apostrophe_ne_casse_pas_les_boutons_de_relance(): void
+    {
+        $html = CallCenterEcrans::suiviPage(
+            [[
+                'id' => 7,
+                'numero_tracking' => 'LB-CI-0726-001',
+                'destinataire_id' => 3,
+                'destinataire_nom' => "N'DRIN REGIS",
+                'destinataire_tel' => '+2250700000000',
+                'statut' => 'ARRIVÉ',
+                'type_notification' => null,
+            ]],
+            '',
+            true
+        );
+
+        self::assertStringNotContainsString('onclick=', $html, 'Aucune donnée ne doit transiter par un gestionnaire inline.');
+        self::assertStringContainsString('data-cc-nom="N&#039;DRIN REGIS"', $html);
+        self::assertStringContainsString('data-cc-action="appel"', $html);
+    }
+
+    public function test_le_point_d_enregistrement_des_relances_passe_par_view_url(): void
+    {
+        // Ce fetch était écrit en chemin absolu : la relance n'était jamais
+        // enregistrée sur une installation en sous-répertoire.
+        $scriptInitial = $_SERVER['SCRIPT_NAME'] ?? '/index.php';
+        $_SERVER['SCRIPT_NAME'] = '/ERP_LBP_REFACTO/index.php';
+
+        try {
+            $html = CallCenterEcrans::suiviPage([], '', true);
+
+            self::assertStringContainsString(
+                'data-cc-notifier="/ERP_LBP_REFACTO/call-center/suivi/notifier"',
+                $html
+            );
+            self::assertStringNotContainsString('fetch(\'/call-center', $html);
+        } finally {
+            $_SERVER['SCRIPT_NAME'] = $scriptInitial;
+        }
+    }
+
+    public function test_les_relances_ne_sont_pas_rendues_sans_habilitation(): void
+    {
+        $html = CallCenterEcrans::suiviPage(
+            [[
+                'id' => 7,
+                'numero_tracking' => 'LB-1',
+                'destinataire_id' => 3,
+                'destinataire_nom' => 'Awa',
+                'destinataire_tel' => '+225070',
+                'statut' => 'ARRIVÉ',
+                'type_notification' => null,
+            ]],
+            '',
+            false
+        );
+
+        self::assertStringNotContainsString('data-cc-action', $html);
+        // « cc-appel » figure aussi dans la feuille de style : c'est le panneau
+        // lui-même, identifié, qui ne doit pas exister.
+        self::assertStringNotContainsString('id="cc-appel"', $html, 'Le panneau d\'appel ne doit pas être rendu.');
+        self::assertStringNotContainsString('data-cc-jeton', $html, 'Aucun formulaire de relance : aucun jeton à exposer.');
+    }
+
+    public function test_l_etat_de_relance_resume_ce_qui_a_ete_fait(): void
+    {
+        $html = CallCenterEcrans::suiviPage(
+            [[
+                'id' => 7,
+                'numero_tracking' => 'LB-1',
+                'destinataire_id' => 3,
+                'destinataire_nom' => 'Awa',
+                'destinataire_tel' => '+225070',
+                'statut' => 'ARRIVÉ',
+                'type_notification' => 'appel',
+                'notification_date' => '2026-09-10 09:15:00',
+                'agent_name' => 'M. Diarra',
+                'duree_appel' => 95,
+                'notification_desc' => 'Client prévenu',
+            ]],
+            '',
+            false
+        );
+
+        self::assertStringContainsString('Notifié par appel', $html);
+        self::assertStringContainsString('10/09/2026 09:15', $html);
+        self::assertStringContainsString('durée 01:35', $html);
+        self::assertStringContainsString('Client prévenu', $html);
+    }
+
+    // ------------------------------------------------------------------
+    // Bilan des departs
+    // ------------------------------------------------------------------
+
+    public function test_le_bilan_des_departs_compte_complets_et_partiels(): void
+    {
+        $html = CallCenterEcrans::suiviDepartsPage(
+            [$this->groupe(2, 0), $this->groupe(1, 1)],
+            [],
+            '',
+            null,
+            false,
+            false
+        );
+
+        self::assertStringContainsString('Envois suivis', $html);
+        // Un groupe sans reste est complet, l'autre est partiel.
+        self::assertStringContainsString('Envois complets', $html);
+        self::assertStringContainsString('Resté en agence', $html);
+    }
+
+    public function test_le_message_de_synthese_est_compose_cote_serveur(): void
+    {
+        $html = CallCenterEcrans::suiviDepartsPage([$this->groupe(1, 1)], [], '', null, true, false);
+
+        self::assertStringContainsString('data-cc-message="', $html);
+        self::assertStringContainsString('LA BELLE PORTE LOGISTICS', $html);
+        self::assertStringContainsString('motif : Manque de place', $html);
+        self::assertStringNotContainsString('generateMessage', $html);
+        self::assertStringNotContainsString('onclick=', $html);
+    }
+
+    public function test_l_export_excel_est_reserve(): void
+    {
+        $sans = CallCenterEcrans::suiviDepartsPage([], [], '', null, false, false);
+        $avec = CallCenterEcrans::suiviDepartsPage([], [], '', null, false, true);
+
+        self::assertStringNotContainsString('export-excel', $sans);
+        self::assertStringContainsString('export-excel', $avec);
+        self::assertStringContainsString('export-pdf', $sans, 'Le PDF reste ouvert à tous.');
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function groupe(int $partis, int $restes): array
+    {
+        $colis = [];
+        for ($i = 0; $i < $partis; $i++) {
+            $colis[] = [
+                'colis_id' => 100 + $i,
+                'numero_tracking' => 'LB-P' . $i,
+                'destinataire_name' => 'Moussa',
+                'poids_total' => 12.5,
+                'statut' => 'EN_TRANSIT',
+                'statut_depart' => 'PARTI',
+                'motif_reste' => null,
+            ];
+        }
+        for ($i = 0; $i < $restes; $i++) {
+            $colis[] = [
+                'colis_id' => 200 + $i,
+                'numero_tracking' => 'LB-R' . $i,
+                'destinataire_name' => 'Moussa',
+                'poids_total' => 8.0,
+                'statut' => 'RÉCEPTIONNÉ',
+                'statut_depart' => 'RESTE',
+                'motif_reste' => 'Manque de place',
+            ];
+        }
+
+        return [
+            'expediteur_id' => 5,
+            'expediteur_name' => 'Société Alpha',
+            'expediteur_phone' => '+2250700000000',
+            'destinataire_name' => 'Moussa',
+            'destinataire_phone' => '+2250700000001',
+            'type_expediteur' => 'Groupage',
+            'trajet' => 'LB-CI',
+            'agence_depart' => 'Abidjan',
+            'total_colis' => $partis + $restes,
+            'nb_partis' => $partis,
+            'nb_restes' => $restes,
+            'nb_attente' => 0,
+            'colis' => $colis,
+        ];
+    }
+
+    // ------------------------------------------------------------------
+    // Litiges
+    // ------------------------------------------------------------------
+
+    public function test_le_formulaire_de_resolution_ne_s_ouvre_que_pour_le_litige_demande(): void
+    {
+        // La version precedente cachait un formulaire par litige ouvert dans la
+        // page. Un seul doit desormais etre rendu, celui designe par l'URL.
+        $litige = [
+            'id' => 42,
+            'client_name' => 'Société Alpha',
+            'type_litige' => 'retard',
+            'gravite' => 'elevee',
+            'statut' => 'nouveau',
+            'description' => 'Colis annoncé depuis dix jours',
+            'date_ouverture' => '2026-09-01',
+            'numero_tracking' => 'LB-1',
+        ];
+
+        $sans = CallCenterEcrans::litigesPage([$litige], [], [], '', '', true, false, null);
+        $avec = CallCenterEcrans::litigesPage([$litige], [], [], '', '', true, false, $litige);
+
+        self::assertStringNotContainsString('/42/resoudre', $sans);
+        self::assertSame(1, substr_count($avec, '/42/resoudre'));
+        self::assertStringContainsString('Traiter le litige #42', $avec);
+        self::assertStringContainsString('Colis annoncé depuis dix jours', $avec);
+    }
+
+    public function test_un_litige_clos_ne_propose_plus_de_traitement(): void
+    {
+        $html = CallCenterEcrans::litigesPage(
+            [[
+                'id' => 9,
+                'client_name' => 'Beta',
+                'type_litige' => 'autre',
+                'gravite' => 'faible',
+                'statut' => 'resolu',
+                'date_ouverture' => '2026-08-01',
+                'date_resolution' => '2026-08-05',
+                'numero_tracking' => null,
+            ]],
+            [],
+            [],
+            '',
+            '',
+            true,
+            false,
+            null
+        );
+
+        self::assertStringNotContainsString('traiter=9', $html);
+        self::assertStringContainsString('Clos le 05/08/2026', $html);
+    }
+
     public function test_la_vue_rayons_explique_l_absence_de_rayon(): void
     {
         $html = CallCenterEcrans::rayonsPage([], [], [], null, 0, '01/01/2026 à 08:00');
