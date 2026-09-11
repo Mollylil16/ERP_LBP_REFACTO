@@ -187,7 +187,7 @@ final class RapportsController extends ColisageBaseController
 
         $canExportExcel = Auth::isAdmin() || Auth::can(PermissionEntityRegistry::EXPORTER_RAPPORTS_EXCEL);
 
-        $this->colisageView('colisage/rapports/journalier', 'Rapport Mensuel par Agence', 'reporting', [
+        $this->colisageView('colisage/rapports/mensuel', 'Rapport Mensuel par Agence', 'reporting', [
             'date'           => $dateDebut,
             'mois'           => $mois,
             'agenceId'       => $agenceId,
