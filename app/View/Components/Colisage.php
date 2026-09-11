@@ -2117,7 +2117,7 @@ final class Colisage
         $headerActions = [
             Ui::qrCodeBadge((string) $colis['numero_tracking'], 60),
             Ui::badge($colis['statut'], $badgeTone),
-            '<form method="post" action="' . View::url('colisage/parcels/' . $colis['id'] . '/facturer') . '" style="display:inline;">' . Ui::button('Facturer (1-Clic)', ['type' => 'submit', 'variant' => 'accent']) . '</form>',
+            '<form method="post" action="' . View::url('colisage/parcels/' . $colis['id'] . '/facturer') . '" style="display:inline;">' . Ui::button('Facturer (1-Clic)', ['type' => 'submit', 'variant' => 'accent'])  . Form::hidden('_csrf_token', \App\Helpers\Csrf::token()) . '</form>',
             Ui::button('Facture', ['href' => 'colisage/parcels/' . $colis['id'] . '/facture', 'variant' => 'secondary', 'target' => '_blank']),
             Ui::button('Étiquette Thermique', ['href' => 'colisage/parcels/' . $colis['id'] . '/etiquette', 'variant' => 'secondary', 'target' => '_blank']),
             Ui::button('Retour à la liste', ['href' => 'colisage/parcels', 'variant' => 'secondary']),
@@ -2302,6 +2302,7 @@ final class Colisage
                 $actionHtml = '';
                 if ($c['statut'] === 'NON_REGLE') {
                     $actionHtml = '<form method="post" action="' . View::url('colisage/exploitation/credits/' . $c['id'] . '/regler') . '" style="display:inline;" onsubmit="return confirm(\'Confirmer le règlement physique de cette dette ?\');">'
+                        . Form::hidden('_csrf_token', \App\Helpers\Csrf::token())
                         . '<button type="submit" class="finea-button finea-button--accent finea-button-sm">Marquer réglé</button></form>';
                 } else {
                     $actionHtml = '<span style="color:var(--lbp-success); font-weight:600; font-size:0.85rem;">✓ Compensé</span>';
@@ -2690,12 +2691,14 @@ final class Colisage
                 $actionHtml = '';
                 if ($d['status'] === 'EN_ATTENTE') {
                     $actionHtml = '<form method="post" action="' . View::url('colisage/exploitation/fournitures/' . $d['id'] . '/statut') . '" style="display:inline;">'
+                        . Form::hidden('_csrf_token', \App\Helpers\Csrf::token())
                         . '<input type="hidden" name="statut" value="APPROUVEE">'
                         . Ui::button('Valider', ['type' => 'submit', 'variant' => 'accent', 'class' => 'finea-button-sm'])
                         . '</form> '
                         . '<button type="button" class="finea-button finea-button--danger finea-button-sm" onclick="openRefusalModal(' . $d['id'] . ')">Refuser</button>';
                 } elseif ($d['status'] === 'APPROUVEE') {
                     $actionHtml = '<form method="post" action="' . View::url('colisage/exploitation/fournitures/' . $d['id'] . '/statut') . '" style="display:inline;">'
+                        . Form::hidden('_csrf_token', \App\Helpers\Csrf::token())
                         . '<input type="hidden" name="statut" value="LIVREE">'
                         . Ui::button('Déclarer Livré', ['type' => 'submit', 'variant' => 'success', 'class' => 'finea-button-sm'])
                         . '</form>';
@@ -2804,9 +2807,11 @@ final class Colisage
         if ($exp['statut'] === 'BROUILLON') {
             $disabled = empty($assignedParcels) ? 'disabled' : '';
             $workflowBtn = '<form method="post" action="' . View::url('colisage/groupage/' . $exp['id'] . '/demarrer') . '" class="js-protect-form">'
+                . Form::hidden('_csrf_token', \App\Helpers\Csrf::token())
                 . '<button type="submit" class="finea-button finea-button--accent" ' . $disabled . ' data-label="Démarrer l\'expédition (Départ du voyage)">Démarrer l\'expédition (Départ du voyage)</button></form>';
         } elseif ($exp['statut'] === 'EN_TRANSIT') {
             $workflowBtn = '<form method="post" action="' . View::url('colisage/groupage/' . $exp['id'] . '/arriver') . '" class="js-protect-form">'
+                . Form::hidden('_csrf_token', \App\Helpers\Csrf::token())
                 . '<button type="submit" class="finea-button finea-button--success" data-label="Marquer comme Arrivé à Destination (Dégroupage)">Marquer comme Arrivé à Destination (Dégroupage)</button></form>';
         } else {
             $workflowBtn = '<div style="color:#16a34a; font-weight:600; display:flex; align-items:center; gap:0.5rem;">'
@@ -2978,6 +2983,7 @@ final class Colisage
 
             $form = '<p style="color:#64748b; font-size:0.9rem; margin-bottom:1rem;">⚠️ Vérification obligatoire de la CNI du récupérateur (Responsabilité Juridique)</p>'
                 . '<form method="post" action="' . View::url('colisage/parcels/' . $colis['id'] . '/retirer') . '" id="form-retrait">'
+                . Form::hidden('_csrf_token', \App\Helpers\Csrf::token())
                 . $fields
                 . '<div style="margin-top:1.5rem; display:flex; justify-content:flex-end;">'
                 . Ui::button('Confirmer la livraison (Signature juridique)', ['type' => 'submit', 'variant' => 'accent', 'id' => 'btn-retrait'])

@@ -198,6 +198,9 @@ function handleScanSubmit(e) {
     var formData = new FormData();
     formData.append('barcode', barcode);
     formData.append('scan_action', currentScanMode);
+    // Le scan part en fetch : le jeton doit accompagner les donnees,
+    // le navigateur ne l ajoute pas de lui-meme comme pour un formulaire.
+    formData.append('_csrf_token', '<?= \App\Helpers\Csrf::token() ?>');
 
     fetch('<?= View::url('colisage/scan-express/process') ?>', {
         method: 'POST',

@@ -451,6 +451,14 @@ final class SurveillanceController extends BaseController
     {
         SurveillanceAccessMiddleware::check();
 
+        // Sans ce controle, une page piegee declenche cette action a l insu de
+        // l utilisateur connecte, avec ses propres droits.
+        if (!Csrf::verify($_POST['_csrf_token'] ?? null)) {
+            Session::flash('error', 'Session expiree ou requete invalide. Veuillez reessayer.');
+            header('Location: ' . View::url('surveillance'));
+            exit;
+        }
+
         $mlService = new \App\Services\Surveillance\MLIntegrationService();
         $result = $mlService->trainModels();
 

@@ -187,7 +187,10 @@ $moduleIconKey = $moduleTheme['iconKey'] ?? strtolower((string) ($moduleCode ?? 
                     body: JSON.stringify({
                         lat: pos.coords.latitude,
                         lng: pos.coords.longitude,
-                        accuracy: pos.coords.accuracy
+                        accuracy: pos.coords.accuracy,
+                        // Forger la position d un employe fausserait son score
+                        // d integrite : l appel doit prouver qu il vient de nos pages.
+                        _csrf_token: '<?= \App\Helpers\Csrf::token() ?>'
                     })
                 })
                 .then(res => res.json())

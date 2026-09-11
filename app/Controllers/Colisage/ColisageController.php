@@ -301,6 +301,14 @@ final class ColisageController extends ColisageBaseController
         // a facturer, agent_enregistrement inclus : il depanne quand la caissiere
         // est absente, et la facture reste tracee a son nom via created_by.
         RoleMiddleware::check(['caissiere', 'caissiere_principale', 'chef_agence', 'dg', 'agent_enregistrement']);
+
+        // Sans ce controle, une page piegee declenche cette action a l insu de
+        // l utilisateur connecte, avec ses propres droits.
+        if (!Csrf::verify($_POST['_csrf_token'] ?? null)) {
+            Session::flash('error', 'Session expiree ou requete invalide. Veuillez reessayer.');
+            header('Location: ' . View::url('colisage/parcels'));
+            exit;
+        }
         $db = Database::getConnection();
         $factureRepo = new \App\Repositories\Finance\FactureRepository($db);
         try {
@@ -1056,6 +1064,14 @@ final class ColisageController extends ColisageBaseController
     public function processExpressScan(): void
     {
         AuthMiddleware::check();
+
+        // Sans ce controle, une page piegee declenche cette action a l insu de
+        // l utilisateur connecte, avec ses propres droits.
+        if (!Csrf::verify($_POST['_csrf_token'] ?? null)) {
+            Session::flash('error', 'Session expiree ou requete invalide. Veuillez reessayer.');
+            header('Location: ' . View::url('colisage/scan-express'));
+            exit;
+        }
         header('Content-Type: application/json; charset=utf-8');
 
         $barcode = trim((string) ($_POST['barcode'] ?? $_GET['barcode'] ?? ''));

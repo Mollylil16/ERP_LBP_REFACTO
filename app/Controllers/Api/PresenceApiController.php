@@ -29,6 +29,16 @@ final class PresenceApiController extends BaseController
         $raw = file_get_contents('php://input');
         $data = json_decode((string) $raw, true) ?: $_POST;
 
+        // Le jeton voyage dans le corps JSON : cet appel part en fetch depuis nos
+        // pages, le navigateur ne l ajoute pas de lui-meme. Sans ce controle, un
+        // site tiers pouvait faire enregistrer une fausse position a l employe
+        // connecte, et peser ainsi sur son score d integrite.
+        if (!\App\Helpers\Csrf::verify((string) ($data['_csrf_token'] ?? ''))) {
+            http_response_code(419);
+            echo json_encode(['success' => false, 'message' => 'Session expiree.']);
+            return;
+        }
+
         $lat = isset($data['lat']) ? (float) $data['lat'] : null;
         $lng = isset($data['lng']) ? (float) $data['lng'] : null;
         $accuracy = isset($data['accuracy']) ? (float) $data['accuracy'] : null;
