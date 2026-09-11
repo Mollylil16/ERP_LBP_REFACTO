@@ -131,15 +131,9 @@ final class FinanceController extends FinanceBaseController
         $pagedFactures = array_slice($factures, $offset, $perPage);
 
         // Hydrater les jointures colis et clients pour l'affichage
-        foreach ($pagedFactures as $f) {
-            $stmt = $this->db->prepare("SELECT numero_tracking FROM lbp_colis WHERE id = :id LIMIT 1");
-            $stmt->execute(['id' => $f->colisId]);
-            $f->colis_tracking = $stmt->fetchColumn() ?: '';
-
-            $stmt = $this->db->prepare("SELECT name FROM lbp_clients WHERE id = :id LIMIT 1");
-            $stmt->execute(['id' => $f->clientId]);
-            $f->client_name = $stmt->fetchColumn() ?: '';
-        }
+        // Deux requetes groupees, et non deux par facture : sur une page de vingt-cinq
+        // lignes, cinquante allers-retours devenaient deux.
+        $this->hydraterFactures($pagedFactures);
 
         $agences = $this->db->query("SELECT id, name FROM company_sites WHERE is_active = 1")->fetchAll() ?: [];
         $categoryStats = $this->factureRepo->getCategoryStats($filters);
@@ -996,6 +990,62 @@ final class FinanceController extends FinanceBaseController
         Session::flash('success', "La demande a été " . ($decision === 'approuver' ? "payée et comptabilisée" : "rejetée") . ".");
         header('Location: ' . View::url('finance/depenses'));
         exit;
+    }
+
+    /**
+     * Complete une liste de factures avec le numero de tracking de leur colis et le
+     * nom de leur client, en deux requetes groupees.
+     *
+     * @param array<int, \App\Models\Finance\Facture> $factures
+     */
+    private function hydraterFactures(array $factures): void
+    {
+        if ($factures === []) {
+            return;
+        }
+
+        $colisIds = array_values(array_unique(array_filter(array_map(
+            static fn($f): int => (int) $f->colisId,
+            $factures
+        ))));
+
+        $clientIds = array_values(array_unique(array_filter(array_map(
+            static fn($f): int => (int) $f->clientId,
+            $factures
+        ))));
+
+        $trackings = $this->indexer('SELECT id, numero_tracking AS valeur FROM lbp_colis WHERE id IN', $colisIds);
+        $clients = $this->indexer('SELECT id, name AS valeur FROM lbp_clients WHERE id IN', $clientIds);
+
+        foreach ($factures as $facture) {
+            $facture->colis_tracking = $trackings[(int) $facture->colisId] ?? '';
+            $facture->client_name = $clients[(int) $facture->clientId] ?? '';
+        }
+    }
+
+    /**
+     * Execute une requete « id / valeur » sur une liste d identifiants et retourne
+     * le resultat indexe par identifiant.
+     *
+     * @param array<int, int> $ids
+     * @return array<int, string>
+     */
+    private function indexer(string $debutSql, array $ids): array
+    {
+        if ($ids === []) {
+            return [];
+        }
+
+        $marqueurs = implode(',', array_fill(0, count($ids), '?'));
+        $stmt = $this->db->prepare($debutSql . ' (' . $marqueurs . ')');
+        $stmt->execute($ids);
+
+        $indexe = [];
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) ?: [] as $ligne) {
+            $indexe[(int) $ligne['id']] = (string) ($ligne['valeur'] ?? '');
+        }
+
+        return $indexe;
     }
 
     /**
