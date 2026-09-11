@@ -23,11 +23,27 @@ final class VentilationDevisesTest extends TestCase
     {
         $source = $this->source('app/Repositories/Finance/EtatJournalierRepository.php');
 
-        self::assertStringContainsString(
-            "SUM(CASE WHEN f.devise = 'EUR' THEN 0 ELSE f.montant_total END) as total_facture",
+        // Le facture en francs exclut explicitement les euros, qui ont leur
+        // propre colonne. La casse du mot-cle AS n'a pas d'importance.
+        self::assertMatchesRegularExpression(
+            "/SUM\(CASE WHEN f\.devise = 'EUR' THEN 0 ELSE f\.montant_total END\)\s+AS total_facture\b/i",
             $source
         );
-        self::assertStringContainsString('as total_facture_eur', $source);
+        self::assertMatchesRegularExpression('/AS total_facture_eur\b/i', $source);
+    }
+
+    /**
+     * L'encaisse ventile par type doit s'accorder au solde de caisse, qui est
+     * libelle en francs : y verser des euros ferait diverger les deux blocs.
+     */
+    public function test_l_encaisse_ventile_par_type_ne_retient_que_les_francs(): void
+    {
+        $source = $this->source('app/Repositories/Finance/EtatJournalierRepository.php');
+
+        self::assertMatchesRegularExpression(
+            "/SUM\(CASE WHEN p\.devise = 'XOF' THEN p\.montant ELSE 0 END\)\s+AS total_encaisse\b/i",
+            $source
+        );
     }
 
     public function test_la_courbe_des_encaissements_ne_retient_que_les_francs(): void

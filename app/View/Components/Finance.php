@@ -1323,7 +1323,7 @@ final class Finance
                 $submissionForm .= '<div style="background:#ffffff; border:1px solid #cbd5e1; border-radius:10px; padding:1.25rem; margin-bottom:1.5rem; box-shadow:0 2px 8px rgba(15,23,42,0.02);">'
                     . '<h4 style="margin:0 0 0.75rem 0; font-size:0.9rem; font-weight:800; color:#0f172a; text-transform:uppercase; letter-spacing:0.5px; display:flex; align-items:center; gap:6px;">'
                     . '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#2563eb" stroke-width="2.5"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>'
-                    . 'Ventilation des Envois par Type (Fenêtre 15h–15h)'
+                    . 'Ventilation des Envois par Type'
                     . '</h4>'
                     . '<table style="width:100%; border-collapse:collapse; font-size:0.88rem;">'
                     . '<thead>'
@@ -1345,13 +1345,26 @@ final class Finance
                 $rowsDetails = '';
                 foreach ($invoicesDetails as $inf) {
                     $heure = date('H:i', strtotime((string)$inf['date_emission']));
+
+                    // Ce qui est entre en caisse ce jour-la sur cette facture,
+                    // seul chiffre qui s'additionne au solde du jour.
+                    $encaisseCeJour = (float) ($inf['encaisse_ce_jour'] ?? 0);
+                    $cumulEncaisse = (float) ($inf['montant_encaisse'] ?? 0);
+                    $resteDu = round((float) $inf['montant_total'] - $cumulEncaisse, 2);
                     $rowsDetails .= '<tr style="border-bottom:1px solid #e2e8f0;">'
                         . '<td style="padding:8px 12px; font-weight:700;"><a href="' . View::url('finance/factures/' . $inf['id']) . '" style="color:#2563eb; text-decoration:underline;">' . View::e($inf['numero_facture']) . '</a></td>'
                         . '<td style="padding:8px 12px; font-weight:600;">' . View::e($inf['numero_tracking']) . '</td>'
                         . '<td style="padding:8px 12px;">' . View::e($inf['client_name']) . '</td>'
                         . '<td style="padding:8px 12px; text-align:center; font-weight:700;">' . (int)$inf['nombre_colis'] . '</td>'
                         . '<td style="padding:8px 12px; text-align:right; font-weight:700; color:#0f172a;">' . number_format((float)$inf['montant_total'], 0, ',', ' ') . ' XOF</td>'
-                        . '<td style="padding:8px 12px; text-align:right; font-weight:700; color:#16a34a;">' . number_format((float)$inf['montant_encaisse'], 0, ',', ' ') . ' XOF</td>'
+                        . '<td style="padding:8px 12px; text-align:right; font-weight:700; color:#16a34a;">' . number_format($encaisseCeJour, 0, ',', ' ') . ' XOF</td>'
+                        // Le cumul depuis l'emission n'est affiche que lorsqu'il
+                        // differe : sinon la colonne repete deux fois le meme
+                        // chiffre, ce qui brouille la lecture au lieu de l'aider.
+                        . '<td style="padding:8px 12px; text-align:right; font-weight:600; color:' . ($resteDu > 0.009 ? '#b45309' : '#64748b') . ';">'
+                        . number_format($cumulEncaisse, 0, ',', ' ') . ' XOF'
+                        . ($resteDu > 0.009 ? '<br><small style="color:#dc2626;">reste ' . number_format($resteDu, 0, ',', ' ') . '</small>' : '')
+                        . '</td>'
                         . '<td style="padding:8px 12px; color:#475569; font-weight:600;">' . $heure . '</td>'
                         . '<td style="padding:8px 12px; font-weight:700; color:#1e293b;">' . View::e($inf['agent_name']) . '</td>'
                         . '</tr>';
@@ -1360,7 +1373,7 @@ final class Finance
                 $submissionForm .= '<div style="background:#ffffff; border:1px solid #cbd5e1; border-radius:10px; padding:1.25rem; margin-bottom:1.5rem; box-shadow:0 2px 8px rgba(15,23,42,0.02);">'
                     . '<h4 style="margin:0 0 0.75rem 0; font-size:0.9rem; font-weight:800; color:#0f172a; text-transform:uppercase; letter-spacing:0.5px; display:flex; align-items:center; gap:6px;">'
                     . '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#2563eb" stroke-width="2.5"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M12 6v6l4 2"/></svg>'
-                    . 'Journal des Opérations & Traçabilité de Facturation (Fenêtre 15h–15h)'
+                    . 'Factures émises ce jour'
                     . '</h4>'
                     . '<div style="max-height: 400px; overflow-y: auto;">'
                     . '<table style="width:100%; border-collapse:collapse; font-size:0.82rem;">'
@@ -1371,16 +1384,23 @@ final class Finance
                     . '<th style="padding:8px 12px; background:#f8fafc;">Client</th>'
                     . '<th style="padding:8px 12px; text-align:center; background:#f8fafc;">Colis</th>'
                     . '<th style="padding:8px 12px; text-align:right; background:#f8fafc;">Montant Facturé</th>'
-                    . '<th style="padding:8px 12px; text-align:right; background:#f8fafc;">Montant Encaissé</th>'
+                    . '<th style="padding:8px 12px; text-align:right; background:#f8fafc;" title="Ce qui est entré en caisse ce jour-là sur cette facture.">Encaissé ce jour</th>'
+                    . '<th style="padding:8px 12px; text-align:right; background:#f8fafc;" title="Total encaissé depuis l\'émission, toutes dates confondues.">Encaissé au total</th>'
                     . '<th style="padding:8px 12px; background:#f8fafc;">Heure</th>'
                     . '<th style="padding:8px 12px; background:#f8fafc;">Agent de Saisie</th>'
                     . '</tr>'
                     . '</thead>'
-                    . '<tbody>' . ($rowsDetails !== '' ? $rowsDetails : '<tr><td colspan="8" style="padding:15px; text-align:center; color:#64748b;">Aucune facture émise sur cette période.</td></tr>') . '</tbody>'
+                    . '<tbody>' . ($rowsDetails !== '' ? $rowsDetails : '<tr><td colspan="9" style="padding:15px; text-align:center; color:#64748b;">Aucune facture émise sur cette période.</td></tr>') . '</tbody>'
                     . '</table>'
                     . '</div>'
                     . '</div>';
             }
+
+            // Journal des encaissements : qui a pris l'argent, et sur quelle facture.
+            $submissionForm .= self::journalEncaissements(
+                $activeReport['encaissements_details'] ?? [],
+                $totalEncaisseXof
+            );
 
             // Blind count submission form for local cashier / head cashier when brouillon
             $userAgId = Auth::agenceId();
@@ -1654,6 +1674,124 @@ final class Finance
             . $tableHtml
             . '</div>'
             . '</div></div>';
+    }
+
+    /**
+     * Journal des encaissements du jour.
+     *
+     * Le journal des factures répond à « qu'a-t-on facturé aujourd'hui » et
+     * nomme celui qui a saisi la facture. Il ne dit pas qui a pris l'argent, et
+     * ne peut pas s'accorder avec le solde : il ignore les règlements de
+     * factures antérieures, et compte des factures émises ce jour mais réglées
+     * plus tard.
+     *
+     * Ce bloc-ci répond à « qu'a-t-on encaissé aujourd'hui, et par qui ». Son
+     * total est, par construction, le solde de caisse du jour.
+     *
+     * @param array<int, array<string, mixed>> $encaissements
+     */
+    private static function journalEncaissements(array $encaissements, float $totalAttendu): string
+    {
+        $libellesMode = [
+            'especes' => 'Espèces',
+            'espece' => 'Espèces',
+            'cash' => 'Espèces',
+            'mobile_money' => 'Mobile Money',
+            'wave' => 'Wave',
+            'orange_money' => 'Orange Money',
+            'mtn_momo' => 'MTN MoMo',
+            'momo' => 'Mobile Money',
+            'carte' => 'Carte',
+            'carte_bancaire' => 'Carte',
+            'cheque' => 'Chèque',
+            'virement' => 'Virement',
+            'portefeuille' => 'Portefeuille client',
+        ];
+
+        $lignes = '';
+        $totalRendu = 0.0;
+        $parEncaisseur = [];
+
+        foreach ($encaissements as $e) {
+            $montant = (float) $e['montant'];
+            $estXof = (string) $e['devise'] === 'XOF';
+            if ($estXof) {
+                $totalRendu += $montant;
+            }
+
+            $encaisseur = (string) $e['encaisse_par'];
+            $parEncaisseur[$encaisseur] = ($parEncaisseur[$encaisseur] ?? 0.0) + ($estXof ? $montant : 0.0);
+
+            $mode = (string) $e['mode_reglement'];
+            $apresCoup = (int) ($e['regle_apres_coup'] ?? 0) === 1;
+
+            $lignes .= '<tr style="border-bottom:1px solid #e2e8f0;' . ($apresCoup ? ' background:#fffbeb;' : '') . '">'
+                . '<td style="padding:8px 12px; color:#475569; font-weight:600;">' . View::e(date('H:i', strtotime((string) $e['date_paiement']))) . '</td>'
+                . '<td style="padding:8px 12px; font-weight:700;"><a href="' . View::url('finance/factures/' . $e['facture_id']) . '" style="color:#2563eb; text-decoration:underline;">' . View::e((string) $e['numero_facture']) . '</a>'
+                . ($apresCoup
+                    ? '<br><small style="color:#b45309;" title="Facture émise un autre jour : ce règlement rattrape une antériorité.">facture du ' . View::e(date('d/m/Y', strtotime((string) $e['date_emission']))) . '</small>'
+                    : '')
+                . '</td>'
+                . '<td style="padding:8px 12px; font-weight:600;">' . View::e((string) ($e['numero_tracking'] ?? '—')) . '</td>'
+                . '<td style="padding:8px 12px;">' . View::e((string) ($e['client_name'] ?? '—')) . '</td>'
+                . '<td style="padding:8px 12px; text-align:center;">' . Ui::badge($libellesMode[$mode] ?? $mode, $mode === 'especes' ? 'success' : 'info') . '</td>'
+                . '<td style="padding:8px 12px; text-align:right; font-weight:800; color:#16a34a;">' . number_format($montant, 0, ',', ' ') . ' ' . View::e((string) $e['devise']) . '</td>'
+                . '<td style="padding:8px 12px; font-weight:700; color:#1e293b;">' . View::e($encaisseur) . '</td>'
+                . '</tr>';
+        }
+
+        // Récapitulatif par encaisseur : c'est la réponse à « la caissière et
+        // l'agent ont-ils bien été additionnés ».
+        $recap = '';
+        if (count($parEncaisseur) > 1) {
+            arsort($parEncaisseur);
+            $morceaux = [];
+            foreach ($parEncaisseur as $nom => $montant) {
+                $morceaux[] = '<strong>' . View::e((string) $nom) . '</strong> : ' . number_format($montant, 0, ',', ' ') . ' XOF';
+            }
+            $recap = '<div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:0.7rem 1rem; margin-bottom:0.9rem; font-size:0.85rem; color:#475569;">'
+                . 'Réparti entre ' . count($parEncaisseur) . ' personne(s) — ' . implode(' &nbsp;•&nbsp; ', $morceaux)
+                . '</div>';
+        }
+
+        // Garde-fou : ce bloc doit totaliser le solde annoncé plus haut. Tout
+        // écart signale une divergence entre deux requêtes qui devraient dire la
+        // même chose, et il vaut mieux l'afficher que le taire.
+        $ecart = round($totalAttendu - $totalRendu, 2);
+        $alerte = abs($ecart) > 0.009
+            ? '<div style="background:#fef2f2; border:1px solid #fecaca; border-radius:8px; padding:0.7rem 1rem; margin-bottom:0.9rem; color:#991b1b; font-size:0.85rem;">'
+                . '<strong>Incohérence :</strong> ce journal totalise ' . number_format($totalRendu, 0, ',', ' ')
+                . ' XOF alors que le solde annonce ' . number_format($totalAttendu, 0, ',', ' ')
+                . ' XOF, soit ' . number_format($ecart, 0, ',', ' ') . ' XOF d\'écart. Signalez-le.'
+                . '</div>'
+            : '';
+
+        return '<div style="background:#ffffff; border:1px solid #cbd5e1; border-radius:10px; padding:1.25rem; margin-bottom:1.5rem; box-shadow:0 2px 8px rgba(15,23,42,0.02);">'
+            . '<h4 style="margin:0 0 0.75rem 0; font-size:0.9rem; font-weight:800; color:#0f172a; text-transform:uppercase; letter-spacing:0.5px; display:flex; align-items:center; gap:6px;">'
+            . '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#16a34a" stroke-width="2.5"><rect x="2" y="6" width="20" height="12" rx="2"></rect><circle cx="12" cy="12" r="3"></circle></svg>'
+            . 'Encaissements du jour &mdash; qui a encaissé'
+            . '</h4>'
+            . $alerte
+            . $recap
+            . '<div style="max-height:400px; overflow-y:auto;">'
+            . '<table style="width:100%; border-collapse:collapse; font-size:0.82rem;">'
+            . '<thead><tr style="background:#f8fafc; border-bottom:2px solid #cbd5e1; text-align:left; color:#475569; font-weight:700; position:sticky; top:0; z-index:10;">'
+            . '<th style="padding:8px 12px; background:#f8fafc;">Heure</th>'
+            . '<th style="padding:8px 12px; background:#f8fafc;">N° Facture</th>'
+            . '<th style="padding:8px 12px; background:#f8fafc;">N° Tracking</th>'
+            . '<th style="padding:8px 12px; background:#f8fafc;">Client</th>'
+            . '<th style="padding:8px 12px; text-align:center; background:#f8fafc;">Mode</th>'
+            . '<th style="padding:8px 12px; text-align:right; background:#f8fafc;">Montant</th>'
+            . '<th style="padding:8px 12px; background:#f8fafc;">Encaissé par</th>'
+            . '</tr></thead>'
+            . '<tbody>' . ($lignes !== '' ? $lignes : '<tr><td colspan="7" style="padding:15px; text-align:center; color:#64748b;">Aucun encaissement ce jour.</td></tr>') . '</tbody>'
+            . ($lignes !== ''
+                ? '<tfoot><tr style="background:#f0fdf4; border-top:2px solid #86efac;">'
+                    . '<td colspan="5" style="padding:10px 12px; font-weight:800; color:#166534;">TOTAL ENCAISSÉ</td>'
+                    . '<td style="padding:10px 12px; text-align:right; font-weight:900; color:#166534;">' . number_format($totalRendu, 0, ',', ' ') . ' XOF</td>'
+                    . '<td></td></tr></tfoot>'
+                : '')
+            . '</table></div></div>';
     }
 
     /**

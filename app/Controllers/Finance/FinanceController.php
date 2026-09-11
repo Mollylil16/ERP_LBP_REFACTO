@@ -1075,7 +1075,19 @@ final class FinanceController extends FinanceBaseController
     {
         // agent_enregistrement est admis mais absent de ROLES_CUMUL_AGENCE :
         // il ne voit que les factures qu'il a lui-meme saisies.
-        RoleMiddleware::check(['caissiere', 'chef_agence', 'caissiere_principale', 'dg', 'comptable', 'superviseur_general', 'superviseur_regional', 'agent_enregistrement', 'admin']);
+        /*
+         * agent_saisie est le role le plus repandu de l entreprise et effectue
+         * des encaissements ; il etait absent de cette liste et ne pouvait donc
+         * pas ouvrir l ecran, alors que agent_enregistrement, porte par un seul
+         * compte, y figurait. Les deux voient leurs propres operations, sans le
+         * cumul de l agence (voir ROLES_CUMUL_AGENCE).
+         */
+        RoleMiddleware::check([
+            'caissiere', 'chef_agence', 'caissiere_principale', 'dg', 'comptable',
+            'superviseur_general', 'superviseur_regional',
+            'agent_enregistrement', 'agent_saisie', 'gestionnaire_caisse',
+            'admin',
+        ]);
 
         $userAgenceId = Auth::agenceId();
         $dateJour = date('Y-m-d');

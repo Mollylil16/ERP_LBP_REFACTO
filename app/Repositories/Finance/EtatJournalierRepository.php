@@ -18,6 +18,32 @@ class EtatJournalierRepository
     public const MODE_SQL = "LOWER(COALESCE(NULLIF(p.mode, ''), NULLIF(p.mode_paiement, ''), 'especes'))";
 
     /**
+     * Heure de bascule de la journée d'exploitation des colis.
+     *
+     * Un colis déposé après 15 h part avec l'expédition du lendemain : sa date
+     * d'enregistrement opérationnelle est donc celle du jour suivant. La journée
+     * d'exploitation du jour J court de J-1 15h00 (inclus) à J 15h00 (exclu).
+     *
+     * Cette bascule ne concerne QUE les colis. L'argent — factures et
+     * encaissements — reste sur le jour calendaire : la caissière compte son
+     * tiroir à la fin de sa journée, pas à 15 h.
+     */
+    public const HEURE_BASCULE_COLIS = 15;
+
+    /**
+     * Bornes de la journée d'exploitation d'une date donnée.
+     *
+     * @return array{0: string, 1: string} début inclus, fin exclue
+     */
+    public static function fenetreExploitation(string $date): array
+    {
+        $heure = sprintf('%02d:00:00', self::HEURE_BASCULE_COLIS);
+        $veille = date('Y-m-d', (int) strtotime($date . ' -1 day'));
+
+        return [$veille . ' ' . $heure, $date . ' ' . $heure];
+    }
+
+    /**
      * Sous-requête donnant la nature du contenu de chaque colis.
      *
      * La nature réelle des marchandises est portée par `lbp_marchandises.description`
@@ -258,12 +284,22 @@ class EtatJournalierRepository
         $scopePaiement = $userId !== null ? ' AND p.caissiere_id = :user_id' : '';
         $scopeParam = $userId !== null ? ['user_id' => $userId] : [];
 
-        // 1. Tonnage/nb colis créés le jour même
+        // 1. Colis rattachés à la journée d'exploitation, bascule de 15 h comprise :
+        //    un colis déposé après 15 h part avec l'expédition du lendemain et
+        //    compte donc pour le jour suivant.
+        [$debutExploitation, $finExploitation] = self::fenetreExploitation($date);
+
         $stmt = $this->pdo->prepare("
-            SELECT COUNT(*) FROM lbp_colis 
-            WHERE agence_depart_id = :agence_id AND DATE(created_at) = :date{$scopeColis}
+            SELECT COUNT(*) FROM lbp_colis
+            WHERE agence_depart_id = :agence_id
+              AND created_at >= :debut_expl
+              AND created_at < :fin_expl{$scopeColis}
         ");
-        $stmt->execute(['agence_id' => $agenceId, 'date' => $date] + $scopeParam);
+        $stmt->execute([
+            'agence_id' => $agenceId,
+            'debut_expl' => $debutExploitation,
+            'fin_expl' => $finExploitation,
+        ] + $scopeParam);
         $nbColis = (int) $stmt->fetchColumn();
 
         // 2. Factures émises le jour même
@@ -328,39 +364,98 @@ class EtatJournalierRepository
         $totalRestantDuXof = (float) ($restRow['restant_xof'] ?? 0.0);
         $totalRestantDuEur = (float) ($restRow['restant_eur'] ?? 0.0);
 
-        // 5. Ventilation par type d'envoi pour la date spécifique
-        $stmtType = $this->pdo->prepare("
-            SELECT 
-                UPPER(COALESCE(
-                    NULLIF(SUBSTRING_INDEX(c.numero_tracking, '-', 2), ''),
-                    NULLIF(SUBSTRING_INDEX(c.trajet, ' ', 1), ''),
-                    'AUTRES'
-                )) as code_type,
-                COUNT(DISTINCT f.id) as nb_factures,
-                SUM(CASE WHEN f.devise = 'EUR' THEN 0 ELSE f.montant_total END) as total_facture,
-                SUM(CASE WHEN f.devise = 'EUR' THEN f.montant_total ELSE 0 END) as total_facture_eur,
-                SUM(COALESCE(p_sub.total_pay, 0)) as total_encaisse
+        /*
+         * 5. Ventilation par type d'envoi.
+         *
+         * Deux ensembles distincts, qu'il faut cesser de confondre :
+         *   - le facturé, ce sont les factures émises ce jour ;
+         *   - l'encaissé, ce sont les paiements reçus ce jour, quelle que soit
+         *     la date de la facture réglée.
+         *
+         * L'ancienne requête ne comptait comme encaissé que les paiements du
+         * jour portant sur une facture émise le même jour. Tout règlement d'une
+         * facture plus ancienne disparaissait de cette ventilation alors qu'il
+         * figurait dans le solde de caisse : les deux blocs ne pouvaient pas
+         * s'accorder, et l'écart était exactement le montant recouvré sur
+         * l'antériorité.
+         */
+        $typeSql = "UPPER(COALESCE(
+            NULLIF(SUBSTRING_INDEX(c.numero_tracking, '-', 2), ''),
+            NULLIF(SUBSTRING_INDEX(c.trajet, ' ', 1), ''),
+            'AUTRES'
+        ))";
+
+        $stmtFactureType = $this->pdo->prepare("
+            SELECT
+                {$typeSql} AS code_type,
+                COUNT(DISTINCT f.id) AS nb_factures,
+                SUM(CASE WHEN f.devise = 'EUR' THEN 0 ELSE f.montant_total END) AS total_facture,
+                SUM(CASE WHEN f.devise = 'EUR' THEN f.montant_total ELSE 0 END) AS total_facture_eur
             FROM lbp_factures f
             JOIN lbp_colis c ON f.colis_id = c.id
-            LEFT JOIN (
-                SELECT facture_id, SUM(montant) as total_pay
-                FROM lbp_paiements
-                WHERE DATE(date_paiement) = :date1 AND devise = 'XOF'
-                GROUP BY facture_id
-            ) p_sub ON p_sub.facture_id = f.id
-            WHERE f.agence_id = :agence_id AND DATE(f.date_emission) = :date2{$scopeFacture}
+            WHERE f.agence_id = :agence_id AND DATE(f.date_emission) = :date{$scopeFacture}
             GROUP BY code_type
         ");
-        $stmtType->execute(['agence_id' => $agenceId, 'date1' => $date, 'date2' => $date] + $scopeParam);
-        $breakdownByType = $stmtType->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        $stmtFactureType->execute(['agence_id' => $agenceId, 'date' => $date] + $scopeParam);
 
-        // Fetch detailed invoice records for daily operations traceability
+        $breakdownByType = [];
+        foreach ($stmtFactureType->fetchAll(PDO::FETCH_ASSOC) ?: [] as $ligne) {
+            $code = (string) $ligne['code_type'];
+            $breakdownByType[$code] = $ligne + ['total_encaisse' => 0.0];
+        }
+
+        $stmtEncaisseType = $this->pdo->prepare("
+            SELECT
+                {$typeSql} AS code_type,
+                SUM(CASE WHEN p.devise = 'XOF' THEN p.montant ELSE 0 END) AS total_encaisse
+            FROM lbp_paiements p
+            JOIN lbp_factures f ON p.facture_id = f.id
+            JOIN lbp_colis c ON f.colis_id = c.id
+            WHERE f.agence_id = :agence_id AND DATE(p.date_paiement) = :date{$scopePaiement}
+            GROUP BY code_type
+        ");
+        $stmtEncaisseType->execute(['agence_id' => $agenceId, 'date' => $date] + $scopeParam);
+
+        foreach ($stmtEncaisseType->fetchAll(PDO::FETCH_ASSOC) ?: [] as $ligne) {
+            $code = (string) $ligne['code_type'];
+
+            // Un type peut n'avoir que de l'encaissement, sans facture émise ce
+            // jour : la ligne existe alors avec un facturé à zéro, plutôt que
+            // de faire disparaître l'argent du tableau.
+            $breakdownByType[$code] ??= [
+                'code_type' => $code,
+                'nb_factures' => 0,
+                'total_facture' => 0.0,
+                'total_facture_eur' => 0.0,
+                'total_encaisse' => 0.0,
+            ];
+            $breakdownByType[$code]['total_encaisse'] = (float) $ligne['total_encaisse'];
+        }
+
+        ksort($breakdownByType);
+        $breakdownByType = array_values($breakdownByType);
+
+        /*
+         * Factures émises ce jour.
+         *
+         * Deux montants encaissés sont rendus, et non plus un seul :
+         *   - encaisse_ce_jour : ce qui est entré en caisse ce jour-là sur cette
+         *     facture, seul chiffre qui s'additionne au solde ;
+         *   - montant_encaisse : le cumul depuis l'émission, utile pour savoir
+         *     où en est la facture.
+         *
+         * La colonne affichée était le cumul. Une facture émise ce jour mais
+         * réglée plus tard s'y montrait à plein tarif : le journal totalisait
+         * bien plus que la caisse, et la caissière concluait, à juste titre,
+         * qu'elle avait encaissé davantage que le solde annoncé.
+         */
         $stmtDetails = $this->pdo->prepare("
-            SELECT 
+            SELECT
                 f.id,
                 f.numero_facture,
                 f.montant_total,
                 f.montant_encaisse,
+                COALESCE(pj.encaisse_jour, 0) AS encaisse_ce_jour,
                 f.date_emission,
                 c.numero_tracking,
                 c.nombre_colis,
@@ -370,11 +465,56 @@ class EtatJournalierRepository
             JOIN lbp_colis c ON f.colis_id = c.id
             JOIN lbp_clients cl ON f.client_id = cl.id
             LEFT JOIN users u ON f.created_by = u.id
+            LEFT JOIN (
+                SELECT facture_id, SUM(montant) AS encaisse_jour
+                FROM lbp_paiements
+                WHERE DATE(date_paiement) = :date_pay AND devise = 'XOF'
+                GROUP BY facture_id
+            ) pj ON pj.facture_id = f.id
             WHERE f.agence_id = :agence_id AND DATE(f.date_emission) = :date{$scopeFacture}
             ORDER BY f.date_emission DESC
         ");
-        $stmtDetails->execute(['agence_id' => $agenceId, 'date' => $date] + $scopeParam);
+        $stmtDetails->execute([
+            'agence_id' => $agenceId,
+            'date' => $date,
+            'date_pay' => $date,
+        ] + $scopeParam);
         $invoicesDetails = $stmtDetails->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+        /*
+         * Journal des encaissements du jour : une ligne par paiement reçu, avec
+         * la personne qui l'a pris.
+         *
+         * C'est la traçabilité qui manquait. Le journal des factures montre qui
+         * a saisi la facture, jamais qui a encaissé l'argent — or une facture
+         * saisie par un agent peut être réglée à la caissière, et inversement.
+         * Ce bloc totalise exactement le solde de caisse du jour.
+         */
+        $stmtEncaissements = $this->pdo->prepare("
+            SELECT
+                p.id,
+                p.date_paiement,
+                p.montant,
+                p.devise,
+                {$modeSql} AS mode_reglement,
+                p.type AS type_paiement,
+                f.id AS facture_id,
+                f.numero_facture,
+                f.date_emission,
+                DATE(f.date_emission) <> DATE(p.date_paiement) AS regle_apres_coup,
+                c.numero_tracking,
+                cl.name AS client_name,
+                COALESCE(u.full_name, 'Non identifié') AS encaisse_par
+            FROM lbp_paiements p
+            JOIN lbp_factures f ON p.facture_id = f.id
+            LEFT JOIN lbp_colis c ON f.colis_id = c.id
+            LEFT JOIN lbp_clients cl ON f.client_id = cl.id
+            LEFT JOIN users u ON p.caissiere_id = u.id
+            WHERE f.agence_id = :agence_id AND DATE(p.date_paiement) = :date{$scopePaiement}
+            ORDER BY p.date_paiement DESC, p.id DESC
+        ");
+        $stmtEncaissements->execute(['agence_id' => $agenceId, 'date' => $date] + $scopeParam);
+        $encaissementsDetails = $stmtEncaissements->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
         return [
             'nb_colis' => $nbColis,
@@ -400,7 +540,59 @@ class EtatJournalierRepository
             'solde_caisse_agence_eur' => $encaisseEspecesEur,
             'breakdown_by_type' => $breakdownByType,
             'invoices_details' => $invoicesDetails,
+            'encaissements_details' => $encaissementsDetails,
+            // Bornes de la journée d'exploitation, affichées pour que le lecteur
+            // sache quels colis sont comptés.
+            'exploitation_debut' => $debutExploitation,
+            'exploitation_fin' => $finExploitation,
         ];
+    }
+
+    /**
+     * Colis dont la date d'enregistrement bascule au lendemain.
+     *
+     * Saisis après l'heure de bascule, ils partent avec l'expédition du jour
+     * suivant. Les lister permet de répondre à « lesquels sont passés à demain »
+     * sans avoir à relire les horodatages un par un.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function colisBasculesAuLendemain(int $agenceId, string $date, ?int $userId = null): array
+    {
+        $scope = $userId !== null ? ' AND c.created_by = :user_id' : '';
+        $scopeParam = $userId !== null ? ['user_id' => $userId] : [];
+
+        $heure = sprintf('%02d:00:00', self::HEURE_BASCULE_COLIS);
+
+        $stmt = $this->pdo->prepare("
+            SELECT
+                c.id,
+                c.numero_tracking,
+                c.created_at,
+                c.nombre_colis,
+                c.poids_total,
+                expe.name AS expediteur,
+                dest.name AS destinataire,
+                f.numero_facture,
+                f.montant_total,
+                COALESCE(u.full_name, 'Agent') AS saisi_par
+            FROM lbp_colis c
+            LEFT JOIN lbp_clients expe ON expe.id = c.expediteur_id
+            LEFT JOIN lbp_clients dest ON dest.id = c.destinataire_id
+            LEFT JOIN lbp_factures f ON f.colis_id = c.id
+            LEFT JOIN users u ON u.id = c.created_by
+            WHERE c.agence_depart_id = :agence_id
+              AND DATE(c.created_at) = :date
+              AND TIME(c.created_at) >= :heure{$scope}
+            ORDER BY c.created_at ASC
+        ");
+        $stmt->execute([
+            'agence_id' => $agenceId,
+            'date' => $date,
+            'heure' => $heure,
+        ] + $scopeParam);
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
     }
 
     private function mapToEtatJournalier(array $row): EtatJournalier
