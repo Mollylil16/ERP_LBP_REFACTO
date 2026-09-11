@@ -19,4 +19,10 @@ abstract class AbstractModuleDashboardService
     {
         return $this->repository->dashboard();
     }
+
+    /** Libellé du périmètre affiché, pour le titre de l'écran. */
+    public function nomAgence(?int $agenceId): string
+    {
+        return $this->repository->nomAgence($agenceId);
+    }
 }

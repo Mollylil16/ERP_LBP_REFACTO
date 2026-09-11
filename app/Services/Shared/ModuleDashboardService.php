@@ -390,17 +390,61 @@ final class ModuleDashboardService
         }
 
         $base = '/' . $module['slug'];
-        $nav = [
+
+        $propres = self::NAVIGATIONS[(string) $module['slug']] ?? null;
+        if ($propres !== null) {
+            return array_map(
+                static fn(array $entree): array => $entree + ['available' => true],
+                $propres
+            );
+        }
+
+        return [
             ['key' => 'dashboard', 'label' => 'Tableau de bord', 'icon' => 'DB', 'url' => $base . '/dashboard', 'available' => true],
-            ['key' => 'operations', 'label' => 'Opérations', 'icon' => 'OP', 'url' => $base . '/dashboard', 'available' => true],
         ];
-
-        $nav = array_merge($nav, [
-            ['key' => 'documents', 'label' => 'Documents', 'icon' => 'DOC', 'url' => $base . '/dashboard', 'available' => true],
-            ['key' => 'reporting', 'label' => 'Reporting', 'icon' => 'RP', 'url' => $base . '/dashboard', 'available' => true],
-            ['key' => 'settings', 'label' => 'Paramétrage', 'icon' => 'PR', 'url' => $base . '/dashboard', 'available' => true],
-        ]);
-
-        return $nav;
     }
+
+    /**
+     * Navigation des modules métier branchés sur des données réelles.
+     *
+     * Chaque entrée mène à un écran qui existe : les liens de saisie pointent
+     * vers le module où la donnée est réellement saisie, plutôt que de rouvrir
+     * le tableau de bord courant sous un autre nom.
+     *
+     * @var array<string, array<int, array<string, string>>>
+     */
+    private const NAVIGATIONS = [
+        'entrepots' => [
+            ['key' => 'dashboard', 'label' => 'Occupation', 'icon' => 'OCC', 'url' => '/entrepots/dashboard', 'group' => 'Magasin'],
+            ['key' => 'rayons', 'label' => 'Gestion des rayons', 'icon' => 'RY', 'url' => '/logistique/rayons', 'group' => 'Saisie'],
+            ['key' => 'colisage', 'label' => 'Suivi colisage', 'icon' => 'SC', 'url' => '/logistique/colisage', 'group' => 'Saisie'],
+            ['key' => 'parametres', 'label' => 'Délais & gardiennage', 'icon' => 'PR', 'url' => '/logistique/parametres', 'group' => 'Paramétrage'],
+        ],
+        'flotte-transport' => [
+            ['key' => 'dashboard', 'label' => 'Flotte & missions', 'icon' => 'FLT', 'url' => '/flotte-transport/dashboard', 'group' => 'Pilotage'],
+            ['key' => 'groupage', 'label' => 'Groupage & expéditions', 'icon' => 'GP', 'url' => '/colisage/groupage', 'group' => 'Saisie'],
+            ['key' => 'tracking', 'label' => 'Suivi GPS', 'icon' => 'GPS', 'url' => '/colisage/exploitation/tracking', 'group' => 'Saisie'],
+        ],
+        'transit-douane' => [
+            ['key' => 'dashboard', 'label' => 'Lots & coûts', 'icon' => 'TDO', 'url' => '/transit-douane/dashboard', 'group' => 'Pilotage'],
+            ['key' => 'couts', 'label' => 'Coûts d\'approche', 'icon' => 'LND', 'url' => '/finance/couts-approche', 'group' => 'Saisie'],
+            ['key' => 'rentabilite', 'label' => 'Rentabilité (P&L)', 'icon' => 'PL', 'url' => '/finance/rentabilite', 'group' => 'Analyse'],
+        ],
+        'portefeuille-clients' => [
+            ['key' => 'dashboard', 'label' => 'Valeur & risque', 'icon' => 'PCL', 'url' => '/portefeuille-clients/dashboard', 'group' => 'Pilotage'],
+            ['key' => 'clients', 'label' => 'Annuaire clients', 'icon' => 'CLI', 'url' => '/crm/clients', 'group' => 'Saisie'],
+            ['key' => 'balance', 'label' => 'Balance âgée', 'icon' => 'BAG', 'url' => '/finance/balance-agee', 'group' => 'Analyse'],
+            ['key' => 'portefeuilles', 'label' => 'Portefeuilles (avances)', 'icon' => 'WAL', 'url' => '/finance/portefeuilles', 'group' => 'Analyse'],
+        ],
+        'agents-correspondants' => [
+            ['key' => 'dashboard', 'label' => 'Réseau', 'icon' => 'AGC', 'url' => '/agents-correspondants/dashboard', 'group' => 'Réseau'],
+            ['key' => 'depenses', 'label' => 'Dépenses prestataires', 'icon' => 'DEP', 'url' => '/finance/depenses', 'group' => 'Finance'],
+        ],
+        'tracking-colis' => [
+            ['key' => 'dashboard', 'label' => 'Suivi unifié', 'icon' => 'TRK', 'url' => '/tracking-colis/dashboard', 'group' => 'Suivi'],
+            ['key' => 'recherche', 'label' => 'Recherche Call Center', 'icon' => 'CAL', 'url' => '/call-center/recherche-colis', 'group' => 'Suivi'],
+            ['key' => 'gps', 'label' => 'Suivi GPS', 'icon' => 'GPS', 'url' => '/colisage/exploitation/tracking', 'group' => 'Saisie'],
+            ['key' => 'parcels', 'label' => 'Gestion des colis', 'icon' => 'CL', 'url' => '/colisage/parcels', 'group' => 'Saisie'],
+        ],
+    ];
 }

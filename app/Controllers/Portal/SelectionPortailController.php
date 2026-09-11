@@ -10,6 +10,7 @@ use App\Middleware\AuthMiddleware;
 use App\Models\Database;
 use App\Repositories\Admin\ModuleMaintenanceRepository;
 use App\Security\PermissionAction;
+use App\Security\ModuleAccess;
 use App\Security\PermissionEntityRegistry;
 use App\Services\Admin\ModuleMaintenanceService;
 use App\Services\Shared\ModuleDashboardService;
@@ -69,7 +70,11 @@ final class SelectionPortailController extends BaseController
                 }
                 return Auth::can('call_center_view') || Auth::can('call_center_dg_view');
             }
-            return true;
+
+            // Les six modules métier construits sur ModuleAccess : la tuile
+            // n'apparaît que si le contrôleur laissera effectivement entrer.
+            // Auparavant chacun voyait des tuiles qui le rejetaient au clic.
+            return ModuleAccess::peutConsulter((string) $module['key']);
         }));
 
         foreach ($modules as &$module) {
