@@ -1,0 +1,3 @@
+# Les scripts shell tournent sur le serveur Linux : un fichier en CRLF y est
+# refuse par bash, avec un message trompeur sur l'interpreteur.
+*.sh text eol=lf
