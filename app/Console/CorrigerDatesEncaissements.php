@@ -453,7 +453,20 @@ if (!$appliquer) {
         echo '      --id-facture-max=' . $plusHautIdFacture . PHP_EOL . PHP_EOL;
         echo 'Ces deux bornes protegent les lignes ecrites apres le correctif :' . PHP_EOL;
         echo 'passe le deploiement, un reglement de 17h est legitime et ne doit' . PHP_EOL;
-        echo 'surtout pas etre recule.' . PHP_EOL;
+        echo 'surtout pas etre recule.' . PHP_EOL . PHP_EOL;
+        echo 'QUAND LANCER LA CORRECTION' . PHP_EOL;
+        echo str_repeat('-', 78) . PHP_EOL;
+        echo "Le matin, avant 15h, et de preference avant l'ouverture des agences." . PHP_EOL . PHP_EOL;
+        echo 'La raison : une fois le correctif en ligne, un reglement pris a 17h' . PHP_EOL;
+        echo 'porte legitimement 17h le jour meme. Il ressort donc du meme critere' . PHP_EOL;
+        echo "que les lignes a recaler, et la borne affichee ci-dessus l'engloberait." . PHP_EOL;
+        echo "Tant qu'il n'est pas 15h, aucune ligne legitime ne peut porter une" . PHP_EOL;
+        echo "heure tardive : la borne ne designe alors que d'anciennes lignes." . PHP_EOL . PHP_EOL;
+        echo 'Si la correction doit se faire en cours de journee, relever plutot' . PHP_EOL;
+        echo "l'identifiant maximal AVANT de deployer le correctif :" . PHP_EOL;
+        echo '  SELECT MAX(id) FROM lbp_paiements;' . PHP_EOL;
+        echo '  SELECT MAX(id) FROM lbp_factures;' . PHP_EOL;
+        echo 'et passer ces deux valeurs en bornes.' . PHP_EOL;
     }
 
     echo $ligne('=') . PHP_EOL;
