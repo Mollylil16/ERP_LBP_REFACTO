@@ -22,6 +22,7 @@ final class AuditLectureSeuleTest extends TestCase
     /** Scripts dont la vocation est d'observer sans rien changer. */
     private const SCRIPTS_AUDIT = [
         'app/Console/AuditEncaissements.php',
+        'app/Console/RapportEncaissementsHtml.php',
     ];
 
     private const MOTS_ECRITURE = [
