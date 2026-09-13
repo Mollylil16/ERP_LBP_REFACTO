@@ -83,14 +83,14 @@ class FactureRepository
         $currentUserId = Auth::id() ?: $facture->createdBy ?: $facture->caissiereId;
         $agenceId = $this->resolveValidAgencyId($facture->agenceId);
 
+        // La facture suit l'argent : elle porte le jour ou elle a ete etablie,
+        // meme apres 15h, pour rester du meme cote que son reglement.
+        // Voir PaiementRepository::create pour la meme regle cote encaissement,
+        // et ColisageRepository::create pour la seule bascule qui subsiste.
         $dateEmission = $facture->dateEmission;
         if (empty($dateEmission)) {
-            $now = new \DateTime('now', new \DateTimeZone('Africa/Abidjan'));
-            $cutoff = new \DateTime($now->format('Y-m-d') . ' 15:00:00', new \DateTimeZone('Africa/Abidjan'));
-            if ($now > $cutoff) {
-                $now->modify('+1 day');
-            }
-            $dateEmission = $now->format('Y-m-d H:i:s');
+            $dateEmission = (new \DateTime('now', new \DateTimeZone('Africa/Abidjan')))
+                ->format('Y-m-d H:i:s');
         }
 
         $stmt = $this->pdo->prepare("

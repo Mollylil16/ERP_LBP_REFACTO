@@ -230,6 +230,9 @@ class ColisageRepository
         $assuranceSouscrite = !empty($data['assurance_souscrite']) ? 1 : 0;
         $montantAssurance = (float) ($data['montant_assurance'] ?? 0.0);
 
+        // Seule bascule metier qui subsiste, et elle est voulue : un colis depose
+        // apres 15h part avec le chargement du lendemain, donc il est enregistre
+        // au lendemain. L'argent, lui, ne bascule pas - voir PaiementRepository.
         $createdAt = !empty($data['created_at']) ? (string) $data['created_at'] : null;
         if (empty($createdAt)) {
             $now = new \DateTime('now', new \DateTimeZone('Africa/Abidjan'));

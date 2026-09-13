@@ -28,14 +28,19 @@ class PaiementRepository
 
     public function create(Paiement $paiement): int
     {
+        // L'argent est compte le jour ou il entre en caisse. Une facture reglee
+        // a 17h appartient au jour J : c'est ce que la caissiere a dans son tiroir
+        // le soir, et c'est ce qu'elle declare a son point.
+        //
+        // Ce code decalait autrefois au lendemain tout reglement passe 15h. La
+        // bascule de 15h ne concerne que l'enregistrement des colis pour envoi
+        // (ColisageRepository::create) ; l'appliquer a l'argent faisait
+        // disparaitre du jour J des sommes reellement encaissees, et creait des
+        // ecarts de caisse que personne ne savait expliquer.
         $datePaiement = $paiement->datePaiement;
         if (empty($datePaiement)) {
-            $now = new \DateTime('now', new \DateTimeZone('Africa/Abidjan'));
-            $cutoff = new \DateTime($now->format('Y-m-d') . ' 15:00:00', new \DateTimeZone('Africa/Abidjan'));
-            if ($now > $cutoff) {
-                $now->modify('+1 day');
-            }
-            $datePaiement = $now->format('Y-m-d H:i:s');
+            $datePaiement = (new \DateTime('now', new \DateTimeZone('Africa/Abidjan')))
+                ->format('Y-m-d H:i:s');
         }
 
         $stmt = $this->pdo->prepare("
