@@ -89,15 +89,32 @@ IFS='|' read -r BASE UTILISATEUR HOTE <<< "$("$PHP" -r "$LECTURE_CONFIG")"
 SAUVEGARDE="${RAPPORTS}/sauvegarde-${HORODATAGE}.sql"
 
 echo "Base : ${BASE} sur ${HOTE}, utilisateur ${UTILISATEUR}"
-echo "Le mot de passe de la base vous est demande ci-dessous."
 echo
 
-mysqldump -h "$HOTE" -u "$UTILISATEUR" -p "$BASE" lbp_paiements lbp_factures > "$SAUVEGARDE"
+# Le mot de passe est lu dans config/database.php, celui-la meme dont le site se
+# sert, et depose dans un fichier d'options lisible par vous seul, efface a la
+# sortie du script quoi qu'il arrive. On ne le passe jamais sur la ligne de
+# commande : il serait visible de tout utilisateur du serveur dans la liste des
+# processus.
+IDENTIFIANTS="$(mktemp "${RAPPORTS}/.mysql-XXXXXX")"
+chmod 600 "$IDENTIFIANTS"
+trap 'rm -f "$IDENTIFIANTS"' EXIT
+
+ECRITURE_OPTIONS='$c = require "config/database.php";
+$q = static fn ($v) => "\"" . addcslashes((string) $v, "\"\\") . "\"";
+file_put_contents($argv[1], "[client]\nuser=" . $q($c["username"]) . "\npassword=" . $q($c["password"])
+    . "\nhost=" . $q($c["host"]) . "\nport=" . (int) ($c["port"] ?? 3306) . "\n");'
+"$PHP" -r "$ECRITURE_OPTIONS" "$IDENTIFIANTS"
+
+# --no-tablespaces : sans lui, mysqldump reclame le privilege PROCESS, qu'un
+# compte d'hebergement mutualise n'a presque jamais, et s'arrete en erreur.
+# Les tablespaces ne servent pas a restaurer deux tables.
+mysqldump --defaults-extra-file="$IDENTIFIANTS" --no-tablespaces "$BASE" lbp_paiements lbp_factures > "$SAUVEGARDE"
 chmod 600 "$SAUVEGARDE"
 
 echo "Sauvegarde : $SAUVEGARDE ($(wc -c < "$SAUVEGARDE") octets)"
 echo
-echo "Pour revenir en arriere en cas de besoin :"
+echo "Pour revenir en arriere en cas de besoin (mot de passe : celui de config/database.php) :"
 echo "  mysql -h ${HOTE} -u ${UTILISATEUR} -p ${BASE} < ${SAUVEGARDE}"
 
 # --- 3. Analyse -------------------------------------------------------------
