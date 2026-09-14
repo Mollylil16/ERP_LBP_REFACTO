@@ -198,7 +198,29 @@ if (!$appliquer) {
 const ACTION_REOUVERTURE = 'reouverture_point_caisse';
 const GENESIS_AUDIT = 'GENESIS_LBP_SECURITY_SEED_2026';
 
-$canonique = static function (PDO $pdo, string $json): string {
+/*
+ * Forme sous laquelle la base rendra le JSON a la relecture, pour que
+ * verifyChainIntegrity() retrouve l'empreinte.
+ *
+ * MySQL renormalise une colonne JSON a l'ecriture : il faut hacher ce qu'il
+ * rendra, d'ou le CAST. MariaDB, lui, ne connait pas CAST(... AS JSON) - la
+ * production tourne sous MariaDB et a refuse ce script le 14/09/2026 - et
+ * stocke une colonne JSON mot pour mot : la chaine brute est alors la bonne.
+ * On tente donc le CAST une seule fois, avant la transaction, et on garde la
+ * chaine brute s'il est refuse.
+ */
+$castJsonDisponible = true;
+try {
+    $pdo->query("SELECT CAST('{}' AS JSON)")->fetchColumn();
+} catch (Throwable) {
+    $castJsonDisponible = false;
+}
+
+$canonique = static function (PDO $pdo, string $json) use ($castJsonDisponible): string {
+    if (!$castJsonDisponible) {
+        return $json;
+    }
+
     $stmt = $pdo->prepare('SELECT CAST(:valeur AS JSON)');
     $stmt->execute(['valeur' => $json]);
     $resultat = $stmt->fetchColumn();

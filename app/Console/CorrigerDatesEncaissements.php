@@ -206,12 +206,40 @@ if ($paiementsDejaFaits !== []) {
     $nbPaiementsEcartes = $avant - count($paiements);
 }
 
+/*
+ * Protection des reglements enregistres apres une correction.
+ *
+ * Le 14/09/2026, une nouvelle analyse a propose de reculer le paiement 108,
+ * pris le dimanche 13/09 a 15h00 : son heure tardive repondait au critere,
+ * alors qu'il avait ete ecrit par le code deja corrige, donc a la bonne date.
+ *
+ * Une fois une correction appliquee, la piste d'audit donne la borne exacte :
+ * le plus haut identifiant recale. Tout identifiant superieur a ete ecrit
+ * apres, par le code corrige, et ne doit jamais etre recule. Cette borne
+ * s'impose meme si --id-paiement-max en donne une plus large.
+ */
+$nbPaiementsPosterieurs = 0;
+if ($paiementsDejaFaits !== []) {
+    $borneAudit = max($paiementsDejaFaits);
+    $avant = count($paiements);
+    $paiements = array_values(array_filter(
+        $paiements,
+        static fn (array $p): bool => (int) $p['id'] <= $borneAudit
+    ));
+    $nbPaiementsPosterieurs = $avant - count($paiements);
+}
+
 echo '1. REGLEMENTS DATES DU LENDEMAIN' . PHP_EOL;
 echo $ligne() . PHP_EOL;
 
 if ($nbPaiementsEcartes > 0) {
     echo $nbPaiementsEcartes . ' reglement(s) deja recale(s) lors d\'un passage precedent,'
         . ' ecarte(s).' . PHP_EOL;
+}
+
+if ($nbPaiementsPosterieurs > 0) {
+    echo $nbPaiementsPosterieurs . ' reglement(s) enregistre(s) apres la derniere correction, ecarte(s) :'
+        . PHP_EOL . '  le code corrige les a dates juste, les reculer serait une erreur.' . PHP_EOL;
 }
 
 $plusHautIdPaiement = 0;
@@ -329,12 +357,30 @@ if ($facturesDejaFaites !== []) {
     $nbFacturesEcartees = $avant - count($factures);
 }
 
+// Meme protection que pour les reglements : une facture etablie apres la
+// derniere correction l'a ete par le code corrige, a la bonne date.
+$nbFacturesPosterieures = 0;
+if ($facturesDejaFaites !== []) {
+    $borneAudit = max($facturesDejaFaites);
+    $avant = count($factures);
+    $factures = array_values(array_filter(
+        $factures,
+        static fn (array $f): bool => (int) $f['id'] <= $borneAudit
+    ));
+    $nbFacturesPosterieures = $avant - count($factures);
+}
+
 echo '3. FACTURES DATEES DU LENDEMAIN' . PHP_EOL;
 echo $ligne() . PHP_EOL;
 
 if ($nbFacturesEcartees > 0) {
     echo $nbFacturesEcartees . ' facture(s) deja recalee(s) lors d\'un passage precedent,'
         . ' ecartee(s).' . PHP_EOL;
+}
+
+if ($nbFacturesPosterieures > 0) {
+    echo $nbFacturesPosterieures . ' facture(s) etablie(s) apres la derniere correction, ecartee(s) :'
+        . PHP_EOL . '  le code corrige les a datees juste, les reculer serait une erreur.' . PHP_EOL;
 }
 
 $plusHautIdFacture = 0;
