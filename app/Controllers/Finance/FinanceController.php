@@ -765,8 +765,6 @@ final class FinanceController extends FinanceBaseController
             exit;
         }
 
-        $canal = (string) ($_POST['canal'] ?? 'whatsapp');
-
         // Charger le client pour avoir son numéro
         $stmt = $this->db->prepare("SELECT * FROM lbp_clients WHERE id = :id LIMIT 1");
         $stmt->execute(['id' => $facture->clientId]);
@@ -778,33 +776,20 @@ final class FinanceController extends FinanceBaseController
             exit;
         }
 
-        $message = sprintf(
-            "Cher client %s, nous vous rappelons que votre facture %s présente un solde restant de %s %s. Vous pouvez la régler directement via ce lien sécurisé : %s",
-            $client['name'],
-            $facture->numeroFacture,
-            number_format($facture->montantRestant, 0, ',', ' '),
-            $facture->devise,
-            View::url('api/paiements/pay/' . $facture->id)
+        // L'envoi des relances n'est pas encore branche : les SMS passeront par
+        // Infobip, WhatsApp par un lien qui ouvre la conversation du client depuis
+        // le poste de l'agent.
+        //
+        // Jusqu'au 14/09/2026, ce bouton appelait NotificationService::send(), qui
+        // n'existe pas : l'agent tombait sur une erreur 500. On dit maintenant ce
+        // qu'il en est, sans afficher de faux succes ni historiser une relance qui
+        // ne serait jamais partie.
+        Session::flash(
+            'info',
+            "L'envoi automatique des relances n'est pas encore activé. En attendant, contactez le client au "
+                . $client['phone'] . ' : il reste ' . number_format($facture->montantRestant, 0, ',', ' ')
+                . ' ' . $facture->devise . ' à régler sur la facture ' . $facture->numeroFacture . '.'
         );
-
-        $sent = $this->notifService->send($client['phone'], $message, $canal);
-
-        if ($sent) {
-            // Historiser le rappel
-            $stmt = $this->db->prepare("
-                INSERT INTO lbp_rappel_soldes (facture_id, caissiere_id, canal, date_rappel)
-                VALUES (:facture_id, :caissiere_id, :canal, NOW())
-            ");
-            $stmt->execute([
-                'facture_id' => $facture->id,
-                'caissiere_id' => Auth::id(),
-                'canal' => $canal,
-            ]);
-
-            Session::flash('success', "Relance client envoyée avec succès par " . strtoupper($canal) . ".");
-        } else {
-            Session::flash('error', "Échec de l'envoi de la relance.");
-        }
 
         header('Location: ' . View::url('finance/factures/' . $id));
         exit;
@@ -832,29 +817,23 @@ final class FinanceController extends FinanceBaseController
             exit;
         }
 
-        $count = 0;
+        // Meme situation que factureRelancer() : l'envoi n'est pas encore branche.
+        // Ce bouton passait un texte a dispatchPushOrWebhook(), qui attend le colis
+        // sous forme de tableau : TypeError, donc erreur 500. On annonce ce qui
+        // reste a relancer, sans pretendre l'avoir fait ni journaliser un envoi
+        // qui n'a pas eu lieu.
         $totalMontant = 0.0;
-        $notifService = $this->notifService;
-
         foreach ($unpaid as $f) {
-            $paymentUrl = View::url('api/paiements/pay/' . $f['id']);
-            $msg = "Bonjour " . ($f['client_name'] ?? 'Client') . ", votre facture LBP N°" . $f['numero_facture'] . " présente un solde impayé de " . number_format((float)$f['montant_restant'], 0, ',', ' ') . " " . $f['devise'] . ". Réglez votre solde directement en ligne : " . $paymentUrl;
-
-            $sent = $notifService->dispatchPushOrWebhook('PAIEMENT_RAPPEL', [
-                'telephone' => $f['client_phone'] ?? '',
-                'facture_id' => $f['id'],
-                'message' => $msg
-            ]);
-
-            if ($sent) {
-                $count++;
+            if (($f['devise'] ?? 'XOF') === 'XOF') {
                 $totalMontant += (float) $f['montant_restant'];
             }
         }
 
-        AuditLogService::log('batch_payment_reminders', 'lbp_factures', 0, null, ['count' => $count, 'total' => $totalMontant]);
-
-        Session::flash('success', "Relance automatique envoyée avec succès à {$count} client(s) pour un solde total de " . number_format($totalMontant, 0, ',', ' ') . " XOF.");
+        Session::flash(
+            'info',
+            "L'envoi automatique des relances n'est pas encore activé. " . count($unpaid)
+                . ' facture(s) impayée(s) sont à relancer, pour ' . number_format($totalMontant, 0, ',', ' ') . ' XOF.'
+        );
         header('Location: ' . View::url('finance/factures'));
         exit;
     }
