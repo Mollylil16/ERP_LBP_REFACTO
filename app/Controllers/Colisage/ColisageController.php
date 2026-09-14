@@ -1186,36 +1186,43 @@ final class ColisageController extends ColisageBaseController
             exit;
         } else {
             // ARRIVEE
-            $updateStmt = $pdo->prepare("
-                UPDATE lbp_colis 
-                SET statut = 'ARRIVÉ', statut_arrive = 'ARRIVE', updated_at = NOW() 
-                WHERE id = :id
-            ");
-            $updateStmt->execute(['id' => $colisId]);
-
-            $etapeText = 'Arrivée réceptionnée à l\'agence ' . ($colis['agence_arrivee_name'] ?? 'de destination') . ' (Scan Douchette à l\'arrivée)';
-            $gpsStmt = $pdo->prepare("
-                INSERT INTO lbp_tracking_gps (colis_id, etape, date_etape)
-                VALUES (:colis_id, :etape, NOW())
-            ");
-            $gpsStmt->execute(['colis_id' => $colisId, 'etape' => $etapeText]);
+            //
+            // Le scan d'arrivée passe par le pointage de réception : même règle que
+            // la case à cocher (colis attendu : coché ; sinon « reçu hors liste »),
+            // même traçabilité, et aucun SMS au client, puisqu'un pointage peut être
+            // une erreur. Jusqu'au 15/09/2026, ce code écrivait dans une colonne
+            // statut_arrive qui n'a jamais existé : chaque scan d'arrivée échouait.
+            $perimetre = \App\Security\ModuleAccess::agenceVisible();
+            $agenceReception = $perimetre ?? (int) ($colis['agence_arrivee_id'] ?? 0);
 
             try {
-                $notifRepo = new \App\Repositories\Shared\NotificationRepository($pdo);
-                $notifService = new \App\Services\Shared\NotificationService($notifRepo);
-                $colisRepo = new ColisageRepository($pdo);
-                $pDetails = $colisRepo->findParcelById($colisId);
-                if ($pDetails) {
-                    $notifService->notifyParcelStatusChange($pDetails, 'ARRIVÉ', $etapeText);
-                }
-            } catch (\Throwable $e) {}
+                $resultat = \App\Services\Colisage\PointageColisService::creer()->scanner(
+                    (string) $colis['numero_tracking'],
+                    $agenceReception > 0 ? $agenceReception : null,
+                    Auth::id()
+                );
+            } catch (\Throwable $e) {
+                error_log('[Scan express] arrivee : ' . $e->getMessage());
+                $resultat = ['ok' => false, 'message' => "Ce scan n'a pas pu être enregistré. Réessayez."];
+            }
+
+            // Une étape de suivi seulement pour une réception nouvelle : le service
+            // ne renvoie la clé « depart » que lorsqu'il vient d'enregistrer le colis.
+            if ($resultat['ok'] && array_key_exists('depart', $resultat)) {
+                $etapeText = 'Arrivée réceptionnée à l\'agence ' . ($colis['agence_arrivee_name'] ?? 'de destination') . ' (Scan Douchette à l\'arrivée)';
+                $gpsStmt = $pdo->prepare("
+                    INSERT INTO lbp_tracking_gps (colis_id, etape, date_etape)
+                    VALUES (:colis_id, :etape, NOW())
+                ");
+                $gpsStmt->execute(['colis_id' => $colisId, 'etape' => $etapeText]);
+            }
 
             echo json_encode([
-                'success' => true,
+                'success' => $resultat['ok'],
                 'action' => 'ARRIVEE',
-                'statut' => 'ARRIVÉ',
+                'statut' => $resultat['ok'] ? 'ARRIVÉ' : '',
                 'tracking' => $colis['numero_tracking'],
-                'message' => "Colis {$colis['numero_tracking']} marqué ARRIVÉ à destination. Notification client transmise !",
+                'message' => $resultat['message'],
             ]);
             exit;
         }

@@ -694,7 +694,7 @@ class ColisageRepository
             JOIN lbp_clients cli_exp ON c.expediteur_id = cli_exp.id
             JOIN lbp_clients cli_dest ON c.destinataire_id = cli_dest.id
             WHERE c.agence_depart_id = :agency_id 
-              AND c.statut IN ('RÉCEPTIONNÉ', 'EN_PRÉPARATION')
+              AND c.statut IN ('enregistre', 'facture')
               AND c.expedition_id IS NULL
             ORDER BY c.created_at DESC
         ");
@@ -773,7 +773,7 @@ class ColisageRepository
     {
         $stmt = $this->pdo->prepare("
             UPDATE lbp_colis
-            SET expedition_id = :expedition_id, statut = 'EN_PRÉPARATION', updated_at = NOW()
+            SET expedition_id = :expedition_id, updated_at = NOW()
             WHERE id = :id
         ");
         $stmt->execute([

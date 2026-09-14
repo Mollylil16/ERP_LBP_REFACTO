@@ -82,6 +82,7 @@ final class AuditLectureSeuleTest extends TestCase
             'app/Console/RecalculerSoldesCaisse.php',
             'app/Console/CorrigerDatesEncaissements.php',
             'app/Console/RouvrirPointsCaisse.php',
+            'app/Console/RepriseDepartsColis.php',
         ];
 
         foreach ($correcteurs as $relatif) {

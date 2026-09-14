@@ -39,6 +39,18 @@ $router->group('/colisage', function (Router $router): void {
     $router->get('/scan-express', [ColisageController::class, 'expressScanPage']);
     $router->post('/scan-express/process', [ColisageController::class, 'processExpressScan']);
 
+    // Pointage des colis : l'agence d'envoi marque ses départs, l'agence
+    // d'arrivée coche ce qu'elle reçoit, la direction suit l'ensemble.
+    $router->get('/departs', [\App\Controllers\Colisage\PointageColisController::class, 'departs']);
+    $router->post('/departs/marquer-partis', [\App\Controllers\Colisage\PointageColisController::class, 'marquerPartis']);
+    $router->get('/departs/{id}', [\App\Controllers\Colisage\PointageColisController::class, 'detail']);
+    $router->get('/reception', [\App\Controllers\Colisage\PointageColisController::class, 'reception']);
+    $router->post('/reception/pointer', [\App\Controllers\Colisage\PointageColisController::class, 'pointer']);
+    $router->post('/reception/scanner', [\App\Controllers\Colisage\PointageColisController::class, 'scanner']);
+    $router->post('/reception/{id}/tout-pointer', [\App\Controllers\Colisage\PointageColisController::class, 'toutPointer']);
+    $router->post('/reception/{id}/prevenir-clients', [\App\Controllers\Colisage\PointageColisController::class, 'prevenirClients']);
+    $router->get('/suivi-departs', [\App\Controllers\Colisage\PointageColisController::class, 'suivi']);
+
     $router->get('/groupage', [ColisageController::class, 'groupageIndex']);
     $router->get('/groupage/nouveau', [ColisageController::class, 'groupageCreate']);
     $router->post('/groupage/enregistrer', [ColisageController::class, 'groupageStore']);

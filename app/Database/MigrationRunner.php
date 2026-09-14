@@ -49,6 +49,58 @@ class MigrationRunner
         $this->syncFacturesMontantRestant();
         $this->createMobileDirectionTables();
         $this->createSignalementsTraitementTable();
+        $this->createPointageColisTables();
+    }
+
+    /**
+     * Pointage des colis au départ et à la réception (septembre 2026).
+     *
+     * Uniquement de la structure, ajoutée si elle manque : cette méthode tourne à
+     * chaque requête, comme tout run(). La reprise des colis existants, qui écrit
+     * des données, vit dans app/Console/RepriseDepartsColis.php et ne se lance
+     * qu'à la main.
+     */
+    private function createPointageColisTables(): void
+    {
+        try {
+            if ($this->schema->tableExists('lbp_expeditions')) {
+                $this->addColumnIfMissing('lbp_expeditions', 'date_depart_effective', 'DATETIME NULL');
+                $this->addColumnIfMissing('lbp_expeditions', 'parti_par_id', 'INT NULL');
+                $this->addColumnIfMissing('lbp_expeditions', 'date_premiere_reception', 'DATETIME NULL');
+                $this->addColumnIfMissing('lbp_expeditions', 'est_reprise', 'TINYINT(1) NOT NULL DEFAULT 0');
+            }
+
+            if ($this->schema->tableExists('lbp_colis')) {
+                $this->addColumnIfMissing('lbp_colis', 'date_reception', 'DATETIME NULL');
+                $this->addColumnIfMissing('lbp_colis', 'recu_par_id', 'INT NULL');
+                $this->addColumnIfMissing('lbp_colis', 'reception_hors_liste', 'TINYINT(1) NOT NULL DEFAULT 0');
+            }
+
+            if (!$this->schema->tableExists('lbp_colis_pointages')) {
+                // Journal de chaque geste : qui a coché, décoché, scanné, et d'où.
+                // Pas de clé étrangère : lbp_colis.id et users.id n'ont pas le même
+                // signe selon les bases, et une contrainte refusée ici bloquerait
+                // toute la migration.
+                $this->pdo->exec("
+                    CREATE TABLE IF NOT EXISTS lbp_colis_pointages (
+                        id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                        colis_id INT UNSIGNED NOT NULL,
+                        expedition_id INT UNSIGNED NULL,
+                        agence_id INT UNSIGNED NULL,
+                        action VARCHAR(20) NOT NULL,
+                        source VARCHAR(20) NOT NULL,
+                        user_id INT NULL,
+                        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        KEY idx_pointage_colis (colis_id),
+                        KEY idx_pointage_expedition (expedition_id),
+                        KEY idx_pointage_agence_date (agence_id, created_at),
+                        KEY idx_pointage_action_date (action, created_at)
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+                ");
+            }
+        } catch (\Throwable $e) {
+            error_log('[MigrationRunner Warning] createPointageColisTables: ' . $e->getMessage());
+        }
     }
 
 

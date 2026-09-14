@@ -184,6 +184,31 @@ final class ColisageNavigation
                 'available' => true
             ],
 
+            // Pointage des colis au départ et à la réception
+            [
+                'group' => 'Activité',
+                'key' => 'pointage_departs',
+                'label' => 'Préparer un départ',
+                'icon' => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>',
+                'url' => 'colisage/departs',
+                'available' => true
+            ],
+            [
+                'group' => 'Activité',
+                'key' => 'pointage_reception',
+                'label' => 'Réception des colis',
+                'icon' => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path></svg>',
+                'url' => 'colisage/reception',
+                'available' => true
+            ],
+            [
+                'group' => 'Activité',
+                'key' => 'pointage_suivi',
+                'label' => 'Suivi des départs',
+                'icon' => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>',
+                'url' => 'colisage/suivi-departs',
+                'available' => true
+            ],
             [
                 'group' => 'Activité',
                 'key' => 'documents',

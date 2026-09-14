@@ -96,6 +96,9 @@ $ecrans = [
     'Rapport journalier' => '/colisage/rapports',
     'Rapport mensuel' => '/colisage/rapports/mensuel',
     'Scan express' => '/colisage/scan-express',
+    'Préparer un départ' => '/colisage/departs',
+    'Réception des colis' => '/colisage/reception',
+    'Suivi des départs' => '/colisage/suivi-departs',
 
     // Écrans témoins, non modifiés
     'Recherche facturation' => '/facturation/filtre',
