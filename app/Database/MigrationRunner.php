@@ -102,6 +102,9 @@ class MigrationRunner
                         poids_taxable_kg DECIMAL(12,1) NULL,
                         volume_m3 DECIMAL(10,2) NULL,
                         taux_eur_xof DECIMAL(12,6) NULL,
+                        colis_erp INT NULL,
+                        poids_erp_kg DECIMAL(12,1) NULL,
+                        commentaire_dg TEXT NULL,
                         commentaire_ecart TEXT NULL,
                         motif_annulation TEXT NULL,
                         motif_renvoi TEXT NULL,
@@ -214,6 +217,12 @@ class MigrationRunner
                     $this->pdo->exec($creation);
                 }
             }
+
+            // Saisie des colis au moment du départ, que le Directeur général
+            // compare au document de la compagnie (ajout du 15/09/2026).
+            $this->addColumnIfMissing('lbp_dossiers_envoi', 'colis_erp', 'INT NULL');
+            $this->addColumnIfMissing('lbp_dossiers_envoi', 'poids_erp_kg', 'DECIMAL(12,1) NULL');
+            $this->addColumnIfMissing('lbp_dossiers_envoi', 'commentaire_dg', 'TEXT NULL');
         } catch (\Throwable $e) {
             error_log('[MigrationRunner Warning] createDossiersEnvoiTables: ' . $e->getMessage());
         }

@@ -13,12 +13,12 @@ use App\Security\DossierEnvoiAcces;
 use App\Security\ModuleAccess;
 use App\Services\Colisage\DossierEnvoiService;
 use App\Services\Colisage\PointageColisService;
-use InvalidArgumentException;
 use Throwable;
 
 /**
- * Pointage des colis : l'agence d'envoi marque ses départs, l'agence d'arrivée
- * coche ce qu'elle reçoit, la direction suit l'ensemble.
+ * Pointage des colis : l'agence d'arrivée coche ce qu'elle reçoit, la direction
+ * suit l'ensemble. Le départ se prépare dans DossierEnvoiController : les colis
+ * partent avec le document de la compagnie saisi par l'agent export.
  *
  * Périmètre : un utilisateur rattaché à une agence n'agit que sur les départs
  * et réceptions de son agence. Les rôles à portée réseau (administration, DG,
@@ -32,64 +32,6 @@ final class PointageColisController extends ColisageBaseController
     public function __construct()
     {
         $this->service = PointageColisService::creer();
-    }
-
-    public function departs(): void
-    {
-        AuthMiddleware::check();
-
-        $perimetre = ModuleAccess::agenceVisible();
-        $agenceId = $perimetre ?? $this->agenceDemandee();
-        $active = $agenceId !== null && $agenceId > 0;
-
-        $this->colisageView('colisage/pointage/departs', 'Préparer un départ', 'pointage_departs', [
-            'pointage' => [
-                'agences' => $perimetre === null ? $this->service->agences() : [],
-                'agence_id' => $agenceId,
-                'peut_choisir' => $perimetre === null,
-                'groupes' => $active ? $this->service->colisAExpedierParDestination($agenceId) : [],
-                'manquants' => $active ? $this->service->manquantsSignalesA($agenceId) : [],
-                'transports' => PointageColisService::TRANSPORTS,
-                'acces_envois' => DossierEnvoiAcces::courant()->peutOuvrir(),
-            ],
-        ]);
-    }
-
-    public function marquerPartis(): void
-    {
-        AuthMiddleware::check();
-
-        $perimetre = ModuleAccess::agenceVisible();
-        $agenceId = $perimetre ?? (int) ($_POST['agence_id'] ?? 0);
-        $retour = 'colisage/departs' . ($perimetre === null && $agenceId > 0 ? '?agence=' . $agenceId : '');
-
-        $this->exigerJeton($retour);
-
-        if ($agenceId <= 0) {
-            Session::flash('error', "Choisissez l'agence d'envoi avant de marquer un départ.");
-            $this->rediriger($retour);
-        }
-
-        try {
-            $departs = $this->service->marquerPartis(
-                (array) ($_POST['colis_ids'] ?? []),
-                $agenceId,
-                (string) ($_POST['type_transport'] ?? ''),
-                Auth::id()
-            );
-            $nb = array_sum(array_column($departs, 'nb'));
-            Session::flash(
-                'success',
-                $nb . ' colis marqué(s) partis, en ' . count($departs) . " départ(s). Les agences d'arrivée les voient dans leur réception."
-            );
-        } catch (InvalidArgumentException $e) {
-            Session::flash('error', $e->getMessage());
-        } catch (Throwable $e) {
-            error_log('[Pointage colis] marquerPartis : ' . $e->getMessage());
-            Session::flash('error', "Le départ n'a pas pu être enregistré. Aucun colis n'a été modifié.");
-        }
-
-        $this->rediriger($retour);
     }
 
     public function reception(): void
@@ -226,10 +168,8 @@ final class PointageColisController extends ColisageBaseController
             $this->rediriger('colisage/suivi-departs');
         }
 
-        $acces = DossierEnvoiAcces::courant();
-        if ($acces->peutOuvrir()) {
+        if (DossierEnvoiAcces::courant()->peutOuvrir()) {
             $detail['dossiers_envoi'] = DossierEnvoiService::creer()->dossiersDesDeparts([(int) $id])[(int) $id] ?? [];
-            $detail['peut_creer_dossier'] = $acces->peutCreer();
         }
 
         $this->colisageView('colisage/pointage/detail', 'Départ ' . $detail['depart']['reference'], 'pointage_suivi', [

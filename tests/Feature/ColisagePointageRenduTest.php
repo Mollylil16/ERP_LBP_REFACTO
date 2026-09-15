@@ -17,52 +17,13 @@ use Tests\TestCase;
  */
 final class ColisagePointageRenduTest extends TestCase
 {
-    public function test_preparer_un_depart_demande_d_abord_l_agence_a_un_compte_reseau(): void
+    public function test_un_compte_sans_agence_est_prevenu_a_la_reception(): void
     {
-        $html = ColisagePointage::departsPage([
-            'agences' => [['id' => 3403, 'name' => 'Agence Abobo Dokui']],
-            'agence_id' => null,
-            'peut_choisir' => true,
-            'groupes' => [],
-            'manquants' => [],
-        ]);
-
-        self::assertStringContainsString("Choisissez l'agence d'envoi", html_entity_decode($html, ENT_QUOTES));
-        self::assertStringContainsString('Agence Abobo Dokui', $html);
-        self::assertStringNotContainsString('lbp-form-depart', $html, "Aucun formulaire de départ sans agence choisie.");
-    }
-
-    public function test_un_compte_sans_agence_est_prevenu_plutot_que_de_voir_une_page_vide(): void
-    {
-        $html = html_entity_decode(ColisagePointage::departsPage([
-            'agences' => [], 'agence_id' => 0, 'peut_choisir' => false, 'groupes' => [], 'manquants' => [],
+        $html = html_entity_decode(ColisagePointage::receptionPage([
+            'agences' => [], 'agence_id' => 0, 'peut_choisir' => false, 'departs' => [],
         ]), ENT_QUOTES);
 
         self::assertStringContainsString("n'est rattaché à aucune agence", $html);
-    }
-
-    public function test_preparer_un_depart_liste_les_colis_a_cocher_par_destination(): void
-    {
-        $html = ColisagePointage::departsPage([
-            'agences' => [],
-            'agence_id' => 3403,
-            'peut_choisir' => false,
-            'groupes' => [[
-                'agence_id' => 3400,
-                'agence' => 'Paris Bobigny',
-                'colis' => [$this->colis(['id' => 11, 'numero_tracking' => 'lb-fr-001'])],
-            ]],
-            'manquants' => [$this->depart(['manquants' => 2, 'etat' => PointageColisService::ETAT_MANQUANTS])],
-            'transports' => PointageColisService::TRANSPORTS,
-        ]);
-
-        self::assertStringContainsString('name="colis_ids[]" value="11"', $html);
-        self::assertStringContainsString('data-tracking="LB-FR-001"', $html, 'La douchette compare en majuscules.');
-        self::assertStringContainsString('Vers Paris Bobigny', $html);
-        self::assertStringContainsString('Marquer comme partis', $html);
-        self::assertStringContainsString('name="_csrf_token"', $html);
-        self::assertStringContainsString('name="agence_id" value="3403"', $html);
-        self::assertStringContainsString('Colis manquants signal', $html);
     }
 
     public function test_la_reception_coche_les_colis_deja_recus_et_bloque_les_colis_retires(): void
@@ -156,8 +117,6 @@ final class ColisagePointageRenduTest extends TestCase
         $depart = $this->depart(['reference' => $injection, 'agence_depart' => $injection, 'agence_arrivee' => $injection, 'colis' => [$colis]]);
 
         $ecrans = [
-            'départs' => ColisagePointage::departsPage(['agences' => [['id' => 1, 'name' => $injection]], 'agence_id' => 1, 'peut_choisir' => true,
-                'groupes' => [['agence_id' => 2, 'agence' => $injection, 'colis' => [$colis]]], 'manquants' => [$depart]]),
             'réception' => ColisagePointage::receptionPage(['agences' => [], 'agence_id' => 2, 'peut_choisir' => false, 'departs' => [$depart]]),
             'suivi' => ColisagePointage::suiviPage(['du' => '2026-09-01', 'au' => '2026-09-15', 'agences' => [], 'agence_id' => 1, 'peut_choisir' => false,
                 'suivi' => ['departs' => [$depart], 'totaux' => ['departs' => 1, 'envoyes' => 1, 'recus' => 0, 'manquants' => 0, 'en_attente' => 1],

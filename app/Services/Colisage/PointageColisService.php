@@ -7,7 +7,6 @@ namespace App\Services\Colisage;
 use App\Models\Database;
 use App\Repositories\Colisage\PointageColisRepository;
 use DateTimeImmutable;
-use InvalidArgumentException;
 use PDO;
 use Throwable;
 
@@ -56,101 +55,6 @@ final class PointageColisService
     public function agences(): array
     {
         return $this->repo->agencesActives();
-    }
-
-    // ------------------------------------------------------------------
-    // Départ
-    // ------------------------------------------------------------------
-
-    /**
-     * Colis prêts à partir, regroupés par agence d'arrivée.
-     *
-     * @return array<int, array{agence_id:int, agence:string, colis:array<int, array<string, mixed>>}>
-     */
-    public function colisAExpedierParDestination(int $agenceDepartId): array
-    {
-        $groupes = [];
-
-        foreach ($this->repo->colisAExpedier($agenceDepartId) as $colis) {
-            $cle = (int) $colis['agence_arrivee_id'];
-            $groupes[$cle] ??= [
-                'agence_id' => $cle,
-                'agence' => (string) ($colis['agence_arrivee'] ?? 'Agence inconnue'),
-                'colis' => [],
-            ];
-            $groupes[$cle]['colis'][] = $colis;
-        }
-
-        return array_values($groupes);
-    }
-
-    /**
-     * Enregistre le départ des colis cochés : un départ par agence d'arrivée.
-     *
-     * @param array<int, mixed> $colisIds
-     * @return array<int, array{id:int, reference:string, agence_arrivee_id:int, nb:int}>
-     */
-    public function marquerPartis(array $colisIds, int $agenceDepartId, string $transport, ?int $userId): array
-    {
-        $ids = array_values(array_unique(array_filter(array_map('intval', $colisIds), static fn (int $id): bool => $id > 0)));
-
-        if ($ids === []) {
-            throw new InvalidArgumentException('Cochez au moins un colis avant de marquer le départ.');
-        }
-
-        if (!array_key_exists($transport, self::TRANSPORTS)) {
-            $transport = 'AÉRIEN';
-        }
-
-        $parDestination = [];
-        foreach ($this->repo->colisPourDepart($ids, $agenceDepartId) as $colis) {
-            $parDestination[$colis['agence_arrivee_id']][] = $colis['id'];
-        }
-
-        if ($parDestination === []) {
-            throw new InvalidArgumentException(
-                "Aucun des colis cochés ne peut partir de cette agence : ils sont peut-être déjà partis."
-            );
-        }
-
-        $departs = [];
-        $this->pdo->beginTransaction();
-
-        try {
-            foreach ($parDestination as $agenceArriveeId => $idsDuTrajet) {
-                $reference = 'DEP-' . date('Ymd-His') . '-' . strtoupper(bin2hex(random_bytes(2)));
-                $expeditionId = $this->repo->creerDepart($reference, $transport, $agenceDepartId, (int) $agenceArriveeId, $userId, false);
-                $nb = $this->repo->rattacherAuDepart($idsDuTrajet, $expeditionId);
-
-                foreach ($idsDuTrajet as $colisId) {
-                    $this->repo->journaliser($colisId, $expeditionId, $agenceDepartId, 'DEPART', 'CASE', $userId);
-                }
-
-                $departs[] = ['id' => $expeditionId, 'reference' => $reference, 'agence_arrivee_id' => (int) $agenceArriveeId, 'nb' => $nb];
-            }
-
-            $this->pdo->commit();
-        } catch (Throwable $e) {
-            $this->pdo->rollBack();
-            throw $e;
-        }
-
-        return $departs;
-    }
-
-    /**
-     * Départs de l'agence d'envoi dont des colis manquent à l'arrivée.
-     *
-     * @return array<int, array<string, mixed>>
-     */
-    public function manquantsSignalesA(int $agenceDepartId): array
-    {
-        $maintenant = $this->maintenant();
-
-        return array_values(array_filter(
-            array_map(fn (array $d): array => $this->enrichir($d, $maintenant), $this->repo->departsOuvertsDepuis($agenceDepartId)),
-            static fn (array $d): bool => $d['manquants'] > 0
-        ));
     }
 
     // ------------------------------------------------------------------

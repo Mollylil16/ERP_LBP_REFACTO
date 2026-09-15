@@ -8,87 +8,63 @@ use App\Security\DossierEnvoiAcces;
 use Tests\TestCase;
 
 /**
- * Droits sur les dossiers d'envoi, décidés le 15/09/2026 : l'agent export tient
- * ses dossiers, le Directeur général seul valide, personne d'autre n'y accède.
+ * Droits sur les départs, décidés le 15/09/2026 : l'agent export seul prépare
+ * et soumet, le Directeur général seul voit la saisie des colis et valide.
  */
 final class DossierEnvoiAccesTest extends TestCase
 {
     private const AGENT = 17;
-    private const AUTRE_AGENT = 99;
     private const DG = 28;
 
-    public function test_l_agent_export_tient_ses_propres_dossiers(): void
+    public function test_l_agent_export_prepare_et_complete_ses_departs(): void
     {
         $agent = new DossierEnvoiAcces(['agent_export'], false, self::AGENT);
 
         self::assertTrue($agent->peutOuvrir());
         self::assertTrue($agent->peutCreer());
-        self::assertSame(self::AGENT, $agent->responsableImpose(), "Ses listes sont limitées à ses dossiers.");
-        self::assertTrue($agent->peutVoir($this->dossier('BROUILLON')));
-        self::assertTrue($agent->peutModifier($this->dossier('LIVRE')));
-        self::assertTrue($agent->peutSoumettre($this->dossier('LIVRE')));
-        self::assertFalse($agent->peutSoumettre($this->dossier('PARTI')), "Un dossier non livré ne se soumet pas.");
+        self::assertSame(self::AGENT, $agent->responsableImpose());
+        self::assertTrue($agent->peutModifier($this->depart('EN_COURS')));
+        self::assertTrue($agent->peutModifier($this->depart('A_CORRIGER')));
+        self::assertTrue($agent->peutSoumettre($this->depart('EN_COURS')));
     }
 
-    public function test_l_agent_export_ne_voit_pas_les_dossiers_d_un_autre(): void
+    public function test_l_agent_export_ne_voit_jamais_la_saisie_des_colis(): void
     {
-        $agent = new DossierEnvoiAcces(['agent_export'], false, self::AGENT);
-        $autre = $this->dossier('BROUILLON', self::AUTRE_AGENT);
-
-        self::assertFalse($agent->peutVoir($autre));
-        self::assertFalse($agent->peutModifier($autre));
+        self::assertFalse((new DossierEnvoiAcces(['agent_export'], false, self::AGENT))->voitSaisie());
     }
 
-    public function test_un_dossier_soumis_ou_valide_est_verrouille_pour_l_agent(): void
+    public function test_un_depart_soumis_ou_valide_est_verrouille_pour_l_agent(): void
     {
         $agent = new DossierEnvoiAcces(['agent_export'], false, self::AGENT);
 
-        foreach (['SOUMIS', 'VALIDE', 'ANNULE', 'REPRIS'] as $statut) {
-            self::assertFalse($agent->peutModifier($this->dossier($statut)), $statut);
-        }
-        self::assertTrue($agent->peutModifier($this->dossier('A_CORRIGER')), 'Un dossier renvoyé redevient modifiable.');
-        self::assertFalse($agent->peutValider($this->dossier('SOUMIS')), "L'agent ne valide jamais.");
+        self::assertFalse($agent->peutModifier($this->depart('SOUMIS')));
+        self::assertFalse($agent->peutModifier($this->depart('VALIDE')));
+        self::assertFalse($agent->peutValider($this->depart('SOUMIS')));
+        self::assertFalse($agent->peutVoir($this->depart('EN_COURS', 99)), "Il ne voit pas les départs d'un autre agent.");
     }
 
-    public function test_l_agent_n_annule_qu_avant_le_depart(): void
-    {
-        $agent = new DossierEnvoiAcces(['agent_export'], false, self::AGENT);
-
-        self::assertTrue($agent->peutAnnuler($this->dossier('BROUILLON')));
-        self::assertTrue($agent->peutAnnuler($this->dossier('RESERVE')));
-        self::assertFalse($agent->peutAnnuler($this->dossier('PARTI')));
-    }
-
-    public function test_le_directeur_general_voit_tout_et_valide_seul(): void
+    public function test_le_directeur_general_controle_et_valide_sans_saisir(): void
     {
         $dg = new DossierEnvoiAcces(['dg', 'dg_surveillance'], false, self::DG);
-        $dossier = $this->dossier('SOUMIS');
 
-        self::assertTrue($dg->peutOuvrir());
+        self::assertTrue($dg->voitSaisie());
         self::assertNull($dg->responsableImpose());
-        self::assertTrue($dg->peutVoir($dossier));
-        self::assertTrue($dg->peutValider($dossier));
-        self::assertTrue($dg->peutRenvoyer($dossier));
-        self::assertTrue($dg->peutRouvrir($this->dossier('VALIDE')));
-        self::assertTrue($dg->peutReaffecter($this->dossier('PARTI')));
-        self::assertFalse($dg->peutReaffecter($this->dossier('VALIDE')));
-        self::assertFalse($dg->peutValider($this->dossier('LIVRE')), 'Seul un dossier soumis se valide.');
-    }
-
-    public function test_le_directeur_general_ne_saisit_pas(): void
-    {
-        $dg = new DossierEnvoiAcces(['dg'], false, self::DG);
-
+        self::assertTrue($dg->peutVoir($this->depart('SOUMIS')));
+        self::assertTrue($dg->peutValider($this->depart('SOUMIS')));
+        self::assertTrue($dg->peutRenvoyer($this->depart('SOUMIS')));
+        self::assertTrue($dg->peutRouvrir($this->depart('VALIDE')));
+        self::assertFalse($dg->peutValider($this->depart('EN_COURS')));
         self::assertFalse($dg->peutCreer());
-        self::assertFalse($dg->peutModifier($this->dossier('BROUILLON', self::DG)));
+        self::assertFalse($dg->peutModifier($this->depart('EN_COURS', self::DG)));
     }
 
     public function test_l_assistant_dg_et_les_autres_roles_n_ont_aucun_acces(): void
     {
-        foreach ([['assistant_dg'], ['assistante_dg'], ['agent_saisie'], ['chef_agence'], ['comptable'], ['responsable_logistique'], []] as $roles) {
+        foreach ([['assistant_dg'], ['agent_saisie'], ['chef_agence'], ['comptable'], []] as $roles) {
             $acces = new DossierEnvoiAcces($roles, false, 5);
             self::assertFalse($acces->peutOuvrir(), implode(',', $roles) ?: 'aucun rôle');
-            self::assertFalse($acces->peutVoir($this->dossier('SOUMIS', 5)));
+            self::assertFalse($acces->voitSaisie());
+            self::assertFalse($acces->peutVoir($this->depart('EN_COURS', 5)));
         }
     }
 
@@ -96,13 +72,14 @@ final class DossierEnvoiAccesTest extends TestCase
     {
         $admin = new DossierEnvoiAcces([], true, 1);
 
-        self::assertTrue($admin->peutOuvrir());
-        self::assertTrue($admin->peutModifier($this->dossier('BROUILLON', self::AGENT)));
-        self::assertTrue($admin->peutValider($this->dossier('SOUMIS')));
+        self::assertTrue($admin->peutCreer());
+        self::assertTrue($admin->voitSaisie());
+        self::assertTrue($admin->peutModifier($this->depart('EN_COURS')));
+        self::assertTrue($admin->peutValider($this->depart('SOUMIS')));
     }
 
     /** @return array<string, mixed> */
-    private function dossier(string $statut, int $responsable = self::AGENT): array
+    private function depart(string $statut, int $responsable = self::AGENT): array
     {
         return ['id' => 1, 'statut' => $statut, 'responsable_id' => $responsable];
     }

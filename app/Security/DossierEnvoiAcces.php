@@ -8,12 +8,13 @@ use App\Helpers\Auth;
 use App\Services\Colisage\DossierEnvoiRegles;
 
 /**
- * Qui peut faire quoi sur les dossiers d'envoi.
+ * Qui peut faire quoi sur les départs préparés par l'agent export.
  *
- * Décidé le 15/09/2026 (cahier des charges CDC-ENV-01, section 14) :
- * - l'agent export crée, complète, soumet et exporte ses propres dossiers ;
- * - le Directeur général voit tous les dossiers, valide, renvoie avec un motif,
- *   rouvre un dossier validé et réaffecte un responsable ;
+ * Décidé le 15/09/2026 :
+ * - l'agent export seul prépare un départ, le complète et le soumet ;
+ * - le Directeur général voit tout, compare le document de la compagnie à la
+ *   saisie des colis, valide ou renvoie. Lui seul voit les chiffres de la
+ *   saisie : l'agent ne doit pas pouvoir les recopier ;
  * - personne d'autre, pas même l'assistant DG. L'administrateur garde un
  *   accès technique complet.
  *
@@ -63,6 +64,12 @@ final class DossierEnvoiAcces
         return $this->estValideur();
     }
 
+    /** Poids et nombre de colis de la saisie : le contrôle du Directeur général. */
+    public function voitSaisie(): bool
+    {
+        return $this->estValideur();
+    }
+
     /** Responsable imposé aux listes : null quand l'utilisateur voit tout. */
     public function responsableImpose(): ?int
     {
@@ -77,8 +84,6 @@ final class DossierEnvoiAcces
     /** @param array<string, mixed> $dossier */
     public function peutVoir(array $dossier): bool
     {
-        // Un ancien agent export resté responsable d'un dossier ne le voit plus
-        // une fois son rôle retiré.
         return $this->voitTout() || ($this->estAgent() && $this->estResponsable($dossier));
     }
 
@@ -93,16 +98,7 @@ final class DossierEnvoiAcces
     /** @param array<string, mixed> $dossier */
     public function peutSoumettre(array $dossier): bool
     {
-        return $this->peutModifier($dossier)
-            && in_array((string) ($dossier['statut'] ?? ''), ['LIVRE', 'A_CORRIGER'], true);
-    }
-
-    /** @param array<string, mixed> $dossier */
-    public function peutAnnuler(array $dossier): bool
-    {
-        return $this->estAgent()
-            && ($this->admin || $this->estResponsable($dossier))
-            && in_array((string) ($dossier['statut'] ?? ''), DossierEnvoiRegles::STATUTS_ANNULABLES, true);
+        return $this->peutModifier($dossier);
     }
 
     /** @param array<string, mixed> $dossier */
@@ -121,13 +117,6 @@ final class DossierEnvoiAcces
     public function peutRouvrir(array $dossier): bool
     {
         return $this->estValideur() && ($dossier['statut'] ?? '') === 'VALIDE';
-    }
-
-    /** @param array<string, mixed> $dossier */
-    public function peutReaffecter(array $dossier): bool
-    {
-        return $this->estValideur()
-            && !in_array((string) ($dossier['statut'] ?? ''), ['VALIDE', 'ANNULE', 'REPRIS'], true);
     }
 
     /** @param array<string, mixed> $dossier */

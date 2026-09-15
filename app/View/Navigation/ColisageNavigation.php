@@ -184,15 +184,10 @@ final class ColisageNavigation
                 'available' => true
             ],
 
-            // Pointage des colis au départ et à la réception
-            [
-                'group' => 'Activité',
-                'key' => 'pointage_departs',
-                'label' => 'Préparer un départ',
-                'icon' => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>',
-                'url' => 'colisage/departs',
-                'available' => true
-            ],
+            // Préparer un départ : réservé à l'agent export et au Directeur général
+            ...self::preparerUnDepart(),
+
+            // Pointage des colis à la réception
             [
                 'group' => 'Activité',
                 'key' => 'pointage_reception',
@@ -281,9 +276,31 @@ final class ColisageNavigation
     }
 
     /**
-     * Entrées des dossiers d'envoi, réservées à l'agent export et au Directeur
-     * général. Les autres comptes ne les voient pas du tout, plutôt que des
-     * liens grisés qui les rejetteraient au clic.
+     * « Préparer un départ » : l'agent export y saisit le document de la
+     * compagnie. Réservé à lui et au Directeur général ; les autres comptes ne
+     * voient pas l'entrée, plutôt qu'un lien qui les rejetterait au clic.
+     *
+     * @return array<int,array<string,mixed>>
+     */
+    private static function preparerUnDepart(): array
+    {
+        if (!\App\Security\DossierEnvoiAcces::courant()->peutOuvrir()) {
+            return [];
+        }
+
+        return [[
+            'group' => 'Activité',
+            'key' => 'pointage_departs',
+            'label' => 'Préparer un départ',
+            'icon' => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.8 19.2L16 11l3.5-3.5C21 6 21.5 4 21 3.5c-.5-.5-2.5 0-4 1.5L13.5 8.5 5.3 6.7c-.5-.1-1.1.1-1.4.6l-.6.9c-.3.4-.2 1 .2 1.3L8 13l-3 3-2-1c-.4-.2-.9-.1-1.2.2l-.6.6c-.3.3-.3.8 0 1.1l2.5 2.5c.3.3.8.3 1.1 0l.6-.6c.3-.3.4-.8.2-1.2l-1-2 3-3 3.5 4.5c.3.4.9.5 1.3.2l.9-.6c.5-.3.7-.9.6-1.4z"></path></svg>',
+            'url' => 'colisage/departs',
+            'available' => true
+        ]];
+    }
+
+    /**
+     * Suivi des départs préparés : historique, validation du Directeur général,
+     * prestataires. Mêmes droits que « Préparer un départ ».
      *
      * @return array<int,array<string,mixed>>
      */
@@ -295,14 +312,7 @@ final class ColisageNavigation
             return [];
         }
 
-        $items = [[
-            'group' => 'Activité',
-            'key' => 'envois_liste',
-            'label' => $acces->voitTout() ? 'Dossiers d\'envoi' : 'Mes dossiers d\'envoi',
-            'icon' => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>',
-            'url' => 'colisage/envois',
-            'available' => true
-        ]];
+        $items = [];
 
         if ($acces->estValideur()) {
             $items[] = [
@@ -315,14 +325,6 @@ final class ColisageNavigation
             ];
         }
 
-        $items[] = [
-            'group' => 'Activité',
-            'key' => 'envois_pieces',
-            'label' => 'Pièces manquantes',
-            'icon' => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>',
-            'url' => 'colisage/envois/pieces-manquantes',
-            'available' => true
-        ];
         $items[] = [
             'group' => 'Activité',
             'key' => 'envois_historique',

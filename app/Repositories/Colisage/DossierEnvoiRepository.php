@@ -7,12 +7,13 @@ namespace App\Repositories\Colisage;
 use PDO;
 
 /**
- * Dossiers d'envoi : ce que le transport d'un départ a coûté et ce qu'il a
- * produit comme pièces.
+ * Départs préparés par l'agent export : ce que dit le document de la
+ * compagnie, ce que le transport a coûté, les pièces reçues.
  *
- * Un dossier complète un départ du pointage (lbp_expeditions) sans le
- * remplacer : il peut exister avant lui, et un départ peut en porter plusieurs
- * quand LBP réserve deux documents de transport.
+ * Un dossier est lié au départ du pointage (lbp_expeditions) qui emporte les
+ * colis enregistrés pour la destination. colis_erp et poids_erp_kg gardent ce
+ * que la saisie comptait au moment du départ : c'est la base du contrôle du
+ * Directeur général.
  *
  * PDO tourne sans émulation des requêtes préparées : un même paramètre nommé
  * ne peut pas figurer deux fois dans une requête.
@@ -21,44 +22,36 @@ final class DossierEnvoiRepository
 {
     /** Colonnes écrites à la création. */
     private const COLONNES = [
-        'numero', 'mode_transport', 'statut', 'responsable_id', 'agence_depart_id', 'agence_arrivee_id',
-        'destination', 'expedition_id', 'transporteur_id', 'type_document', 'numero_document',
-        'emetteur_document_id', 'document_principal', 'lieu_depart', 'lieu_arrivee',
-        'date_depart_prevue', 'date_depart_effective', 'date_arrivee_estimee', 'date_arrivee', 'date_livraison',
-        'nb_colis_declare', 'poids_brut_kg', 'poids_taxable_kg', 'volume_m3', 'taux_eur_xof',
-        'commentaire_ecart', 'created_by',
+        'numero', 'mode_transport', 'statut', 'responsable_id', 'agence_depart_id', 'agence_arrivee_id', 'expedition_id',
+        'transporteur_id', 'type_document', 'numero_document', 'date_depart_effective', 'nb_colis_declare', 'poids_brut_kg',
+        'colis_erp', 'poids_erp_kg', 'taux_eur_xof', 'created_by',
     ];
 
-    /** Colonnes que l'agent peut modifier ensuite. Le numéro et le taux restent figés. */
+    /**
+     * Colonnes que l'agent peut corriger ensuite. Le trajet ne change plus : les
+     * colis sont partis avec le départ.
+     */
     private const MODIFIABLES = [
-        'mode_transport', 'statut', 'agence_depart_id', 'agence_arrivee_id', 'destination', 'expedition_id',
-        'transporteur_id', 'type_document', 'numero_document', 'emetteur_document_id', 'document_principal',
-        'lieu_depart', 'lieu_arrivee', 'date_depart_prevue', 'date_depart_effective', 'date_arrivee_estimee',
-        'date_arrivee', 'date_livraison', 'nb_colis_declare', 'poids_brut_kg', 'poids_taxable_kg', 'volume_m3',
-        'commentaire_ecart',
+        'mode_transport', 'transporteur_id', 'type_document', 'numero_document', 'date_depart_effective',
+        'nb_colis_declare', 'poids_brut_kg',
     ];
 
-    /** Colonnes que changent les gestes de circuit : soumettre, valider, renvoyer, réaffecter. */
-    private const CIRCUIT = [
-        'statut', 'soumis_le', 'valide_par_id', 'valide_le', 'motif_renvoi', 'motif_annulation', 'responsable_id',
-    ];
+    /** Colonnes que changent les gestes du circuit : soumettre, valider, renvoyer, rouvrir. */
+    private const CIRCUIT = ['statut', 'soumis_le', 'valide_par_id', 'valide_le', 'motif_renvoi', 'commentaire_dg'];
 
     private const SELECT_DOSSIER = "
         SELECT d.*,
-               COALESCE(d.date_depart_effective, d.date_depart_prevue, DATE(d.created_at)) AS date_reference,
+               COALESCE(d.date_depart_effective, DATE(d.created_at)) AS date_reference,
                t.name AS transporteur, t.type AS transporteur_type, t.prefixe_lta AS transporteur_prefixe,
-               em.name AS emetteur_document,
                ad.name AS agence_depart, aa.name AS agence_arrivee,
-               u.full_name AS responsable, v.full_name AS valide_par, c.full_name AS cree_par,
+               u.full_name AS responsable, v.full_name AS valide_par,
                e.reference AS expedition_reference
         FROM lbp_dossiers_envoi d
         LEFT JOIN lbp_prestataires t ON t.id = d.transporteur_id
-        LEFT JOIN lbp_prestataires em ON em.id = d.emetteur_document_id
         LEFT JOIN company_sites ad ON ad.id = d.agence_depart_id
         LEFT JOIN company_sites aa ON aa.id = d.agence_arrivee_id
         LEFT JOIN users u ON u.id = d.responsable_id
         LEFT JOIN users v ON v.id = d.valide_par_id
-        LEFT JOIN users c ON c.id = d.created_by
         LEFT JOIN lbp_expeditions e ON e.id = d.expedition_id
     ";
 
@@ -169,6 +162,60 @@ final class DossierEnvoiRepository
     }
 
     // ------------------------------------------------------------------
+    // Colis de la saisie
+    // ------------------------------------------------------------------
+
+    /**
+     * Nombre de colis et poids enregistrés par les agents de saisie.
+     *
+     * @param array<int, int> $colisIds
+     * @return array{colis:int, poids:float}
+     */
+    public function totauxColis(array $colisIds): array
+    {
+        if ($colisIds === []) {
+            return ['colis' => 0, 'poids' => 0.0];
+        }
+
+        $stmt = $this->pdo->prepare('
+            SELECT COALESCE(SUM(COALESCE(NULLIF(nombre_colis, 0), 1)), 0) AS colis, COALESCE(SUM(poids_total), 0) AS poids
+            FROM lbp_colis WHERE id IN (' . $this->marques($colisIds) . ')
+        ');
+        $stmt->execute(array_values($colisIds));
+        $ligne = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+
+        return ['colis' => (int) ($ligne['colis'] ?? 0), 'poids' => round((float) ($ligne['poids'] ?? 0), 1)];
+    }
+
+    /**
+     * Qui a enregistré les colis partis avec un départ : ceux que le Directeur
+     * général appelle en cas d'écart.
+     *
+     * @return array<int, array{agent:string, enregistrements:int, colis:int, poids:float}>
+     */
+    public function agentsDeSaisie(int $expeditionId): array
+    {
+        $stmt = $this->pdo->prepare("
+            SELECT c.created_by, u.full_name, COUNT(*) AS enregistrements,
+                   COALESCE(SUM(COALESCE(NULLIF(c.nombre_colis, 0), 1)), 0) AS colis,
+                   COALESCE(SUM(c.poids_total), 0) AS poids
+            FROM lbp_colis c
+            LEFT JOIN users u ON u.id = c.created_by
+            WHERE c.expedition_id = :id AND c.statut <> 'annule'
+            GROUP BY c.created_by, u.full_name
+            ORDER BY poids DESC
+        ");
+        $stmt->execute(['id' => $expeditionId]);
+
+        return array_map(static fn (array $l): array => [
+            'agent' => (string) ($l['full_name'] ?? 'Auteur non renseigné'),
+            'enregistrements' => (int) $l['enregistrements'],
+            'colis' => (int) $l['colis'],
+            'poids' => round((float) $l['poids'], 1),
+        ], $stmt->fetchAll(PDO::FETCH_ASSOC) ?: []);
+    }
+
+    // ------------------------------------------------------------------
     // Dossier
     // ------------------------------------------------------------------
 
@@ -215,12 +262,10 @@ final class DossierEnvoiRepository
             }
         }
 
-        if ($affectations === []) {
-            return;
+        if ($affectations !== []) {
+            $this->pdo->prepare('UPDATE lbp_dossiers_envoi SET ' . implode(', ', $affectations) . ', updated_at = NOW() WHERE id = :id')
+                ->execute($valeurs);
         }
-
-        $this->pdo->prepare('UPDATE lbp_dossiers_envoi SET ' . implode(', ', $affectations) . ', updated_at = NOW() WHERE id = :id')
-            ->execute($valeurs);
     }
 
     /** @param array<string, mixed> $valeurs */
@@ -251,33 +296,25 @@ final class DossierEnvoiRepository
         return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
     }
 
-    /**
-     * Numéro du dossier qui utilise déjà ce document, chez le même émetteur.
-     *
-     * @param array<int, string> $typesDocument valeurs internes, jamais saisies
-     */
-    public function documentDejaUtilise(string $numero, array $typesDocument, string $colonneEmetteur, ?int $emetteurId, int $exclureId): ?string
+    /** Numéro du dossier qui utilise déjà ce document chez la même compagnie. */
+    public function documentDejaUtilise(string $numero, string $typeDocument, ?int $transporteurId, int $exclureId): ?string
     {
-        $colonne = $colonneEmetteur === 'emetteur_document_id' ? 'emetteur_document_id' : 'transporteur_id';
-        $types = implode(', ', array_map(static fn (string $t): string => "'" . preg_replace('/[^A-Z_]/', '', $t) . "'", $typesDocument));
-
-        $stmt = $this->pdo->prepare("
+        $stmt = $this->pdo->prepare('
             SELECT numero FROM lbp_dossiers_envoi
             WHERE numero_document = :numero
-              AND statut <> 'ANNULE'
+              AND type_document = :type
+              AND transporteur_id <=> :transporteur
               AND id <> :exclure
-              AND type_document IN ({$types})
-              AND {$colonne} <=> :emetteur
             LIMIT 1
-        ");
-        $stmt->execute(['numero' => $numero, 'exclure' => $exclureId, 'emetteur' => $emetteurId]);
+        ');
+        $stmt->execute(['numero' => $numero, 'type' => $typeDocument, 'transporteur' => $transporteurId, 'exclure' => $exclureId]);
         $trouve = $stmt->fetchColumn();
 
         return $trouve === false ? null : (string) $trouve;
     }
 
     /**
-     * @param array<string, mixed> $filtres
+     * @param array<string, mixed> $filtres responsable_id, statuts, du, au, q
      * @return array<int, array<string, mixed>>
      */
     public function lister(array $filtres, int $limite = 500): array
@@ -300,57 +337,17 @@ final class DossierEnvoiRepository
             $conditions[] = 'd.statut IN (' . implode(', ', $marques) . ')';
         }
 
-        $exclus = array_values(array_filter((array) ($filtres['statuts_exclus'] ?? []), 'is_string'));
-        if ($exclus !== []) {
-            $marques = [];
-            foreach ($exclus as $i => $statut) {
-                $marques[] = ':exclu' . $i;
-                $parametres['exclu' . $i] = $statut;
-            }
-            $conditions[] = 'd.statut NOT IN (' . implode(', ', $marques) . ')';
-        }
-
-        if (!empty($filtres['mode'])) {
-            $conditions[] = 'd.mode_transport = :mode';
-            $parametres['mode'] = (string) $filtres['mode'];
-        }
-
-        if (!empty($filtres['agence_depart_id'])) {
-            $conditions[] = 'd.agence_depart_id = :agence';
-            $parametres['agence'] = (int) $filtres['agence_depart_id'];
-        }
-
-        if (!empty($filtres['transporteur_id'])) {
-            $conditions[] = 'd.transporteur_id = :transporteur';
-            $parametres['transporteur'] = (int) $filtres['transporteur_id'];
-        }
-
-        if (!empty($filtres['transitaire_id'])) {
-            $conditions[] = "(d.emetteur_document_id = :transitaire1 OR EXISTS (
-                SELECT 1 FROM lbp_dossiers_envoi_frais fx
-                WHERE fx.dossier_id = d.id AND fx.poste IN ('TRANSIT_DEPART', 'TRANSIT_ARRIVEE') AND fx.prestataire_id = :transitaire2
-            ))";
-            $parametres['transitaire1'] = (int) $filtres['transitaire_id'];
-            $parametres['transitaire2'] = (int) $filtres['transitaire_id'];
-        }
-
         if (!empty($filtres['du']) && !empty($filtres['au'])) {
-            $conditions[] = 'COALESCE(d.date_depart_effective, d.date_depart_prevue, DATE(d.created_at)) BETWEEN :du AND :au';
+            $conditions[] = 'COALESCE(d.date_depart_effective, DATE(d.created_at)) BETWEEN :du AND :au';
             $parametres['du'] = (string) $filtres['du'];
             $parametres['au'] = (string) $filtres['au'];
         }
 
         $recherche = trim((string) ($filtres['q'] ?? ''));
         if ($recherche !== '') {
-            $conditions[] = '(d.numero LIKE :q1 OR d.numero_document LIKE :q2 OR d.document_principal LIKE :q3
-                OR EXISTS (SELECT 1 FROM lbp_dossiers_envoi_tranches tx WHERE tx.dossier_id = d.id AND tx.reference LIKE :q4)
-                OR EXISTS (SELECT 1 FROM lbp_colis cx WHERE cx.expedition_id = d.expedition_id AND cx.numero_tracking = :q5))';
-            $motif = '%' . $recherche . '%';
-            $parametres['q1'] = $motif;
-            $parametres['q2'] = $motif;
-            $parametres['q3'] = $motif;
-            $parametres['q4'] = $motif;
-            $parametres['q5'] = $recherche;
+            $conditions[] = '(d.numero LIKE :q1 OR d.numero_document LIKE :q2)';
+            $parametres['q1'] = '%' . $recherche . '%';
+            $parametres['q2'] = '%' . $recherche . '%';
         }
 
         $stmt = $this->pdo->prepare(
@@ -363,46 +360,13 @@ final class DossierEnvoiRepository
     }
 
     // ------------------------------------------------------------------
-    // Tranches, emballages, frais
+    // Emballages et frais
     // ------------------------------------------------------------------
-
-    /** @return array<int, array<string, mixed>> */
-    public function tranches(int $dossierId): array
-    {
-        return $this->lignesDe('lbp_dossiers_envoi_tranches', [$dossierId], 'rang')[$dossierId] ?? [];
-    }
-
-    /** @param array<int, array<string, mixed>> $tranches */
-    public function remplacerTranches(int $dossierId, array $tranches): void
-    {
-        $this->pdo->prepare('DELETE FROM lbp_dossiers_envoi_tranches WHERE dossier_id = :id')->execute(['id' => $dossierId]);
-
-        $insertion = $this->pdo->prepare('
-            INSERT INTO lbp_dossiers_envoi_tranches
-                (dossier_id, rang, type, reference, type_conteneur, chauffeur, date_depart, date_arrivee, nb_colis, poids_kg)
-            VALUES (:dossier, :rang, :type, :reference, :conteneur, :chauffeur, :depart, :arrivee, :colis, :poids)
-        ');
-
-        foreach (array_values($tranches) as $i => $t) {
-            $insertion->execute([
-                'dossier' => $dossierId,
-                'rang' => $i + 1,
-                'type' => $t['type'],
-                'reference' => $t['reference'] ?? null,
-                'conteneur' => $t['type_conteneur'] ?? null,
-                'chauffeur' => $t['chauffeur'] ?? null,
-                'depart' => $t['date_depart'] ?? null,
-                'arrivee' => $t['date_arrivee'] ?? null,
-                'colis' => $t['nb_colis'] ?? null,
-                'poids' => $t['poids_kg'] ?? null,
-            ]);
-        }
-    }
 
     /** @return array<int, array<string, mixed>> */
     public function emballages(int $dossierId): array
     {
-        return $this->lignesDe('lbp_dossiers_envoi_emballages', [$dossierId], 'id')[$dossierId] ?? [];
+        return $this->emballagesDes([$dossierId])[$dossierId] ?? [];
     }
 
     /** @param array<int, array{type:string, quantite:int}> $emballages */
@@ -423,29 +387,26 @@ final class DossierEnvoiRepository
     }
 
     /**
-     * Enregistre la part saisie d'un poste fixe. Le montant facturé n'y figure
-     * pas : il vient du dépôt de la facture.
+     * Enregistre prestataire et montant prévu d'un poste. Le montant facturé
+     * n'y figure pas : il vient du dépôt de la facture.
      *
      * @param array<string, mixed> $ligne
      */
-    public function enregistrerPosteFixe(int $dossierId, string $poste, array $ligne): void
+    public function enregistrerPoste(int $dossierId, string $poste, array $ligne): void
     {
         $valeurs = [
             'prestataire' => $ligne['prestataire_id'] ?? null,
             'libre' => $ligne['prestataire_libre'] ?? null,
             'prevu' => $ligne['montant_prevu'] ?? null,
             'devise' => $ligne['devise'] ?? 'XOF',
-            'sans' => !empty($ligne['sans_frais']) ? 1 : 0,
-            'commentaire' => $ligne['commentaire_ecart'] ?? null,
         ];
 
         $id = $this->idDuPoste($dossierId, $poste);
 
         if ($id === null) {
             $this->pdo->prepare('
-                INSERT INTO lbp_dossiers_envoi_frais
-                    (dossier_id, poste, prestataire_id, prestataire_libre, montant_prevu, devise, sans_frais, commentaire_ecart)
-                VALUES (:dossier, :poste, :prestataire, :libre, :prevu, :devise, :sans, :commentaire)
+                INSERT INTO lbp_dossiers_envoi_frais (dossier_id, poste, prestataire_id, prestataire_libre, montant_prevu, devise)
+                VALUES (:dossier, :poste, :prestataire, :libre, :prevu, :devise)
             ')->execute($valeurs + ['dossier' => $dossierId, 'poste' => $poste]);
 
             return;
@@ -453,38 +414,9 @@ final class DossierEnvoiRepository
 
         $this->pdo->prepare('
             UPDATE lbp_dossiers_envoi_frais
-            SET prestataire_id = :prestataire, prestataire_libre = :libre, montant_prevu = :prevu, devise = :devise,
-                sans_frais = :sans, commentaire_ecart = :commentaire
+            SET prestataire_id = :prestataire, prestataire_libre = :libre, montant_prevu = :prevu, devise = :devise
             WHERE id = :id
         ')->execute($valeurs + ['id' => $id]);
-    }
-
-    /** @param array<int, array<string, mixed>> $lignes */
-    public function remplacerAutresFrais(int $dossierId, array $lignes): void
-    {
-        $this->pdo->prepare("DELETE FROM lbp_dossiers_envoi_frais WHERE dossier_id = :id AND poste = 'AUTRE'")->execute(['id' => $dossierId]);
-
-        $insertion = $this->pdo->prepare("
-            INSERT INTO lbp_dossiers_envoi_frais
-                (dossier_id, poste, libelle, prestataire_id, prestataire_libre, montant_prevu, devise,
-                 montant_facture, devise_facture, numero_facture, sans_frais, commentaire_ecart)
-            VALUES (:dossier, 'AUTRE', :libelle, :prestataire, :libre, :prevu, :devise, :facture, :devise_facture, :numero, 0, :commentaire)
-        ");
-
-        foreach ($lignes as $l) {
-            $insertion->execute([
-                'dossier' => $dossierId,
-                'libelle' => $l['libelle'] ?? null,
-                'prestataire' => $l['prestataire_id'] ?? null,
-                'libre' => $l['prestataire_libre'] ?? null,
-                'prevu' => $l['montant_prevu'] ?? null,
-                'devise' => $l['devise'] ?? 'XOF',
-                'facture' => $l['montant_facture'] ?? null,
-                'devise_facture' => ($l['montant_facture'] ?? null) !== null ? ($l['devise'] ?? 'XOF') : null,
-                'numero' => $l['numero_facture'] ?? null,
-                'commentaire' => $l['commentaire_ecart'] ?? null,
-            ]);
-        }
     }
 
     public function enregistrerFacture(int $dossierId, string $poste, float $montant, string $devise, ?string $numero, int $documentId): void
@@ -493,9 +425,8 @@ final class DossierEnvoiRepository
 
         if ($id === null) {
             $this->pdo->prepare('
-                INSERT INTO lbp_dossiers_envoi_frais
-                    (dossier_id, poste, devise, montant_facture, devise_facture, numero_facture, document_id, sans_frais)
-                VALUES (:dossier, :poste, :devise, :montant, :devise_facture, :numero, :document, 0)
+                INSERT INTO lbp_dossiers_envoi_frais (dossier_id, poste, devise, montant_facture, devise_facture, numero_facture, document_id)
+                VALUES (:dossier, :poste, :devise, :montant, :devise_facture, :numero, :document)
             ')->execute([
                 'dossier' => $dossierId, 'poste' => $poste, 'devise' => $devise, 'montant' => $montant,
                 'devise_facture' => $devise, 'numero' => $numero, 'document' => $documentId,
@@ -643,13 +574,13 @@ final class DossierEnvoiRepository
             return [];
         }
 
-        $stmt = $this->pdo->prepare("
+        $stmt = $this->pdo->prepare('
             SELECT f.*, p.name AS prestataire
             FROM lbp_dossiers_envoi_frais f
             LEFT JOIN lbp_prestataires p ON p.id = f.prestataire_id
-            WHERE f.dossier_id IN (" . $this->marques($ids) . ")
-            ORDER BY f.dossier_id, FIELD(f.poste, 'FRET', 'TRANSIT_DEPART', 'TRANSIT_ARRIVEE', 'LIVRAISON_DEPART', 'LIVRAISON_ARRIVEE', 'AUTRE'), f.id
-        ");
+            WHERE f.dossier_id IN (' . $this->marques($ids) . ')
+            ORDER BY f.dossier_id, f.id
+        ');
         $stmt->execute(array_values($ids));
 
         return $this->grouper($stmt->fetchAll(PDO::FETCH_ASSOC) ?: []);
@@ -661,16 +592,14 @@ final class DossierEnvoiRepository
      */
     public function emballagesDes(array $ids): array
     {
-        return $this->lignesDe('lbp_dossiers_envoi_emballages', $ids, 'id');
-    }
+        if ($ids === []) {
+            return [];
+        }
 
-    /**
-     * @param array<int, int> $ids
-     * @return array<int, array<int, array<string, mixed>>>
-     */
-    public function tranchesDes(array $ids): array
-    {
-        return $this->lignesDe('lbp_dossiers_envoi_tranches', $ids, 'rang');
+        $stmt = $this->pdo->prepare('SELECT * FROM lbp_dossiers_envoi_emballages WHERE dossier_id IN (' . $this->marques($ids) . ') ORDER BY dossier_id, id');
+        $stmt->execute(array_values($ids));
+
+        return $this->grouper($stmt->fetchAll(PDO::FETCH_ASSOC) ?: []);
     }
 
     /**
@@ -699,92 +628,8 @@ final class DossierEnvoiRepository
     }
 
     /**
-     * Colis rattachés à chaque départ par le pointage.
+     * Dossiers rattachés à des départs du pointage.
      *
-     * @param array<int, int> $expeditionIds
-     * @return array<int, int>
-     */
-    public function colisPointesDes(array $expeditionIds): array
-    {
-        if ($expeditionIds === []) {
-            return [];
-        }
-
-        $stmt = $this->pdo->prepare("
-            SELECT expedition_id, COUNT(*) AS nb FROM lbp_colis
-            WHERE statut <> 'annule' AND expedition_id IN (" . $this->marques($expeditionIds) . ')
-            GROUP BY expedition_id
-        ');
-        $stmt->execute(array_values($expeditionIds));
-
-        $nb = array_fill_keys(array_map('intval', $expeditionIds), 0);
-        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) ?: [] as $ligne) {
-            $nb[(int) $ligne['expedition_id']] = (int) $ligne['nb'];
-        }
-
-        return $nb;
-    }
-
-    // ------------------------------------------------------------------
-    // Départs du pointage
-    // ------------------------------------------------------------------
-
-    private const SELECT_DEPART = "
-        SELECT e.id, e.reference, e.type_transport, e.statut, e.agence_depart_id, e.agence_arrivee_id,
-               COALESCE(e.date_depart_effective, e.created_at) AS date_depart,
-               ad.name AS agence_depart, aa.name AS agence_arrivee,
-               (SELECT COUNT(*) FROM lbp_colis c WHERE c.expedition_id = e.id AND c.statut <> 'annule') AS nb_colis
-        FROM lbp_expeditions e
-        LEFT JOIN company_sites ad ON ad.id = e.agence_depart_id
-        LEFT JOIN company_sites aa ON aa.id = e.agence_arrivee_id
-    ";
-
-    /** @return array<string, mixed>|null */
-    public function depart(int $id): ?array
-    {
-        $stmt = $this->pdo->prepare(self::SELECT_DEPART . ' WHERE e.id = :id LIMIT 1');
-        $stmt->execute(['id' => $id]);
-
-        return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
-    }
-
-    /**
-     * Départs récents auxquels rattacher un dossier, plus celui déjà rattaché.
-     *
-     * @return array<int, array<string, mixed>>
-     */
-    public function departsRecents(?int $inclure): array
-    {
-        $stmt = $this->pdo->prepare(self::SELECT_DEPART . "
-            WHERE (e.statut IN ('EN_TRANSIT', 'ARRIVE', 'CLOTURE')
-                   AND COALESCE(e.date_depart_effective, e.created_at) >= DATE_SUB(NOW(), INTERVAL 120 DAY))
-               OR e.id = :inclure
-            ORDER BY date_depart DESC
-            LIMIT 200
-        ");
-        $stmt->execute(['inclure' => $inclure ?? 0]);
-
-        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
-    }
-
-    /**
-     * Départs marqués au pointage qui n'ont encore aucun dossier : aucun envoi
-     * ne doit échapper au suivi des coûts.
-     *
-     * @return array<int, array<string, mixed>>
-     */
-    public function departsSansDossier(): array
-    {
-        return $this->pdo->query(self::SELECT_DEPART . "
-            WHERE e.statut IN ('EN_TRANSIT', 'ARRIVE', 'CLOTURE')
-              AND e.est_reprise = 0
-              AND NOT EXISTS (SELECT 1 FROM lbp_dossiers_envoi d WHERE d.expedition_id = e.id AND d.statut <> 'ANNULE')
-            ORDER BY date_depart DESC
-            LIMIT 50
-        ")->fetchAll(PDO::FETCH_ASSOC) ?: [];
-    }
-
-    /**
      * @param array<int, int> $expeditionIds
      * @return array<int, array<int, array<string, mixed>>>
      */
@@ -794,10 +639,10 @@ final class DossierEnvoiRepository
             return [];
         }
 
-        $stmt = $this->pdo->prepare("
-            SELECT id, numero, statut, expedition_id, mode_transport, numero_document, responsable_id
+        $stmt = $this->pdo->prepare('
+            SELECT id, numero, statut, expedition_id, numero_document
             FROM lbp_dossiers_envoi
-            WHERE statut <> 'ANNULE' AND expedition_id IN (" . $this->marques($expeditionIds) . ')
+            WHERE expedition_id IN (' . $this->marques($expeditionIds) . ')
             ORDER BY numero
         ');
         $stmt->execute(array_values($expeditionIds));
@@ -811,22 +656,6 @@ final class DossierEnvoiRepository
     }
 
     // ------------------------------------------------------------------
-
-    /**
-     * @param array<int, int> $ids
-     * @return array<int, array<int, array<string, mixed>>>
-     */
-    private function lignesDe(string $table, array $ids, string $ordre): array
-    {
-        if ($ids === []) {
-            return [];
-        }
-
-        $stmt = $this->pdo->prepare("SELECT * FROM {$table} WHERE dossier_id IN (" . $this->marques($ids) . ") ORDER BY dossier_id, {$ordre}");
-        $stmt->execute(array_values($ids));
-
-        return $this->grouper($stmt->fetchAll(PDO::FETCH_ASSOC) ?: []);
-    }
 
     /**
      * @param array<int, array<string, mixed>> $lignes

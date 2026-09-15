@@ -9,7 +9,8 @@ use App\Helpers\View;
 use App\Services\Colisage\PointageColisService;
 
 /**
- * Écrans du pointage des colis : préparer un départ, réceptionner, suivre.
+ * Écrans du pointage des colis : réceptionner, suivre. Le départ se prépare
+ * dans les dossiers d'envoi (ColisageEnvois), sans cases à cocher.
  *
  * À la réception, chaque case cochée est enregistrée tout de suite, sans
  * rechargement : un agent qui pointe 150 colis ne doit rien perdre s'il est
@@ -47,144 +48,8 @@ final class ColisagePointage
         'TOUT' => 'tout cocher',
         'DOUCHETTE' => 'douchette',
         'REPRISE' => "reprise de l'existant",
+        'ENVOI' => "départ préparé par l'agent export",
     ];
-
-    // ------------------------------------------------------------------
-    // Préparer un départ
-    // ------------------------------------------------------------------
-
-    /**
-     * @param array<string, mixed> $p
-     */
-    public static function departsPage(array $p): string
-    {
-        $agenceId = $p['agence_id'] ?? null;
-
-        $html = self::styles() . Ui::pageHeader(
-            'Préparer un départ',
-            "Cochez les colis qui quittent l'agence, puis marquez-les partis : l'agence d'arrivée les verra aussitôt dans sa réception.",
-            [
-                'eyebrow' => 'Pointage des colis',
-                'class' => 'rh-hero-white',
-                'actions' => array_filter([
-                    Ui::button('Réception des colis', ['href' => 'colisage/reception', 'variant' => 'secondary']),
-                    Ui::button('Suivi des départs', ['href' => 'colisage/suivi-departs', 'variant' => 'secondary']),
-                    !empty($p['acces_envois']) ? Ui::button("Dossiers d'envoi", ['href' => 'colisage/envois', 'variant' => 'secondary']) : '',
-                ]),
-            ]
-        );
-
-        if (!empty($p['peut_choisir'])) {
-            $html .= self::choixAgence('colisage/departs', $p['agences'] ?? [], $agenceId, "Agence d'envoi", false);
-        }
-
-        if ($agenceId === null) {
-            return $html . Ui::emptyState("Choisissez l'agence d'envoi", "La liste des colis à expédier s'affiche une fois l'agence choisie.");
-        }
-
-        if ((int) $agenceId <= 0) {
-            return $html . Ui::emptyState('Aucune agence de rattachement', "Votre compte n'est rattaché à aucune agence : demandez à l'administration de le compléter.");
-        }
-
-        $html .= self::manquantsSignales($p['manquants'] ?? []);
-
-        $groupes = $p['groupes'] ?? [];
-
-        if ($groupes === []) {
-            return $html . Ui::emptyState('Aucun colis à expédier', "Tous les colis enregistrés dans cette agence sont déjà partis, ou n'ont pas d'agence d'arrivée.");
-        }
-
-        $sections = '';
-        $total = 0;
-
-        foreach ($groupes as $groupe) {
-            $groupeId = (int) $groupe['agence_id'];
-            $lignes = [];
-
-            foreach ($groupe['colis'] as $colis) {
-                $total++;
-                $code = (string) $colis['numero_tracking'];
-                $lignes[] = [
-                    '<input type="checkbox" class="lbp-case lbp-depart-case" name="colis_ids[]" value="' . (int) $colis['id'] . '"'
-                        . ' data-tracking="' . View::e(mb_strtoupper($code)) . '" data-groupe="' . $groupeId . '"'
-                        . ' aria-label="' . View::e('Marquer le colis ' . $code . ' comme parti') . '">',
-                    '<strong>' . View::e($code) . '</strong>',
-                    View::e((string) ($colis['expediteur'] ?? '—')),
-                    View::e((string) ($colis['destinataire'] ?? '—')),
-                    View::e((string) (int) ($colis['nombre_colis'] ?? 1)),
-                    View::e(number_format((float) ($colis['poids_total'] ?? 0), 2, ',', ' ')) . ' kg',
-                    View::e(self::date((string) ($colis['created_at'] ?? ''), 'd/m/Y')),
-                ];
-            }
-
-            $entete = '<div class="lbp-pointage-entete">'
-                . '<span class="lbp-pointage-compteur">' . count($groupe['colis']) . ' colis à expédier</span>'
-                . Ui::button('Tout cocher', ['type' => 'button', 'variant' => 'secondary', 'class' => 'lbp-tout-cocher', 'data-groupe' => (string) $groupeId])
-                . '</div>';
-
-            $sections .= Ui::section(
-                'Vers ' . (string) $groupe['agence'],
-                $entete . ModuleTable::render(self::colonnesColis(true), $lignes)
-            );
-        }
-
-        $transports = '';
-        foreach (($p['transports'] ?? PointageColisService::TRANSPORTS) as $valeur => $libelle) {
-            $transports .= '<option value="' . View::e((string) $valeur) . '">' . View::e((string) $libelle) . '</option>';
-        }
-
-        $scan = '<div class="lbp-pointage-scan">'
-            . '<label for="lbp-depart-scan"><strong>Douchette</strong> : scannez un colis pour le cocher</label>'
-            . '<input type="text" id="lbp-depart-scan" autocomplete="off" placeholder="Code colis">'
-            . '</div>'
-            . '<div id="lbp-depart-message" class="lbp-pointage-message" role="status"></div>';
-
-        $barre = '<div class="lbp-pointage-barre">'
-            . '<label class="lbp-pointage-champ">Transport <select name="type_transport">' . $transports . '</select></label>'
-            . '<span class="lbp-pointage-compteur"><span id="lbp-depart-compteur">0</span> colis coché(s) sur ' . $total . '</span>'
-            . Ui::button('Marquer comme partis', ['type' => 'submit', 'variant' => 'primary'])
-            . '</div>';
-
-        $formulaire = '<form method="post" action="' . View::e(View::url('colisage/departs/marquer-partis')) . '" id="lbp-form-depart"'
-            . ' data-confirmer="' . View::e('Marquer les colis cochés comme partis ? Ils apparaîtront dans la réception de leur agence d\'arrivée.') . '">'
-            . Form::hidden('_csrf_token', Csrf::token())
-            . Form::hidden('agence_id', (string) (int) $agenceId)
-            . $scan
-            . $sections
-            . $barre
-            . '</form>';
-
-        return $html . $formulaire . self::scriptDepart();
-    }
-
-    /**
-     * @param array<int, array<string, mixed>> $departs
-     */
-    private static function manquantsSignales(array $departs): string
-    {
-        if ($departs === []) {
-            return '';
-        }
-
-        $lignes = [];
-        foreach ($departs as $d) {
-            $lignes[] = [
-                self::lienDepart($d),
-                View::e((string) ($d['agence_arrivee'] ?? '—')),
-                View::e(self::date((string) ($d['date_depart'] ?? ''))),
-                '<strong>' . (int) $d['manquants'] . '</strong> sur ' . (int) $d['envoyes'],
-            ];
-        }
-
-        return Ui::section(
-            'Colis manquants signalés par les agences d\'arrivée',
-            ModuleTable::render(
-                [['label' => 'Départ'], ['label' => "Agence d'arrivée"], ['label' => 'Parti le'], ['label' => 'Manquants', 'align' => 'right']],
-                $lignes
-            ),
-            "Non cochés plus de " . PointageColisService::DELAI_MANQUANT_HEURES . " h après le premier colis reçu"
-        );
-    }
 
     // ------------------------------------------------------------------
     // Réception
@@ -206,7 +71,6 @@ final class ColisagePointage
                 'eyebrow' => 'Pointage des colis',
                 'class' => 'rh-hero-white',
                 'actions' => [
-                    Ui::button('Préparer un départ', ['href' => 'colisage/departs', 'variant' => 'secondary']),
                     Ui::button('Suivi des départs', ['href' => 'colisage/suivi-departs', 'variant' => 'secondary']),
                 ],
             ]
@@ -337,7 +201,6 @@ final class ColisagePointage
                 'eyebrow' => 'Pointage des colis',
                 'class' => 'rh-hero-white',
                 'actions' => [
-                    Ui::button('Préparer un départ', ['href' => 'colisage/departs', 'variant' => 'secondary']),
                     Ui::button('Réception des colis', ['href' => 'colisage/reception', 'variant' => 'secondary']),
                 ],
             ]
@@ -501,14 +364,10 @@ final class ColisagePointage
         if (array_key_exists('dossiers_envoi', $p)) {
             $dossiers = $p['dossiers_envoi'] ?? [];
             $contenu = $dossiers === []
-                ? '<p class="lbp-pointage-note">Aucun dossier d\'envoi pour ce départ : son transport et ses frais ne sont pas encore suivis.</p>'
+                ? '<p class="lbp-pointage-note">Ce départ a été marqué avant « Préparer un départ » : il n\'a pas de document de compagnie enregistré.</p>'
                 : '<p>' . self::liensDossiers($dossiers) . '</p>';
 
-            if (!empty($p['peut_creer_dossier'])) {
-                $contenu .= Ui::button('Ouvrir un dossier pour ce départ', ['href' => 'colisage/envois/nouveau?depart=' . $departId, 'variant' => 'primary']);
-            }
-
-            $html .= Ui::section("Dossiers d'envoi", $contenu);
+            $html .= Ui::section('Document de la compagnie', $contenu);
         }
 
         $historique = [];
@@ -648,58 +507,6 @@ document.querySelectorAll('select.lbp-envoi-auto').forEach(function (liste) {
     liste.addEventListener('change', function () { liste.form.submit(); });
 });
 JS;
-    }
-
-    private static function scriptDepart(): string
-    {
-        return '<script>(function () {' . self::scriptCommun() . <<<'JS'
-var formulaire = document.getElementById('lbp-form-depart');
-if (!formulaire) { return; }
-var compteur = document.getElementById('lbp-depart-compteur');
-var zone = document.getElementById('lbp-depart-message');
-function compter() {
-    compteur.textContent = formulaire.querySelectorAll('.lbp-depart-case:checked').length;
-}
-function dire(texte, ok) {
-    zone.textContent = texte;
-    zone.className = 'lbp-pointage-message ' + (ok ? 'is-ok' : 'is-erreur');
-}
-formulaire.addEventListener('change', function (evenement) {
-    if (evenement.target.classList.contains('lbp-depart-case')) { compter(); }
-});
-formulaire.querySelectorAll('.lbp-tout-cocher').forEach(function (bouton) {
-    bouton.addEventListener('click', function () {
-        var cases = formulaire.querySelectorAll('.lbp-depart-case[data-groupe="' + bouton.dataset.groupe + '"]');
-        var toutesCochees = Array.prototype.every.call(cases, function (c) { return c.checked; });
-        cases.forEach(function (c) { c.checked = !toutesCochees; });
-        compter();
-    });
-});
-var scan = document.getElementById('lbp-depart-scan');
-scan.addEventListener('keydown', function (evenement) {
-    if (evenement.key !== 'Enter') { return; }
-    evenement.preventDefault();
-    var code = scan.value.trim().toUpperCase();
-    scan.value = '';
-    if (code === '') { return; }
-    var trouve = null;
-    formulaire.querySelectorAll('.lbp-depart-case').forEach(function (c) { if (c.dataset.tracking === code) { trouve = c; } });
-    if (trouve === null) {
-        dire('Le colis ' + code + " n'est pas dans la liste des colis à expédier de cette agence.", false);
-        return;
-    }
-    trouve.checked = true;
-    compter();
-    dire('Colis ' + code + ' coché.', true);
-});
-formulaire.addEventListener('submit', function (evenement) {
-    if (formulaire.querySelectorAll('.lbp-depart-case:checked').length === 0) {
-        evenement.preventDefault();
-        dire('Cochez au moins un colis avant de marquer le départ.', false);
-    }
-});
-compter();
-JS . '})();</script>';
     }
 
     private static function scriptReception(): string
