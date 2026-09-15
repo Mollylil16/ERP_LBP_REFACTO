@@ -9,7 +9,9 @@ use App\Helpers\Csrf;
 use App\Helpers\Session;
 use App\Helpers\View;
 use App\Middleware\AuthMiddleware;
+use App\Security\DossierEnvoiAcces;
 use App\Security\ModuleAccess;
+use App\Services\Colisage\DossierEnvoiService;
 use App\Services\Colisage\PointageColisService;
 use InvalidArgumentException;
 use Throwable;
@@ -48,6 +50,7 @@ final class PointageColisController extends ColisageBaseController
                 'groupes' => $active ? $this->service->colisAExpedierParDestination($agenceId) : [],
                 'manquants' => $active ? $this->service->manquantsSignalesA($agenceId) : [],
                 'transports' => PointageColisService::TRANSPORTS,
+                'acces_envois' => DossierEnvoiAcces::courant()->peutOuvrir(),
             ],
         ]);
     }
@@ -194,6 +197,11 @@ final class PointageColisController extends ColisageBaseController
             ? ['departs' => [], 'totaux' => ['departs' => 0, 'envoyes' => 0, 'recus' => 0, 'manquants' => 0, 'en_attente' => 0], 'trajets' => [], 'hors_liste' => []]
             : $this->service->suivi($du, $au, $agenceId);
 
+        // Les numéros de dossier d'envoi ne s'affichent qu'à ceux qui peuvent les ouvrir.
+        $dossiersParDepart = DossierEnvoiAcces::courant()->peutOuvrir()
+            ? DossierEnvoiService::creer()->dossiersDesDeparts(array_map(static fn (array $d): int => (int) $d['id'], $suivi['departs']))
+            : null;
+
         $this->colisageView('colisage/pointage/suivi', 'Suivi des départs', 'pointage_suivi', [
             'pointage' => [
                 'du' => $du,
@@ -202,6 +210,7 @@ final class PointageColisController extends ColisageBaseController
                 'agence_id' => $agenceId,
                 'peut_choisir' => $perimetre === null,
                 'suivi' => $suivi,
+                'dossiers_par_depart' => $dossiersParDepart,
             ],
         ]);
     }
@@ -215,6 +224,12 @@ final class PointageColisController extends ColisageBaseController
         if ($detail === null) {
             Session::flash('error', 'Départ introuvable, ou sans rapport avec votre agence.');
             $this->rediriger('colisage/suivi-departs');
+        }
+
+        $acces = DossierEnvoiAcces::courant();
+        if ($acces->peutOuvrir()) {
+            $detail['dossiers_envoi'] = DossierEnvoiService::creer()->dossiersDesDeparts([(int) $id])[(int) $id] ?? [];
+            $detail['peut_creer_dossier'] = $acces->peutCreer();
         }
 
         $this->colisageView('colisage/pointage/detail', 'Départ ' . $detail['depart']['reference'], 'pointage_suivi', [

@@ -99,6 +99,15 @@ $ecrans = [
     'Préparer un départ' => '/colisage/departs',
     'Réception des colis' => '/colisage/reception',
     'Suivi des départs' => '/colisage/suivi-departs',
+    "Dossiers d'envoi" => '/colisage/envois',
+    'Dossiers envoi (tous)' => '/colisage/envois?statut=tous',
+    "Nouveau dossier d'envoi" => '/colisage/envois/nouveau',
+    'Dossiers à valider' => '/colisage/envois/a-valider',
+    'Pièces manquantes' => '/colisage/envois/pieces-manquantes',
+    'Historique des envois' => '/colisage/envois/historique?periode=annee',
+    'Historique envois PDF' => '/colisage/envois/historique/pdf?periode=annee',
+    'Historique envois Excel' => '/colisage/envois/historique/excel?periode=annee',
+    'Transporteurs' => '/colisage/envois/prestataires',
 
     // Écrans témoins, non modifiés
     'Recherche facturation' => '/facturation/filtre',
@@ -122,6 +131,10 @@ foreach ([
     'Fiche demande de fonds' => ['lbp_demandes_fonds', '/finance/fonds/', ''],
     'Fiche colis' => ['lbp_colis', '/colisage/parcels/', ''],
     'Facture client' => ['lbp_colis', '/colisage/parcels/', '/facture'],
+    "Fiche dossier d'envoi" => ['lbp_dossiers_envoi', '/colisage/envois/', ''],
+    'Fiche PDF dossier' => ['lbp_dossiers_envoi', '/colisage/envois/', '/pdf'],
+    'Modifier dossier envoi' => ['lbp_dossiers_envoi', '/colisage/envois/', '/modifier'],
+    'Détail départ' => ['lbp_expeditions', '/colisage/departs/', ''],
 ] as $nom => [$table, $prefixe, $suffixe]) {
     try {
         $id = Database::getConnection()->query("SELECT id FROM {$table} ORDER BY id DESC LIMIT 1")->fetchColumn();

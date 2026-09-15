@@ -24,6 +24,7 @@ class AdminService
         'superviseur_regional' => 'Superviseur Régional',
         'agent_enregistrement' => 'Agent d\'Enregistrement',
         'agent_groupage'       => 'Agent Groupage',
+        'agent_export'         => 'Agent Export',
         'rh'                   => 'Ressources Humaines (RH)',
         'rh_agent'             => 'Agent RH',
         'rh_manager'           => 'Manager RH',

@@ -24,8 +24,9 @@ final class ModuleAccess
      * Rôles portés par des comptes réels mais absents du catalogue
      * AdminService::AVAILABLE_ROLES.
      *
-     * La base de production en compte onze, dont « agent_saisie » qui est le
-     * rôle le plus répandu de l'entreprise. Les ignorer aurait fermé les modules
+     * La base de production en comptait onze, dont « agent_saisie » qui est le
+     * rôle le plus répandu de l'entreprise. « agent_export » a rejoint le
+     * catalogue en septembre 2026, avec les dossiers d'envoi. Les ignorer aurait fermé les modules
      * aux personnes qui en ont le plus besoin : un passeur en douane sans accès
      * à Transit Douane, un agent de call center sans accès au suivi des colis.
      *
@@ -39,7 +40,6 @@ final class ModuleAccess
         'agent_saisie',
         'agent_call_center',
         'agent_exploitation',
-        'agent_export',
         'passeur_douane',
         'declarant_douane',
         'gestionnaire_caisse',

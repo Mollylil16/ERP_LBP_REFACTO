@@ -50,6 +50,212 @@ class MigrationRunner
         $this->createMobileDirectionTables();
         $this->createSignalementsTraitementTable();
         $this->createPointageColisTables();
+        $this->createDossiersEnvoiTables();
+    }
+
+    /**
+     * Dossiers d'envoi (cahier des charges CDC-ENV-01, septembre 2026).
+     *
+     * Uniquement de la structure, ajoutée si elle manque. Pas de clé étrangère,
+     * pour la même raison que le pointage : les identifiants n'ont pas le même
+     * signe d'une base à l'autre, et une contrainte refusée bloquerait tout.
+     */
+    private function createDossiersEnvoiTables(): void
+    {
+        try {
+            if ($this->schema->tableExists('lbp_prestataires')) {
+                $this->elargirTypesPrestataires();
+                $this->addColumnIfMissing('lbp_prestataires', 'prefixe_lta', 'VARCHAR(3) NULL');
+            }
+
+            if ($this->schema->tableExists('company_sites')) {
+                // Code court du numéro de dossier (ABJ, PAR...). Vide : déduit de la ville.
+                $this->addColumnIfMissing('company_sites', 'code_dossier', 'CHAR(3) NULL');
+            }
+
+            $tables = [
+                'lbp_dossiers_envoi' => "
+                    CREATE TABLE IF NOT EXISTS lbp_dossiers_envoi (
+                        id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                        numero VARCHAR(30) NOT NULL,
+                        mode_transport VARCHAR(20) NOT NULL,
+                        statut VARCHAR(20) NOT NULL DEFAULT 'BROUILLON',
+                        responsable_id INT NULL,
+                        agence_depart_id INT UNSIGNED NULL,
+                        agence_arrivee_id INT UNSIGNED NULL,
+                        destination VARCHAR(150) NULL,
+                        expedition_id INT UNSIGNED NULL,
+                        transporteur_id INT UNSIGNED NULL,
+                        type_document VARCHAR(20) NULL,
+                        numero_document VARCHAR(60) NULL,
+                        emetteur_document_id INT UNSIGNED NULL,
+                        document_principal VARCHAR(60) NULL,
+                        lieu_depart VARCHAR(100) NULL,
+                        lieu_arrivee VARCHAR(100) NULL,
+                        date_depart_prevue DATE NULL,
+                        date_depart_effective DATE NULL,
+                        date_arrivee_estimee DATE NULL,
+                        date_arrivee DATE NULL,
+                        date_livraison DATE NULL,
+                        nb_colis_declare INT NULL,
+                        poids_brut_kg DECIMAL(12,1) NULL,
+                        poids_taxable_kg DECIMAL(12,1) NULL,
+                        volume_m3 DECIMAL(10,2) NULL,
+                        taux_eur_xof DECIMAL(12,6) NULL,
+                        commentaire_ecart TEXT NULL,
+                        motif_annulation TEXT NULL,
+                        motif_renvoi TEXT NULL,
+                        soumis_le DATETIME NULL,
+                        valide_par_id INT NULL,
+                        valide_le DATETIME NULL,
+                        source VARCHAR(10) NOT NULL DEFAULT 'SAISIE',
+                        reference_origine VARCHAR(60) NULL,
+                        a_verifier TINYINT(1) NOT NULL DEFAULT 0,
+                        created_by INT NULL,
+                        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        updated_at DATETIME NULL,
+                        UNIQUE KEY uniq_dossier_envoi_numero (numero),
+                        KEY idx_dossier_envoi_responsable (responsable_id, statut),
+                        KEY idx_dossier_envoi_statut (statut),
+                        KEY idx_dossier_envoi_depart (date_depart_effective),
+                        KEY idx_dossier_envoi_document (numero_document),
+                        KEY idx_dossier_envoi_expedition (expedition_id)
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+                ",
+                'lbp_dossiers_envoi_tranches' => "
+                    CREATE TABLE IF NOT EXISTS lbp_dossiers_envoi_tranches (
+                        id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                        dossier_id INT UNSIGNED NOT NULL,
+                        rang SMALLINT UNSIGNED NOT NULL DEFAULT 1,
+                        type VARCHAR(20) NOT NULL,
+                        reference VARCHAR(60) NULL,
+                        type_conteneur VARCHAR(10) NULL,
+                        chauffeur VARCHAR(120) NULL,
+                        date_depart DATE NULL,
+                        date_arrivee DATE NULL,
+                        nb_colis INT NULL,
+                        poids_kg DECIMAL(12,1) NULL,
+                        KEY idx_tranche_dossier (dossier_id),
+                        KEY idx_tranche_reference (reference)
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+                ",
+                'lbp_dossiers_envoi_frais' => "
+                    CREATE TABLE IF NOT EXISTS lbp_dossiers_envoi_frais (
+                        id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                        dossier_id INT UNSIGNED NOT NULL,
+                        poste VARCHAR(20) NOT NULL,
+                        libelle VARCHAR(150) NULL,
+                        prestataire_id INT UNSIGNED NULL,
+                        prestataire_libre VARCHAR(150) NULL,
+                        montant_prevu DECIMAL(15,2) NULL,
+                        devise CHAR(3) NOT NULL DEFAULT 'XOF',
+                        montant_facture DECIMAL(15,2) NULL,
+                        devise_facture CHAR(3) NULL,
+                        numero_facture VARCHAR(60) NULL,
+                        document_id INT UNSIGNED NULL,
+                        sans_frais TINYINT(1) NOT NULL DEFAULT 0,
+                        commentaire_ecart TEXT NULL,
+                        KEY idx_frais_dossier (dossier_id, poste),
+                        KEY idx_frais_prestataire (prestataire_id),
+                        KEY idx_frais_document (document_id)
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+                ",
+                'lbp_dossiers_envoi_emballages' => "
+                    CREATE TABLE IF NOT EXISTS lbp_dossiers_envoi_emballages (
+                        id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                        dossier_id INT UNSIGNED NOT NULL,
+                        type VARCHAR(30) NOT NULL,
+                        quantite INT NOT NULL,
+                        KEY idx_emballage_dossier (dossier_id)
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+                ",
+                'lbp_dossiers_envoi_documents' => "
+                    CREATE TABLE IF NOT EXISTS lbp_dossiers_envoi_documents (
+                        id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                        dossier_id INT UNSIGNED NOT NULL,
+                        type_document VARCHAR(30) NOT NULL,
+                        nom_fichier VARCHAR(190) NOT NULL,
+                        original_name VARCHAR(255) NOT NULL,
+                        stored_path VARCHAR(255) NOT NULL,
+                        mime_type VARCHAR(120) NOT NULL,
+                        size_bytes INT UNSIGNED NOT NULL DEFAULT 0,
+                        uploaded_by INT NULL,
+                        uploaded_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        deleted_by INT NULL,
+                        deleted_at DATETIME NULL,
+                        KEY idx_document_dossier (dossier_id, type_document)
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+                ",
+                'lbp_dossiers_envoi_journal' => "
+                    CREATE TABLE IF NOT EXISTS lbp_dossiers_envoi_journal (
+                        id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                        dossier_id INT UNSIGNED NOT NULL,
+                        user_id INT NULL,
+                        action VARCHAR(30) NOT NULL,
+                        champ VARCHAR(60) NULL,
+                        ancienne_valeur TEXT NULL,
+                        nouvelle_valeur TEXT NULL,
+                        motif TEXT NULL,
+                        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        KEY idx_journal_dossier (dossier_id, created_at)
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+                ",
+                // Rang du dernier numéro attribué, par code d'agence et par mois.
+                'lbp_dossiers_envoi_sequences' => "
+                    CREATE TABLE IF NOT EXISTS lbp_dossiers_envoi_sequences (
+                        prefixe VARCHAR(20) NOT NULL PRIMARY KEY,
+                        dernier INT UNSIGNED NOT NULL DEFAULT 0
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+                ",
+            ];
+
+            foreach ($tables as $table => $creation) {
+                if (!$this->schema->tableExists($table)) {
+                    $this->pdo->exec($creation);
+                }
+            }
+        } catch (\Throwable $e) {
+            error_log('[MigrationRunner Warning] createDossiersEnvoiTables: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Ajoute à lbp_prestataires les types dont les dossiers d'envoi ont besoin.
+     *
+     * Les transitaires existants portent un type vide, valeur qu'un ENUM strict
+     * refuse de recopier : l'ALTER échouerait en mode strict (MariaDB en
+     * production). Le mode SQL est donc relâché le temps de cette seule
+     * instruction, puis rétabli. L'ALTER n'est lancé que si un type manque.
+     */
+    private function elargirTypesPrestataires(): void
+    {
+        $attendus = ['TRANSITAIRE', 'COMPAGNIE_MARITIME', 'TRANSPORTEUR_ROUTIER', 'EXPRESS', 'LIVREUR'];
+        $actuel = (string) $this->schema->columnType('lbp_prestataires', 'type');
+
+        $manquant = false;
+        foreach ($attendus as $valeur) {
+            if (!str_contains($actuel, "'" . $valeur . "'")) {
+                $manquant = true;
+                break;
+            }
+        }
+
+        if (!$manquant || !str_starts_with(strtolower($actuel), 'enum')) {
+            return;
+        }
+
+        $modeSql = (string) $this->pdo->query('SELECT @@SESSION.sql_mode')->fetchColumn();
+
+        try {
+            $this->pdo->exec("SET SESSION sql_mode = ''");
+            $this->pdo->exec("
+                ALTER TABLE lbp_prestataires MODIFY COLUMN type
+                ENUM('DOUANE', 'COMPAGNIE_AERIENNE', 'FOURNISSEUR_MATERIEL', 'AUTRE',
+                     'TRANSITAIRE', 'COMPAGNIE_MARITIME', 'TRANSPORTEUR_ROUTIER', 'EXPRESS', 'LIVREUR') NOT NULL
+            ");
+        } finally {
+            $this->pdo->prepare('SET SESSION sql_mode = :mode')->execute(['mode' => $modeSql]);
+        }
     }
 
     /**

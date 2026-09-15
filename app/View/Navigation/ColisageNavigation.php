@@ -209,6 +209,10 @@ final class ColisageNavigation
                 'url' => 'colisage/suivi-departs',
                 'available' => true
             ],
+
+            // Dossiers d'envoi, à la suite du pointage dont ils complètent les départs
+            ...self::dossiersEnvoi(),
+
             [
                 'group' => 'Activité',
                 'key' => 'documents',
@@ -274,5 +278,68 @@ final class ColisageNavigation
                 'available' => true
             ],
         ];
+    }
+
+    /**
+     * Entrées des dossiers d'envoi, réservées à l'agent export et au Directeur
+     * général. Les autres comptes ne les voient pas du tout, plutôt que des
+     * liens grisés qui les rejetteraient au clic.
+     *
+     * @return array<int,array<string,mixed>>
+     */
+    private static function dossiersEnvoi(): array
+    {
+        $acces = \App\Security\DossierEnvoiAcces::courant();
+
+        if (!$acces->peutOuvrir()) {
+            return [];
+        }
+
+        $items = [[
+            'group' => 'Activité',
+            'key' => 'envois_liste',
+            'label' => $acces->voitTout() ? 'Dossiers d\'envoi' : 'Mes dossiers d\'envoi',
+            'icon' => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>',
+            'url' => 'colisage/envois',
+            'available' => true
+        ]];
+
+        if ($acces->estValideur()) {
+            $items[] = [
+                'group' => 'Activité',
+                'key' => 'envois_valider',
+                'label' => 'Dossiers à valider',
+                'icon' => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>',
+                'url' => 'colisage/envois/a-valider',
+                'available' => true
+            ];
+        }
+
+        $items[] = [
+            'group' => 'Activité',
+            'key' => 'envois_pieces',
+            'label' => 'Pièces manquantes',
+            'icon' => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>',
+            'url' => 'colisage/envois/pieces-manquantes',
+            'available' => true
+        ];
+        $items[] = [
+            'group' => 'Activité',
+            'key' => 'envois_historique',
+            'label' => 'Historique des envois',
+            'icon' => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>',
+            'url' => 'colisage/envois/historique',
+            'available' => true
+        ];
+        $items[] = [
+            'group' => 'Activité',
+            'key' => 'envois_prestataires',
+            'label' => 'Transporteurs et prestataires',
+            'icon' => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>',
+            'url' => 'colisage/envois/prestataires',
+            'available' => true
+        ];
+
+        return $items;
     }
 }

@@ -51,6 +51,33 @@ $router->group('/colisage', function (Router $router): void {
     $router->post('/reception/{id}/prevenir-clients', [\App\Controllers\Colisage\PointageColisController::class, 'prevenirClients']);
     $router->get('/suivi-departs', [\App\Controllers\Colisage\PointageColisController::class, 'suivi']);
 
+    // Dossiers d'envoi : l'agent export tient le transport, les coûts et les
+    // pièces de chaque envoi ; le Directeur général valide. Les chemins fixes
+    // précèdent /envois/{id}, que le routeur essaierait sinon en premier.
+    $router->get('/envois', [\App\Controllers\Colisage\DossierEnvoiController::class, 'liste']);
+    $router->get('/envois/nouveau', [\App\Controllers\Colisage\DossierEnvoiController::class, 'nouveau']);
+    $router->post('/envois/enregistrer', [\App\Controllers\Colisage\DossierEnvoiController::class, 'enregistrer']);
+    $router->get('/envois/a-valider', [\App\Controllers\Colisage\DossierEnvoiController::class, 'aValider']);
+    $router->get('/envois/pieces-manquantes', [\App\Controllers\Colisage\DossierEnvoiController::class, 'piecesManquantes']);
+    $router->get('/envois/historique', [\App\Controllers\Colisage\DossierEnvoiController::class, 'historique']);
+    $router->get('/envois/historique/pdf', [\App\Controllers\Colisage\DossierEnvoiController::class, 'historiquePdf']);
+    $router->get('/envois/historique/excel', [\App\Controllers\Colisage\DossierEnvoiController::class, 'historiqueExcel']);
+    $router->get('/envois/prestataires', [\App\Controllers\Colisage\DossierEnvoiController::class, 'prestataires']);
+    $router->post('/envois/prestataires/enregistrer', [\App\Controllers\Colisage\DossierEnvoiController::class, 'enregistrerPrestataire']);
+    $router->get('/envois/{id}', [\App\Controllers\Colisage\DossierEnvoiController::class, 'fiche']);
+    $router->get('/envois/{id}/modifier', [\App\Controllers\Colisage\DossierEnvoiController::class, 'modifier']);
+    $router->post('/envois/{id}/modifier', [\App\Controllers\Colisage\DossierEnvoiController::class, 'mettreAJour']);
+    $router->get('/envois/{id}/pdf', [\App\Controllers\Colisage\DossierEnvoiController::class, 'fichePdf']);
+    $router->post('/envois/{id}/documents', [\App\Controllers\Colisage\DossierEnvoiController::class, 'deposerDocument']);
+    $router->get('/envois/{id}/documents/{document}', [\App\Controllers\Colisage\DossierEnvoiController::class, 'telechargerDocument']);
+    $router->post('/envois/{id}/documents/{document}/retirer', [\App\Controllers\Colisage\DossierEnvoiController::class, 'retirerDocument']);
+    $router->post('/envois/{id}/soumettre', [\App\Controllers\Colisage\DossierEnvoiController::class, 'soumettre']);
+    $router->post('/envois/{id}/valider', [\App\Controllers\Colisage\DossierEnvoiController::class, 'valider']);
+    $router->post('/envois/{id}/renvoyer', [\App\Controllers\Colisage\DossierEnvoiController::class, 'renvoyer']);
+    $router->post('/envois/{id}/rouvrir', [\App\Controllers\Colisage\DossierEnvoiController::class, 'rouvrir']);
+    $router->post('/envois/{id}/reaffecter', [\App\Controllers\Colisage\DossierEnvoiController::class, 'reaffecter']);
+    $router->post('/envois/{id}/annuler', [\App\Controllers\Colisage\DossierEnvoiController::class, 'annuler']);
+
     $router->get('/groupage', [ColisageController::class, 'groupageIndex']);
     $router->get('/groupage/nouveau', [ColisageController::class, 'groupageCreate']);
     $router->post('/groupage/enregistrer', [ColisageController::class, 'groupageStore']);

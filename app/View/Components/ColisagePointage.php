@@ -66,10 +66,11 @@ final class ColisagePointage
             [
                 'eyebrow' => 'Pointage des colis',
                 'class' => 'rh-hero-white',
-                'actions' => [
+                'actions' => array_filter([
                     Ui::button('Réception des colis', ['href' => 'colisage/reception', 'variant' => 'secondary']),
                     Ui::button('Suivi des départs', ['href' => 'colisage/suivi-departs', 'variant' => 'secondary']),
-                ],
+                    !empty($p['acces_envois']) ? Ui::button("Dossiers d'envoi", ['href' => 'colisage/envois', 'variant' => 'secondary']) : '',
+                ]),
             ]
         );
 
@@ -386,10 +387,13 @@ final class ColisagePointage
             ['label' => 'Reçus / envoyés'],
         ], $lignesTrajets, 'Aucun départ sur la période', 'Élargissez la période, ou vérifiez que les agences marquent bien leurs départs.'));
 
+        // null : l'utilisateur n'a pas accès aux dossiers d'envoi, la colonne n'existe pas.
+        $dossiersParDepart = $p['dossiers_par_depart'] ?? null;
+
         $lignesDeparts = [];
         foreach (($suivi['departs'] ?? []) as $d) {
             [$libelle, $ton] = self::ETATS[(string) $d['etat']] ?? ['—', 'neutral'];
-            $lignesDeparts[] = [
+            $ligne = [
                 self::lienDepart($d),
                 View::e(self::date((string) ($d['date_depart'] ?? ''))),
                 View::e((string) ($d['agence_depart'] ?? '—')) . ' → ' . View::e((string) ($d['agence_arrivee'] ?? '—')),
@@ -398,12 +402,21 @@ final class ColisagePointage
                 (int) $d['manquants'] > 0 ? '<strong class="lbp-alerte">' . (int) $d['manquants'] . '</strong>' : '0',
                 Ui::badge($libelle, $ton),
             ];
+            if (is_array($dossiersParDepart)) {
+                $ligne[] = self::liensDossiers($dossiersParDepart[(int) $d['id']] ?? []);
+            }
+            $lignesDeparts[] = $ligne;
         }
 
-        $html .= Ui::section('Départs', ModuleTable::render([
+        $colonnesDeparts = [
             ['label' => 'Départ'], ['label' => 'Parti le'], ['label' => 'Trajet'], ['label' => 'Envoyés', 'align' => 'right'],
             ['label' => 'Reçus', 'align' => 'right'], ['label' => 'Manquants', 'align' => 'right'], ['label' => 'État'],
-        ], $lignesDeparts, 'Aucun départ sur la période'));
+        ];
+        if (is_array($dossiersParDepart)) {
+            $colonnesDeparts[] = ['label' => "Dossier d'envoi"];
+        }
+
+        $html .= Ui::section('Départs', ModuleTable::render($colonnesDeparts, $lignesDeparts, 'Aucun départ sur la période'));
 
         $lignesHors = [];
         foreach (($suivi['hors_liste'] ?? []) as $h) {
@@ -484,6 +497,20 @@ final class ColisagePointage
             ['label' => 'Poids', 'align' => 'right'], ['label' => 'État'], ['label' => 'Reçu'],
         ], $lignes, 'Aucun colis dans ce départ'));
 
+        // Absent pour qui n'a pas accès aux dossiers d'envoi.
+        if (array_key_exists('dossiers_envoi', $p)) {
+            $dossiers = $p['dossiers_envoi'] ?? [];
+            $contenu = $dossiers === []
+                ? '<p class="lbp-pointage-note">Aucun dossier d\'envoi pour ce départ : son transport et ses frais ne sont pas encore suivis.</p>'
+                : '<p>' . self::liensDossiers($dossiers) . '</p>';
+
+            if (!empty($p['peut_creer_dossier'])) {
+                $contenu .= Ui::button('Ouvrir un dossier pour ce départ', ['href' => 'colisage/envois/nouveau?depart=' . $departId, 'variant' => 'primary']);
+            }
+
+            $html .= Ui::section("Dossiers d'envoi", $contenu);
+        }
+
         $historique = [];
         foreach (($p['historique'] ?? []) as $h) {
             $historique[] = [
@@ -546,6 +573,22 @@ final class ColisagePointage
     {
         return '<a href="' . View::e(View::url('colisage/departs/' . (int) $depart['id'])) . '"><strong>'
             . View::e((string) $depart['reference']) . '</strong></a>';
+    }
+
+    /**
+     * @param array<int, array<string, mixed>> $dossiers
+     */
+    private static function liensDossiers(array $dossiers): string
+    {
+        if ($dossiers === []) {
+            return Ui::badge('Sans dossier', 'warning');
+        }
+
+        return implode(' ', array_map(
+            static fn (array $d): string => '<a href="' . View::e(View::url('colisage/envois/' . (int) $d['id'])) . '"><strong>'
+                . View::e((string) $d['numero']) . '</strong></a>',
+            $dossiers
+        ));
     }
 
     private static function kpi(string $libelle, int $valeur, bool $alerte = false): string
