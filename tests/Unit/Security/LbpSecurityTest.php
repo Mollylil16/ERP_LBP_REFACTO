@@ -120,6 +120,43 @@ final class LbpSecurityTest extends TestCase
         self::assertFalse(Auth::checkAgencyScope(1));
     }
 
+    /**
+     * L'agent de saisie tient le guichet : il ouvre et encaisse les factures de
+     * son agence, et seulement celles-là. Il était refusé partout.
+     */
+    public function test_l_agent_de_saisie_ouvre_les_factures_de_son_agence_seulement(): void
+    {
+        foreach (['agent_saisie', 'agent_enregistrement', 'gestionnaire_caisse'] as $role) {
+            Auth::reset();
+            $user = new User(
+                id: 25,
+                fullName: 'Agent aéroport',
+                email: 'guichet@lbp.local',
+                phone: '0102030405',
+                passwordHash: 'hash',
+                status: 'active',
+                isAdmin: false,
+                agenceId: 3402,
+                zoneRegionaleId: null,
+                roles: [$role]
+            );
+
+            Session::set('auth_user_id', 25);
+
+            $ref = new \ReflectionClass(Auth::class);
+            $cachedUserProp = $ref->getProperty('cachedUser');
+            $cachedUserProp->setAccessible(true);
+            $cachedUserProp->setValue(null, $user);
+
+            $cachedUserIdProp = $ref->getProperty('cachedUserId');
+            $cachedUserIdProp->setAccessible(true);
+            $cachedUserIdProp->setValue(null, 25);
+
+            self::assertTrue(Auth::checkAgencyScope(3402), "{$role} doit ouvrir les factures de son agence.");
+            self::assertFalse(Auth::checkAgencyScope(3403), "{$role} ne doit pas ouvrir celles d'une autre agence.");
+        }
+    }
+
     public function test_agency_scope_restriction_for_global_role(): void
     {
         $user = new User(

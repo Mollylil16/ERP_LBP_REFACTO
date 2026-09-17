@@ -14,6 +14,35 @@ use App\Services\Auth\AuthorizationService;
  */
 class Auth
 {
+    /** Rôles qui travaillent sur toutes les agences (checkAgencyScope). */
+    public const ROLES_PORTEE_RESEAU = [
+        'caissiere_principale',
+        'superviseur_general',
+        'assistant_dg',
+        'assistante_dg',
+        'dg',
+        'agent_exploitation',
+        'comptable',
+    ];
+
+    /**
+     * Rôles restreints à leur agence de rattachement (checkAgencyScope).
+     *
+     * Tout rôle qui tient le guichet doit y figurer : un rôle absent des deux
+     * listes est refusé sur toutes les factures, y compris celles de sa propre
+     * agence. C'est ce qui empêchait l'agent de saisie de l'aéroport d'ouvrir la
+     * facture de son client pour l'encaisser (septembre 2026).
+     */
+    public const ROLES_PORTEE_AGENCE = [
+        'agent_groupage',
+        'caissiere',
+        'chef_agence',
+        'suivi_recouvrement',
+        'agent_saisie',
+        'agent_enregistrement',
+        'gestionnaire_caisse',
+    ];
+
     private static ?int $cachedUserId = null;
     private static ?User $cachedUser = null;
     private static ?AuthorizationService $authorization = null;
@@ -174,17 +203,7 @@ class Auth
             return true;
         }
 
-        // Les rôles globaux ont accès à toutes les agences
-        $globalRoles = [
-            'caissiere_principale',
-            'superviseur_general',
-            'assistant_dg',
-            'assistante_dg',
-            'dg',
-            'agent_exploitation',
-            'comptable'
-        ];
-        if (self::hasAnyRole($globalRoles)) {
+        if (self::hasAnyRole(self::ROLES_PORTEE_RESEAU)) {
             return true;
         }
 
@@ -192,9 +211,7 @@ class Auth
             return false;
         }
 
-        // Rôles locaux : restreints à leur agence propre
-        $localRoles = ['agent_groupage', 'caissiere', 'chef_agence', 'suivi_recouvrement'];
-        if (self::hasAnyRole($localRoles)) {
+        if (self::hasAnyRole(self::ROLES_PORTEE_AGENCE)) {
             return $user->agenceId === $targetAgenceId;
         }
 

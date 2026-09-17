@@ -75,14 +75,17 @@ final class FinanceController extends FinanceBaseController
      * Tout autre utilisateur est restreint a ce qu'il a lui-meme facture
      * (lbp_factures.created_by) et encaisse (lbp_paiements.caissiere_id).
      *
-     * Attention : cette liste couvre aujourd'hui tous les roles que le middleware de
-     * cloturesIndex laisse entrer sur la page. Aucun utilisateur n'est donc restreint
-     * en pratique. Retirer un role d'ici suffit a le basculer sur son seul perimetre.
+     * Les agents de saisie et d'enregistrement y figurent depuis le 17/09/2026 :
+     * seule l'agence d'Abobo Dokui a une caissiere. Ailleurs, ce sont eux qui
+     * facturent, encaissent et soumettent le point de caisse de leur agence.
+     * Le gestionnaire de caisse reste restreint a ses propres operations.
      */
     private const ROLES_CUMUL_AGENCE = [
         'caissiere_principale',
         'chef_agence',
         'caissiere',
+        'agent_saisie',
+        'agent_enregistrement',
         'dg',
         'assistant_dg',
         'assistante_dg',
@@ -90,6 +93,21 @@ final class FinanceController extends FinanceBaseController
         'superviseur_general',
         'superviseur_regional',
         'admin',
+    ];
+
+    /**
+     * Roles qui comptent la caisse et soumettent le point de caisse de leur agence.
+     * Ils doivent tous voir le cumul de l'agence (ROLES_CUMUL_AGENCE) : un comptage
+     * compare a leurs seuls montants produirait un ecart faux.
+     *
+     * @var array<int, string>
+     */
+    public const ROLES_SOUMISSION_POINT = [
+        'caissiere',
+        'caissiere_principale',
+        'chef_agence',
+        'agent_saisie',
+        'agent_enregistrement',
     ];
 
     private PDO $db;
@@ -1080,14 +1098,10 @@ final class FinanceController extends FinanceBaseController
      */
     public function cloturesIndex(): void
     {
-        // agent_enregistrement est admis mais absent de ROLES_CUMUL_AGENCE :
-        // il ne voit que les factures qu'il a lui-meme saisies.
         /*
-         * agent_saisie est le role le plus repandu de l entreprise et effectue
-         * des encaissements ; il etait absent de cette liste et ne pouvait donc
-         * pas ouvrir l ecran, alors que agent_enregistrement, porte par un seul
-         * compte, y figurait. Les deux voient leurs propres operations, sans le
-         * cumul de l agence (voir ROLES_CUMUL_AGENCE).
+         * Les agents de saisie et d'enregistrement voient le cumul de leur agence
+         * et soumettent son point de caisse : hors Abobo Dokui, il n'y a pas de
+         * caissiere (voir ROLES_CUMUL_AGENCE et ROLES_SOUMISSION_POINT).
          */
         RoleMiddleware::check([
             ...self::ROLES_GUICHET,

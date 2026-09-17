@@ -104,6 +104,47 @@ final class RolesGuichetTest extends TestCase
         );
     }
 
+    /**
+     * Un rôle du guichet absent des listes de portée d'agence est refusé sur
+     * toutes les factures : il peut ouvrir la liste, mais pas la fiche où l'on
+     * encaisse. C'est arrivé à l'agent de saisie de l'aéroport.
+     */
+    public function test_chaque_role_du_guichet_a_une_portee_d_agence(): void
+    {
+        $couverts = array_merge(\App\Helpers\Auth::ROLES_PORTEE_AGENCE, \App\Helpers\Auth::ROLES_PORTEE_RESEAU);
+
+        foreach ($this->guichet() as $role) {
+            self::assertContains(
+                $role,
+                $couverts,
+                "Le rôle {$role} tient le guichet mais n'a aucune portée d'agence : chaque facture lui serait refusée."
+            );
+        }
+    }
+
+    /**
+     * Décidé le 17/09/2026 : seule Abobo Dokui a une caissière. Partout ailleurs,
+     * l'agent de saisie facture, encaisse et soumet le point de caisse de son
+     * agence ; il doit donc voir la caisse entière, pas ses seules opérations.
+     */
+    public function test_l_agent_de_saisie_voit_la_caisse_de_l_agence_et_soumet_le_point(): void
+    {
+        $cumul = (array) (new ReflectionClass(FinanceController::class))
+            ->getReflectionConstant('ROLES_CUMUL_AGENCE')
+            ->getValue();
+
+        foreach (['agent_saisie', 'agent_enregistrement'] as $role) {
+            self::assertContains($role, $cumul, "{$role} doit voir le cumul de son agence.");
+            self::assertContains($role, FinanceController::ROLES_SOUMISSION_POINT, "{$role} doit pouvoir soumettre le point de caisse.");
+        }
+
+        foreach (FinanceController::ROLES_SOUMISSION_POINT as $role) {
+            self::assertContains($role, $cumul, "{$role} soumet le point : il doit voir le cumul, sinon son comptage produirait un écart faux.");
+        }
+
+        self::assertNotContains('gestionnaire_caisse', $cumul, 'Le gestionnaire de caisse reste restreint à ses propres opérations.');
+    }
+
     public function test_les_roles_du_guichet_existent_reellement(): void
     {
         $connus = array_merge(

@@ -1143,7 +1143,7 @@ final class Finance
 
         // 1b. Bloc de Soumission Rétroactive (si des jours non soumis existent ou pour régularisation passée)
         $retroBlock = '';
-        if (!$estPerimetreAgent && Auth::hasAnyRole(['caissiere', 'chef_agence', 'caissiere_principale'])) {
+        if (!$estPerimetreAgent && Auth::hasAnyRole(\App\Controllers\Finance\FinanceController::ROLES_SOUMISSION_POINT)) {
             $nbJours = count($joursNonSoumis);
             $dateOptionsHtml = '';
             foreach ($joursNonSoumis as $d) {
@@ -1407,14 +1407,14 @@ final class Finance
             // Le comptage physique porte sur la caisse entiere de l'agence : le proposer
             // a un agent qui ne voit que ses propres montants produirait un ecart faux.
             $canSubmit = !$estPerimetreAgent &&
-                Auth::hasAnyRole(['caissiere', 'chef_agence', 'caissiere_principale']) &&
+                Auth::hasAnyRole(\App\Controllers\Finance\FinanceController::ROLES_SOUMISSION_POINT) &&
                 ($userAgId === null || (int) $userAgId === (int) ($activeReport['agence_id'] ?? 0)) &&
                 $statut === 'brouillon';
 
             if ($estPerimetreAgent && $statut === 'brouillon') {
                 $submissionForm .= '<div style="background:#f8fafc; border:1px dashed #cbd5e1; border-radius:10px; padding:1rem 1.25rem; margin-top:1rem; color:#475569; font-size:0.88rem;">'
                     . '<strong style="color:#0f172a;">Comptage de caisse</strong><br>'
-                    . 'Le décompte des billets et la soumission du point de caisse portent sur la caisse entière de l\'agence. Ils sont effectués par le chef d\'agence ou la caissière principale.'
+                    . 'Le décompte des billets et la soumission du point de caisse portent sur la caisse entière de l\'agence. Ils sont effectués par la caissière, le chef d\'agence ou l\'agent de saisie de l\'agence.'
                     . '</div>';
             }
 
