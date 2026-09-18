@@ -36,6 +36,22 @@ class AdminService
         'transitaire'          => 'Transitaire',
         'suivi_recouvrement'   => 'Suivi & Recouvrement',
         'admin'                => 'Administrateur Système',
+
+        // Rôles portés par des comptes réels, longtemps absents de ce catalogue.
+        // Les omettre avait deux effets : Administration ne pouvait pas les
+        // attribuer — impossible de nommer un agent de saisie — et tout
+        // enregistrement du formulaire effaçait celui que le compte portait
+        // déjà, puisque la case n'existait pas pour le recocher.
+        'agent_saisie'          => 'Agent de Saisie',
+        'gestionnaire_caisse'   => 'Gestionnaire de Caisse',
+        'agent_call_center'     => 'Agent Call Center',
+        'agent_exploitation'    => 'Agent d\'Exploitation',
+        'passeur_douane'        => 'Passeur en Douane',
+        'declarant_douane'      => 'Déclarant en Douane',
+        'dg_surveillance'       => 'Direction Générale – Surveillance',
+        'responsable_rh'        => 'Directeur/Directrice RH',
+        'responsable_marketing' => 'Responsable Marketing',
+        'responsable_logistique' => 'Responsable Logistique',
     ];
 
     public function __construct(
@@ -160,10 +176,7 @@ class AdminService
             }
 
             // Save functional roles
-            $submittedRoles = is_array($input['roles'] ?? null) ? $input['roles'] : [];
-            $allowedRoles = array_keys(self::AVAILABLE_ROLES);
-            $roles = array_values(array_filter($submittedRoles, fn($r) => in_array($r, $allowedRoles, true)));
-            $this->users->setRoles($id, $roles);
+            $this->users->setRoles($id, $this->rolesApresFormulaire($input, []));
 
             $this->pdo->commit();
             return $id;
@@ -248,12 +261,42 @@ class AdminService
         }
 
         // Save functional roles
-        $submittedRoles = is_array($input['roles'] ?? null) ? $input['roles'] : [];
-        $allowedRoles = array_keys(self::AVAILABLE_ROLES);
-        $roles = array_values(array_filter($submittedRoles, fn($r) => in_array($r, $allowedRoles, true)));
-        $this->users->setRoles($id, $roles);
+        $this->users->setRoles($id, $this->rolesApresFormulaire($input, $user->roles));
 
         Auth::reset();
+    }
+
+    /**
+     * Rôles à écrire après un enregistrement du formulaire utilisateur.
+     *
+     * Le formulaire ne présente que les rôles du catalogue : un rôle absent de
+     * celui-ci n'a pas de case à cocher, n'est donc jamais renvoyé, et
+     * l'enregistrement l'effaçait. C'est ainsi que des agents de saisie se sont
+     * retrouvés sans aucun rôle après une simple correction de numéro de
+     * téléphone, et sans plus pouvoir facturer ni encaisser.
+     *
+     * On ne retire donc que ce qui a pu être décoché. Le rôle vide, hérité
+     * d'anciennes saisies, est écarté au passage.
+     *
+     * @param array<string, mixed> $input
+     * @param array<int, string> $actuels
+     * @return array<int, string>
+     */
+    private function rolesApresFormulaire(array $input, array $actuels): array
+    {
+        $soumis = is_array($input['roles'] ?? null) ? $input['roles'] : [];
+        $catalogue = array_keys(self::AVAILABLE_ROLES);
+
+        $coches = array_filter($soumis, static fn ($r): bool => in_array($r, $catalogue, true));
+        $horsFormulaire = array_filter(
+            $actuels,
+            static fn ($r): bool => (string) $r !== '' && !in_array($r, $catalogue, true)
+        );
+
+        return array_values(array_unique(array_merge(
+            array_map('strval', $coches),
+            array_map('strval', $horsFormulaire)
+        )));
     }
 
     public function setUserActive(int $id, bool $active, int $actorId): void

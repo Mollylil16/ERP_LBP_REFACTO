@@ -24,30 +24,21 @@ final class ModuleAccess
      * Rôles portés par des comptes réels mais absents du catalogue
      * AdminService::AVAILABLE_ROLES.
      *
-     * La base de production en comptait onze, dont « agent_saisie » qui est le
-     * rôle le plus répandu de l'entreprise. « agent_export » a rejoint le
-     * catalogue en septembre 2026, avec les dossiers d'envoi. Les ignorer aurait fermé les modules
-     * aux personnes qui en ont le plus besoin : un passeur en douane sans accès
-     * à Transit Douane, un agent de call center sans accès au suivi des colis.
+     * La liste est vide, et doit le rester : les onze rôles qu'elle contenait
+     * ont rejoint le catalogue le 18/09/2026. Les y laisser coûtait deux fois.
+     * Administration ne pouvait pas les attribuer — impossible de nommer un
+     * agent de saisie, le rôle le plus répandu de l'entreprise. Et comme le
+     * formulaire ne leur offrait pas de case, tout enregistrement les effaçait :
+     * deux agents d'Adjamé se sont ainsi retrouvés sans aucun rôle, et sans
+     * pouvoir encaisser.
      *
-     * Ils sont donc nommés ici tels qu'ils existent. Le catalogue reste à
-     * compléter côté Administration, mais c'est une décision de paramétrage qui
-     * n'a pas à bloquer les habilitations.
+     * Elle reste pour le cas suivant : un rôle découvert en base et pas encore
+     * arbitré. Le nommer ici ouvre les modules tout de suite ; sa place
+     * définitive est ensuite au catalogue.
      *
      * @var array<int, string>
      */
-    public const ROLES_HORS_CATALOGUE = [
-        'agent_saisie',
-        'agent_call_center',
-        'agent_exploitation',
-        'passeur_douane',
-        'declarant_douane',
-        'gestionnaire_caisse',
-        'dg_surveillance',
-        'responsable_rh',
-        'responsable_marketing',
-        'responsable_logistique',
-    ];
+    public const ROLES_HORS_CATALOGUE = [];
 
     /**
      * Rôles autorisés à consulter chaque module, par slug.
