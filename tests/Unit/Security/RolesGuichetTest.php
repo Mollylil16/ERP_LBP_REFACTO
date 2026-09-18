@@ -167,6 +167,35 @@ final class RolesGuichetTest extends TestCase
         );
     }
 
+    /**
+     * Le reçu est la suite immédiate de l'encaissement. Le refuser à qui vient
+     * de prendre l'argent bloque trois gestes d'un coup : remettre le reçu au
+     * client, l'imprimer, et l'envoyer par WhatsApp — le bouton WhatsApp de la
+     * fiche facture met précisément cette adresse dans le message.
+     */
+    public function test_le_recu_est_editable_par_qui_encaisse(): void
+    {
+        $finance = (string) file_get_contents(
+            BASE_PATH . '/app/Controllers/Finance/FinanceController.php'
+        );
+
+        foreach (['factureEncaisser', 'exportRecuPdf'] as $action) {
+            $position = strpos($finance, 'function ' . $action . '(');
+            self::assertNotFalse($position, "Action {$action} introuvable.");
+
+            self::assertStringContainsString(
+                'ROLES_GUICHET',
+                substr($finance, $position, 900),
+                "{$action} doit suivre la liste du guichet : encaisser et éditer le reçu vont ensemble."
+            );
+        }
+
+        // Le lien WhatsApp pointe sur le reçu : si la route se ferme, le message
+        // envoyé au client mène à un refus d'accès.
+        $vue = (string) file_get_contents(BASE_PATH . '/app/View/Components/Finance.php');
+        self::assertStringContainsString('recu-pdf', $vue);
+    }
+
     public function test_les_roles_du_guichet_existent_reellement(): void
     {
         $connus = array_merge(

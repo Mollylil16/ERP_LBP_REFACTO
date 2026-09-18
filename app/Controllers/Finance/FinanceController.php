@@ -818,7 +818,7 @@ final class FinanceController extends FinanceBaseController
      */
     public function factureRelancerTout(): void
     {
-        RoleMiddleware::check(['caissiere', 'caissiere_principale', 'chef_agence', 'dg', 'comptable', 'suivi_recouvrement']);
+        RoleMiddleware::check([...self::ROLES_GUICHET, 'comptable', 'suivi_recouvrement']);
 
         // Sans ce controle, une page piegee peut declencher cette action a l insu
         // de l utilisateur connecte, avec ses propres droits.
@@ -2335,7 +2335,7 @@ final class FinanceController extends FinanceBaseController
      */
     public function exportCategoriesCsv(): void
     {
-        RoleMiddleware::check(['caissiere', 'caissiere_principale', 'chef_agence', 'dg', 'comptable', 'superviseur_regional', 'superviseur_general', 'suivi_recouvrement']);
+        RoleMiddleware::check([...self::ROLES_GUICHET, 'comptable', 'superviseur_regional', 'superviseur_general', 'suivi_recouvrement']);
 
         $filters = [
             'agence_id' => $_GET['agence_id'] ?? '',
@@ -2381,7 +2381,7 @@ final class FinanceController extends FinanceBaseController
     public function exportCategoriesPdf(): void
     {
         AuthMiddleware::check();
-        RoleMiddleware::check(['caissiere', 'caissiere_principale', 'chef_agence', 'dg', 'comptable', 'superviseur_regional', 'superviseur_general', 'suivi_recouvrement']);
+        RoleMiddleware::check([...self::ROLES_GUICHET, 'comptable', 'superviseur_regional', 'superviseur_general', 'suivi_recouvrement']);
 
         $filters = [
             'agence_id' => $_GET['agence_id'] ?? '',
@@ -2600,7 +2600,7 @@ final class FinanceController extends FinanceBaseController
 
     public function portefeuillesIndex(): void
     {
-        RoleMiddleware::check(['caissiere', 'caissiere_principale', 'chef_agence', 'dg', 'comptable', 'superviseur_regional', 'superviseur_general', 'suivi_recouvrement']);
+        RoleMiddleware::check([...self::ROLES_GUICHET, 'comptable', 'superviseur_regional', 'superviseur_general', 'suivi_recouvrement']);
 
         $pdo = \App\Models\Database::getConnection();
         $wallets = $pdo->query("SELECT * FROM lbp_client_wallets ORDER BY updated_at DESC, created_at DESC")->fetchAll(\PDO::FETCH_ASSOC);
@@ -2623,7 +2623,7 @@ final class FinanceController extends FinanceBaseController
 
     public function portefeuilleCrediter(): void
     {
-        RoleMiddleware::check(['caissiere', 'caissiere_principale', 'chef_agence', 'dg', 'comptable', 'suivi_recouvrement']);
+        RoleMiddleware::check([...self::ROLES_GUICHET, 'comptable', 'suivi_recouvrement']);
 
         if (!Csrf::verify($_POST['_csrf_token'] ?? null)) {
             Session::flash('error', 'Session expirée ou requête invalide (CSRF).');
@@ -2827,7 +2827,11 @@ final class FinanceController extends FinanceBaseController
 
     public function exportRecuPdf(string $id): void
     {
-        RoleMiddleware::check(['caissiere', 'caissiere_principale', 'chef_agence', 'dg', 'comptable', 'superviseur_regional', 'superviseur_general', 'admin', 'agent']);
+        // Le reçu est la suite immédiate de l'encaissement : celui qui prend
+        // l'argent doit pouvoir le remettre au client, l'imprimer et l'envoyer.
+        // Cette liste ignorait l'agent de saisie, qui encaissait donc sans
+        // pouvoir éditer le reçu — ni s'en servir pour le lien WhatsApp.
+        RoleMiddleware::check([...self::ROLES_GUICHET, 'comptable', 'superviseur_regional', 'superviseur_general', 'admin', 'agent']);
 
         $id = (int) $id;
         $facture = null;
