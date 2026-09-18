@@ -58,7 +58,7 @@ final class FinanceController extends FinanceBaseController
      *
      * @var array<int, string>
      */
-    private const ROLES_GUICHET = [
+    public const ROLES_GUICHET = [
         'caissiere',
         'caissiere_principale',
         'chef_agence',

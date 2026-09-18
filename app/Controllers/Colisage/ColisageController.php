@@ -299,10 +299,11 @@ final class ColisageController extends ColisageBaseController
         AuthMiddleware::check();
 
         // Cette route generait une facture pour tout utilisateur simplement connecte,
-        // RH ou magasinier compris. Elle est desormais alignee sur les roles habilites
-        // a facturer, agent_enregistrement inclus : il depanne quand la caissiere
-        // est absente, et la facture reste tracee a son nom via created_by.
-        RoleMiddleware::check(['caissiere', 'caissiere_principale', 'chef_agence', 'dg', 'agent_enregistrement']);
+        // RH ou magasinier compris. Elle suit desormais la meme liste que le module
+        // Facturation : celui qui enregistre le colis etablit la facture, et elle
+        // reste tracee a son nom via created_by. Deux listes separees laissaient
+        // l agent de saisie facturer depuis Finance mais pas depuis son colis.
+        RoleMiddleware::check(\App\Controllers\Finance\FinanceController::ROLES_GUICHET);
 
         // Sans ce controle, une page piegee declenche cette action a l insu de
         // l utilisateur connecte, avec ses propres droits.

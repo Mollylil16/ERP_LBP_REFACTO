@@ -145,6 +145,28 @@ final class RolesGuichetTest extends TestCase
         self::assertNotContains('gestionnaire_caisse', $cumul, 'Le gestionnaire de caisse reste restreint à ses propres opérations.');
     }
 
+    /**
+     * Facturer depuis la fiche d'un colis et facturer depuis le module Finance
+     * doivent ouvrir aux mêmes personnes. Le colisage gardait sa propre copie de
+     * la liste, plus courte : l'agent de saisie pouvait établir une facture dans
+     * Finance, mais pas depuis le colis qu'il venait d'enregistrer.
+     */
+    public function test_facturer_depuis_un_colis_suit_la_liste_du_guichet(): void
+    {
+        $source = (string) file_get_contents(
+            BASE_PATH . '/app/Controllers/Colisage/ColisageController.php'
+        );
+
+        $position = strpos($source, 'function autoFacturer(');
+        self::assertNotFalse($position, 'Action autoFacturer introuvable.');
+
+        self::assertStringContainsString(
+            'ROLES_GUICHET',
+            substr($source, $position, 900),
+            "Facturer un colis doit suivre la liste du guichet, pas une copie locale."
+        );
+    }
+
     public function test_les_roles_du_guichet_existent_reellement(): void
     {
         $connus = array_merge(
