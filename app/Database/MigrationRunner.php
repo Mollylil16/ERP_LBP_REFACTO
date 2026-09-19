@@ -210,6 +210,42 @@ class MigrationRunner
                         dernier INT UNSIGNED NOT NULL DEFAULT 0
                     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
                 ",
+
+                /*
+                 * Rapprochement du comptable (19/09/2026), une ligne par départ.
+                 *
+                 * Ce que le comptable corrige vit ici, jamais dans
+                 * lbp_dossiers_envoi : la saisie d'origine des agences doit
+                 * rester lisible à côté de la valeur retenue, sinon on perd
+                 * l'écart que la direction contrôle.
+                 */
+                'lbp_envois_rapprochement' => "
+                    CREATE TABLE IF NOT EXISTS lbp_envois_rapprochement (
+                        id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                        dossier_id INT UNSIGNED NOT NULL,
+                        colis_lta INT NULL,
+                        poids_lta_kg DECIMAL(12,1) NULL,
+                        motif_correction TEXT NULL,
+                        poids_divers_kg DECIMAL(12,1) NULL,
+                        poids_perissable_kg DECIMAL(12,1) NULL,
+                        montant_compagnie DECIMAL(15,2) NULL,
+                        devise_compagnie CHAR(3) NOT NULL DEFAULT 'EUR',
+                        taux_eur_xof DECIMAL(12,6) NULL,
+                        mode_reglement VARCHAR(20) NULL,
+                        numero_cheque VARCHAR(60) NULL,
+                        date_reglement DATE NULL,
+                        observation TEXT NULL,
+                        etat VARCHAR(20) NOT NULL DEFAULT 'A_RAPPROCHER',
+                        rapproche_par INT NULL,
+                        rapproche_le DATETIME NULL,
+                        created_by INT NULL,
+                        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        updated_at DATETIME NULL,
+                        UNIQUE KEY uniq_rapprochement_dossier (dossier_id),
+                        KEY idx_rapprochement_reglement (date_reglement),
+                        KEY idx_rapprochement_etat (etat)
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+                ",
             ];
 
             foreach ($tables as $table => $creation) {

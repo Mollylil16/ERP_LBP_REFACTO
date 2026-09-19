@@ -77,6 +77,12 @@ $router->group('/finance', function (Router $router): void {
     // Trésorerie Prévisionnelle (30/60/90j)
     $router->get('/tresorerie', [FinanceController::class, 'tresorerieIndex']);
 
+    // Rapprochement des envois : saisie des agences contre document de la compagnie
+    $router->get('/rapprochement-envois', [\App\Controllers\Finance\RapprochementEnvoisController::class, 'index']);
+    $router->get('/rapprochement-envois/pdf', [\App\Controllers\Finance\RapprochementEnvoisController::class, 'exportPdf']);
+    $router->get('/rapprochement-envois/excel', [\App\Controllers\Finance\RapprochementEnvoisController::class, 'exportExcel']);
+    $router->post('/rapprochement-envois/{id}/enregistrer', [\App\Controllers\Finance\RapprochementEnvoisController::class, 'enregistrer']);
+
     // ==========================================
     // GESTION DES FONDS (Décaissements, Caisse & Imputation)
     // ==========================================

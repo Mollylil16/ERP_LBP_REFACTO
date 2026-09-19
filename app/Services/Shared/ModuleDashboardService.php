@@ -339,6 +339,9 @@ final class ModuleDashboardService
                 ['key' => 'clotures', 'label' => 'Points de Caisse', 'icon' => 'CLT', 'url' => '/finance/clotures', 'available' => true, 'group' => 'Facturation & Caisse'],
                 ['key' => 'depenses', 'label' => 'Dépenses Prestataires', 'icon' => 'DEP', 'url' => '/finance/depenses', 'available' => true, 'group' => 'Gestion des Coûts'],
                 ['key' => 'couts_approche', 'label' => 'Coûts d\'Approche', 'icon' => 'LND', 'url' => '/finance/couts-approche', 'available' => true, 'group' => 'Gestion des Coûts'],
+                // Réservé au comptable et à la direction : l'écran montre les chiffres
+                // de saisie des agences. Une tuile qui rejette au clic n'a pas de sens.
+                ['key' => 'rapprochement-envois', 'label' => 'Rapprochement Envois', 'icon' => 'RAP', 'url' => '/finance/rapprochement-envois', 'available' => \App\Security\RapprochementEnvoisAcces::courant()->peutOuvrir(), 'group' => 'Gestion des Coûts'],
                 ['key' => 'rapprochement', 'label' => 'Rapprochement Mobile', 'icon' => 'WAV', 'url' => '/finance/rapprochement-mobile-money', 'available' => true, 'group' => 'Trésorerie & Banque'],
                 ['key' => 'tresorerie', 'label' => 'Trésorerie & Cashflow', 'icon' => 'TS', 'url' => '/finance/tresorerie', 'available' => true, 'group' => 'Trésorerie & Banque'],
                 ['key' => 'rentabilite', 'label' => 'Rentabilité (P&L)', 'icon' => 'PL', 'url' => '/finance/rentabilite', 'available' => true, 'group' => 'Analyse & Comptabilité'],
