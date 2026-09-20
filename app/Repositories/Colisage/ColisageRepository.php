@@ -449,15 +449,28 @@ class ColisageRepository
         $qteEmb = (int) ($data['qte_emballage'] ?? 1);
         $prixEmb = (float) ($data['prix_emballage'] ?? 0.0);
         $nbreColis = (int) ($data['nbre_colis'] ?? 1);
-        $totalLigne = round(($poidsUnitaire * $prixKg) + ($qteEmb * $prixEmb), 2);
+        $nbEtiquettes = (int) ($data['nbre_etiquettes'] ?? 0);
+        $prixEtiquette = (float) ($data['prix_etiquette'] ?? 0.0);
+
+        /*
+         * La quantité décrit le contenu — cent habits restent cent habits —
+         * mais ne se facture pas : le prix se fait au poids. Seuls les
+         * emballages et les étiquettes s'ajoutent, parce qu'ils sont vendus.
+         */
+        $totalLigne = round(
+            ($poidsUnitaire * $prixKg) + ($qteEmb * $prixEmb) + ($nbEtiquettes * $prixEtiquette),
+            2
+        );
 
         $stmt = $this->pdo->prepare("
             INSERT INTO lbp_marchandises (
                 colis_id, description, emballage, quantite, nbre_colis,
-                qte_emballage, prix_emballage, poids_unitaire, prix_kg, total_ligne, created_at
+                qte_emballage, prix_emballage, nbre_etiquettes, prix_etiquette,
+                poids_unitaire, prix_kg, total_ligne, created_at
             ) VALUES (
                 :colis_id, :description, :emballage, :quantite, :nbre_colis,
-                :qte_emballage, :prix_emballage, :poids_unitaire, :prix_kg, :total_ligne, NOW()
+                :qte_emballage, :prix_emballage, :nbre_etiquettes, :prix_etiquette,
+                :poids_unitaire, :prix_kg, :total_ligne, NOW()
             )
         ");
         $stmt->execute([
@@ -468,6 +481,8 @@ class ColisageRepository
             'nbre_colis' => $nbreColis,
             'qte_emballage' => $qteEmb,
             'prix_emballage' => $prixEmb,
+            'nbre_etiquettes' => $nbEtiquettes,
+            'prix_etiquette' => $prixEtiquette,
             'poids_unitaire' => $poidsUnitaire,
             'prix_kg' => $prixKg,
             'total_ligne' => $totalLigne,

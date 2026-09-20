@@ -412,16 +412,18 @@ body {
     /* Largeurs données à la main. Les en-têtes portent la leur en style
        inline, prévue pour une page A4 : sur un téléphone, la colonne du
        montant total devenait si étroite que son libellé se coupait en
-       « MONT ANT TOTA L ». Seul !important passe devant un style inline. */
-    .items-table th:nth-child(1) { width: 5% !important; }
-    .items-table th:nth-child(2) { width: 7% !important; }
-    .items-table th:nth-child(3) { width: 18% !important; }
-    .items-table th:nth-child(4) { width: 12% !important; }
-    .items-table th:nth-child(5) { width: 6% !important; }
-    .items-table th:nth-child(6) { width: 9% !important; }
-    .items-table th:nth-child(7) { width: 8% !important; }
-    .items-table th:nth-child(8) { width: 15% !important; }
-    .items-table th:nth-child(9) { width: 20% !important; }
+       « MONT ANT TOTA L ». Seul !important passe devant un style inline.
+       Dix colonnes depuis le 20/09/2026 : la quantité et les étiquettes. */
+    .items-table th:nth-child(1) { width: 4% !important; }
+    .items-table th:nth-child(2) { width: 6% !important; }
+    .items-table th:nth-child(3) { width: 20% !important; }
+    .items-table th:nth-child(4) { width: 5% !important; }
+    .items-table th:nth-child(5) { width: 9% !important; }
+    .items-table th:nth-child(6) { width: 10% !important; }
+    .items-table th:nth-child(7) { width: 11% !important; }
+    .items-table th:nth-child(8) { width: 6% !important; }
+    .items-table th:nth-child(9) { width: 10% !important; }
+    .items-table th:nth-child(10) { width: 19% !important; }
     /* Les deux dernieres colonnes portent les totaux. Leurs libelles se
        coupaient en « MONT ANT TOTA L », puis debordaient de leur case : le
        libelle passe en petit, le montant garde sa taille. */

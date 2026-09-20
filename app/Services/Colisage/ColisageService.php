@@ -274,6 +274,8 @@ final class ColisageService
                             'nbre_colis' => (int) ($m['nbre_colis'] ?? 1),
                             'qte_emballage' => $qteEmb,
                             'prix_emballage' => (float) ($m['prix_emballage'] ?? 0.0),
+                            'nbre_etiquettes' => (int) ($m['nbre_etiquettes'] ?? 0),
+                            'prix_etiquette' => (float) ($m['prix_etiquette'] ?? 0.0),
                             'poids_unitaire' => (float) ($m['poids_unitaire'] ?? 0.0),
                             'prix_kg' => (float) ($m['prix_kg'] ?? 0.0),
                         ]);
@@ -413,6 +415,8 @@ final class ColisageService
                         'nbre_colis' => (int) ($m['nbre_colis'] ?? 1),
                         'qte_emballage' => $qteEmb,
                         'prix_emballage' => (float) ($m['prix_emballage'] ?? 0.0),
+                        'nbre_etiquettes' => (int) ($m['nbre_etiquettes'] ?? 0),
+                        'prix_etiquette' => (float) ($m['prix_etiquette'] ?? 0.0),
                         'poids_unitaire' => (float) ($m['poids_unitaire'] ?? 0.0),
                         'prix_kg' => (float) ($m['prix_kg'] ?? 0.0),
                     ]);

@@ -186,21 +186,24 @@ final class ColisageFacture
         string $devise,
         ?Facture $facture
     ): string {
+        // Meme ordre que l'ecran d'enregistrement : l'agent et le client lisent
+        // la meme ligne, dans le meme sens.
         $entetes = '<thead><tr>'
-            . '<th style="width: 5%; text-align: center;">N°</th>'
-            . '<th style="width: 7%; text-align: center;">Nbre colis</th>'
+            . '<th style="width: 4%; text-align: center;">N°</th>'
+            . '<th style="width: 6%; text-align: center;">Nbre colis</th>'
             . '<th>Description</th>'
-            . '<th style="width: 12%;">Emballage</th>'
-            . '<th style="width: 7%; text-align: center;">Qté emb.</th>'
-            . '<th style="width: 11%; text-align: right;">Prix emb.</th>'
-            . '<th style="width: 11%; text-align: right;">Poids (kg)</th>'
+            . '<th style="width: 6%; text-align: center;">Qté</th>'
+            . '<th style="width: 10%; text-align: right;">Poids (kg)</th>'
             . '<th style="width: 11%; text-align: right;">Prix / kg</th>'
+            . '<th style="width: 11%;">Type d\'emballage</th>'
+            . '<th style="width: 7%; text-align: center;">Nbre emb.</th>'
+            . '<th style="width: 11%; text-align: right;">Prix emb.</th>'
             . '<th style="width: 13%; text-align: right;">Total</th>'
             . '</tr></thead>';
 
         $corps = '<tbody>';
         if ($marchandises === []) {
-            $corps .= '<tr><td colspan="9" style="text-align: center; padding: 15px; color: #64748b;">'
+            $corps .= '<tr><td colspan="10" style="text-align: center; padding: 15px; color: #64748b;">'
                 . 'Aucune marchandise répertoriée.</td></tr>';
         } else {
             foreach (array_values($marchandises) as $index => $ligne) {
@@ -210,14 +213,15 @@ final class ColisageFacture
                     . '<td style="text-align: center; font-weight: 600;">' . ($index + 1) . '</td>'
                     . '<td style="text-align: center;">' . View::e((string) ($ligne['nbre_colis'] ?? 1)) . '</td>'
                     . '<td><strong>' . View::e((string) $ligne['description']) . '</strong></td>'
-                    . '<td>' . View::e((string) ($ligne['emballage'] ?? '—')) . '</td>'
-                    . '<td style="text-align: center;">' . View::e((string) ($ligne['qte_emballage'] ?? 1)) . '</td>'
-                    . '<td style="text-align: right;">'
-                    . ($prixEmballage > 0 ? View::e(self::montant($prixEmballage, $devise)) : '—') . '</td>'
+                    . '<td style="text-align: center;">' . View::e((string) ($ligne['quantite'] ?? 1)) . '</td>'
                     . '<td style="text-align: right;">'
                     . View::e(number_format((float) $ligne['poids_unitaire'], 2, ',', ' ')) . '</td>'
                     . '<td style="text-align: right;">'
                     . View::e(self::montant((float) ($ligne['prix_kg'] ?? 0), $devise)) . '</td>'
+                    . '<td>' . View::e((string) ($ligne['emballage'] ?? '—')) . '</td>'
+                    . '<td style="text-align: center;">' . View::e((string) ($ligne['qte_emballage'] ?? 1)) . '</td>'
+                    . '<td style="text-align: right;">'
+                    . ($prixEmballage > 0 ? View::e(self::montant($prixEmballage, $devise)) : '—') . '</td>'
                     . '<td style="text-align: right; font-weight: 600;">'
                     . View::e(self::montant((float) ($ligne['total_ligne'] ?? 0), $devise)) . '</td>'
                     . '</tr>';
@@ -225,8 +229,18 @@ final class ColisageFacture
         }
         $corps .= '</tbody>';
 
+        /*
+         * Les etiquettes sont deja comprises dans le total de chaque ligne.
+         * Elles reapparaissent en bas pour que le client voie ce qu'il a
+         * achete, sans etre ajoutees une seconde fois au montant.
+         */
+        $etiquettes = 0.0;
+        foreach ($marchandises as $ligne) {
+            $etiquettes += (int) ($ligne['nbre_etiquettes'] ?? 0) * (float) ($ligne['prix_etiquette'] ?? 0);
+        }
+
         return '<table class="items-table">' . $entetes . $corps
-            . self::piedMontants($sousTotal, $assurance, $montantTotal, $montantEur, $devise, $facture)
+            . self::piedMontants($sousTotal, $assurance, $montantTotal, $montantEur, $devise, $facture, round($etiquettes, 2))
             . '</table>';
     }
 
@@ -236,10 +250,16 @@ final class ColisageFacture
         float $montantTotal,
         float $montantEur,
         string $devise,
-        ?Facture $facture
+        ?Facture $facture,
+        float $etiquettes = 0.0
     ): string {
         $html = '<tfoot>';
         $html .= self::ligneMontant('SOUS-TOTAL', self::montant($sousTotal, $devise));
+
+        // Vente d'etiquettes : deja comptee dans les lignes, rappelee ici.
+        if ($etiquettes > 0) {
+            $html .= self::ligneMontant('DONT ÉTIQUETTES', self::montant($etiquettes, $devise));
+        }
 
         /*
          * L'ecart entre le total et la somme des lignes, quand il existe, est
@@ -253,7 +273,7 @@ final class ColisageFacture
         }
 
         $html .= '<tr class="total-row">'
-            . '<td colspan="7" style="border: none;"></td>'
+            . '<td colspan="8" style="border: none;"></td>'
             . '<td style="text-align: right; font-size: 11px; font-weight: 800; background: #1e3a5f;'
             . ' color: #ffffff; border: 1px solid #1e3a5f;">MONTANT TOTAL</td>'
             . '<td style="text-align: right; font-weight: 900; font-size: 13px; background: #e0f2fe;'
@@ -295,7 +315,7 @@ final class ColisageFacture
             . '; color: ' . $couleur . '; font-weight: 700;';
 
         return '<tr>'
-            . '<td colspan="7" style="border: none;"></td>'
+            . '<td colspan="8" style="border: none;"></td>'
             . '<td style="' . $cellule . ' font-size: 10px;">' . View::e($libelle) . '</td>'
             . '<td style="' . $cellule . ' font-size: 11px;">' . View::e($valeur) . '</td>'
             . '</tr>';
@@ -311,7 +331,7 @@ final class ColisageFacture
         };
 
         return '<tr>'
-            . '<td colspan="7" style="border: none;"></td>'
+            . '<td colspan="8" style="border: none;"></td>'
             . '<td style="text-align: right; border: 1px solid #cbd5e1; background: #f8fafc;'
             . ' font-weight: 700; font-size: 10px;">STATUT PAIEMENT</td>'
             . '<td style="text-align: right; border: 1px solid #cbd5e1; background: #f8fafc;'

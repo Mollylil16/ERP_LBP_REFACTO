@@ -2168,6 +2168,17 @@ class MigrationRunner
 
         $this->addColumnIfMissing('lbp_marchandises', 'prix_emballage', "DECIMAL(10,2) NOT NULL DEFAULT 0.00");
 
+        /*
+         * Étiquettes vendues avec la marchandise (20/09/2026).
+         *
+         * Les étiquettes produit — attiéké, vêtement, chaussure — sont vendues
+         * par LBP au guichet. Leur prix est saisi par l'agent, pas repris d'un
+         * catalogue : il dépend de ce que le client demande. Sans ces deux
+         * colonnes, la vente n'apparaissait sur aucune facture.
+         */
+        $this->addColumnIfMissing('lbp_marchandises', 'nbre_etiquettes', "INT UNSIGNED NOT NULL DEFAULT 0");
+        $this->addColumnIfMissing('lbp_marchandises', 'prix_etiquette', "DECIMAL(10,2) NOT NULL DEFAULT 0.00");
+
         $this->pdo->exec("
             CREATE TABLE IF NOT EXISTS lbp_tracking_gps (
                 id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,

@@ -200,8 +200,11 @@ final class ColisageAutresController extends ColisageBaseController
             $emballage = trim((string) ($_POST['m_emballage'][$idx] ?? ''));
             $nbreColis = (int) ($_POST['m_nbre_colis'][$idx] ?? 1);
             $hasEmballageSpecific = ($emballage !== '' && $emballage !== 'Propre emballage client / Aucun') || ((float)($_POST['m_prix_emballage'][$idx] ?? 0.0) > 0);
+            // Une ligne qui ne porte que des étiquettes vendues est une vente :
+            // sans ce contrôle, elle était jetée avec les lignes vides.
+            $aDesEtiquettes = (int) ($_POST['m_nbre_etiquettes'][$idx] ?? 0) > 0;
 
-            if (!empty($prodIds) || $customName !== '' || $weight > 0 || $prixKg > 0 || $hasEmballageSpecific) {
+            if (!empty($prodIds) || $customName !== '' || $weight > 0 || $prixKg > 0 || $hasEmballageSpecific || $aDesEtiquettes) {
                 $marchandises[] = [
                     'product_id' => !empty($prodIds) ? (int) reset($prodIds) : null,
                     'product_ids' => $prodIds,
@@ -212,6 +215,8 @@ final class ColisageAutresController extends ColisageBaseController
                     'emballage' => $emballage !== '' ? $emballage : null,
                     'qte_emballage' => (int) ($_POST['m_qte_emballage'][$idx] ?? 1),
                     'prix_emballage' => (float) ($_POST['m_prix_emballage'][$idx] ?? 0.0),
+                    'nbre_etiquettes' => (int) ($_POST['m_nbre_etiquettes'][$idx] ?? 0),
+                    'prix_etiquette' => (float) ($_POST['m_prix_etiquette'][$idx] ?? 0.0),
                     'poids_unitaire' => $weight,
                     'prix_kg' => $prixKg,
                 ];

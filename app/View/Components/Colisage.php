@@ -38,6 +38,22 @@ final class Colisage
         return $html;
     }
 
+    /**
+     * Cellule « Nbre étiquette » : le nombre, et dessous son prix de vente.
+     *
+     * Les étiquettes — attiéké, vêtement, chaussure — sont vendues par LBP au
+     * moment de l'enregistrement. Le prix est saisi par l'agent et non repris
+     * d'un catalogue : il change selon ce que le client demande, et il doit
+     * apparaître sur la facture, sinon la vente n'est encaissée nulle part.
+     */
+    public static function etiquetteCellHtml(string $nombre = '0', string $prix = ''): string
+    {
+        return Form::rawInput('m_nbre_etiquettes[]', $nombre, ['type' => 'number', 'min' => '0'])
+            . '<div style="margin-top:0.4rem;">'
+            . Form::rawInput('m_prix_etiquette[]', $prix, ['type' => 'number', 'step' => '0.01', 'min' => '0', 'placeholder' => 'Prix étiq.'])
+            . '</div>';
+    }
+
     public static function dashboardPage(\App\View\Pages\Colisage\DashboardPage $page, array $dashboardModule): string
     {
         $header = \App\View\Components\Dashboard::header(
@@ -414,10 +430,13 @@ final class Colisage
             . '            const priceInput = row.querySelector(\'input[name="m_prix_kg[]"]\');'
             . '            const totalInput = row.querySelector(\'.ligne-total\');'
             . '            if (qtyInput && weightInput && priceInput && totalInput) {'
+            . '                const champ = (nom) => { const el = row.querySelector(\'[name="\' + nom + \'"]\'); return el ? (parseFloat(el.value) || 0) : 0; };'
             . '                const qty = parseInt(qtyInput.value) || 0;'
             . '                const weight = parseFloat(weightInput.value) || 0;'
             . '                const price = parseFloat(priceInput.value) || 0;'
-            . '                const total = weight * price;'
+            // Emballages et étiquettes sont vendus avec la ligne : ils entrent
+            // dans son total, la quantité de produits n'y entre pas.
+            . '                const total = (weight * price) + (champ("m_qte_emballage[]") * champ("m_prix_emballage[]")) + (champ("m_nbre_etiquettes[]") * champ("m_prix_etiquette[]"));'
             . '                subtotal += total;'
             . '                totalWeight += weight;'
             . '                totalCount += qty;'
@@ -1533,13 +1552,15 @@ final class Colisage
             . '<thead><tr style="background:#1e3a5f; color:#fff;">'
             . '<th style="width:3%; min-width:30px;">N°</th>'
             . '<th style="width:6%; min-width:70px;">Nbre Colis</th>'
-            . '<th style="width:32%; min-width:280px;">Description</th>'
-            . '<th style="width:11%; min-width:100px;">Emballage</th>'
-            . '<th style="width:6%; min-width:65px;">Qté Emb.</th>'
-            . '<th style="width:9%; min-width:90px;">Prix Emb.</th>'
-            . '<th style="width:10%; min-width:95px;">Poids (kg)</th>'
-            . '<th style="width:10%; min-width:95px;">Prix / Kg</th>'
-            . '<th style="width:13%; min-width:110px;">Total</th>'
+            . '<th style="width:24%; min-width:240px;">Description</th>'
+            . '<th style="width:5%; min-width:60px;">Qté</th>'
+            . '<th style="width:8%; min-width:85px;">Poids (kg)</th>'
+            . '<th style="width:8%; min-width:85px;">Prix / Kg</th>'
+            . '<th style="width:11%; min-width:110px;">Type d\'emballage</th>'
+            . '<th style="width:6%; min-width:65px;">Nbre emb.</th>'
+            . '<th style="width:8%; min-width:85px;">Prix emb.</th>'
+            . '<th style="width:9%; min-width:105px;">Nbre étiquette</th>'
+            . '<th style="width:12%; min-width:110px;">Total</th>'
             . '</tr></thead>'
             . '<tbody id="marchandises-tbody">';
 
@@ -1564,19 +1585,21 @@ final class Colisage
                 . $customPriceInput
                 . '</div>'
                 . '</td>'
+                . '<td>' . Form::rawInput('m_qty[]', '1', ['type' => 'number', 'min' => '1']) . '</td>'
+                . '<td>' . Form::rawInput('m_weight[]', '0.00', ['type' => 'number', 'step' => '0.01', 'min' => '0']) . '</td>'
+                . '<td>' . Form::rawInput('m_prix_kg[]', '0.00', ['type' => 'number', 'step' => '0.01', 'min' => '0']) . '</td>'
                 . '<td>' . self::emballageSelectHtml('m_emballage[]', '') . '</td>'
                 . '<td>' . Form::rawInput('m_qte_emballage[]', '1', ['type' => 'number', 'min' => '1']) . '</td>'
                 . '<td>' . Form::rawInput('m_prix_emballage[]', '0.00', ['type' => 'number', 'step' => '0.01', 'min' => '0', 'placeholder' => 'Prix emb.']) . '</td>'
-                . '<td>' . Form::rawInput('m_weight[]', '0.00', ['type' => 'number', 'step' => '0.01', 'min' => '0']) . '</td>'
-                . '<td>' . Form::rawInput('m_prix_kg[]', '0.00', ['type' => 'number', 'step' => '0.01', 'min' => '0']) . '</td>'
+                . '<td>' . self::etiquetteCellHtml() . '</td>'
                 . '<td style="background:rgba(0,0,0,0.02); text-align:right; font-weight:600;"><span class="ligne-total">0 FCFA</span></td>'
                 . '</tr>';
         }
 
         $marchandisesHtml .= '</tbody>'
             . '<tfoot>'
-            . '<tr><td colspan="8" style="text-align:right; font-weight:600;">SOUS-TOTAL</td><td style="text-align:right; font-weight:600;" id="sous_total">0 FCFA</td></tr>'
-            . '<tr style="background:#1e3a5f; color:#fff;"><td colspan="8" style="background:#1e3a5f !important; text-align:right; font-weight:700; font-size:1.1rem; color:#ffffff !important;">MONTANT TOTAL</td>'
+            . '<tr><td colspan="10" style="text-align:right; font-weight:600;">SOUS-TOTAL</td><td style="text-align:right; font-weight:600;" id="sous_total">0 FCFA</td></tr>'
+            . '<tr style="background:#1e3a5f; color:#fff;"><td colspan="10" style="background:#1e3a5f !important; text-align:right; font-weight:700; font-size:1.1rem; color:#ffffff !important;">MONTANT TOTAL</td>'
             . '<td style="background:#1e3a5f !important; text-align:right; font-weight:700; font-size:1.1rem; color:#ffffff !important;"><span id="montant_total_fcfa" style="color:#ffffff !important;">0 FCFA</span><br><small id="montant_total_eur" style="color:rgba(255,255,255,0.85) !important;">≈ 0.00 €</small></td></tr>'
             . '</tfoot></table></div>'
             . '<button type="button" id="add-row-btn" class="finea-button finea-button--secondary" style="margin-top: 1rem;">+ Ajouter une ligne</button>'
@@ -1638,12 +1661,17 @@ final class Colisage
             . '        let grandTotal = 0;'
             . '        const rows = tbody.querySelectorAll("tr");'
             . '        rows.forEach(row => {'
-            . '            const nbreColis = parseFloat(row.querySelector(\'input[name="m_nbre_colis[]"]\').value) || 0;'
-            . '            const weight = parseFloat(row.querySelector(\'input[name="m_weight[]"]\').value) || 0;'
-            . '            const prixKg = parseFloat(row.querySelector(\'input[name="m_prix_kg[]"]\').value) || 0;'
-            . '            const qteEmb = parseFloat(row.querySelector(\'input[name="m_qte_emballage[]"]\').value) || 0;'
-            . '            const prixEmb = parseFloat(row.querySelector(\'input[name="m_prix_emballage[]"]\').value) || 0;'
-            . '            const lineTotal = (weight * prixKg) + (qteEmb * prixEmb);'
+            // Une ligne ancienne peut ne pas porter tous les champs : on lit ce
+            // qui existe, sans casser le calcul des autres lignes.
+            . '            const champ = (nom) => { const el = row.querySelector(\'[name="\' + nom + \'"]\'); return el ? (parseFloat(el.value) || 0) : 0; };'
+            . '            const weight = champ("m_weight[]");'
+            . '            const prixKg = champ("m_prix_kg[]");'
+            . '            const qteEmb = champ("m_qte_emballage[]");'
+            . '            const prixEmb = champ("m_prix_emballage[]");'
+            . '            const nbEtiq = champ("m_nbre_etiquettes[]");'
+            . '            const prixEtiq = champ("m_prix_etiquette[]");'
+            // La quantité décrit le contenu (100 habits) : elle ne se facture pas.
+            . '            const lineTotal = (weight * prixKg) + (qteEmb * prixEmb) + (nbEtiq * prixEtiq);'
             . '            grandTotal += lineTotal;'
             . '            const totalSpan = row.querySelector(".ligne-total");'
             . '            if (totalSpan) {'
@@ -1824,11 +1852,13 @@ final class Colisage
             . '                + \'<input class="finea-input" name="m_custom_name[]" placeholder="Ou saisir un nom...">\''
             . '                + \'<input class="finea-input" name="m_custom_price[]" type="number" step="0.01" placeholder="Prix unit.">\''
             . '                + \'</td>\''
+            . '                + \'<td><input class="finea-input" type="number" name="m_qty[]" value="1" min="1"></td>\''
+            . '                + \'<td><input class="finea-input" type="number" name="m_weight[]" value="0.00" step="0.01" min="0"></td>\''
+            . '                + \'<td><input class="finea-input" type="number" name="m_prix_kg[]" value="0.00" step="0.01" min="0"></td>\''
             . '                + \'<td>\' + ' . json_encode(self::emballageSelectHtml('m_emballage[]', '')) . ' + \'</td>\''
             . '                + \'<td><input class="finea-input" type="number" name="m_qte_emballage[]" value="1" min="1"></td>\''
             . '                + \'<td><input class="finea-input" type="number" name="m_prix_emballage[]" value="0.00" step="0.01" min="0" placeholder="Prix emb."></td>\''
-            . '                + \'<td><input class="finea-input" type="number" name="m_weight[]" value="0.00" step="0.01" min="0"></td>\''
-            . '                + \'<td><input class="finea-input" type="number" name="m_prix_kg[]" value="0.00" step="0.01" min="0"></td>\''
+            . '                + \'<td>\' + ' . json_encode(self::etiquetteCellHtml()) . ' + \'</td>\''
             . '                + \'<td style="background:rgba(0,0,0,0.02); text-align:right; font-weight:600;"><span class="ligne-total">0 FCFA</span></td>\';'
             . '            tbody.appendChild(tr);'
             . '            if (window.FineaComponents && typeof window.FineaComponents.init === "function") {'
@@ -2053,17 +2083,22 @@ final class Colisage
             $prixEmb = $m['prix_emballage'] ?? 0.0;
             $poids = $m['poids_unitaire'] ?? 0.0;
             $prixKg = $m['prix_kg'] ?? 0.0;
+            $quantite = $m['quantite'] ?? 1;
+            $nbEtiquettes = $m['nbre_etiquettes'] ?? 0;
+            $prixEtiquette = $m['prix_etiquette'] ?? 0.0;
             $totalLigne = $m['total_ligne'] ?? 0.0;
 
             $rowsHtml .= '<tr>'
                 . '<td style="text-align:center; font-weight:600;">' . ($i + 1) . '</td>'
                 . '<td>' . Form::rawInput('m_nbre_colis[]', (string)$nbreColis, ['type' => 'number', 'min' => '1']) . '</td>'
                 . '<td>' . Form::rawInput('m_custom_name[]', $desc, ['placeholder' => 'Description de la marchandise...']) . '</td>'
+                . '<td>' . Form::rawInput('m_qty[]', (string)$quantite, ['type' => 'number', 'min' => '1']) . '</td>'
+                . '<td>' . Form::rawInput('m_weight[]', (string)$poids, ['type' => 'number', 'step' => '0.01', 'min' => '0']) . '</td>'
+                . '<td>' . Form::rawInput('m_prix_kg[]', (string)$prixKg, ['type' => 'number', 'step' => '0.01', 'min' => '0']) . '</td>'
                 . '<td>' . self::emballageSelectHtml('m_emballage[]', $emballage) . '</td>'
                 . '<td>' . Form::rawInput('m_qte_emballage[]', (string)$qteEmb, ['type' => 'number', 'min' => '1']) . '</td>'
                 . '<td>' . Form::rawInput('m_prix_emballage[]', (string)$prixEmb, ['type' => 'number', 'step' => '0.01', 'min' => '0']) . '</td>'
-                . '<td>' . Form::rawInput('m_weight[]', (string)$poids, ['type' => 'number', 'step' => '0.01', 'min' => '0']) . '</td>'
-                . '<td>' . Form::rawInput('m_prix_kg[]', (string)$prixKg, ['type' => 'number', 'step' => '0.01', 'min' => '0']) . '</td>'
+                . '<td>' . self::etiquetteCellHtml((string)$nbEtiquettes, (string)$prixEtiquette) . '</td>'
                 . '<td style="background:rgba(0,0,0,0.02); text-align:right; font-weight:600;"><span class="ligne-total">' . number_format((float)$totalLigne, 0, ',', ' ') . ' FCFA</span></td>'
                 . '</tr>';
         }
@@ -2071,7 +2106,8 @@ final class Colisage
         $tableHtml = '<div class="finea-table-wrapper" style="margin-top:1rem;">'
             . '<table class="finea-table">'
             . '<thead><tr style="background:#1e3a5f; color:#fff;">'
-            . '<th>N°</th><th>Nbre Colis</th><th>Description</th><th>Emballage</th><th>Qté Emb.</th><th>Prix Emb.</th><th>Poids (kg)</th><th>Prix / Kg</th><th>Total</th>'
+            . '<th>N°</th><th>Nbre Colis</th><th>Description</th><th>Qté</th><th>Poids (kg)</th><th>Prix / Kg</th>'
+            . '<th>Type d\'emballage</th><th>Nbre emb.</th><th>Prix emb.</th><th>Nbre étiquette</th><th>Total</th>'
             . '</tr></thead>'
             . '<tbody>' . $rowsHtml . '</tbody>'
             . '</table></div>';
@@ -3236,10 +3272,13 @@ final class Colisage
                 . Form::rawInput('m_custom_price[]', '', ['type' => 'number', 'step' => '0.01', 'placeholder' => 'Prix unit.'])
                 . '</div>'
                 . '</td>'
-                . '<td>' . self::emballageSelectHtml('m_emballage[]', '') . '</td>'
-                . '<td>' . Form::rawInput('m_qte_emballage[]', '1', ['type' => 'number', 'min' => '1']) . '</td>'
+                . '<td>' . Form::rawInput('m_qty[]', '1', ['type' => 'number', 'min' => '1']) . '</td>'
                 . '<td>' . Form::rawInput('m_weight[]', '0.00', ['type' => 'number', 'step' => '0.01', 'min' => '0']) . '</td>'
                 . '<td>' . Form::rawInput('m_prix_kg[]', '0.00', ['type' => 'number', 'step' => '0.01', 'min' => '0']) . '</td>'
+                . '<td>' . self::emballageSelectHtml('m_emballage[]', '') . '</td>'
+                . '<td>' . Form::rawInput('m_qte_emballage[]', '1', ['type' => 'number', 'min' => '1']) . '</td>'
+                . '<td>' . Form::rawInput('m_prix_emballage[]', '0.00', ['type' => 'number', 'step' => '0.01', 'min' => '0', 'placeholder' => 'Prix emb.']) . '</td>'
+                . '<td>' . self::etiquetteCellHtml() . '</td>'
                 . '<td style="background:rgba(0,0,0,0.02); text-align:right; font-weight:600;"><span class="ligne-total">0 FCFA</span></td>'
                 . '</tr>';
         }
@@ -3247,18 +3286,21 @@ final class Colisage
         return '<div class="finea-table-wrapper"><table class="finea-table" style="table-layout: auto;">'
             . '<thead><tr style="background:#1e3a5f; color:#fff;">'
             . '<th style="width:3%; min-width:30px;">N°</th>'
-            . '<th style="width:7%; min-width:80px;">Nbre Colis</th>'
-            . '<th style="width:35%; min-width:320px;">Description</th>'
-            . '<th style="width:12%; min-width:110px;">Emballage</th>'
-            . '<th style="width:7%; min-width:80px;">Qté Emb.</th>'
-            . '<th style="width:11%; min-width:105px;">Poids (kg)</th>'
-            . '<th style="width:11%; min-width:110px;">Prix / Kg</th>'
-            . '<th style="width:14%; min-width:120px;">Total</th>'
+            . '<th style="width:6%; min-width:70px;">Nbre Colis</th>'
+            . '<th style="width:24%; min-width:240px;">Description</th>'
+            . '<th style="width:5%; min-width:60px;">Qté</th>'
+            . '<th style="width:8%; min-width:85px;">Poids (kg)</th>'
+            . '<th style="width:8%; min-width:85px;">Prix / Kg</th>'
+            . '<th style="width:11%; min-width:110px;">Type d\'emballage</th>'
+            . '<th style="width:6%; min-width:65px;">Nbre emb.</th>'
+            . '<th style="width:8%; min-width:85px;">Prix emb.</th>'
+            . '<th style="width:9%; min-width:105px;">Nbre étiquette</th>'
+            . '<th style="width:12%; min-width:120px;">Total</th>'
             . '</tr></thead>'
             . '<tbody>' . $rows . '</tbody>'
             . '<tfoot>'
-            . '<tr><td colspan="7" style="text-align:right; font-weight:600;">SOUS-TOTAL</td><td style="text-align:right; font-weight:600;" id="sous_total">0 FCFA</td></tr>'
-            . '<tr style="background:#1e3a5f; color:#fff;"><td colspan="7" style="background:#1e3a5f !important; text-align:right; font-weight:700; font-size:1.1rem; color:#ffffff !important;">MONTANT TOTAL</td>'
+            . '<tr><td colspan="10" style="text-align:right; font-weight:600;">SOUS-TOTAL</td><td style="text-align:right; font-weight:600;" id="sous_total">0 FCFA</td></tr>'
+            . '<tr style="background:#1e3a5f; color:#fff;"><td colspan="10" style="background:#1e3a5f !important; text-align:right; font-weight:700; font-size:1.1rem; color:#ffffff !important;">MONTANT TOTAL</td>'
             . '<td style="background:#1e3a5f !important; text-align:right; font-weight:700; font-size:1.1rem; color:#ffffff !important;"><span id="montant_total_fcfa" style="color:#ffffff !important;">0 FCFA</span><br><small id="montant_total_eur" style="color:rgba(255,255,255,0.85) !important;">≈ 0.00 €</small></td></tr>'
             . '</tfoot></table></div>';
     }
