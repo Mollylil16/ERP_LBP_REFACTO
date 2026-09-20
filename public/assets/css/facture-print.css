@@ -327,6 +327,151 @@ body {
     background-color: #ea580c;
 }
 
+/* ------------------------------------------------------------------
+   Téléphone
+   La facture est aussi envoyée au client, qui l'ouvre sur son
+   téléphone. Sans ces règles, la feuille gardait sa largeur de bureau :
+   les deux encarts posés en absolu sur l'image d'en-tête débordaient, le
+   tableau des marchandises poussait la page en largeur, et le client
+   devait pincer pour lire son propre montant.
+   ------------------------------------------------------------------ */
+@media screen and (max-width: 720px) {
+    body {
+        padding: 8px;
+        background-color: #ffffff;
+        font-size: 12px;
+    }
+    .facture-container {
+        padding: 12px;
+        border: none;
+        border-radius: 0;
+        box-shadow: none;
+        max-width: 100%;
+    }
+
+    /* Les encarts descendent sous la bannière au lieu de la recouvrir. */
+    .facture-header {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+    }
+    .header-overlay-center,
+    .header-overlay-right {
+        position: static;
+        transform: none;
+    }
+    .header-overlay-center {
+        width: 100%;
+        box-sizing: border-box;
+    }
+    .facture-colisage-title {
+        white-space: normal;
+    }
+
+    .banner-blue {
+        font-size: 14px;
+        padding: 8px;
+        letter-spacing: 0.5px;
+    }
+
+    /* Une information par ligne : le libellé au-dessus de sa valeur. */
+    .grid-table,
+    .grid-table tbody,
+    .grid-table tr,
+    .grid-table td {
+        display: block;
+        width: 100% !important;
+    }
+    .grid-table td {
+        box-sizing: border-box;
+        border-right: 0 !important;
+    }
+    .label {
+        display: block;
+        width: auto;
+        margin-bottom: 2px;
+    }
+
+    /* Le tableau tient dans la largeur au lieu de défiler : faire défiler
+       cachait la colonne du montant total, la seule que le client cherche. */
+    .items-table {
+        table-layout: fixed;
+        width: 100%;
+        font-size: 8.5px;
+    }
+    .items-table th,
+    .items-table td {
+        padding: 4px 3px;
+        word-break: normal;
+        overflow-wrap: break-word;
+    }
+    .items-table th {
+        font-size: 7.5px;
+    }
+    /* Largeurs données à la main. Les en-têtes portent la leur en style
+       inline, prévue pour une page A4 : sur un téléphone, la colonne du
+       montant total devenait si étroite que son libellé se coupait en
+       « MONT ANT TOTA L ». Seul !important passe devant un style inline. */
+    .items-table th:nth-child(1) { width: 5% !important; }
+    .items-table th:nth-child(2) { width: 7% !important; }
+    .items-table th:nth-child(3) { width: 18% !important; }
+    .items-table th:nth-child(4) { width: 12% !important; }
+    .items-table th:nth-child(5) { width: 6% !important; }
+    .items-table th:nth-child(6) { width: 9% !important; }
+    .items-table th:nth-child(7) { width: 8% !important; }
+    .items-table th:nth-child(8) { width: 15% !important; }
+    .items-table th:nth-child(9) { width: 20% !important; }
+    /* Les deux dernieres colonnes portent les totaux. Leurs libelles se
+       coupaient en « MONT ANT TOTA L », puis debordaient de leur case : le
+       libelle passe en petit, le montant garde sa taille. */
+    .items-table tfoot td {
+        word-break: normal;
+        overflow-wrap: break-word;
+    }
+    .items-table tfoot td:nth-last-child(2) {
+        font-size: 8.5px !important;
+    }
+
+    .payment-row,
+    .signatures-row,
+    .meta-footer-row {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+    }
+    .payment-qr-card {
+        width: auto;
+        align-self: center;
+    }
+    .signature-box {
+        height: auto;
+        min-height: 56px;
+    }
+
+    .agencies-grid-table td {
+        display: block;
+        width: 100% !important;
+        text-align: left !important;
+        padding: 2px 0;
+    }
+
+    /* Cible tactile : un bouton de 44 px se vise au doigt. */
+    .btn-print {
+        width: 100%;
+        justify-content: center;
+        padding: 12px;
+        font-size: 15px;
+    }
+}
+
+/* ------------------------------------------------------------------
+   Impression
+   La facture tenait de quelques millimètres de trop sur une page A4 :
+   le bandeau de pied partait seul sur une deuxième feuille, et en recto
+   verso il se retrouvait au dos de la facture. Les hauteurs ci-dessous
+   récupèrent ce qui manquait, et aucun bloc ne se coupe plus en deux.
+   ------------------------------------------------------------------ */
 @media print {
     body {
         padding: 0;
@@ -341,8 +486,83 @@ body {
     .btn-print-container {
         display: none;
     }
+
+    /* Les deux bandeaux sont des images larges : sans plafond, leur
+       hauteur suit la largeur de la page et mange le bas de la feuille. */
+    .header-bg-img {
+        max-height: 24mm;
+        object-fit: contain;
+    }
+    .footer-img {
+        max-height: 14mm;
+        object-fit: contain;
+        margin-top: 3px;
+        page-break-before: avoid;
+    }
+
+    .info-bar,
+    .agency-service-table,
+    .colis-count-bar {
+        margin-bottom: 8px;
+    }
+    .banner-blue {
+        padding: 7px;
+        font-size: 15px;
+    }
+    .grid-table {
+        margin-bottom: 8px;
+    }
+    .grid-table td {
+        padding: 5px 10px;
+    }
+    .items-table {
+        margin-bottom: 8px;
+    }
+    .items-table th,
+    .items-table td {
+        padding: 5px 8px;
+    }
+    .payment-signature-section {
+        margin-top: 6px;
+        margin-bottom: 8px;
+    }
+    .signatures-row {
+        margin-bottom: 8px;
+    }
+    .signature-box {
+        height: 46px;
+    }
+    .qr-code-img {
+        width: 46px;
+        height: 46px;
+    }
+    .payment-qr-img {
+        width: 56px;
+        height: 56px;
+    }
+    .footer-address {
+        margin-top: 6px;
+    }
+
+    /* Ce qui se lit d'un bloc ne doit jamais être coupé par un saut de
+       page : une signature ou un pied à cheval sur deux feuilles. */
+    .items-table tr,
+    .payment-row,
+    .signatures-row,
+    .signature-box,
+    .footer-address,
+    .agencies-grid-table,
+    .meta-footer-row {
+        page-break-inside: avoid;
+    }
+
+    /* Facture longue : l'en-tête du tableau se répète sur chaque page. */
+    .items-table thead {
+        display: table-header-group;
+    }
+
     @page {
         size: A4;
-        margin: 8mm;
+        margin: 7mm;
     }
 }
