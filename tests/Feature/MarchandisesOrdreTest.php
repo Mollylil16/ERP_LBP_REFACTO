@@ -145,6 +145,22 @@ final class MarchandisesOrdreTest extends TestCase
         self::assertStringNotContainsString('DONT ÉTIQUETTES', $html);
     }
 
+    /**
+     * Une case de type number réserve une vingtaine de pixels à ses petites
+     * flèches. Sur « Qté », large de 60 px, il ne restait rien pour le chiffre :
+     * l'agent tapait sans rien voir. Les flèches sont retirées et les colonnes
+     * numériques ont une largeur minimale qui tient un montant.
+     */
+    public function test_les_cases_numeriques_laissent_voir_ce_qu_on_tape(): void
+    {
+        foreach ([Colisage::createPage([], [], []), Colisage::marchandisesInputTable([])] as $html) {
+            self::assertStringContainsString('lbp-marchandises', $html, 'Le tableau doit porter sa classe.');
+            self::assertStringContainsString('-webkit-appearance:none', $html, 'Les flèches des cases number mangent la place.');
+            self::assertStringContainsString('appearance:textfield', $html);
+            self::assertStringNotContainsString('min-width:60px;">Qté', $html, 'Colonne Qté trop étroite.');
+        }
+    }
+
     /** @return array<string, mixed> */
     private function colis(): array
     {

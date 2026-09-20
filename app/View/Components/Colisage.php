@@ -39,6 +39,31 @@ final class Colisage
     }
 
     /**
+     * Feuille du tableau des marchandises.
+     *
+     * Une case de type number réserve une bonne vingtaine de pixels à ses
+     * petites flèches. Sur une colonne étroite comme « Qté », il ne restait
+     * plus rien pour le chiffre : l'agent tapait sans rien voir. Les flèches
+     * disparaissent, la case respire, et la saisie au clavier ne change pas.
+     */
+    public static function marchandisesStyles(): string
+    {
+        return '<style>'
+            . '.lbp-marchandises input[type="number"]{-moz-appearance:textfield;appearance:textfield}'
+            . '.lbp-marchandises input[type="number"]::-webkit-outer-spin-button,'
+            . '.lbp-marchandises input[type="number"]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}'
+            . '.lbp-marchandises td{padding-left:6px;padding-right:6px;vertical-align:top}'
+            . '.lbp-marchandises th{padding-left:6px;padding-right:6px}'
+            . '.lbp-marchandises input,.lbp-marchandises select{width:100%;min-width:0;box-sizing:border-box;padding-left:8px;padding-right:8px}'
+            // Le nom libre et son prix restent côte à côte tant qu'ils tiennent,
+            // et passent l'un sous l'autre sur un écran étroit, plutôt que de
+            // rogner « Ou saisir un nom… » au milieu d'un mot.
+            . '.lbp-marchandises .lbp-sous-champs{display:flex;flex-wrap:wrap;gap:0.35rem;margin-top:0.4rem}'
+            . '.lbp-marchandises .lbp-sous-champs input{flex:1 1 96px}'
+            . '</style>';
+    }
+
+    /**
      * Cellule « Nbre étiquette » : le nombre, et dessous son prix de vente.
      *
      * Les étiquettes — attiéké, vêtement, chaussure — sont vendues par LBP au
@@ -1545,22 +1570,23 @@ final class Colisage
         }
 
         // Marchandises list
-        $marchandisesHtml = '<div style="margin-top: 1.5rem;">'
+        $marchandisesHtml = self::marchandisesStyles()
+            . '<div style="margin-top: 1.5rem;">'
             . '<h3>Marchandises contenues dans le colis</h3>'
             . '<div class="finea-table-wrapper" style="margin-top:0.5rem;">'
-            . '<table class="finea-table" style="table-layout: auto;" id="marchandises-table">'
+            . '<table class="finea-table lbp-marchandises" style="table-layout: auto;" id="marchandises-table">'
             . '<thead><tr style="background:#1e3a5f; color:#fff;">'
-            . '<th style="width:3%; min-width:30px;">N°</th>'
-            . '<th style="width:6%; min-width:70px;">Nbre Colis</th>'
-            . '<th style="width:24%; min-width:240px;">Description</th>'
-            . '<th style="width:5%; min-width:60px;">Qté</th>'
-            . '<th style="width:8%; min-width:85px;">Poids (kg)</th>'
-            . '<th style="width:8%; min-width:85px;">Prix / Kg</th>'
-            . '<th style="width:11%; min-width:110px;">Type d\'emballage</th>'
-            . '<th style="width:6%; min-width:65px;">Nbre emb.</th>'
-            . '<th style="width:8%; min-width:85px;">Prix emb.</th>'
-            . '<th style="width:9%; min-width:105px;">Nbre étiquette</th>'
-            . '<th style="width:12%; min-width:110px;">Total</th>'
+            . '<th style="width:3%; min-width:34px;">N°</th>'
+            . '<th style="width:6%; min-width:72px;">Nbre Colis</th>'
+            . '<th style="width:22%; min-width:250px;">Description</th>'
+            . '<th style="width:6%; min-width:82px;">Qté</th>'
+            . '<th style="width:8%; min-width:92px;">Poids (kg)</th>'
+            . '<th style="width:8%; min-width:92px;">Prix / Kg</th>'
+            . '<th style="width:11%; min-width:120px;">Type d\'emballage</th>'
+            . '<th style="width:6%; min-width:82px;">Nbre emb.</th>'
+            . '<th style="width:8%; min-width:92px;">Prix emb.</th>'
+            . '<th style="width:10%; min-width:125px;">Nbre étiquette</th>'
+            . '<th style="width:12%; min-width:120px;">Total</th>'
             . '</tr></thead>'
             . '<tbody id="marchandises-tbody">';
 
@@ -1572,7 +1598,7 @@ final class Colisage
                 'class' => 'finea-native-select finea-select-search-source',
             ]);
 
-            $customNameInput = Form::rawInput('m_custom_name[]', '', ['placeholder' => 'Ou saisir un nom...']);
+            $customNameInput = Form::rawInput('m_custom_name[]', '', ['placeholder' => 'Nom du produit']);
             $customPriceInput = Form::rawInput('m_custom_price[]', '', ['type' => 'number', 'step' => '0.01', 'placeholder' => 'Prix unit.']);
 
             $marchandisesHtml .= '<tr>'
@@ -1580,7 +1606,7 @@ final class Colisage
                 . '<td>' . Form::rawInput('m_nbre_colis[]', '1', ['type' => 'number', 'min' => '1']) . '</td>'
                 . '<td>'
                 . $selectHtml
-                . '<div style="margin-top:0.4rem; display:flex; gap:0.4rem;">'
+                . '<div class="lbp-sous-champs">'
                 . $customNameInput
                 . $customPriceInput
                 . '</div>'
@@ -1848,8 +1874,8 @@ final class Colisage
             . '                + \'<select class="finea-native-select finea-select-search-source" name="m_product_id_\' + rowIndex + \'[]" id="m_product_id_\' + rowIndex + \'" multiple="multiple" data-finea-select-search="1">\''
             . '                + optionsHtml'
             . '                + \'</select>\''
-            . '                + \'<div style="margin-top:0.4rem; display:flex; gap:0.4rem;">\''
-            . '                + \'<input class="finea-input" name="m_custom_name[]" placeholder="Ou saisir un nom...">\''
+            . '                + \'<div class="lbp-sous-champs">\''
+            . '                + \'<input class="finea-input" name="m_custom_name[]" placeholder="Nom du produit">\''
             . '                + \'<input class="finea-input" name="m_custom_price[]" type="number" step="0.01" placeholder="Prix unit.">\''
             . '                + \'</td>\''
             . '                + \'<td><input class="finea-input" type="number" name="m_qty[]" value="1" min="1"></td>\''
@@ -2103,8 +2129,9 @@ final class Colisage
                 . '</tr>';
         }
 
-        $tableHtml = '<div class="finea-table-wrapper" style="margin-top:1rem;">'
-            . '<table class="finea-table">'
+        $tableHtml = self::marchandisesStyles()
+            . '<div class="finea-table-wrapper" style="margin-top:1rem;">'
+            . '<table class="finea-table lbp-marchandises">'
             . '<thead><tr style="background:#1e3a5f; color:#fff;">'
             . '<th>N°</th><th>Nbre Colis</th><th>Description</th><th>Qté</th><th>Poids (kg)</th><th>Prix / Kg</th>'
             . '<th>Type d\'emballage</th><th>Nbre emb.</th><th>Prix emb.</th><th>Nbre étiquette</th><th>Total</th>'
@@ -3267,8 +3294,8 @@ final class Colisage
                     'multiple' => 'multiple',
                     'data-finea-select-search' => '1',
                 ])
-                . '<div style="margin-top:0.4rem; display:flex; gap:0.4rem;">'
-                . Form::rawInput('m_custom_name[]', '', ['placeholder' => 'Ou saisir un nom...'])
+                . '<div class="lbp-sous-champs">'
+                . Form::rawInput('m_custom_name[]', '', ['placeholder' => 'Nom du produit'])
                 . Form::rawInput('m_custom_price[]', '', ['type' => 'number', 'step' => '0.01', 'placeholder' => 'Prix unit.'])
                 . '</div>'
                 . '</td>'
@@ -3283,18 +3310,19 @@ final class Colisage
                 . '</tr>';
         }
 
-        return '<div class="finea-table-wrapper"><table class="finea-table" style="table-layout: auto;">'
+        return self::marchandisesStyles()
+            . '<div class="finea-table-wrapper"><table class="finea-table lbp-marchandises" style="table-layout: auto;">'
             . '<thead><tr style="background:#1e3a5f; color:#fff;">'
-            . '<th style="width:3%; min-width:30px;">N°</th>'
-            . '<th style="width:6%; min-width:70px;">Nbre Colis</th>'
-            . '<th style="width:24%; min-width:240px;">Description</th>'
-            . '<th style="width:5%; min-width:60px;">Qté</th>'
-            . '<th style="width:8%; min-width:85px;">Poids (kg)</th>'
-            . '<th style="width:8%; min-width:85px;">Prix / Kg</th>'
-            . '<th style="width:11%; min-width:110px;">Type d\'emballage</th>'
-            . '<th style="width:6%; min-width:65px;">Nbre emb.</th>'
-            . '<th style="width:8%; min-width:85px;">Prix emb.</th>'
-            . '<th style="width:9%; min-width:105px;">Nbre étiquette</th>'
+            . '<th style="width:3%; min-width:34px;">N°</th>'
+            . '<th style="width:6%; min-width:72px;">Nbre Colis</th>'
+            . '<th style="width:22%; min-width:250px;">Description</th>'
+            . '<th style="width:6%; min-width:82px;">Qté</th>'
+            . '<th style="width:8%; min-width:92px;">Poids (kg)</th>'
+            . '<th style="width:8%; min-width:92px;">Prix / Kg</th>'
+            . '<th style="width:11%; min-width:120px;">Type d\'emballage</th>'
+            . '<th style="width:6%; min-width:82px;">Nbre emb.</th>'
+            . '<th style="width:8%; min-width:92px;">Prix emb.</th>'
+            . '<th style="width:10%; min-width:125px;">Nbre étiquette</th>'
             . '<th style="width:12%; min-width:120px;">Total</th>'
             . '</tr></thead>'
             . '<tbody>' . $rows . '</tbody>'
