@@ -1009,7 +1009,7 @@ $queryString = http_build_query([
 </div>
 
 <!-- Jeton CSRF pour AJAX -->
-<input type="hidden" id="csrf-token-cnp" value="<?= \App\Helpers\Csrf::generate() ?>">
+<input type="hidden" id="csrf-token-cnp" value="<?= \App\Helpers\Csrf::token() ?>">
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {

@@ -13,6 +13,11 @@ class Csrf
         return $_SESSION['_csrf_token'];
     }
 
+    public static function generate(): string
+    {
+        return self::token();
+    }
+
     public static function verify(?string $token): bool
     {
         return isset($_SESSION['_csrf_token'])
