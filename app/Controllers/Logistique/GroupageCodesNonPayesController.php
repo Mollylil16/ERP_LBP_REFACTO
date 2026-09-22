@@ -367,11 +367,13 @@ class GroupageCodesNonPayesController extends LogistiqueBaseController
 
         $where[] = "{$dateCol} BETWEEN :date_debut AND :date_fin";
 
-        // Filtre agence
+        // Filtre agence (utiliser des noms de paramètres distincts pour la compatibilité PDO native)
         if ($selectedAgence !== 'all' && $selectedAgence !== '') {
             $agId = (int) $selectedAgence;
-            $where[] = "(f.agence_id = :ag_id OR c.agence_depart_id = :ag_id OR c.agence_arrivee_id = :ag_id)";
-            $bindings['ag_id'] = $agId;
+            $where[] = "(f.agence_id = :ag_id_1 OR c.agence_depart_id = :ag_id_2 OR c.agence_arrivee_id = :ag_id_3)";
+            $bindings['ag_id_1'] = $agId;
+            $bindings['ag_id_2'] = $agId;
+            $bindings['ag_id_3'] = $agId;
         }
 
         // Vérifier si la colonne groupe_code existe dans lbp_colis pour compatibilité totale
@@ -384,11 +386,26 @@ class GroupageCodesNonPayesController extends LogistiqueBaseController
         $colGroupeSql = $hasGroupeCode ? "c.groupe_code" : "NULL AS groupe_code";
         $colGroupeOrder = $hasGroupeCode ? "c.groupe_code" : "NULL";
 
-        // Filtre recherche
+        // Filtre recherche (paramètres distincts pour éviter l'erreur HY093)
         if ($search !== '') {
-            $groupeSearch = $hasGroupeCode ? " OR c.groupe_code LIKE :search" : "";
-            $where[] = "(c.numero_tracking LIKE :search OR f.numero_facture LIKE :search OR cli_exp.name LIKE :search OR cli_dest.name LIKE :search{$groupeSearch})";
-            $bindings['search'] = '%' . $search . '%';
+            $searchPattern = '%' . $search . '%';
+            $searchClauses = [
+                "c.numero_tracking LIKE :search_track",
+                "f.numero_facture LIKE :search_fact",
+                "cli_exp.name LIKE :search_exp",
+                "cli_dest.name LIKE :search_dest",
+            ];
+            $bindings['search_track'] = $searchPattern;
+            $bindings['search_fact'] = $searchPattern;
+            $bindings['search_exp'] = $searchPattern;
+            $bindings['search_dest'] = $searchPattern;
+
+            if ($hasGroupeCode) {
+                $searchClauses[] = "c.groupe_code LIKE :search_grp";
+                $bindings['search_grp'] = $searchPattern;
+            }
+
+            $where[] = "(" . implode(' OR ', $searchClauses) . ")";
         }
 
         // Filtre transport
