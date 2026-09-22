@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace App\Controllers\Logistique;
 
-use App\Database\Database;
 use App\Helpers\Auth;
 use App\Helpers\Csrf;
-use App\Helpers\RoleMiddleware;
 use App\Helpers\Session;
 use App\Helpers\View;
+use App\Middleware\RoleMiddleware;
+use App\Models\Database;
 use PDO;
 
 class GroupageCodesNonPayesController extends LogistiqueBaseController
