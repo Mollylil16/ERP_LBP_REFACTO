@@ -54,7 +54,7 @@ final class ModuleAccess
         'entrepots' => [
             'admin', 'dg', 'assistant_dg', 'dg_surveillance',
             'superviseur_general', 'superviseur_regional', 'chef_agence',
-            'responsable_logistique',
+            'responsable_logistique', 'responsable_groupage',
             'agent_groupage', 'agent_enregistrement', 'agent_saisie',
             'agent_exploitation', 'agent',
         ],
@@ -64,7 +64,7 @@ final class ModuleAccess
         'flotte-transport' => [
             'admin', 'dg', 'assistant_dg', 'dg_surveillance',
             'superviseur_general', 'superviseur_regional', 'chef_agence',
-            'responsable_logistique', 'agent_groupage', 'agent_exploitation',
+            'responsable_logistique', 'responsable_groupage', 'agent_groupage', 'agent_exploitation',
         ],
 
         // Lots à dédouaner et coût au kilo : ceux qui font la douane, et ceux
@@ -101,7 +101,7 @@ final class ModuleAccess
             'admin', 'dg', 'assistant_dg', 'dg_surveillance',
             'superviseur_general', 'superviseur_regional', 'chef_agence',
             'caissiere_principale', 'caissiere', 'gestionnaire_caisse', 'comptable',
-            'agent_enregistrement', 'agent_groupage', 'agent_saisie',
+            'agent_enregistrement', 'responsable_groupage', 'agent_groupage', 'agent_saisie',
             'agent_exploitation', 'agent_export', 'agent', 'agent_call_center',
             'agent_transit', 'transit', 'transitaire',
             'passeur_douane', 'declarant_douane',
@@ -130,7 +130,7 @@ final class ModuleAccess
      */
     private const PORTEE_RESEAU = [
         'dg', 'assistant_dg', 'assistante_dg', 'dg_surveillance',
-        'superviseur_general', 'comptable',
+        'superviseur_general', 'comptable', 'responsable_groupage',
     ];
 
     /**
@@ -182,7 +182,8 @@ final class ModuleAccess
     {
         return Auth::isAdmin()
             || Auth::isAssistantDg()
-            || Auth::hasAnyRole(self::PORTEE_RESEAU);
+            || Auth::hasAnyRole(self::PORTEE_RESEAU)
+            || (Auth::hasRole('agent_groupage') && (Auth::agenceId() === null || Auth::agenceId() <= 0));
     }
 
     /**
