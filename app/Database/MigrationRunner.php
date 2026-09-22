@@ -2909,10 +2909,14 @@ class MigrationRunner
         $this->addIndexIfMissing('lbp_audit_logs', 'idx_lbp_audit_logs_entity', 'entity_type, entity_id');
         $this->addIndexIfMissing('lbp_audit_logs', 'idx_lbp_audit_logs_created_at', 'created_at');
 
-        if ($this->schema->tableExists('lbp_colis')) {
-            $this->addColumnIfMissing('lbp_colis', 'trajet_id', 'INT UNSIGNED NULL');
-            $this->addForeignKeyIfMissing('lbp_colis', 'fk_lbp_colis_trajet', 'trajet_id', 'trajets', 'id', 'SET NULL');
-            $this->addColumnIfMissing('lbp_colis', 'groupe_code', 'VARCHAR(50) NULL');
+        try {
+            if ($this->schema->tableExists('lbp_colis')) {
+                $this->addColumnIfMissing('lbp_colis', 'trajet_id', 'INT UNSIGNED NULL');
+                $this->addForeignKeyIfMissing('lbp_colis', 'fk_lbp_colis_trajet', 'trajet_id', 'trajets', 'id', 'SET NULL');
+                $this->addColumnIfMissing('lbp_colis', 'groupe_code', 'VARCHAR(50) NULL');
+            }
+        } catch (\Throwable $e) {
+            error_log('[MigrationRunner] lbp_colis columns warning: ' . $e->getMessage());
         }
 
         $stmt = $this->pdo->prepare("

@@ -374,9 +374,20 @@ class GroupageCodesNonPayesController extends LogistiqueBaseController
             $bindings['ag_id'] = $agId;
         }
 
+        // Vérifier si la colonne groupe_code existe dans lbp_colis pour compatibilité totale
+        $hasGroupeCode = false;
+        try {
+            $colStmt = $pdo->query("SHOW COLUMNS FROM lbp_colis LIKE 'groupe_code'");
+            $hasGroupeCode = (bool) $colStmt->fetch();
+        } catch (\Throwable) {}
+
+        $colGroupeSql = $hasGroupeCode ? "c.groupe_code" : "NULL AS groupe_code";
+        $colGroupeOrder = $hasGroupeCode ? "c.groupe_code" : "NULL";
+
         // Filtre recherche
         if ($search !== '') {
-            $where[] = "(c.numero_tracking LIKE :search OR f.numero_facture LIKE :search OR cli_exp.name LIKE :search OR cli_dest.name LIKE :search OR c.groupe_code LIKE :search)";
+            $groupeSearch = $hasGroupeCode ? " OR c.groupe_code LIKE :search" : "";
+            $where[] = "(c.numero_tracking LIKE :search OR f.numero_facture LIKE :search OR cli_exp.name LIKE :search OR cli_dest.name LIKE :search{$groupeSearch})";
             $bindings['search'] = '%' . $search . '%';
         }
 
@@ -406,7 +417,7 @@ class GroupageCodesNonPayesController extends LogistiqueBaseController
                 c.nombre_colis,
                 c.montant_total_eur,
                 c.valeur_declaree,
-                c.groupe_code,
+                {$colGroupeSql},
                 c.trajet AS colis_trajet,
                 c.trafic AS colis_trafic,
                 c.type_expediteur,
@@ -441,7 +452,7 @@ class GroupageCodesNonPayesController extends LogistiqueBaseController
             WHERE {$whereSql}
             ORDER BY 
                 CASE 
-                    WHEN c.groupe_code IS NOT NULL AND c.groupe_code != '' THEN c.groupe_code
+                    WHEN {$colGroupeOrder} IS NOT NULL AND {$colGroupeOrder} != '' THEN {$colGroupeOrder}
                     WHEN exp.reference IS NOT NULL AND exp.reference != '' THEN exp.reference
                     ELSE 'ZZZ'
                 END ASC,
