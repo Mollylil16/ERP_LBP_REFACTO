@@ -74,7 +74,7 @@ $moduleIconKey = $moduleTheme['iconKey'] ?? strtolower((string) ($moduleCode ?? 
     <?php endforeach; ?>
 </head>
 <body class="module-body" style="--module-accent: <?= View::e($moduleAccent) ?>; --module-avatar: <?= View::e($moduleAccent) ?>; --module-accent-2: <?= View::e($moduleAccent2) ?>; --module-gradient: <?= View::e($moduleGradient) ?>;">
-    <?php if (!Auth::isAdmin() && !Auth::hasRole('dg')): ?>
+    <?php if (!Auth::isAdmin() && !Auth::hasAnyRole(['dg', 'assistant_dg', 'assistante_dg', 'responsable_groupage', 'superviseur_general'])): ?>
     <div id="lbp-gps-blocker" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #0f172a; color: #ffffff; z-index: 999999; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2rem; text-align: center; font-family: 'Inter', sans-serif;">
         <div style="background: #1e293b; padding: 2.5rem; border-radius: 16px; border: 1px solid rgba(255, 255, 255, 0.1); max-width: 500px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);">
             <div style="font-size: 3.5rem; margin-bottom: 1.5rem;"></div>
