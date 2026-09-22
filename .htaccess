@@ -1,5 +1,11 @@
 RewriteEngine On
 
+# Forcer la redirection HTTPS en production sur labelleporte.ci
+RewriteCond %{HTTP_HOST} ^(www\.)?labelleporte\.ci$ [NC]
+RewriteCond %{HTTPS} !=on
+RewriteCond %{HTTP:X-Forwarded-Proto} !https
+RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
 RewriteBase /ERP_LBP_REFACTO/
 
 # Si le fichier ou dossier existe réellement, Apache le sert directement
