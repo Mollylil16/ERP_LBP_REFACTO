@@ -141,7 +141,7 @@ final class FinanceController extends FinanceBaseController
      */
     public function facturesIndex(): void
     {
-        RoleMiddleware::check([...self::ROLES_GUICHET, 'comptable', 'superviseur_regional', 'superviseur_general', 'suivi_recouvrement']);
+        RoleMiddleware::check([...self::ROLES_GUICHET, 'comptable', 'superviseur_regional', 'superviseur_general', 'suivi_recouvrement', 'responsable_groupage', 'agent_groupage']);
 
         $userAgId = Auth::agenceId();
         $selectedAgence = $_GET['agence_id'] ?? null;
@@ -154,7 +154,7 @@ final class FinanceController extends FinanceBaseController
             'type_envoi' => $typeEnvoi,
         ];
 
-        $isGlobalRole = Auth::isAdmin() || Auth::isAssistantDg() || Auth::hasAnyRole(['caissiere_principale', 'dg', 'assistant_dg', 'assistante_dg', 'comptable', 'superviseur_general']);
+        $isGlobalRole = Auth::isAdmin() || Auth::isAssistantDg() || Auth::hasAnyRole(['caissiere_principale', 'dg', 'assistant_dg', 'assistante_dg', 'comptable', 'superviseur_general', 'responsable_groupage']) || (Auth::hasRole('agent_groupage') && ($userAgId === null || $userAgId <= 0));
 
         // Par défaut, si l'utilisateur a un rôle local et qu'aucun filtre d'agence n'est dans l'URL, limiter à son agence
         if (!$isGlobalRole && $selectedAgence === null && $userAgId !== null && $userAgId > 0) {
@@ -400,7 +400,7 @@ final class FinanceController extends FinanceBaseController
      */
     public function factureShow(string $id): void
     {
-        RoleMiddleware::check([...self::ROLES_GUICHET, 'comptable', 'superviseur_regional', 'superviseur_general', 'suivi_recouvrement']);
+        RoleMiddleware::check([...self::ROLES_GUICHET, 'comptable', 'superviseur_regional', 'superviseur_general', 'suivi_recouvrement', 'responsable_groupage', 'agent_groupage']);
 
         $id = (int) $id;
         $facture = $this->factureRepo->findById($id);

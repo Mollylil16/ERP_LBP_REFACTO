@@ -364,12 +364,13 @@ final class ModuleDashboardService
         if ($module['slug'] === 'logistique') {
             return [
                 ['key' => 'dashboard', 'label' => 'Tableau de bord', 'icon' => 'DB', 'url' => '/logistique/dashboard', 'available' => true, 'group' => 'Pilotage'],
+                ['key' => 'codes_non_payes', 'label' => 'Codes Non Payés (CNP)', 'icon' => 'CNP', 'url' => '/logistique/codes-non-payes', 'available' => true, 'group' => 'Expéditions & Fret'],
+                ['key' => 'groupage', 'label' => 'Groupage & Expéditions', 'icon' => 'GP', 'url' => '/colisage/groupage', 'available' => true, 'group' => 'Expéditions & Fret'],
                 ['key' => 'colisage', 'label' => 'Suivi Colisage', 'icon' => 'SC', 'url' => '/logistique/colisage', 'available' => true, 'group' => 'Magasin & Stockage'],
                 ['key' => 'rayons', 'label' => 'Gestion des Rayons', 'icon' => 'RY', 'url' => '/logistique/rayons', 'available' => true, 'group' => 'Magasin & Stockage'],
                 ['key' => 'emballages', 'label' => 'Emballages LBP', 'icon' => 'EMB', 'url' => '/logistique/emballages', 'available' => true, 'group' => 'Magasin & Stockage'],
                 ['key' => 'parametres', 'label' => 'Délais & Gardiennage', 'icon' => 'PR', 'url' => '/logistique/parametres', 'available' => true, 'group' => 'Paramétrage & Gardiennage'],
                 ['key' => 'parcels', 'label' => 'Gestion des Colis', 'icon' => 'CL', 'url' => '/colisage/parcels', 'available' => true, 'group' => 'Expéditions & Fret'],
-                ['key' => 'groupage', 'label' => 'Groupage & Expéditions', 'icon' => 'GP', 'url' => '/colisage/groupage', 'available' => true, 'group' => 'Expéditions & Fret'],
                 ['key' => 'tracking', 'label' => 'Suivi GPS', 'icon' => 'GPS', 'url' => '/colisage/exploitation/tracking', 'available' => true, 'group' => 'Suivi & Transport'],
                 ['key' => 'exploitation_fournitures', 'label' => 'Fournitures bureau', 'icon' => 'FT', 'url' => '/colisage/exploitation/fournitures', 'available' => \App\Helpers\Auth::can(\App\Security\PermissionEntityRegistry::EXPLOITATION_FOURNITURES), 'group' => 'Ressources Internes'],
             ];

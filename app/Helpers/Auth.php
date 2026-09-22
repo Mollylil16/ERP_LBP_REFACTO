@@ -23,6 +23,7 @@ class Auth
         'dg',
         'agent_exploitation',
         'comptable',
+        'responsable_groupage',
     ];
 
     /**
@@ -204,6 +205,11 @@ class Auth
         }
 
         if (self::hasAnyRole(self::ROLES_PORTEE_RESEAU)) {
+            return true;
+        }
+
+        // Cas particulier : agent_groupage général (agence_id = NULL => Siège / Réseau)
+        if (self::hasRole('agent_groupage') && $user->agenceId === null) {
             return true;
         }
 

@@ -136,6 +136,8 @@ SELECT `id`, 'chef_agence' FROM `users` WHERE `email` IN ('roxane.akoiblin@label
 
 INSERT INTO `lbp_user_roles` (`user_id`, `role`)
 SELECT `id`, 'agent_groupage' FROM `users` WHERE `email` IN ('kouakou.sales@labelleporte.ci');
+INSERT INTO `lbp_user_roles` (`user_id`, `role`)
+SELECT `id`, 'responsable_groupage' FROM `users` WHERE `email` IN ('kouakou.sales@labelleporte.ci');
 
 INSERT INTO `lbp_user_roles` (`user_id`, `role`)
 SELECT `id`, 'agent_saisie' FROM `users` WHERE `email` IN ('kouame.yvette@labelleporte.ci', 'anicet.konan@labelleporte.ci', 'jean.eudes@labelleporte.ci', 'sarah.djambitche@labelleporte.ci', 'karabboue.amy@labelleporte.ci', 'sery.grace@labelleporte.ci', 'amy.dieng@labelleporte.ci');

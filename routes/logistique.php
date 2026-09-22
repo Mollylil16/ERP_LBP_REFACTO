@@ -9,6 +9,7 @@ use App\Controllers\Logistique\LogistiqueParametresController;
 use App\Controllers\Logistique\LogistiqueColisageController;
 
 use App\Controllers\Logistique\LogistiqueEmballagesController;
+use App\Controllers\Logistique\GroupageCodesNonPayesController;
 
 /** @var Router $router */
 
@@ -20,6 +21,12 @@ $router->group('/logistique', function (Router $router): void {
     $router->get('/colisage', [LogistiqueColisageController::class, 'index']);
     $router->get('/colisage/export-pdf', [LogistiqueColisageController::class, 'exportPdf']);
     $router->get('/colisage/export-excel', [LogistiqueColisageController::class, 'exportExcel']);
+
+    // Tableau des Codes Non Payés (Groupages — Suivi S.T.T-CI)
+    $router->get('/codes-non-payes', [GroupageCodesNonPayesController::class, 'index']);
+    $router->post('/codes-non-payes/update-groupe', [GroupageCodesNonPayesController::class, 'updateGroupe']);
+    $router->get('/codes-non-payes/export-pdf', [GroupageCodesNonPayesController::class, 'exportPdf']);
+    $router->get('/codes-non-payes/export-excel', [GroupageCodesNonPayesController::class, 'exportExcel']);
 
     // Rayons & Capacité de stockage
     $router->get('/rayons', [RayonsController::class, 'index']);

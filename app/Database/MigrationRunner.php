@@ -2912,6 +2912,7 @@ class MigrationRunner
         if ($this->schema->tableExists('lbp_colis')) {
             $this->addColumnIfMissing('lbp_colis', 'trajet_id', 'INT UNSIGNED NULL');
             $this->addForeignKeyIfMissing('lbp_colis', 'fk_lbp_colis_trajet', 'trajet_id', 'trajets', 'id', 'SET NULL');
+            $this->addColumnIfMissing('lbp_colis', 'groupe_code', 'VARCHAR(50) NULL');
         }
 
         $stmt = $this->pdo->prepare("
