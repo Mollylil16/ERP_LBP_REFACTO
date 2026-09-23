@@ -372,7 +372,14 @@ final class ColisageFacture
         $horodatage = strtotime($creation);
         $suffixe = substr($reference, -3);
 
-        return '<div class="footer-address">'
+        /*
+         * Le pied est un bloc a part entiere : a l'impression il est epingle
+         * au bas de la feuille. Tant qu'il suivait le fil du document, il
+         * partait seul sur une deuxieme page des que la facture depassait de
+         * quelques millimetres — et se retrouvait au dos en recto verso.
+         */
+        return '<div class="facture-pied">'
+            . '<div class="footer-address">'
             . '<strong>ADRESSE : PARIS 17 CHEMIN DES VIGNES 93000 BOBIGNY</strong><br>'
             . 'Tél : +33 7 75 73 27 97 / +33 7 51 19 83 82 / +33 7 45 93 56 92'
             . '</div>'
@@ -394,7 +401,8 @@ final class ColisageFacture
             . '<div>Réf. FCO-' . View::e($horodatage !== false ? date('my', $horodatage) : date('my'))
             . '-' . View::e($suffixe) . '</div>'
             . '</div>'
-            . '<img src="' . View::asset('images/footer_lbp.png') . '" alt="" class="footer-img">';
+            . '<img src="' . View::asset('images/footer_lbp.png') . '" alt="" class="footer-img">'
+            . '</div>';
     }
 
     private static function scriptImpression(): string

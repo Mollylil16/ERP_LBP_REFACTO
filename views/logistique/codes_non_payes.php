@@ -1049,13 +1049,13 @@ document.addEventListener('DOMContentLoaded', function() {
                     }, 1500);
                 } else {
                     alert('Erreur lors de la mise à jour : ' + (data.error || 'Erreur inconnue'));
-                    btn.textContent = '✗';
+                    btn.textContent = 'Echec';
                     btn.disabled = false;
                 }
             })
             .catch(err => {
                 alert('Erreur réseau ou serveur : ' + err.message);
-                btn.textContent = '✗';
+                btn.textContent = 'Echec';
                 btn.disabled = false;
             });
         }

@@ -52,6 +52,7 @@ class AdminService
         'responsable_rh'        => 'Directeur/Directrice RH',
         'responsable_marketing' => 'Responsable Marketing',
         'responsable_logistique' => 'Responsable Logistique',
+        'responsable_groupage'  => 'Responsable Groupage',
     ];
 
     public function __construct(

@@ -330,12 +330,14 @@ body {
 /* ------------------------------------------------------------------
    Téléphone
    La facture est aussi envoyée au client, qui l'ouvre sur son
-   téléphone. Sans ces règles, la feuille gardait sa largeur de bureau :
+   téléphone ou sa tablette. Le seuil est à 1024 px : une tablette en
+   portrait fait 768 px et en paysage 1024, et restait sinon sur la
+   présentation de bureau, trop large pour son écran. Sans ces règles, la feuille gardait sa largeur de bureau :
    les deux encarts posés en absolu sur l'image d'en-tête débordaient, le
    tableau des marchandises poussait la page en largeur, et le client
    devait pincer pour lire son propre montant.
    ------------------------------------------------------------------ */
-@media screen and (max-width: 720px) {
+@media screen and (max-width: 1024px) {
     body {
         padding: 8px;
         background-color: #ffffff;
@@ -561,6 +563,28 @@ body {
     /* Facture longue : l'en-tête du tableau se répète sur chaque page. */
     .items-table thead {
         display: table-header-group;
+    }
+
+    /*
+     * Le pied est epingle au bas de chaque feuille. Tant qu'il suivait le fil
+     * du document, il suffisait que la facture depasse de quelques millimetres
+     * pour qu'il parte seul sur une deuxieme page — au dos de la facture en
+     * recto verso. Epingle, il ne peut plus creer de page a lui tout seul, et
+     * une facture longue le retrouve au bas de chacune de ses feuilles.
+     */
+    .facture-pied {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: #ffffff;
+    }
+
+    /* La place que le pied occupe, rendue au contenu. Mesure au navigateur :
+       adresse, horaires, ligne de reference et bandeau font 37 mm une fois le
+       bandeau plafonne ; 42 mm laissent la marge qu'il faut. */
+    .facture-container {
+        padding-bottom: 42mm;
     }
 
     @page {

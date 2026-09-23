@@ -44,10 +44,12 @@ final class FacturePresentationTest extends TestCase
     {
         $css = $this->feuille();
 
+        // 1024 px et non 720 : une tablette fait 768 px en portrait et 1024 en
+        // paysage, et restait sinon sur la présentation de bureau.
         self::assertMatchesRegularExpression(
-            '/@media screen and \(max-width: *720px\)/',
+            '/@media screen and \(max-width: *1024px\)/',
             $css,
-            'La feuille doit prévoir un rendu téléphone.'
+            'La feuille doit prévoir le téléphone et la tablette.'
         );
 
         // Les deux encarts de l'en-tête sont posés en absolu sur l'image : sur
@@ -92,6 +94,25 @@ final class FacturePresentationTest extends TestCase
             substr_count($impression, 'max-height:'),
             'Les deux bandeaux doivent être plafonnés en hauteur.'
         );
+    }
+
+    /**
+     * Le pied est épinglé au bas de la feuille imprimée. Tant qu'il suivait le
+     * fil du document, il suffisait que la facture dépasse de quelques
+     * millimètres pour qu'il parte seul sur une deuxième page — au dos de la
+     * facture en recto verso.
+     */
+    public function test_le_pied_est_epingle_au_bas_de_la_feuille(): void
+    {
+        $impression = substr($this->feuille(), (int) strpos($this->feuille(), '@media print'));
+
+        self::assertStringContainsString('.facture-pied', $impression);
+        self::assertMatchesRegularExpression('/\.facture-pied \{[^}]*position: fixed;/s', $impression);
+        // La place qu'il occupe doit être rendue au contenu, sinon il le couvre.
+        self::assertMatchesRegularExpression('/\.facture-container \{[^}]*padding-bottom: \d+mm;/s', $impression);
+
+        $document = ColisageFacture::document($this->colis(), null, 289.65, 'Agent LBP');
+        self::assertStringContainsString('class="facture-pied"', $document);
     }
 
     public function test_aucun_bloc_ne_se_coupe_entre_deux_pages(): void
