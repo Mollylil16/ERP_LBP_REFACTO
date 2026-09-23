@@ -2448,7 +2448,10 @@
 /* Wamp Classic Dashboard Redesign Styles */
 .rh-dashboard-tabs {
 	display: grid;
-	grid-template-columns: repeat(3, 1fr);
+	/* Trois onglets figes poussaient le tableau de bord RH a 571 px de large
+	   sur un ecran de 481 : la page entiere defilait de cote. Ils se rangent
+	   d'eux-memes selon la place, sans point de rupture a maintenir. */
+	grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
 	gap: 16px;
 	margin: 20px 0 32px;
 }

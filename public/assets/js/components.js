@@ -263,6 +263,55 @@
     });
   };
 
-  document.addEventListener("DOMContentLoaded", init);
-  window.FineaComponents = { init };
+  /**
+   * Menu lateral sur telephone et tablette.
+   *
+   * Le bouton « Menu » existe dans tous les modules, mais son ecouteur ne
+   * vivait que dans rh.js, charge par le seul module RH : ailleurs, sous
+   * 850 px, la barre laterale restait hors ecran et le bouton ne faisait
+   * rien — la navigation etait perdue. Il vit desormais ici, avec le voile,
+   * la fermeture au clic exterieur et la touche Echap.
+   */
+  const menuMobile = () => {
+    const sidebar = document.getElementById("moduleSidebar");
+    const bouton = document.querySelector("[data-module-menu]");
+
+    if (!sidebar || !bouton || bouton.dataset.menuPret === "1") return;
+
+    bouton.dataset.menuPret = "1";
+    bouton.setAttribute("aria-expanded", "false");
+    bouton.setAttribute("aria-controls", "moduleSidebar");
+
+    let voile = document.querySelector(".module-sidebar-backdrop");
+    if (!voile) {
+      voile = document.createElement("div");
+      voile.className = "module-sidebar-backdrop";
+      document.body.appendChild(voile);
+    }
+
+    const basculer = (ouvrir) => {
+      sidebar.classList.toggle("is-open", ouvrir);
+      voile.classList.toggle("is-visible", ouvrir);
+      bouton.setAttribute("aria-expanded", ouvrir ? "true" : "false");
+      document.body.classList.toggle("has-sidebar-open", ouvrir);
+    };
+
+    bouton.addEventListener("click", () =>
+      basculer(!sidebar.classList.contains("is-open")),
+    );
+    voile.addEventListener("click", () => basculer(false));
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") basculer(false);
+    });
+    // Suivre un lien ferme le menu : sinon il recouvre la page qui s'ouvre.
+    sidebar.addEventListener("click", (event) => {
+      if (event.target.closest("a")) basculer(false);
+    });
+  };
+
+  document.addEventListener("DOMContentLoaded", () => {
+    init();
+    menuMobile();
+  });
+  window.FineaComponents = { init, menuMobile };
 })();

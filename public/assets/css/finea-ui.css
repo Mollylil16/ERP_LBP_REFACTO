@@ -488,8 +488,17 @@ textarea.finea-input {
   opacity: 0.58;
 }
 
-.finea-table-wrap {
-  overflow: auto;
+/*
+ * Les deux noms d'enveloppe cohabitent dans le code : la regle vaut pour les
+ * deux. Elle ne vivait que dans colisage.css, si bien que les 46 tableaux des
+ * autres modules — Finance, Pilotage, CRM, Logistique — heritaient du
+ * min-width de 760 px sans pouvoir defiler : sur un telephone, les colonnes de
+ * droite (montants, actions) etaient inatteignables.
+ */
+.finea-table-wrap,
+.finea-table-wrapper {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
   border: 1px solid var(--finea-border);
   border-radius: var(--finea-radius);
   background: #fff;
@@ -628,6 +637,69 @@ textarea.finea-input {
   .module-profile > span:nth-child(2) {
     display: none;
   }
+
+  /* Voile pose sous le menu ouvert : il assombrit la page et se ferme au
+     doigt. Sans lui, la barre recouvrait le contenu sans moyen evident de
+     revenir en arriere. */
+  .module-sidebar-backdrop.is-visible {
+    display: block;
+  }
+
+  body.has-sidebar-open {
+    overflow: hidden;
+  }
+
+  /*
+   * Les grilles posees en style inline dans les composants — 137 dans le
+   * projet — ne peuvent pas etre reprises colonne par colonne. Sur un ecran
+   * de telephone, toutes passent a une colonne : deux champs cote a cote
+   * faisaient 150 px chacun, illisibles et impossibles a viser au doigt.
+   */
+  .finea-shell [style*="grid-template-columns"],
+  .module-content [style*="grid-template-columns"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  /*
+   * Meme chose pour les rangees en flex posees en style inline : sans
+   * autorisation de passer a la ligne, un titre et son selecteur d'agence
+   * poussaient la page a 736 px de large sur un ecran de 481.
+   */
+  .finea-shell [style*="display:flex"],
+  .finea-shell [style*="display: flex"],
+  .module-content [style*="display:flex"],
+  .module-content [style*="display: flex"] {
+    flex-wrap: wrap;
+  }
+
+  /* Un champ ne doit jamais imposer sa largeur a la page. Le min-width pose
+     en style inline l'emporterait sinon sur le max-width. */
+  .module-content select,
+  .module-content input,
+  .module-content textarea,
+  .finea-shell select,
+  .finea-shell input,
+  .finea-shell textarea {
+    max-width: 100%;
+    min-width: 0 !important;
+  }
+
+  /* Cibles tactiles : 44 px est le minimum confortable au doigt. */
+  .finea-button,
+  .rh-filter-btn,
+  .finea-input,
+  .finea-select {
+    min-height: 44px;
+  }
+}
+
+/* Voile du menu lateral : cree par components.js, masque par defaut. */
+.module-sidebar-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: rgba(15, 23, 42, 0.45);
 }
 
 @media (max-width: 620px) {
@@ -635,8 +707,26 @@ textarea.finea-input {
     padding: 10px 12px;
   }
 
+  /*
+   * La deconnexion etait purement et simplement masquee sous 620 px, et
+   * c'est le seul lien de sortie du gabarit : l'utilisateur restait connecte
+   * sans pouvoir fermer sa session. Elle devient une pastille, sans le mot.
+   */
   .module-profile a {
-    display: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    overflow: hidden;
+    white-space: nowrap;
+    text-indent: -999px;
+    border-radius: 50%;
+    border: 1px solid var(--finea-border);
+    background:
+      #fff
+      url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%230f172a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4'/%3E%3Cpolyline points='16 17 21 12 16 7'/%3E%3Cline x1='21' y1='12' x2='9' y2='12'/%3E%3C/svg%3E")
+      center / 20px 20px no-repeat;
   }
 }
 

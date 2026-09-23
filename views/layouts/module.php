@@ -75,8 +75,8 @@ $moduleIconKey = $moduleTheme['iconKey'] ?? strtolower((string) ($moduleCode ?? 
 </head>
 <body class="module-body" style="--module-accent: <?= View::e($moduleAccent) ?>; --module-avatar: <?= View::e($moduleAccent) ?>; --module-accent-2: <?= View::e($moduleAccent2) ?>; --module-gradient: <?= View::e($moduleGradient) ?>;">
     <?php if (!Auth::isAdmin() && !Auth::hasAnyRole(['dg', 'assistant_dg', 'assistante_dg', 'responsable_groupage', 'superviseur_general'])): ?>
-    <div id="lbp-gps-blocker" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #0f172a; color: #ffffff; z-index: 999999; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2rem; text-align: center; font-family: 'Inter', sans-serif;">
-        <div style="background: #1e293b; padding: 2.5rem; border-radius: 16px; border: 1px solid rgba(255, 255, 255, 0.1); max-width: 500px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);">
+    <div id="lbp-gps-blocker" style="position: fixed; inset: 0; background: #0f172a; color: #ffffff; z-index: 999999; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 1.25rem; text-align: center; font-family: 'Inter', sans-serif; overflow-y: auto;">
+        <div style="background: #1e293b; padding: 1.75rem; border-radius: 16px; border: 1px solid rgba(255, 255, 255, 0.1); max-width: min(500px, 100%); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);">
             <div style="font-size: 3.5rem; margin-bottom: 1.5rem;"></div>
             <h2 style="font-size: 1.5rem; font-weight: 800; margin-bottom: 1rem; color: #ffffff;">Géolocalisation Obligatoire</h2>
             <p id="lbp-gps-status" style="color: #94a3b8; font-size: 0.95rem; line-height: 1.6; margin-bottom: 1.5rem;">

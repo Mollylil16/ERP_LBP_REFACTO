@@ -206,7 +206,10 @@
     border: 1px solid rgba(29, 43, 87, 0.08) !important;
     border-radius: 16px !important;
     box-shadow: 0 8px 24px rgba(29, 43, 87, 0.03) !important;
-    overflow: hidden;
+    /* « hidden » rognait les tableaux Finance, larges de 760 px au minimum :
+       sur un telephone, montants et actions etaient definitivement hors
+       d'atteinte, sans meme une barre de defilement. */
+    overflow-x: auto;
 }
 
 .finea-table {
