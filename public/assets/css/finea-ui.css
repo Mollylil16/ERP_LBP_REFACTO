@@ -623,6 +623,15 @@ textarea.finea-input {
     left: -285px;
     width: 270px;
     transition: left 0.2s ease;
+    /* Au-dessus du voile : sans cela, le voile recouvrait le menu ouvert et
+       chaque appui sur un lien tombait dessus au lieu du lien. */
+    z-index: 60;
+    /* Le menu de Finance compte dix-huit entrees : sans defilement, la moitie
+       etait hors d'atteinte, le panneau etant fige a la hauteur de l'ecran. */
+    height: 100dvh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
   }
 
   .module-sidebar.is-open {
@@ -700,6 +709,11 @@ textarea.finea-input {
   inset: 0;
   z-index: 40;
   background: rgba(15, 23, 42, 0.45);
+  /* Safari sur iPhone n'envoie d'evenement « clic » a un simple div que s'il
+     se declare cliquable : sans ce curseur, l'appui etait purement avale et
+     le voile ne se refermait jamais. */
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
 
 @media (max-width: 620px) {

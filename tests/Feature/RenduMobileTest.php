@@ -46,6 +46,38 @@ final class RenduMobileTest extends TestCase
         self::assertStringNotContainsString('data-module-menu', $rh, 'Le menu ne doit plus être géré deux fois.');
     }
 
+    /**
+     * Le menu ouvert doit passer au-dessus de son propre voile. Pose a
+     * z-index 40 sous une barre laterale a 20, le voile recouvrait le menu :
+     * chaque appui tombait sur lui, et sur iPhone il n'y repondait meme pas —
+     * Safari n'envoie « clic » a un simple div que s'il se declare cliquable.
+     * Ecran fige, aucun bouton utilisable.
+     */
+    public function test_le_menu_ouvert_passe_au_dessus_de_son_voile(): void
+    {
+        $socle = $this->fichier('public/assets/css/finea-ui.css');
+        $mobile = substr($socle, (int) strpos($socle, '@media (max-width: 850px)'));
+
+        preg_match('/\.module-sidebar \{(.*?)\}/s', $mobile, $barre);
+        self::assertNotEmpty($barre, 'Regle de la barre laterale introuvable.');
+        preg_match('/z-index: (\d+)/', $barre[1], $rangBarre);
+        self::assertNotEmpty($rangBarre, 'La barre laterale doit declarer son rang.');
+
+        preg_match('/\.module-sidebar-backdrop \{(.*?)\}/s', $socle, $voile);
+        preg_match('/z-index: (\d+)/', $voile[1], $rangVoile);
+
+        self::assertGreaterThan(
+            (int) $rangVoile[1],
+            (int) $rangBarre[1],
+            'Le voile recouvrirait le menu et avalerait chaque appui.'
+        );
+
+        self::assertStringContainsString('cursor: pointer;', $voile[1], 'Sans cela, iOS ignore les appuis sur le voile.');
+
+        // Le menu de Finance compte dix-huit entrees : il doit pouvoir defiler.
+        self::assertStringContainsString('overflow-y: auto;', $barre[1]);
+    }
+
     public function test_le_script_commun_est_charge_par_le_gabarit_des_modules(): void
     {
         $gabarit = $this->fichier('views/layouts/module.php');

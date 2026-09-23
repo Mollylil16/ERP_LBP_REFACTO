@@ -299,13 +299,31 @@
     bouton.addEventListener("click", () =>
       basculer(!sidebar.classList.contains("is-open")),
     );
-    voile.addEventListener("click", () => basculer(false));
+
+    // Safari sur iPhone n'envoie pas toujours « click » a un simple div :
+    // l'appui est ecoute aussi, et le clic qui suit ne fait alors rien.
+    const fermer = () => basculer(false);
+    voile.addEventListener("click", fermer);
+    voile.addEventListener("touchend", fermer);
+
     document.addEventListener("keydown", (event) => {
-      if (event.key === "Escape") basculer(false);
+      if (event.key === "Escape") fermer();
     });
+
     // Suivre un lien ferme le menu : sinon il recouvre la page qui s'ouvre.
     sidebar.addEventListener("click", (event) => {
-      if (event.target.closest("a")) basculer(false);
+      if (event.target.closest("a")) fermer();
+    });
+
+    /*
+     * Tourner la tablette repasse en presentation de bureau. Le menu doit se
+     * refermer : sans cela le verrou de defilement du body restait pose et la
+     * page entiere semblait figee.
+     */
+    window.addEventListener("resize", () => {
+      if (window.innerWidth > 850 && sidebar.classList.contains("is-open")) {
+        fermer();
+      }
     });
   };
 
