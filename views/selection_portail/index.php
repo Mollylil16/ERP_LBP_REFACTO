@@ -1,5 +1,6 @@
 <?php
 
+use App\View\Components\Avis;
 use App\View\Components\ModuleCatalog;
 use App\View\Pages\Portal\SelectionPage;
 
@@ -9,6 +10,8 @@ $pageTitle = $page->title;
 ob_start();
 ?>
 <div class="portal-page">
+    <?= Avis::portail() ?>
+
     <?= ModuleCatalog::hero($page->userName, count($page->modules)) ?>
 
     <?= ModuleCatalog::moduleFilter($page->moduleOptions(), count($page->modules)) ?>

@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Pourquoi le logiciel affichait moins que ce que vous comptiez</title>
+<!--
+  Note aux responsables d'agence, éditée le 24/09/2026.
+
+  Les chiffres viennent du relevé de production du 24/09/2026, sur les trente
+  jours précédents. Ils sont donnés tels qu'ils ont été mesurés : aucun n'est
+  arrondi pour arranger la démonstration, et les trois causes ne s'additionnent
+  pas — ce sont trois phénomènes distincts.
+
+  Cette page s'imprime en PDF depuis le navigateur (bouton en haut, ou Ctrl+P).
+-->
+<style>
+@page { size: A4 portrait; margin: 16mm 15mm; }
+
+body {
+  font-family: "Segoe UI", Calibri, Arial, sans-serif;
+  color: #1f2937;
+  margin: 0 auto;
+  max-width: 190mm;
+  padding: 0 6mm 20mm;
+  font-size: 12.5px;
+  line-height: 1.62;
+}
+
+.impression { margin: 16px 0; text-align: center; }
+.impression button {
+  padding: 10px 22px; border: 0; border-radius: 6px;
+  background: #1d2b57; color: #fff; font-size: 13px; font-weight: 700; cursor: pointer;
+}
+
+header.entete {
+  display: flex; justify-content: space-between; align-items: flex-start;
+  border-bottom: 3px solid #1d2b57; padding-bottom: 10px; margin-bottom: 18px;
+}
+.sur-titre { margin: 0; font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: #6b7280; font-weight: 700; }
+h1 { margin: 4px 0 0; font-size: 21px; line-height: 1.25; color: #1d2b57; }
+.meta { text-align: right; font-size: 10.5px; color: #4b5563; line-height: 1.6; }
+
+h2 {
+  margin: 22px 0 8px; font-size: 14.5px; color: #1d2b57;
+  border-left: 4px solid #2563eb; padding-left: 10px;
+}
+h3 { margin: 16px 0 4px; font-size: 13px; color: #111827; }
+p { margin: 0 0 9px; }
+ul, ol { margin: 0 0 10px; padding-left: 20px; }
+li { margin-bottom: 5px; }
+
+.cause { border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px 15px; margin-bottom: 12px; page-break-inside: avoid; }
+.cause h3 { margin-top: 0; display: flex; align-items: baseline; gap: 8px; }
+.cause .rang {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 20px; height: 20px; border-radius: 50%; background: #1d2b57; color: #fff;
+  font-size: 11px; font-weight: 700; flex-shrink: 0;
+}
+.chiffre { font-size: 17px; font-weight: 800; color: #b42318; display: block; margin: 6px 0 4px; }
+.exemple { background: #f8fafc; border-left: 3px solid #cbd5e1; padding: 8px 12px; margin: 8px 0 0; font-size: 12px; color: #374151; }
+
+table { width: 100%; border-collapse: collapse; margin: 8px 0 12px; page-break-inside: avoid; }
+th { background: #1d2b57; color: #fff; text-align: left; padding: 7px 8px; font-size: 10.5px; text-transform: uppercase; letter-spacing: .04em; }
+td { padding: 7px 8px; border-bottom: 1px solid #e5e7eb; }
+td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+.encadre { border: 1px solid #fcd9a4; background: #fffaf2; border-radius: 8px; padding: 12px 15px; margin: 14px 0; page-break-inside: avoid; }
+.encadre h2 { margin-top: 0; border-left-color: #b54708; color: #7a3d02; }
+.final { border-top: 2px solid #1d2b57; margin-top: 22px; padding-top: 12px; font-weight: 600; }
+.signature { margin-top: 18px; font-size: 12px; color: #4b5563; }
+
+@media print { .impression { display: none; } body { padding: 0; } }
+</style>
+</head>
+<body>
+
+<div class="impression">
+  <button type="button" onclick="window.print()">Imprimer ou enregistrer en PDF</button>
+</div>
+
+<header class="entete">
+  <div>
+    <p class="sur-titre">La Belle Porte CI &middot; Direction générale</p>
+    <h1>Pourquoi le logiciel affichait moins<br>que ce que vous comptiez</h1>
+  </div>
+  <div class="meta">
+    Note aux responsables d'agence<br>
+    Édité le 24 septembre 2026<br>
+    Mesures : 30 jours arrêtés au 24/09/2026
+  </div>
+</header>
+
+<h2>Ce que vous nous avez dit</h2>
+
+<p>Depuis plusieurs semaines, vos agences nous remontent toutes la même chose : <strong>« quand je compte ma caisse le soir, ce n'est pas ce que le logiciel affiche »</strong>. Le plus souvent, vous trouvez <em>plus</em> d'argent dans le tiroir que le chiffre annoncé.</p>
+
+<p>Nous avons pris cette remarque au sérieux et nous avons cherché, dans les données réelles, d'où venait la différence. <strong>Vous aviez raison.</strong> Le problème ne venait pas de vos comptages : il venait de la manière dont le logiciel additionnait, et de journées entières qui n'étaient jamais fermées.</p>
+
+<p>Voici ce que nous avons trouvé, et ce que nous faisons pour que cela n'arrive plus.</p>
+
+<h2>Les trois causes, mesurées sur les trente derniers jours</h2>
+
+<div class="cause">
+  <h3><span class="rang">1</span> Des journées entières jamais fermées</h3>
+  <span class="chiffre">1 316 270 FCFA</span>
+  <p>Cet argent est entré en caisse sans qu'<strong>aucun point de caisse ne soit soumis ce jour-là</strong>. Personne ne l'a compté, ni le soir même, ni après. C'est de loin la cause la plus importante.</p>
+  <table>
+    <thead><tr><th>Agence</th><th>Journées avec encaissement</th><th>Journées fermées</th><th>Journées sans point</th></tr></thead>
+    <tbody>
+      <tr><td>Abobo Dokui</td><td class="num">21</td><td class="num">8</td><td class="num">13</td></tr>
+      <tr><td>Aéroport</td><td class="num">7</td><td class="num">0</td><td class="num">7</td></tr>
+    </tbody>
+  </table>
+  <p class="exemple">Ce n'est pas un vol, ni même une faute : c'est un oubli, et pour l'aéroport, la méconnaissance de l'écran à remplir. Mais tant qu'une journée n'est pas fermée, <strong>aucun écart ne peut être détecté</strong> — ni en votre faveur, ni en votre défaveur. Vous n'avez aucune preuve que votre caisse était juste ce jour-là.</p>
+</div>
+
+<div class="cause">
+  <h3><span class="rang">2</span> La caisse fermée avant la fin de la journée</h3>
+  <span class="chiffre">526 500 FCFA</span>
+  <p>Ce montant est entré dans le tiroir <strong>après</strong> que le point de caisse de la journée avait été signé. Le chiffre signé était donc juste au moment de la signature — mais plus du tout à 19 h.</p>
+  <p class="exemple"><strong>Exemple réel :</strong> une agence signe son point à 15 h 00 pour 120 000 F. Deux clients paient ensuite, à 16 h 20 et 18 h 50, pour 60 000 F. À la fermeture, le tiroir contient 180 000 F et le logiciel affiche 120 000 F. L'agent en conclut que le logiciel se trompe — alors que c'est la signature qui est arrivée trop tôt.</p>
+</div>
+
+<div class="cause">
+  <h3><span class="rang">3</span> L'argent compté pour une autre agence</h3>
+  <span class="chiffre">environ 70 000 FCFA</span>
+  <p>Le logiciel rattachait l'encaissement à <strong>l'agence inscrite sur la facture</strong>, et non à l'agence qui avait réellement reçu l'argent. Quand un colis enregistré au départ d'une agence était payé dans une autre, le billet allait dans un tiroir et le chiffre dans un autre. L'une comptait plus que le logiciel, l'autre voyait un encaissement qu'elle n'avait jamais reçu.</p>
+  <p class="exemple">C'est ce qui faisait dire que « les points de caisse sont mélangés ». La remarque était exacte.</p>
+</div>
+
+<h2>Un point de vigilance : le mode de paiement</h2>
+
+<p>Le point de caisse ne compte que <strong>les espèces</strong> : un règlement Wave, Orange Money ou par virement ne passe pas par le tiroir, et n'a donc pas à s'y retrouver.</p>
+
+<p>Conséquence : si un client paie en espèces mais que l'agent enregistre « Wave » (ou l'inverse), le montant attendu en caisse devient faux alors que le tiroir, lui, est juste. <strong>Le mode de paiement doit toujours correspondre à la réalité.</strong></p>
+
+<h2>Ce qui a déjà été corrigé dans le logiciel</h2>
+
+<ol>
+  <li><strong>L'argent suit désormais le tiroir.</strong> Un encaissement est rattaché à l'agence de la personne qui a reçu l'argent, plus jamais à celle de la facture.</li>
+  <li><strong>Une caisse signée trop tôt se rouvre toute seule.</strong> Si un paiement arrive après la signature du point, la journée repasse à recompter — le logiciel ne garde plus un chiffre qu'il sait dépassé.</li>
+  <li><strong>Les journées oubliées de septembre sont régularisées.</strong> Elles sont closes avec le montant connu et la mention explicite « aucun comptage physique » : nous n'inventons aucun comptage, les billets de ces journées-là ne peuvent plus être recomptés.</li>
+  <li><strong>La direction dispose d'un écran de contrôle</strong> qui montre, chaque jour et par agence, ce qui a été encaissé, ce qui a été compté, et ce qui ne l'a pas été.</li>
+</ol>
+
+<div class="encadre">
+  <h2>Ce qui change le 1<sup>er</sup> octobre</h2>
+  <p><strong>Tant que la caisse d'une journée n'est pas fermée, la caisse du lendemain reste fermée :</strong> l'agence ne peut ni facturer, ni encaisser. Le logiciel affiche le jour qui manque et le bouton pour le fermer ; dès que le point est soumis, la caisse rouvre immédiatement.</p>
+  <p>Les journées antérieures au 1<sup>er</sup> octobre ne bloquent rien : personne n'était tenu de les soumettre.</p>
+</div>
+
+<h2>Ce que nous attendons de chaque agence</h2>
+
+<ol>
+  <li><strong>Fermer la caisse chaque jour</strong>, dans <em>Finance → Points de Caisse</em>.</li>
+  <li><strong>Compter réellement l'argent</strong> avant de saisir le montant. Un chiffre recopié depuis l'écran ne prouve rien.</li>
+  <li><strong>Fermer à la fin de la journée, pas avant.</strong> Si vous descendez tôt, laissez la caisse ouverte et fermez-la le lendemain matin à votre arrivée : c'est cette fermeture qui ouvrira la caisse du jour.</li>
+  <li><strong>Expliquer chaque écart en une phrase</strong> (monnaie rendue, avance, dépense…). Un écart expliqué ne vous est pas reproché.</li>
+  <li><strong>Enregistrer le bon mode de paiement</strong>, espèces ou mobile money, selon ce que le client a réellement fait.</li>
+</ol>
+
+<p class="final">Le point de caisse quotidien n'est pas un contrôle contre vous : c'est votre protection. C'est lui qui prouve, chiffre en main, que l'argent que vous aviez en caisse correspondait à ce que vous aviez encaissé — et que l'écart, s'il y en a un, ne vient pas de vous.</p>
+
+<p class="signature">La Direction générale<br>La Belle Porte CI</p>
+
+</body>
+</html>
