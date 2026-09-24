@@ -38,6 +38,20 @@ $depuis = '2000-01-01';
 $au = date('Y-m-d');
 $appliquer = in_array('--appliquer', $arguments, true);
 
+/*
+ * Deux gestes de nature tres differente, et deux options.
+ *
+ * --appliquer se contente de renseigner l'agence d'origine des encaissements
+ * passes. C'est une information qui manquait, rien de comptable ne bouge.
+ *
+ * --recalculer-journees reecrit le solde theorique de journees deja soumises
+ * et signees. Le relevé du 24/09/2026 a montre que le recalcul trouvait
+ * jusqu'a 185 000 FCFA de plus qu'une journee soumise, alors que trois
+ * encaissements seulement changeaient d'agence : la difference vient
+ * d'ailleurs, et tant qu'on ne l'a pas expliquee, on ne reecrit rien.
+ */
+$recalculerJournees = in_array('--recalculer-journees', $arguments, true);
+
 foreach ($arguments as $argument) {
     if (preg_match('/^--depuis=(\d{4}-\d{2}-\d{2})$/', $argument, $t)) {
         $depuis = $t[1];
@@ -218,7 +232,7 @@ foreach ($journees as $j) {
         $nouvelEcart === null ? '—' : (($nouvelEcart > 0 ? '+' : '') . $montant($nouvelEcart))
     );
 
-    if ($appliquer) {
+    if ($recalculerJournees) {
         $maj = $pdo->prepare("
             UPDATE lbp_etats_journaliers
                SET total_encaisse_xof = :encaisse,
@@ -245,8 +259,17 @@ if ($journees !== []) {
 // 3. L'écriture, seulement sur demande explicite.
 // ---------------------------------------------------------------------------
 
+if ($journees !== []) {
+    echo "  Lecture du tableau : « attendu avant » est le solde figé au moment où la\n";
+    echo "  journée a été soumise ; « attendu après » est ce que la même journée donne\n";
+    echo "  aujourd'hui. Un écart important entre les deux ne vient pas de la\n";
+    echo "  réattribution : il signale que la caisse a bougé après la soumission.\n\n";
+}
+
 if (!$appliquer) {
-    echo "Rien n'a été modifié. Relancez avec --appliquer pour écrire ces valeurs.\n";
+    echo "Rien n'a été modifié.\n";
+    echo "  --appliquer              renseigne l'agence d'origine des encaissements\n";
+    echo "  --recalculer-journees    réécrit en plus le solde des journées soumises\n";
     exit(0);
 }
 
@@ -261,5 +284,14 @@ $maj = $pdo->prepare("
 $maj->execute(['depuis' => $depuis, 'au' => $au]);
 
 printf("\n%d encaissement(s) ont reçu leur agence d'origine.\n", $maj->rowCount());
-printf("%d journée(s) recalculées.\n", $modifiees);
+
+if ($recalculerJournees) {
+    printf("%d journée(s) recalculées.\n", $modifiees);
+} else {
+    printf(
+        "%d journée(s) soumises auraient changé de solde : elles n'ont PAS été touchées.\n"
+        . "Ajoutez --recalculer-journees pour les réécrire, une fois l'écart expliqué.\n",
+        $modifiees
+    );
+}
 echo "\nTerminé.\n";

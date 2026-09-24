@@ -405,4 +405,74 @@ if ($journees === []) {
     echo "  n'attendait : l'argent est la, il manque dans le calcul.\n\n";
 }
 
+// ---------------------------------------------------------------------------
+// 7. Ce qui est entre en caisse APRES que la journee a ete soumise.
+//
+//    Le solde d'une journee soumise est fige a l'instant de la soumission. Si
+//    l'agence continue d'encaisser ensuite — et elle ferme a 19 h — le tiroir
+//    contient plus que le chiffre signe. La caissiere compte, trouve plus que
+//    le logiciel, et conclut que le logiciel se trompe.
+//
+//    Le releve du 24/09/2026 a montre des journees recalculees jusqu'a 185 000
+//    FCFA au-dessus du solde soumis, alors que trois encaissements seulement
+//    changeaient d'agence : c'est ici qu'il faut chercher.
+// ---------------------------------------------------------------------------
+
+$stmt = $pdo->prepare("
+    SELECT e.date_jour,
+           s.name AS agence,
+           e.date_soumission,
+           e.solde_caisse_agence_xof AS solde_soumis,
+           COUNT(p.id) AS nb_apres,
+           COALESCE(SUM(p.montant), 0) AS montant_apres,
+           MAX(p.date_paiement) AS dernier_encaissement
+    FROM lbp_etats_journaliers e
+    LEFT JOIN company_sites s ON s.id = e.agence_id
+    JOIN lbp_paiements p ON DATE(p.date_paiement) = e.date_jour
+    JOIN lbp_factures f ON f.id = p.facture_id
+    LEFT JOIN users u ON u.id = p.caissiere_id
+    WHERE e.date_jour BETWEEN :depuis AND :au
+      AND e.date_soumission IS NOT NULL
+      AND p.date_paiement > e.date_soumission
+      AND p.devise = 'XOF'
+      AND COALESCE(u.agence_id, f.agence_id) = e.agence_id
+    GROUP BY e.id, e.date_jour, s.name, e.date_soumission, e.solde_caisse_agence_xof
+    ORDER BY montant_apres DESC
+    LIMIT 30
+");
+$stmt->execute(['depuis' => $depuis, 'au' => $au]);
+$apres = $stmt->fetchAll();
+
+echo "=== ENCAISSE APRES LA SOUMISSION DU POINT (" . count($apres) . ") ===\n\n";
+
+if ($apres === []) {
+    echo "  Aucun : chaque journee a ete soumise apres son dernier encaissement.\n\n";
+} else {
+    printf("  %-11s %-22s %-17s %5s %13s %13s\n", 'JOUR', 'AGENCE', 'SOUMIS A', 'NB', 'APRES COUP', 'SOLDE SIGNE');
+    echo '  ' . str_repeat('-', 90) . "\n";
+
+    $totalApres = 0.0;
+
+    foreach ($apres as $a) {
+        $totalApres += (float) $a['montant_apres'];
+
+        printf(
+            "  %-11s %-22s %-17s %5d %13s %13s\n",
+            (string) $a['date_jour'],
+            mb_substr((string) ($a['agence'] ?? '-'), 0, 22),
+            substr((string) $a['date_soumission'], 5, 14),
+            (int) $a['nb_apres'],
+            $montant((float) $a['montant_apres']),
+            $montant((float) $a['solde_soumis'])
+        );
+        printf("  %-11s %-22s dernier encaissement a %s\n", '', '', substr((string) $a['dernier_encaissement'], 11, 5));
+    }
+
+    printf(
+        "\n  %s FCFA sont entres en caisse apres la signature du point.\n"
+        . "  C'est de l'argent bien present dans le tiroir, absent du chiffre signe.\n\n",
+        $montant($totalApres)
+    );
+}
+
 echo "Terminé. Aucune donnée n'a été modifiée.\n";
