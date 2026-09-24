@@ -153,11 +153,31 @@ final class BlocageCaisseService
     {
         $date = date_create($blocage['date']);
 
-        return 'Caisse fermée : le point du '
+        $message = 'Caisse fermée : le point du '
             . ($date === false ? $blocage['date'] : $date->format('d/m/Y'))
             . ' n\'a pas été soumis. '
             . number_format($blocage['montant'], 0, ',', ' ')
-            . ' FCFA ont été encaissés ce jour-là et n\'ont jamais été comptés. '
-            . 'Soumettez ce point pour rouvrir la caisse.';
+            . ' FCFA ont été encaissés ce jour-là et n\'ont jamais été comptés. ';
+
+        // Dire « soumettez » à quelqu'un qui n'en a pas le droit l'enfermerait
+        // sans recours : on lui dit alors qui peut le faire.
+        return $message . (self::peutSoumettre()
+            ? 'Comptez votre caisse et soumettez ce point pour la rouvrir.'
+            : 'Demandez à la caissière ou à l\'agent de saisie de votre agence de soumettre ce point pour rouvrir la caisse.');
+    }
+
+    /**
+     * L'utilisateur courant peut-il soumettre le point lui-même ?
+     *
+     * Le comptage porte sur la caisse entière de l'agence : il n'est ouvert
+     * qu'à ceux qui la voient entière. La gestionnaire de caisse, qui ne voit
+     * que ses propres opérations, reste bloquée comme les autres — c'est la
+     * caisse de l'agence qui est fermée — mais elle doit savoir à qui
+     * s'adresser plutôt que de rester devant un mur.
+     */
+    public static function peutSoumettre(): bool
+    {
+        return Auth::isAdmin()
+            || Auth::hasAnyRole(\App\Controllers\Finance\FinanceController::ROLES_SOUMISSION_POINT);
     }
 }

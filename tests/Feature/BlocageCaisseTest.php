@@ -54,7 +54,24 @@ final class BlocageCaisseTest extends TestCase
         self::assertStringContainsString('Caisse fermée', $message);
         self::assertStringContainsString('02/10/2026', $message);
         self::assertStringContainsString('120 000 FCFA', $message);
-        self::assertStringContainsString('Soumettez ce point pour rouvrir la caisse', $message);
+        self::assertStringContainsString('rouvrir', $message);
+    }
+
+    /**
+     * La gestionnaire de caisse ne peut pas soumettre le point : elle ne voit
+     * que ses propres operations, et un comptage compare a ce sous-ensemble
+     * produirait un ecart faux. Elle reste bloquee — c'est la caisse de
+     * l'agence qui est fermee — mais on lui dit a qui s'adresser plutot que
+     * de la laisser devant un mur.
+     */
+    public function test_celui_qui_ne_peut_pas_soumettre_sait_a_qui_s_adresser(): void
+    {
+        $source = $this->source();
+
+        self::assertStringContainsString('peutSoumettre()', $source);
+        self::assertStringContainsString('Demandez à la caissière', $source);
+        self::assertStringContainsString('agent de saisie de votre agence', $source);
+        self::assertStringContainsString('ROLES_SOUMISSION_POINT', $source);
     }
 
     /**
