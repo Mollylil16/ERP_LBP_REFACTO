@@ -210,7 +210,71 @@ printf(
 );
 
 // ---------------------------------------------------------------------------
-// 4. Le détail ligne à ligne, sur demande.
+// 4. Factures emises pour une autre agence que celle de leur auteur.
+//
+//    L'agence d'une facture est celle de l'« agence de depart » du colis, que
+//    l'agent choisit librement au moment de l'enregistrement
+//    (FinanceController::factureStore). Indiquer une autre agence de depart
+//    envoie la facture — et donc l'argent — ailleurs, alors que la transaction
+//    s'est faite au comptoir de l'agent.
+// ---------------------------------------------------------------------------
+
+$stmt = $pdo->prepare("
+    SELECT sf.name AS agence_facture,
+           su.name AS agence_agent,
+           COUNT(*) AS nb,
+           SUM(f.montant_total) AS total_facture,
+           SUM(f.montant_encaisse) AS total_encaisse
+    FROM lbp_factures f
+    JOIN users u ON u.id = f.created_by
+    LEFT JOIN company_sites sf ON sf.id = f.agence_id
+    LEFT JOIN company_sites su ON su.id = u.agence_id
+    WHERE DATE(f.date_emission) BETWEEN :depuis AND :au
+      AND u.agence_id IS NOT NULL
+      AND f.agence_id <> u.agence_id
+    GROUP BY sf.name, su.name
+    ORDER BY total_encaisse DESC
+    LIMIT 30
+");
+$stmt->execute(['depuis' => $depuis, 'au' => $au]);
+$mauvaiseAgence = $stmt->fetchAll();
+
+echo "=== FACTURES ÉMISES POUR UNE AUTRE AGENCE QUE CELLE DE L'AGENT (" . count($mauvaiseAgence) . ") ===
+
+";
+
+if ($mauvaiseAgence === []) {
+    echo "  Aucune : chaque facture porte l'agence de l'agent qui l'a établie.
+
+";
+} else {
+    printf("  %-26s %-26s %5s %14s %14s
+", "AGENT AU COMPTOIR DE", 'FACTURE MISE AU COMPTE DE', 'NB', 'FACTURÉ', 'ENCAISSÉ');
+    echo '  ' . str_repeat('-', 90) . "
+";
+
+    foreach ($mauvaiseAgence as $m) {
+        printf(
+            "  %-26s %-26s %5d %14s %14s
+",
+            mb_substr((string) ($m['agence_agent'] ?? '—'), 0, 26),
+            mb_substr((string) ($m['agence_facture'] ?? '—'), 0, 26),
+            (int) $m['nb'],
+            $montant((float) $m['total_facture']),
+            $montant((float) $m['total_encaisse'])
+        );
+    }
+
+    echo "
+  La colonne « encaissé » est l'argent que la premiere agence a dans son
+";
+    echo "  tiroir et que le point de caisse compte pour la seconde.
+
+";
+}
+
+// ---------------------------------------------------------------------------
+// 5. Le détail ligne à ligne, sur demande.
 // ---------------------------------------------------------------------------
 
 if ($detail) {
