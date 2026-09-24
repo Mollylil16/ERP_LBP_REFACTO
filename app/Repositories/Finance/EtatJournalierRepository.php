@@ -271,6 +271,19 @@ class EtatJournalierRepository
     /**
      * Totaux d'une journée pour une agence.
      *
+     * Deux rattachements coexistent, et c'est voulu :
+     *
+     *   - ce qui est FACTURÉ suit l'agence de la facture, c'est-à-dire celle
+     *     de l'agent qui l'a établie : la vente appartient à qui l'a faite ;
+     *   - ce qui est ENCAISSÉ suit l'agence où le billet a été pris. Le tiroir
+     *     ne peut se comparer qu'à ce qu'il contient. Un client qui règle à
+     *     Abobo Dokui une facture d'Adjamé laisse son argent à Dokui : la
+     *     vente reste à Adjamé, l'argent est compté à Dokui.
+     *
+     * Le COALESCE couvre les encaissements antérieurs au 24/09/2026, avant que
+     * l'agence ne soit enregistrée sur le paiement : ils gardent l'ancien
+     * rattachement jusqu'au recalcul.
+     *
      * $userId restreint le calcul aux seules opérations saisies par cet utilisateur
      * (factures et colis via `created_by`, encaissements via `caissiere_id`).
      * Passer null pour obtenir le cumul de toute l'agence.
@@ -332,7 +345,7 @@ class EtatJournalierRepository
                 SUM(CASE WHEN p.devise = 'EUR' AND {$modeSql} IN ('especes', 'espece', 'cash') THEN p.montant ELSE 0 END) as encaisse_especes_eur
             FROM lbp_paiements p
             JOIN lbp_factures f ON p.facture_id = f.id
-            WHERE f.agence_id = :agence_id AND DATE(p.date_paiement) = :date{$scopePaiement}
+            WHERE COALESCE(p.agence_id, f.agence_id) = :agence_id AND DATE(p.date_paiement) = :date{$scopePaiement}
         ");
         $stmt->execute(['agence_id' => $agenceId, 'date' => $date] + $scopeParam);
         $payRow = $stmt->fetch() ?: [];
@@ -411,7 +424,7 @@ class EtatJournalierRepository
             FROM lbp_paiements p
             JOIN lbp_factures f ON p.facture_id = f.id
             JOIN lbp_colis c ON f.colis_id = c.id
-            WHERE f.agence_id = :agence_id AND DATE(p.date_paiement) = :date{$scopePaiement}
+            WHERE COALESCE(p.agence_id, f.agence_id) = :agence_id AND DATE(p.date_paiement) = :date{$scopePaiement}
             GROUP BY code_type
         ");
         $stmtEncaisseType->execute(['agence_id' => $agenceId, 'date' => $date] + $scopeParam);
@@ -510,7 +523,7 @@ class EtatJournalierRepository
             LEFT JOIN lbp_colis c ON f.colis_id = c.id
             LEFT JOIN lbp_clients cl ON f.client_id = cl.id
             LEFT JOIN users u ON p.caissiere_id = u.id
-            WHERE f.agence_id = :agence_id AND DATE(p.date_paiement) = :date{$scopePaiement}
+            WHERE COALESCE(p.agence_id, f.agence_id) = :agence_id AND DATE(p.date_paiement) = :date{$scopePaiement}
             ORDER BY p.date_paiement DESC, p.id DESC
         ");
         $stmtEncaissements->execute(['agence_id' => $agenceId, 'date' => $date] + $scopeParam);
@@ -762,7 +775,7 @@ class EtatJournalierRepository
         $params = ['date_debut' => $dateDebut, 'date_fin' => $dateFin];
 
         if ($agenceId > 0) {
-            $sql .= " AND f.agence_id = :agence_id";
+            $sql .= " AND COALESCE(p.agence_id, f.agence_id) = :agence_id";
             $params['agence_id'] = $agenceId;
         }
 
@@ -865,7 +878,7 @@ class EtatJournalierRepository
         ";
         $paramsPay = ['date_debut' => $dateDebut, 'date_fin' => $dateFin, 'user_id' => $userId];
         if ($agenceId > 0) {
-            $sqlPay .= " AND f.agence_id = :agence_id";
+            $sqlPay .= " AND COALESCE(p.agence_id, f.agence_id) = :agence_id";
             $paramsPay['agence_id'] = $agenceId;
         }
         $sqlPay .= " GROUP BY f.agence_id, date_jour";

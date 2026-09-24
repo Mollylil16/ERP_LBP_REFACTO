@@ -451,6 +451,36 @@ class FactureRepository
         return $candidate;
     }
 
+    /**
+     * Agence a laquelle rattacher une facture.
+     *
+     * C'est celle de l'agent qui l'etablit, pas l'« agence de depart » du colis.
+     *
+     * Cette agence de depart est choisie librement dans une liste au moment de
+     * l'enregistrement : indiquer l'aeroport parce que le colis partira de
+     * la-bas envoyait la facture — et donc l'argent du point de caisse — a
+     * l'aeroport, alors que le client avait paye au comptoir d'Adjame. Adjame
+     * comptait alors plus que le logiciel, et l'aeroport voyait des
+     * encaissements qu'il n'avait jamais faits (constate le 18/09/2026, 70 000
+     * FCFA entre Abobo Dokui et Adjame).
+     *
+     * L'agence de depart reste une information de logistique : elle dit d'ou
+     * le colis part, plus a qui appartient la vente.
+     *
+     * Le repli sur l'agence du colis sert aux comptes sans agence — direction,
+     * administrateur, taches en ligne de commande.
+     */
+    public function resoudreAgenceDeFacturation(?int $agenceDepartColis): int
+    {
+        $agenceAgent = Auth::agenceId();
+
+        if (!empty($agenceAgent) && $agenceAgent > 0) {
+            return $this->resolveValidAgencyId((int) $agenceAgent);
+        }
+
+        return $this->resolveValidAgencyId($agenceDepartColis);
+    }
+
     public function createAutoInvoiceFromParcel(int $parcelId, int $caissiereId = 1): int
     {
         $existing = $this->findByColisId($parcelId);
@@ -466,8 +496,9 @@ class FactureRepository
             throw new \InvalidArgumentException("Colis introuvable ID: {$parcelId}");
         }
 
-        $candidateAgenceId = !empty($colis['agence_depart_id']) ? (int) $colis['agence_depart_id'] : (Auth::agenceId() ?: null);
-        $agenceId = $this->resolveValidAgencyId($candidateAgenceId);
+        $agenceId = $this->resoudreAgenceDeFacturation(
+            !empty($colis['agence_depart_id']) ? (int) $colis['agence_depart_id'] : null
+        );
         $numFacture = $this->generateNextInvoiceNumber($agenceId);
         $userId = Auth::id() ?: $caissiereId;
 

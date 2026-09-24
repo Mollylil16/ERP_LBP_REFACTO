@@ -43,13 +43,33 @@ class PaiementRepository
                 ->format('Y-m-d H:i:s');
         }
 
+        /*
+         * Agence ou le billet est pris. Celle de la personne qui encaisse, et
+         * a defaut celle de la facture : sans ce repli, un encaissement fait
+         * par un compte sans agence — direction, administrateur — ne serait
+         * compte nulle part. Deux encaissements de ce genre, 15 300 FCFA,
+         * flottaient ainsi en septembre 2026.
+         */
+        $agenceId = $paiement->agenceId;
+
+        if (empty($agenceId)) {
+            $agenceId = \App\Helpers\Auth::agenceId();
+        }
+
+        if (empty($agenceId)) {
+            $stmtAgence = $this->pdo->prepare('SELECT agence_id FROM lbp_factures WHERE id = :id LIMIT 1');
+            $stmtAgence->execute(['id' => $paiement->factureId]);
+            $agenceId = (int) $stmtAgence->fetchColumn() ?: null;
+        }
+
         $stmt = $this->pdo->prepare("
-            INSERT INTO lbp_paiements (facture_id, caissiere_id, montant, devise, mode, type, date_paiement)
-            VALUES (:facture_id, :caissiere_id, :montant, :devise, :mode, :type, :date_paiement)
+            INSERT INTO lbp_paiements (facture_id, caissiere_id, agence_id, montant, devise, mode, type, date_paiement)
+            VALUES (:facture_id, :caissiere_id, :agence_id, :montant, :devise, :mode, :type, :date_paiement)
         ");
         $stmt->execute([
             'facture_id' => $paiement->factureId,
             'caissiere_id' => $paiement->caissiereId,
+            'agence_id' => $agenceId,
             'montant' => $paiement->montant,
             'devise' => $paiement->devise,
             'mode' => $paiement->mode,
@@ -189,7 +209,8 @@ class PaiementRepository
             devise: (string) $row['devise'],
             mode: (string) $row['mode'],
             type: (string) $row['type'],
-            datePaiement: $row['date_paiement']
+            datePaiement: $row['date_paiement'],
+            agenceId: isset($row['agence_id']) ? (int) $row['agence_id'] : null
         );
     }
 

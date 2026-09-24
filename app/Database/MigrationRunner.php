@@ -2811,6 +2811,23 @@ class MigrationRunner
         if ($this->schema->tableExists('lbp_paiements')) {
             $this->addColumnIfMissing('lbp_paiements', 'mode_paiement', "ENUM('ESPECES', 'WAVE', 'ORANGE_MONEY', 'MTN_MOMO', 'CARTE', 'VIREMENT') NOT NULL DEFAULT 'ESPECES'");
 
+            /*
+             * Agence ou l'argent a ete pris (24/09/2026).
+             *
+             * Le point de caisse rattachait l'encaissement a l'agence de la
+             * facture. Un client reglant a Abobo Dokui une facture d'Adjame
+             * laissait son billet a Dokui, que le logiciel comptait pour
+             * Adjame : Dokui comptait plus que le logiciel, Adjame voyait un
+             * encaissement qu'elle n'avait pas fait. Le tiroir ne peut se
+             * comparer qu'a ce qu'il contient.
+             *
+             * La colonne est figee a l'encaissement : la deduire ensuite du
+             * compte de la caissiere ferait bouger les journees closes au
+             * moindre changement d'affectation.
+             */
+            $this->addColumnIfMissing('lbp_paiements', 'agence_id', 'INT UNSIGNED NULL');
+            $this->addIndexIfMissing('lbp_paiements', 'idx_lbp_paiements_agence_date', 'agence_id, date_paiement');
+
             // `mode` est la seule colonne réellement alimentée lors d'un encaissement
             // (PaiementRepository::create). Le règlement par portefeuille client y écrit
             // 'portefeuille', valeur absente de l'ENUM d'origine : rejetée en sql_mode

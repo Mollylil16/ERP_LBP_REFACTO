@@ -305,8 +305,11 @@ final class FinanceController extends FinanceBaseController
             $montantTotal = $totalXof / $tauxChange;
         }
 
-        $candidateAgenceId = !empty($colis['agence_depart_id']) ? (int) $colis['agence_depart_id'] : (Auth::agenceId() ?: null);
-        $agenceId = $this->factureRepo->resolveValidAgencyId($candidateAgenceId);
+        // La facture appartient a l'agence de l'agent qui l'etablit, pas a
+        // l'« agence de depart » du colis : voir FactureRepository.
+        $agenceId = $this->factureRepo->resoudreAgenceDeFacturation(
+            !empty($colis['agence_depart_id']) ? (int) $colis['agence_depart_id'] : null
+        );
         $numeroFacture = $this->factureRepo->generateNextInvoiceNumber($agenceId);
 
         // Auto-heal l'agence de départ du colis si elle était manquante ou à 0
