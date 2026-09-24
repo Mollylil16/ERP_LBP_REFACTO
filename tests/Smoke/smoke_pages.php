@@ -110,6 +110,8 @@ $ecrans = [
     'Tableau de bord Finance' => '/finance/dashboard',
     'Points de caisse' => '/finance/clotures',
     'Factures clients' => '/finance/factures',
+    'Controle des caisses' => '/finance/controle-caisse',
+    'Controle des caisses PDF' => '/finance/controle-caisse/pdf',
     'Rapprochement envois' => '/finance/rapprochement-envois',
     'Rapprochement envois PDF' => '/finance/rapprochement-envois/pdf',
     'Logistique' => '/logistique/dashboard',
@@ -273,10 +275,15 @@ function charger(string $chemin): array
 
     // Un refus passé par RoleMiddleware pose un message en session sans
     // interrompre la ligne de commande.
-    $refus = Session::get('error');
-    if (is_string($refus) && str_contains($refus, 'habilitation')) {
-        Session::forget('error');
-
+    // RoleMiddleware depose son refus en message flash. Le lire avec get()
+    // ne trouvait jamais rien : un ecran refuse etait compte comme charge, et
+    // ce script ne disait plus rien des habilitations. Et quand l'ecran s'est
+    // tout de meme rendu — en ligne de commande le middleware ne coupe pas —
+    // c'est la page elle-meme qui a affiche le message, et consomme le flash :
+    // il faut donc le chercher aussi dans le HTML.
+    $refus = Session::getFlash('error');
+    if ((is_string($refus) && str_contains($refus, 'habilitation'))
+        || str_contains($html, "habilitation requise")) {
         return ['ok', '        accès refusé (rôle)'];
     }
 

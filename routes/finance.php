@@ -38,6 +38,10 @@ $router->group('/finance', function (Router $router): void {
     $router->get('/clotures/{id}/bordereau-pdf', [FinanceController::class, 'exportBordereauPdf']);
     $router->post('/clotures/{id}/consolider', [FinanceController::class, 'clotureConsolider']);
 
+    // Controle des caisses : l'ecran de surveillance de la direction
+    $router->get('/controle-caisse', [\App\Controllers\Finance\ControleCaisseController::class, 'index']);
+    $router->get('/controle-caisse/pdf', [\App\Controllers\Finance\ControleCaisseController::class, 'exportPdf']);
+
     // Dépenses prestataires
     $router->get('/depenses', [FinanceController::class, 'depensesIndex']);
     $router->post('/depenses/enregistrer', [FinanceController::class, 'depenseStore']);
