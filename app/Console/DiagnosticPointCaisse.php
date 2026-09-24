@@ -315,4 +315,84 @@ if ($detail) {
     echo "\n";
 }
 
+// ---------------------------------------------------------------------------
+// 6. Les journees deja soumises : ce que l'agence a compte, ce que le logiciel
+//    attendait, et ce qui explique l'ecart.
+//
+//    Le solde theorique ne retient que les especes : mobile money, carte,
+//    virement et cheque ne passent pas par le tiroir. Un encaissement en
+//    especes enregistre sous un autre mode fait donc baisser l'attendu sans
+//    toucher au tiroir — le logiciel annonce alors moins que le comptage.
+// ---------------------------------------------------------------------------
+
+$stmt = $pdo->prepare("
+    SELECT e.date_jour, s.name AS agence, e.agence_id,
+           e.solde_caisse_agence_xof AS theorique,
+           e.solde_physique_declare AS compte,
+           e.ecart_caisse AS ecart,
+           e.explication_ecart
+    FROM lbp_etats_journaliers e
+    LEFT JOIN company_sites s ON s.id = e.agence_id
+    WHERE e.date_jour BETWEEN :depuis AND :au
+      AND e.solde_physique_declare IS NOT NULL
+    ORDER BY ABS(e.ecart_caisse) DESC, e.date_jour DESC
+    LIMIT 30
+");
+$stmt->execute(['depuis' => $depuis, 'au' => $au]);
+$journees = $stmt->fetchAll();
+
+echo "=== JOURNEES SOUMISES : COMPTAGE PHYSIQUE CONTRE ATTENDU (" . count($journees) . ") ===\n\n";
+
+if ($journees === []) {
+    echo "  Aucune journee soumise avec un comptage physique sur cette periode.\n\n";
+} else {
+    printf("  %-12s %-24s %13s %13s %13s\n", 'JOUR', 'AGENCE', 'ATTENDU', 'COMPTE', 'ECART');
+    echo '  ' . str_repeat('-', 80) . "\n";
+
+    $stmtCroise = $pdo->prepare("
+        SELECT COALESCE(SUM(p.montant), 0)
+        FROM lbp_paiements p
+        JOIN lbp_factures f ON f.id = p.facture_id
+        JOIN users u ON u.id = p.caissiere_id
+        WHERE DATE(p.date_paiement) = :jour
+          AND u.agence_id = :agence
+          AND f.agence_id <> u.agence_id
+          AND p.devise = 'XOF'
+    ");
+
+    foreach ($journees as $j) {
+        $ecart = (float) $j['ecart'];
+
+        printf(
+            "  %-12s %-24s %13s %13s %13s\n",
+            (string) $j['date_jour'],
+            mb_substr((string) ($j['agence'] ?? '-'), 0, 24),
+            $montant((float) $j['theorique']),
+            $montant((float) $j['compte']),
+            ($ecart > 0 ? '+' : '') . $montant($ecart)
+        );
+
+        // Ce que l'agence a encaisse ce jour-la mais que le logiciel compte ailleurs.
+        $stmtCroise->execute(['jour' => $j['date_jour'], 'agence' => (int) $j['agence_id']]);
+        $ailleurs = (float) $stmtCroise->fetchColumn();
+
+        if ($ailleurs > 0) {
+            printf(
+                "  %-12s %-24s dont %s encaisses ici et comptes pour une autre agence\n",
+                '',
+                '',
+                $montant($ailleurs)
+            );
+        }
+
+        $explication = trim((string) ($j['explication_ecart'] ?? ''));
+        if ($explication !== '') {
+            printf("  %-12s %-24s << %s >>\n", '', '', mb_substr($explication, 0, 60));
+        }
+    }
+
+    echo "\n  Un ecart positif veut dire que l'agence a compte plus que le logiciel\n";
+    echo "  n'attendait : l'argent est la, il manque dans le calcul.\n\n";
+}
+
 echo "Terminé. Aucune donnée n'a été modifiée.\n";
