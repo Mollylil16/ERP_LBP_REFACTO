@@ -693,6 +693,20 @@ textarea.finea-input {
     min-width: 0 !important;
   }
 
+  /*
+   * Un element de rangee flex refuse par defaut de descendre sous la largeur
+   * de son contenu. Une liste deroulante se dimensionne sur son option la plus
+   * longue — « Toutes les agences (Historique global) » — et poussait la page
+   * a 468 px sur un ecran de 375. L'autorisation de retrecir se donne sur
+   * l'element, pas sur le champ.
+   */
+  .finea-shell [style*="display:flex"] > *,
+  .finea-shell [style*="display: flex"] > *,
+  .module-content [style*="display:flex"] > *,
+  .module-content [style*="display: flex"] > * {
+    min-width: 0;
+  }
+
   /* Cibles tactiles : 44 px est le minimum confortable au doigt. */
   .finea-button,
   .rh-filter-btn,
@@ -714,6 +728,33 @@ textarea.finea-input {
      le voile ne se refermait jamais. */
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
+}
+
+@media (max-width: 640px) {
+  .finea-table {
+    min-width: 0;
+    font-size: 0.82rem;
+  }
+
+  /*
+   * Un tableau a sept colonnes ne tiendra jamais sur un telephone : il defile
+   * dans son enveloppe. Encore faut-il le voir — sans repere, le texte coupe
+   * au bord de la carte passe pour un chevauchement. Cette ombre interieure
+   * dit que la suite est a droite.
+   */
+  .finea-table-wrap,
+  .finea-table-wrapper {
+    box-shadow: inset -14px 0 12px -12px rgba(15, 23, 42, 0.25);
+  }
+
+  .finea-table th,
+  .finea-table td {
+    padding: 9px 10px;
+    /* Un numero de facture — FA-3402-2026-000030 — tenait la colonne ouverte
+       a lui seul et poussait le tableau hors de sa carte. Il se coupe
+       desormais plutot que de deborder. */
+    overflow-wrap: anywhere;
+  }
 }
 
 @media (max-width: 620px) {
