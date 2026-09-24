@@ -47,6 +47,30 @@ foreach ($arguments as $argument) {
     }
 }
 
+/*
+ * Rien ne doit mourir en silence. En production, PHP n'affiche pas les
+ * erreurs : une requete refusee rendait la main sans un mot, et l'on croyait
+ * le script passe. Toute erreur est desormais ecrite noir sur blanc.
+ */
+set_exception_handler(static function (Throwable $e): void {
+    fwrite(STDERR, "\nERREUR : " . $e->getMessage() . "\n");
+    fwrite(STDERR, 'Dans ' . basename($e->getFile()) . ' ligne ' . $e->getLine() . "\n");
+    exit(3);
+});
+
+/**
+ * La colonne qui retient l'agence d'encaissement existe-t-elle ?
+ *
+ * Elle est creee par le migrateur, qui ne tourne qu'au chargement d'une page
+ * de l'ERP : en ligne de commande, elle peut manquer.
+ */
+function colonneAgenceExiste(PDO $pdo): bool
+{
+    $stmt = $pdo->query("SHOW COLUMNS FROM lbp_paiements LIKE 'agence_id'");
+
+    return $stmt !== false && $stmt->fetch() !== false;
+}
+
 $config = require BASE_PATH . '/config/database.php';
 
 try {
@@ -66,6 +90,24 @@ try {
 }
 
 $montant = static fn (float $v): string => number_format($v, 0, ',', ' ');
+if (!colonneAgenceExiste($pdo)) {
+    if (!$appliquer) {
+        echo "La colonne « agence_id » n'existe pas encore sur les encaissements :\n";
+        echo "elle sera creee au lancement de --appliquer, ou au premier chargement\n";
+        echo "d'une page de l'ERP.\n\n";
+    } else {
+        $pdo->exec('ALTER TABLE lbp_paiements ADD COLUMN agence_id INT UNSIGNED NULL');
+        echo "Colonne « agence_id » creee sur lbp_paiements.\n\n";
+    }
+}
+
+
+/*
+ * Tant que la colonne n'existe pas, aucun encaissement ne porte d'agence :
+ * l'expression vaut NULL, ce qui décrit exactement l'état d'avant correction
+ * et laisse la simulation tourner.
+ */
+$colonneAgence = colonneAgenceExiste($pdo) ? 'p.agence_id' : 'NULL';
 
 echo "=== REMISE DES ENCAISSEMENTS DANS LE BON TIROIR ===\n";
 echo 'Période du ' . $depuis . ' au ' . $au . "\n";
@@ -84,7 +126,7 @@ $stmt = $pdo->prepare("
     FROM lbp_paiements p
     JOIN lbp_factures f ON f.id = p.facture_id
     LEFT JOIN users u ON u.id = p.caissiere_id
-    WHERE p.agence_id IS NULL
+    WHERE {$colonneAgence} IS NULL
       AND DATE(p.date_paiement) BETWEEN :depuis AND :au
 ");
 $stmt->execute(['depuis' => $depuis, 'au' => $au]);
@@ -124,7 +166,7 @@ $journees = $stmt->fetchAll();
  * Totaux d'une journée avec la règle corrigée : l'encaissement suit l'agence
  * où il a été pris, reconstituée quand elle manque.
  */
-$recalculer = static function (PDO $pdo, int $agenceId, string $jour): array {
+$recalculer = static function (PDO $pdo, int $agenceId, string $jour) use ($colonneAgence): array {
     $stmt = $pdo->prepare("
         SELECT
             COALESCE(SUM(CASE WHEN p.devise = 'XOF' THEN p.montant ELSE 0 END), 0) AS encaisse_xof,
@@ -134,7 +176,7 @@ $recalculer = static function (PDO $pdo, int $agenceId, string $jour): array {
         FROM lbp_paiements p
         JOIN lbp_factures f ON f.id = p.facture_id
         LEFT JOIN users u ON u.id = p.caissiere_id
-        WHERE COALESCE(p.agence_id, u.agence_id, f.agence_id) = :agence
+        WHERE COALESCE({$colonneAgence}, u.agence_id, f.agence_id) = :agence
           AND DATE(p.date_paiement) = :jour
     ");
     $stmt->execute(['agence' => $agenceId, 'jour' => $jour]);

@@ -55,6 +55,17 @@ foreach ($arguments as $argument) {
     }
 }
 
+/*
+ * Rien ne doit mourir en silence. En production, PHP n'affiche pas les
+ * erreurs : une requete refusee rendait la main sans un mot, et l'on croyait
+ * le script passe. Toute erreur est desormais ecrite noir sur blanc.
+ */
+set_exception_handler(static function (Throwable $e): void {
+    fwrite(STDERR, "\nERREUR : " . $e->getMessage() . "\n");
+    fwrite(STDERR, 'Dans ' . basename($e->getFile()) . ' ligne ' . $e->getLine() . "\n");
+    exit(3);
+});
+
 $config = require BASE_PATH . '/config/database.php';
 
 try {
@@ -74,7 +85,6 @@ try {
 }
 
 $montant = static fn (float $v): string => number_format($v, 0, ',', ' ');
-
 echo "=== POINT DE CAISSE : OÙ EST L'ARGENT, OÙ LE LOGICIEL LE COMPTE ===\n";
 echo "Période du " . $depuis . " au " . $au . "\n\n";
 
