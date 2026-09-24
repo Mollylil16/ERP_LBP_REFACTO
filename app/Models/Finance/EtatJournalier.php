@@ -33,6 +33,10 @@ class EtatJournalier
         public bool $blindCount = true,
         public ?int $validationSuperviseurId = null,
         public bool $soumissionRetroactive = false,
-        public ?string $justificationRetard = null
+        public ?string $justificationRetard = null,
+        /** Date a laquelle un encaissement posterieur a rouvert le point. */
+        public ?string $reouvertLe = null,
+        /** Premiere signature, conservee quand le point est rouvert. */
+        public ?string $soumisLePremier = null
     ) {}
 }

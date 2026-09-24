@@ -639,7 +639,9 @@ class EtatJournalierRepository
             blindCount: !empty($row['blind_count']),
             validationSuperviseurId: isset($row['validation_superviseur_id']) && is_numeric($row['validation_superviseur_id']) ? (int) $row['validation_superviseur_id'] : null,
             soumissionRetroactive: !empty($row['soumission_retroactive']),
-            justificationRetard: $row['justification_retard'] ?? null
+            justificationRetard: $row['justification_retard'] ?? null,
+            reouvertLe: $row['reouvert_le'] ?? null,
+            soumisLePremier: $row['soumis_le_premier'] ?? null
         );
     }
 

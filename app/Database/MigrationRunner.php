@@ -2802,6 +2802,22 @@ class MigrationRunner
             $this->addColumnIfMissing('lbp_etats_journaliers', 'validation_superviseur_id', "INT NULL");
             $this->addColumnIfMissing('lbp_etats_journaliers', 'soumission_retroactive', "TINYINT(1) NOT NULL DEFAULT 0");
             $this->addColumnIfMissing('lbp_etats_journaliers', 'justification_retard', "VARCHAR(100) NULL");
+
+            /*
+             * Reouverture automatique du point (24/09/2026).
+             *
+             * Une agence signe son point au milieu de l'apres-midi et continue
+             * d'encaisser jusqu'a la fermeture : le 22/09, Adjame a signe
+             * 45 050 FCFA a 15h20 puis encaisse 185 500 de plus jusqu'a 17h54.
+             * Le tiroir contenait 230 550, le logiciel affichait 45 050 — d'ou
+             * « le logiciel donne un montant inferieur au montant physique ».
+             *
+             * Tout encaissement posterieur rouvre donc le point, qui doit etre
+             * recompte avant la fermeture. La date gardee ici sert a le dire a
+             * l'agent, et au directeur de voir qui ferme trop tot.
+             */
+            $this->addColumnIfMissing('lbp_etats_journaliers', 'reouvert_le', 'DATETIME NULL');
+            $this->addColumnIfMissing('lbp_etats_journaliers', 'soumis_le_premier', 'DATETIME NULL');
         }
 
         if ($this->schema->tableExists('lbp_demandes_paiement_prestataires')) {

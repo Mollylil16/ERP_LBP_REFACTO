@@ -1255,9 +1255,40 @@ final class Finance
                     . '</div>';
             }
 
+            /*
+             * Caisse rouverte : un encaissement est arrivé après la signature.
+             *
+             * Le message tient en deux phrases et une action. Les agences ont
+             * signé leur point au milieu de l'après-midi puis continué
+             * d'encaisser — 185 500 FCFA à Adjamé le 22/09/2026 après une
+             * signature à 15h20 — et le tiroir ne correspondait plus au
+             * logiciel. Ce n'est pas une faute à expliquer, c'est un comptage
+             * à refaire.
+             */
+            if (!empty($activeReport['reouvertLe']) && $statut === 'brouillon') {
+                $encaisseDepuis = round($totalEncaisseXof - (float) ($activeReport['totalEncaisseSoumis'] ?? 0), 2);
+                $heurePremiere = !empty($activeReport['soumisLePremier'])
+                    ? date('H\hi', strtotime((string) $activeReport['soumisLePremier']))
+                    : '';
+
+                $lateAlert .= '<div style="background:#fff7ed; border:2px solid #f97316; border-radius:12px; padding:1.25rem 1.5rem; margin-bottom:1.25rem;">'
+                    . '<div style="display:flex; align-items:center; gap:0.6rem; margin-bottom:0.5rem;">'
+                    . '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#c2410c" stroke-width="2.4" stroke-linecap="round"><path d="M3 12a9 9 0 1 0 9-9"></path><polyline points="3 4 3 12 11 12"></polyline></svg>'
+                    . '<strong style="color:#9a3412; font-size:1.1rem;">Votre caisse a été rouverte</strong>'
+                    . '</div>'
+                    . '<p style="margin:0 0 0.35rem; color:#7c2d12; font-size:1rem; line-height:1.5;">'
+                    . 'Vous avez encaissé <strong>' . number_format(max(0, $encaisseDepuis), 0, ',', ' ') . ' FCFA</strong> après avoir fermé'
+                    . ($heurePremiere !== '' ? ' à ' . View::e($heurePremiere) : '') . '.'
+                    . '</p>'
+                    . '<p style="margin:0; color:#7c2d12; font-size:1rem; line-height:1.5;">'
+                    . 'Recomptez votre caisse, puis fermez-la de nouveau avant de partir.'
+                    . '</p>'
+                    . '</div>';
+            }
+
             // Le total fige lors de la soumission peut differer du total reel du jour
             // si des factures ou encaissements ont ete enregistres apres la cloture.
-            if (!$estPerimetreAgent && isset($activeReport['totalFactureSoumis'])) {
+            if (!$estPerimetreAgent && empty($activeReport['reouvertLe']) && isset($activeReport['totalFactureSoumis'])) {
                 $ecartFacture = round($totalFactureXof - (float) $activeReport['totalFactureSoumis'], 2);
                 $ecartEncaisse = round($totalEncaisseXof - (float) $activeReport['totalEncaisseSoumis'], 2);
 

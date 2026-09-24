@@ -1176,6 +1176,10 @@ final class FinanceController extends FinanceBaseController
                 // signale les operations enregistrees apres la cloture.
                 $activeReport['totalFactureSoumis'] = (float) ($etat['totalFactureXof'] ?? 0.0);
                 $activeReport['totalEncaisseSoumis'] = (float) ($etat['totalEncaisseXof'] ?? 0.0);
+
+                // Le point a-t-il ete rouvert par un encaissement posterieur ?
+                $activeReport['reouvertLe'] = $etat['reouvertLe'] ?? null;
+                $activeReport['soumisLePremier'] = $etat['soumisLePremier'] ?? null;
             }
 
             $activeReport['scope_user_id'] = $scopeUserId;

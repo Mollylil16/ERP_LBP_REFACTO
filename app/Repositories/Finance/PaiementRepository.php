@@ -76,7 +76,54 @@ class PaiementRepository
             'type' => $paiement->type,
             'date_paiement' => $datePaiement,
         ]);
-        return (int) $this->pdo->lastInsertId();
+
+        $id = (int) $this->pdo->lastInsertId();
+
+        $this->rouvrirLePointDuJour($agenceId, substr($datePaiement, 0, 10));
+
+        return $id;
+    }
+
+    /**
+     * Rouvre le point de caisse du jour dès qu'un encaissement lui succède.
+     *
+     * Une agence signe son point au milieu de l'après-midi et continue
+     * d'encaisser jusqu'à la fermeture : le 22/09/2026, Adjamé a signé
+     * 45 050 FCFA à 15h20 puis encaissé 185 500 de plus jusqu'à 17h54. Le
+     * tiroir contenait 230 550, le logiciel affichait 45 050. La caissière
+     * comptait juste — le logiciel avait cessé de compter.
+     *
+     * Le point repasse donc en brouillon : il devra être recompté avant la
+     * fermeture. La première signature est conservée, pour que la direction
+     * voie qui ferme trop tôt.
+     *
+     * Un point déjà consolidé n'est pas rouvert : il a été validé par la
+     * caissière principale, et le défaire dans son dos serait pire. Il
+     * ressortira dans les écarts du directeur.
+     */
+    private function rouvrirLePointDuJour(?int $agenceId, string $jour): void
+    {
+        if (empty($agenceId)) {
+            return;
+        }
+
+        try {
+            $stmt = $this->pdo->prepare("
+                UPDATE lbp_etats_journaliers
+                   SET statut = 'brouillon',
+                       reouvert_le = NOW(),
+                       soumis_le_premier = COALESCE(soumis_le_premier, date_soumission),
+                       updated_at = NOW()
+                 WHERE agence_id = :agence
+                   AND date_jour = :jour
+                   AND statut = 'soumis'
+            ");
+            $stmt->execute(['agence' => $agenceId, 'jour' => $jour]);
+        } catch (\Throwable $e) {
+            // Un encaissement ne doit jamais échouer parce que son point de
+            // caisse résiste : la réouverture est un confort, pas une condition.
+            error_log('[Point de caisse] réouverture impossible : ' . $e->getMessage());
+        }
     }
 
     // -----------------------------------------------------
