@@ -85,6 +85,18 @@ try {
 }
 
 $montant = static fn (float $v): string => number_format($v, 0, ',', ' ');
+
+/**
+ * Tronque et complete un texte a une largeur donnee, en caracteres.
+ *
+ * printf compte les octets : un accent y vaut deux, et toute la colonne
+ * se decale d'un cran a chaque nom accentue.
+ */
+$colonne = static function (?string $texte, int $largeur): string {
+    $texte = mb_substr((string) ($texte ?? '—'), 0, $largeur);
+
+    return $texte . str_repeat(' ', max(0, $largeur - mb_strlen($texte)));
+};
 echo "=== POINT DE CAISSE : OÙ EST L'ARGENT, OÙ LE LOGICIEL LE COMPTE ===\n";
 echo "Période du " . $depuis . " au " . $au . "\n\n";
 
@@ -138,7 +150,7 @@ foreach ($agences as $a) {
 
     printf(
         "  %-34s %16s %16s %14s\n",
-        mb_substr((string) $a['name'], 0, 34),
+        $colonne((string) $a['name'], 34),
         $montant((float) $a['compte_par_logiciel']),
         $montant((float) $a['reellement_encaisse']),
         ($ecart > 0 ? '+' : '') . $montant($ecart)
@@ -187,8 +199,8 @@ if ($croises === []) {
         printf(
             "  %-12s %-26s %-26s %5d %12s\n",
             $c['jour'],
-            mb_substr((string) ($c['agence_encaissement'] ?? '—'), 0, 26),
-            mb_substr((string) ($c['agence_facture'] ?? '—'), 0, 26),
+            $colonne((string) ($c['agence_encaissement'] ?? '—'), 26),
+            $colonne((string) ($c['agence_facture'] ?? '—'), 26),
             (int) $c['nb'],
             $montant((float) $c['total'])
         );
@@ -267,8 +279,8 @@ if ($mauvaiseAgence === []) {
         printf(
             "  %-26s %-26s %5d %14s %14s
 ",
-            mb_substr((string) ($m['agence_agent'] ?? '—'), 0, 26),
-            mb_substr((string) ($m['agence_facture'] ?? '—'), 0, 26),
+            $colonne((string) ($m['agence_agent'] ?? '—'), 26),
+            $colonne((string) ($m['agence_facture'] ?? '—'), 26),
             (int) $m['nb'],
             $montant((float) $m['total_facture']),
             $montant((float) $m['total_encaisse'])
@@ -316,9 +328,9 @@ if ($detail) {
             substr((string) $l['date_paiement'], 0, 19),
             (string) $l['numero_facture'],
             $montant((float) $l['montant']),
-            mb_substr((string) $l['encaisse_par'], 0, 24),
-            mb_substr((string) ($l['agence_encaissement'] ?? '—'), 0, 20),
-            mb_substr((string) ($l['agence_facture'] ?? '—'), 0, 22)
+            $colonne((string) $l['encaisse_par'], 24),
+            $colonne((string) ($l['agence_encaissement'] ?? '—'), 20),
+            $colonne((string) ($l['agence_facture'] ?? '—'), 22)
         );
     }
 
@@ -376,7 +388,7 @@ if ($journees === []) {
         printf(
             "  %-12s %-24s %13s %13s %13s\n",
             (string) $j['date_jour'],
-            mb_substr((string) ($j['agence'] ?? '-'), 0, 24),
+            $colonne((string) ($j['agence'] ?? '-'), 24),
             $montant((float) $j['theorique']),
             $montant((float) $j['compte']),
             ($ecart > 0 ? '+' : '') . $montant($ecart)
@@ -459,7 +471,7 @@ if ($apres === []) {
         printf(
             "  %-11s %-22s %-17s %5d %13s %13s\n",
             (string) $a['date_jour'],
-            mb_substr((string) ($a['agence'] ?? '-'), 0, 22),
+            $colonne((string) ($a['agence'] ?? '-'), 22),
             substr((string) $a['date_soumission'], 5, 14),
             (int) $a['nb_apres'],
             $montant((float) $a['montant_apres']),
@@ -473,6 +485,122 @@ if ($apres === []) {
         . "  C'est de l'argent bien present dans le tiroir, absent du chiffre signe.\n\n",
         $montant($totalApres)
     );
+}
+
+// ---------------------------------------------------------------------------
+// 8. Les journees ou l'agence a encaisse sans jamais soumettre de point.
+//
+//    Les sections precedentes ne voient que les journees soumises. Or une
+//    agence oublie, et ce jour-la l'argent est entre en caisse sans que
+//    personne ne signe pour lui : ni comptage, ni ecart, ni trace. C'est le
+//    trou le plus large, et il ne se voit dans aucun ecran.
+//
+//    Deux situations distinctes : aucun point ouvert du tout, ou un point
+//    ouvert puis laisse en plan sans soumission.
+// ---------------------------------------------------------------------------
+
+$stmt = $pdo->prepare("
+    SELECT s.name AS agence,
+           s.id AS agence_id,
+           COUNT(DISTINCT jours.jour) AS jours_encaisses,
+           COUNT(DISTINCT CASE WHEN e.date_soumission IS NOT NULL THEN jours.jour END) AS jours_soumis,
+           COALESCE(SUM(CASE WHEN e.date_soumission IS NULL THEN jours.total ELSE 0 END), 0) AS montant_sans_point
+    FROM (
+        SELECT DATE(p.date_paiement) AS jour,
+               COALESCE(u.agence_id, f.agence_id) AS agence_id,
+               SUM(p.montant) AS total
+        FROM lbp_paiements p
+        JOIN lbp_factures f ON f.id = p.facture_id
+        LEFT JOIN users u ON u.id = p.caissiere_id
+        WHERE DATE(p.date_paiement) BETWEEN :depuis AND :au
+          AND p.devise = 'XOF'
+        GROUP BY jour, agence_id
+    ) AS jours
+    JOIN company_sites s ON s.id = jours.agence_id
+    LEFT JOIN lbp_etats_journaliers e ON e.agence_id = jours.agence_id AND e.date_jour = jours.jour
+    GROUP BY s.id, s.name
+    ORDER BY montant_sans_point DESC
+");
+$stmt->execute(['depuis' => $depuis, 'au' => $au]);
+$couverture = $stmt->fetchAll();
+
+echo "=== JOURNEES ENCAISSEES SANS POINT DE CAISSE SOUMIS ===\n\n";
+
+if ($couverture === []) {
+    echo "  Aucun encaissement sur la periode.\n\n";
+} else {
+    printf("  %-30s %8s %8s %9s %16s\n", 'AGENCE', 'JOURS', 'SOUMIS', 'MANQUANTS', 'ARGENT SANS POINT');
+    echo '  ' . str_repeat('-', 78) . "\n";
+
+    $totalSansPoint = 0.0;
+
+    foreach ($couverture as $c) {
+        $manquants = (int) $c['jours_encaisses'] - (int) $c['jours_soumis'];
+        $totalSansPoint += (float) $c['montant_sans_point'];
+
+        printf(
+            "  %-30s %8d %8d %9d %16s\n",
+            $colonne((string) $c['agence'], 30),
+            (int) $c['jours_encaisses'],
+            (int) $c['jours_soumis'],
+            $manquants,
+            $montant((float) $c['montant_sans_point'])
+        );
+    }
+
+    printf(
+        "\n  %s FCFA sont entres en caisse sans qu'aucun point ne soit signe.\n"
+        . "  Personne n'a compte ce tiroir-la, et aucun ecart n'a pu etre detecte.\n\n",
+        $montant($totalSansPoint)
+    );
+}
+
+// Le detail des vingt journees les plus lourdes restees sans point.
+$stmt = $pdo->prepare("
+    SELECT jours.jour,
+           s.name AS agence,
+           jours.total,
+           jours.nb,
+           CASE WHEN e.id IS NULL THEN 'aucun point ouvert'
+                ELSE CONCAT('point ouvert le ', DATE_FORMAT(e.created_at, '%d/%m a %Hh%i'), ', jamais soumis')
+           END AS etat
+    FROM (
+        SELECT DATE(p.date_paiement) AS jour,
+               COALESCE(u.agence_id, f.agence_id) AS agence_id,
+               SUM(p.montant) AS total,
+               COUNT(*) AS nb
+        FROM lbp_paiements p
+        JOIN lbp_factures f ON f.id = p.facture_id
+        LEFT JOIN users u ON u.id = p.caissiere_id
+        WHERE DATE(p.date_paiement) BETWEEN :depuis AND :au
+          AND p.devise = 'XOF'
+        GROUP BY jour, agence_id
+    ) AS jours
+    JOIN company_sites s ON s.id = jours.agence_id
+    LEFT JOIN lbp_etats_journaliers e ON e.agence_id = jours.agence_id AND e.date_jour = jours.jour
+    WHERE e.id IS NULL OR e.date_soumission IS NULL
+    ORDER BY jours.total DESC
+    LIMIT 20
+");
+$stmt->execute(['depuis' => $depuis, 'au' => $au]);
+$sansPoint = $stmt->fetchAll();
+
+if ($sansPoint !== []) {
+    printf("  %-11s %-26s %6s %13s   %s\n", 'JOUR', 'AGENCE', 'NB', 'ENCAISSE', 'ETAT');
+    echo '  ' . str_repeat('-', 92) . "\n";
+
+    foreach ($sansPoint as $j) {
+        printf(
+            "  %-11s %-26s %6d %13s   %s\n",
+            (string) $j['jour'],
+            $colonne((string) $j['agence'], 26),
+            (int) $j['nb'],
+            $montant((float) $j['total']),
+            (string) $j['etat']
+        );
+    }
+
+    echo "\n";
 }
 
 echo "Terminé. Aucune donnée n'a été modifiée.\n";
