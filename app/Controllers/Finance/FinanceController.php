@@ -241,9 +241,31 @@ final class FinanceController extends FinanceBaseController
     /**
      * Enregistrer une nouvelle facture.
      */
+    /**
+     * Refuse de facturer ou d'encaisser tant qu'une journée passée n'a pas
+     * été soumise.
+     *
+     * Decide par la direction, applicable au 1er octobre 2026 : 1 316 270
+     * FCFA avaient ete encaisses en un mois sans qu'aucun point ne soit
+     * signe. Soumettre le point manquant rouvre la caisse immediatement.
+     */
+    private function refuserSiCaisseFermee(string $retour): void
+    {
+        $blocage = \App\Services\Finance\BlocageCaisseService::creer()->blocageCourant();
+
+        if ($blocage === null) {
+            return;
+        }
+
+        Session::flash('error', \App\Services\Finance\BlocageCaisseService::message($blocage));
+        header('Location: ' . View::url('finance/clotures') . '?date_exacte=' . urlencode($blocage['date']));
+        exit;
+    }
+
     public function factureStore(): void
     {
         RoleMiddleware::check(self::ROLES_GUICHET);
+        $this->refuserSiCaisseFermee('finance/factures');
 
         // Sans ce controle, une page piegee peut declencher cette action a l insu
         // de l utilisateur connecte, avec ses propres droits.
@@ -468,6 +490,7 @@ final class FinanceController extends FinanceBaseController
     public function factureEncaisser(string $id): void
     {
         RoleMiddleware::check([...self::ROLES_GUICHET, 'agent_groupage', 'suivi_recouvrement']);
+        $this->refuserSiCaisseFermee('finance/factures');
 
         if (!Csrf::verify($_POST['_csrf_token'] ?? null)) {
             Session::flash('error', 'Session expirée ou requête invalide (CSRF). Veuillez réessayer.');
@@ -602,6 +625,7 @@ final class FinanceController extends FinanceBaseController
     public function facturePayerPortefeuille(string $id): void
     {
         RoleMiddleware::check(self::ROLES_GUICHET);
+        $this->refuserSiCaisseFermee('finance/factures');
 
         // Sans ce controle, une page piegee peut declencher cette action a l insu
         // de l utilisateur connecte, avec ses propres droits.

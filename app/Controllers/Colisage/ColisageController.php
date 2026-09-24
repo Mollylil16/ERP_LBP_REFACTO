@@ -310,6 +310,16 @@ final class ColisageController extends ColisageBaseController
         // l agent de saisie facturer depuis Finance mais pas depuis son colis.
         RoleMiddleware::check(\App\Controllers\Finance\FinanceController::ROLES_GUICHET);
 
+        // Pas de point de caisse soumis, pas de caisse ouverte : facturer
+        // depuis un colis est un encaissement comme un autre.
+        $blocage = \App\Services\Finance\BlocageCaisseService::creer()->blocageCourant();
+
+        if ($blocage !== null) {
+            Session::flash('error', \App\Services\Finance\BlocageCaisseService::message($blocage));
+            header('Location: ' . View::url('finance/clotures') . '?date_exacte=' . urlencode($blocage['date']));
+            exit;
+        }
+
         // Sans ce controle, une page piegee declenche cette action a l insu de
         // l utilisateur connecte, avec ses propres droits.
         if (!Csrf::verify($_POST['_csrf_token'] ?? null)) {
