@@ -6,9 +6,16 @@ namespace App\Services\Shared;
 
 use App\Repositories\Shared\NotificationRepository;
 
-class NotificationService
+class NotificationService implements NotificationServiceInterface
 {
-    public function __construct(private NotificationRepository $repository) {}
+    private InfobipSmsService $infobipService;
+
+    public function __construct(
+        private NotificationRepository $repository,
+        ?InfobipSmsService $infobipService = null
+    ) {
+        $this->infobipService = $infobipService ?? new InfobipSmsService();
+    }
 
     /**
      * Envoie et enregistre la notification lors de l'arrivée du colis en agence.
@@ -20,12 +27,13 @@ class NotificationService
         $tracking = $colis['numero_tracking'] ?? '';
         $destPhone = $colis['destinataire_phone'] ?? $colis['recup_telephone'] ?? null;
         $destEmail = $colis['destinataire_email'] ?? null;
+        $signature = $this->infobipService->getCallCenterSignature();
 
-        $msg = "Bonjour, votre colis N° " . $tracking . " est bien arrivé en agence.";
+        $msg = "Bonjour, votre colis N° " . $tracking . " est bien arrive en agence.";
         if ($rayonNom) {
             $msg .= " Emplacement : " . $rayonNom . ".";
         }
-        $msg .= " Vous disposez de votre délai gratuit pour le retirer.";
+        $msg .= " Contact Call Center : " . $signature . ".";
 
         $this->repository->createNotification([
             'colis_id' => (int) ($colis['id'] ?? 0),
@@ -37,7 +45,6 @@ class NotificationService
         ]);
 
         $this->dispatchSmsOrWhatsapp((string) $destPhone, $msg, 'SMS');
-        $this->dispatchSmsOrWhatsapp((string) $destPhone, $msg, 'WHATSAPP');
     }
 
     /**
@@ -51,13 +58,9 @@ class NotificationService
         $tracking = $colis['numero_tracking'] ?? '';
         $destPhone = $retraitData['recup_telephone'] ?? $colis['destinataire_phone'] ?? null;
         $destEmail = $colis['destinataire_email'] ?? null;
-        $recupNom = $retraitData['recup_nom'] ?? 'Client';
+        $signature = $this->infobipService->getCallCenterSignature();
 
-        $msg = "Bonjour, le retrait du colis N° " . $tracking . " par " . $recupNom . " a été confirmé au comptoir le " . date('d/m/Y H:i') . ".";
-        if ($fraisGardiennage > 0) {
-            $msg .= " Frais de gardiennage appliqués : " . number_format($fraisGardiennage, 0, ',', ' ') . " XOF.";
-        }
-        $msg .= " Merci de votre confiance !";
+        $msg = "LBP : Bonjour, votre colis N° " . $tracking . " a bien ete livre / retire avec succes. Merci de votre confiance ! Contact Call Center : " . $signature . ".";
 
         $this->repository->createNotification([
             'colis_id' => (int) ($colis['id'] ?? 0),
@@ -68,14 +71,13 @@ class NotificationService
             'message' => $msg,
         ]);
 
-        // Simuler l'expédition vers la passerelle SMS / WhatsApp
         $this->dispatchSmsOrWhatsapp((string) $destPhone, $msg, 'SMS');
-        $this->dispatchSmsOrWhatsapp((string) $destPhone, $msg, 'WHATSAPP');
-        $this->dispatchPushOrWebhook($colis, 'RETRAIT_CONFIRME', ['recup_nom' => $recupNom, 'frais' => $fraisGardiennage]);
+        $this->dispatchPushOrWebhook($colis, 'RETRAIT_CONFIRME', ['recup_nom' => $retraitData['recup_nom'] ?? 'Client', 'frais' => $fraisGardiennage]);
     }
 
     /**
-     * Envoie et enregistre la notification lors d'un changement de statut en transit ou étape GPS.
+     * Envoie et enregistre la notification lors d'un changement de statut.
+     * Le SMS n'est envoyé au client que si le statut est LIVRÉ ou RETIRÉ.
      *
      * @param array<string, mixed> $colis
      */
@@ -85,37 +87,29 @@ class NotificationService
         $destPhone = $colis['destinataire_phone'] ?? $colis['recup_telephone'] ?? null;
         $expPhone = $colis['expediteur_phone'] ?? null;
         $destEmail = $colis['destinataire_email'] ?? null;
+        $statutUpper = strtoupper(trim($newStatut));
 
-        $statusLabels = [
-            'EN_PRÉPARATION' => 'en cours de préparation pour expédition',
-            'EN_TRANSIT' => 'en transit / en cours d\'acheminement',
-            'ARRIVÉ' => 'arrivé à l\'agence de destination',
-            'LIVRÉ' => 'livré au destinataire',
-            'RETIRÉ' => 'retiré au comptoir',
-        ];
+        $signature = $this->infobipService->getCallCenterSignature();
+        $isLivraison = in_array($statutUpper, ['LIVRÉ', 'LIVRE', 'RETIRÉ', 'RETIRE'], true);
 
-        $statusLabel = $statusLabels[strtoupper($newStatut)] ?? $newStatut;
-        $msg = "Suivi Colis N° " . $tracking . " : Votre colis est actuellement " . $statusLabel . ".";
-        if ($etapeOrDetails) {
-            $msg .= " Info jalon : " . $etapeOrDetails . ".";
+        if ($isLivraison) {
+            $msg = "LBP : Bonjour, votre colis N° " . $tracking . " a bien ete livre / retire avec succes. Merci de votre confiance ! Contact Call Center : " . $signature . ".";
+        } else {
+            $msg = "Suivi Colis N° " . $tracking . " : Statut mis à jour (" . $statutUpper . ").";
         }
-        $msg .= " Suivez votre colis en temps réel sur notre portail.";
 
         $this->repository->createNotification([
             'colis_id' => (int) ($colis['id'] ?? 0),
             'destinataire_telephone' => $destPhone,
             'destinataire_email' => $destEmail,
-            'type_notification' => 'CHANGEMENT_STATUT_' . strtoupper($newStatut),
+            'type_notification' => 'CHANGEMENT_STATUT_' . $statutUpper,
             'statut' => 'ENVOYÉ',
             'message' => $msg,
         ]);
 
-        if ($destPhone) {
+        // Envoi SMS UNIQUEMENT si le colis est livré / retiré
+        if ($isLivraison && $destPhone) {
             $this->dispatchSmsOrWhatsapp((string) $destPhone, $msg, 'SMS');
-            $this->dispatchSmsOrWhatsapp((string) $destPhone, $msg, 'WHATSAPP');
-        }
-        if ($expPhone && $expPhone !== $destPhone) {
-            $this->dispatchSmsOrWhatsapp((string) $expPhone, $msg, 'SMS');
         }
 
         $this->dispatchPushOrWebhook($colis, 'CHANGEMENT_STATUT', [
@@ -371,7 +365,15 @@ HTML;
     }
 
     /**
-     * Passerelle d'expédition externe SMS / WhatsApp.
+     * Envoie une notification (implémentation de NotificationServiceInterface).
+     */
+    public function send(string $to, string $message, string $channel = 'sms'): bool
+    {
+        return $this->dispatchSmsOrWhatsapp($to, $message, $channel);
+    }
+
+    /**
+     * Passerelle d'expédition externe SMS (Infobip) / WhatsApp.
      */
     public function dispatchSmsOrWhatsapp(string $phone, string $message, string $channel = 'SMS'): bool
     {
@@ -379,15 +381,12 @@ HTML;
             return false;
         }
 
-        // Préparation du payload API SMS/WhatsApp (ex: Orange SMS / Twilio / WhatsApp Business API)
-        $payload = [
-            'to' => $phone,
-            'body' => $message,
-            'channel' => strtoupper($channel),
-            'sent_at' => date('Y-m-d H:i:s'),
-        ];
+        if (strtoupper($channel) === 'SMS') {
+            $result = $this->infobipService->sendSms($phone, $message);
+            return $result['success'];
+        }
 
-        // Pour la démonstration / staging, on journalise dans l'environnement système
+        // Pour WhatsApp ou autre canal externe
         error_log('[NOTIF_' . strtoupper($channel) . '] Expédié à ' . $phone . ' : ' . $message);
 
         return true;

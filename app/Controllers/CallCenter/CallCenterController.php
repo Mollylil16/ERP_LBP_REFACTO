@@ -813,11 +813,28 @@ final class CallCenterController extends BaseController
         $desc = isset($_POST['description']) && $_POST['description'] !== '' ? trim((string)$_POST['description']) : null;
         $satisfaction = isset($_POST['satisfaction_score']) && $_POST['satisfaction_score'] !== '' ? (int)$_POST['satisfaction_score'] : null;
         $agentId = Auth::id() ?? Auth::user()?->id ?? 0;
+        $tel = trim((string) ($_POST['tel'] ?? ''));
+        $msgText = trim((string) ($_POST['message'] ?? ''));
 
         if ($colisId <= 0 || $clientId <= 0 || !in_array($typeNotif, ['whatsapp', 'sms', 'appel'], true)) {
             header('Content-Type: application/json');
             echo json_encode(['ok' => false, 'message' => 'Données invalides.']);
             return;
+        }
+
+        // Si notification SMS, expédier directement via Infobip
+        if ($typeNotif === 'sms' && !empty($tel)) {
+            $infobip = new \App\Services\Shared\InfobipSmsService();
+            if (empty($msgText)) {
+                $signature = $infobip->getCallCenterSignature();
+                $msgText = "LBP : Bonjour, votre colis fait l'objet d'un suivi par notre agence. Contact Call Center : {$signature}.";
+            }
+            $smsResult = $infobip->sendSms($tel, $msgText);
+            if (!$smsResult['success']) {
+                header('Content-Type: application/json');
+                echo json_encode(['ok' => false, 'message' => $smsResult['message']]);
+                return;
+            }
         }
 
         $stmt = $this->db->prepare("
@@ -829,13 +846,13 @@ final class CallCenterController extends BaseController
             'client_id' => $clientId,
             'type_notification' => $typeNotif,
             'duree_appel' => $duree,
-            'description' => $desc,
+            'description' => $desc ?? ($typeNotif === 'sms' ? 'SMS envoyé via Infobip' : null),
             'satisfaction_score' => $satisfaction,
             'agent_id' => $agentId,
         ]);
 
         header('Content-Type: application/json');
-        echo json_encode(['ok' => $ok]);
+        echo json_encode(['ok' => $ok, 'message' => $ok ? 'SMS envoyé avec succès.' : 'Erreur d\'enregistrement.']);
     }
 
     // ==========================================

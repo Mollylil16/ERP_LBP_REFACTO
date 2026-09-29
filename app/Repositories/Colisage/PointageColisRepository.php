@@ -298,6 +298,7 @@ final class PointageColisRepository
             SELECT c.id, c.numero_tracking, c.nombre_colis, c.poids_total, c.statut,
                    c.date_reception, c.reception_hors_liste,
                    exp.name AS expediteur, dest.name AS destinataire,
+                   dest.phone AS destinataire_phone,
                    u.full_name AS recu_par
             FROM lbp_colis c
             LEFT JOIN lbp_clients exp ON exp.id = c.expediteur_id

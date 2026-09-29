@@ -821,34 +821,31 @@ final class FinanceController extends FinanceBaseController
             exit;
         }
 
-        // L'envoi des relances n'est pas encore branche : les SMS passeront par
-        // Infobip, WhatsApp par un lien qui ouvre la conversation du client depuis
-        // le poste de l'agent.
-        //
-        // Jusqu'au 14/09/2026, ce bouton appelait NotificationService::send(), qui
-        // n'existe pas : l'agent tombait sur une erreur 500. On dit maintenant ce
-        // qu'il en est, sans afficher de faux succes ni historiser une relance qui
-        // ne serait jamais partie.
-        Session::flash(
-            'info',
-            "L'envoi automatique des relances n'est pas encore activé. En attendant, contactez le client au "
-                . $client['phone'] . ' : il reste ' . number_format($facture->montantRestant, 0, ',', ' ')
-                . ' ' . $facture->devise . ' à régler sur la facture ' . $facture->numeroFacture . '.'
-        );
+        // Envoi effectif de la relance par SMS via Infobip
+        $infobip = new \App\Services\Shared\InfobipSmsService();
+        $signature = $infobip->getCallCenterSignature();
+        $solde = number_format($facture->montantRestant, 0, ',', ' ');
+        $message = "LBP : Bonjour, un solde de {$solde} {$facture->devise} reste a regler sur votre facture {$facture->numeroFacture}. Contact Call Center : {$signature}.";
+
+        $ok = $this->notifService->send((string) $client['phone'], $message, 'sms');
+
+        if ($ok) {
+            Session::flash('success', "Relance SMS envoyée avec succès au client ({$client['phone']}).");
+        } else {
+            Session::flash('error', "Échec de l'envoi du SMS via Infobip. Vérifiez votre configuration ou votre solde.");
+        }
 
         header('Location: ' . View::url('finance/factures/' . $id));
         exit;
     }
 
     /**
-     * Relance groupée par SMS/WhatsApp de toutes les factures impayées.
+     * Relance groupée par SMS de toutes les factures impayées.
      */
     public function factureRelancerTout(): void
     {
         RoleMiddleware::check([...self::ROLES_GUICHET, 'comptable', 'suivi_recouvrement']);
 
-        // Sans ce controle, une page piegee peut declencher cette action a l insu
-        // de l utilisateur connecte, avec ses propres droits.
         if (!Csrf::verify($_POST['_csrf_token'] ?? null)) {
             Session::flash('error', 'Session expiree ou requete invalide. Veuillez reessayer.');
             header('Location: ' . View::url('finance/factures'));
@@ -862,23 +859,37 @@ final class FinanceController extends FinanceBaseController
             exit;
         }
 
-        // Meme situation que factureRelancer() : l'envoi n'est pas encore branche.
-        // Ce bouton passait un texte a dispatchPushOrWebhook(), qui attend le colis
-        // sous forme de tableau : TypeError, donc erreur 500. On annonce ce qui
-        // reste a relancer, sans pretendre l'avoir fait ni journaliser un envoi
-        // qui n'a pas eu lieu.
-        $totalMontant = 0.0;
+        $infobip = new \App\Services\Shared\InfobipSmsService();
+        $signature = $infobip->getCallCenterSignature();
+        $successCount = 0;
+        $failCount = 0;
+
         foreach ($unpaid as $f) {
-            if (($f['devise'] ?? 'XOF') === 'XOF') {
-                $totalMontant += (float) $f['montant_restant'];
+            $phone = $f['client_phone'] ?? null;
+            if (empty($phone)) {
+                $failCount++;
+                continue;
+            }
+
+            $solde = number_format((float) ($f['montant_restant'] ?? 0), 0, ',', ' ');
+            $devise = $f['devise'] ?? 'XOF';
+            $numFacture = $f['numero_facture'] ?? '';
+            $message = "LBP : Bonjour, un solde de {$solde} {$devise} reste a regler sur votre facture {$numFacture}. Contact Call Center : {$signature}.";
+
+            $sent = $this->notifService->send((string) $phone, $message, 'sms');
+            if ($sent) {
+                $successCount++;
+            } else {
+                $failCount++;
             }
         }
 
-        Session::flash(
-            'info',
-            "L'envoi automatique des relances n'est pas encore activé. " . count($unpaid)
-                . ' facture(s) impayée(s) sont à relancer, pour ' . number_format($totalMontant, 0, ',', ' ') . ' XOF.'
-        );
+        if ($successCount > 0) {
+            Session::flash('success', "Relances SMS : {$successCount} envoyée(s)" . ($failCount > 0 ? ", {$failCount} en échec." : "."));
+        } else {
+            Session::flash('error', "Aucun SMS n'a pu être envoyé. Vérifiez votre solde Infobip ou votre configuration.");
+        }
+
         header('Location: ' . View::url('finance/factures'));
         exit;
     }

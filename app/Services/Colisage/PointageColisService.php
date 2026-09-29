@@ -241,7 +241,7 @@ final class PointageColisService
     }
 
     /**
-     * « Prévenir les clients » : l'envoi des SMS n'est pas encore branché.
+     * « Prévenir les clients » : expédie les SMS d'arrivée aux destinataires des colis reçus.
      *
      * @return array{ok:bool, message:string}
      */
@@ -253,11 +253,46 @@ final class PointageColisService
             return ['ok' => false, 'message' => 'Départ introuvable pour votre agence.'];
         }
 
-        $recus = (int) $depart['recus'];
+        $colisList = $this->repo->colisDuDepart($expeditionId);
+        $infobip = new \App\Services\Shared\InfobipSmsService();
+        $signature = $infobip->getCallCenterSignature();
+
+        $envoyes = 0;
+        $ignores = 0;
+
+        foreach ($colisList as $colis) {
+            // Seuls les colis pointés comme reçus
+            if (empty($colis['date_reception']) && !in_array($colis['statut'], ['arrive', 'retire', 'livre'], true)) {
+                continue;
+            }
+
+            $phone = $colis['destinataire_phone'] ?? null;
+            if (empty($phone)) {
+                $ignores++;
+                continue;
+            }
+
+            $tracking = $colis['numero_tracking'] ?? '';
+            $msg = "LBP : Bonjour, votre colis N° {$tracking} est arrive et disponible en agence. Contact Call Center : {$signature}.";
+
+            $res = $infobip->sendSms((string) $phone, $msg);
+            if ($res['success']) {
+                $envoyes++;
+            } else {
+                $ignores++;
+            }
+        }
+
+        if ($envoyes === 0 && $ignores === 0) {
+            return [
+                'ok' => false,
+                'message' => "Aucun colis pointé comme reçu à notifier pour ce départ.",
+            ];
+        }
 
         return [
-            'ok' => false,
-            'message' => "L'envoi des SMS n'est pas encore activé. {$recus} colis reçu(s) sur ce départ : leurs clients seront prévenus dès qu'il le sera.",
+            'ok' => $envoyes > 0,
+            'message' => "Notification SMS : {$envoyes} client(s) notifié(s) avec succès" . ($ignores > 0 ? " ({$ignores} en échec ou sans téléphone)." : "."),
         ];
     }
 
