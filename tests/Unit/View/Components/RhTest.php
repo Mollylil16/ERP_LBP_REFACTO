@@ -27,7 +27,9 @@ final class RhTest extends TestCase
     {
         $html = Rh::pagination(2, 3, static fn(int $page): string => '/rh/personnel?page=' . $page);
 
-        self::assertStringContainsString('class="is-active"', $html);
+        // Le rendu est passé au composant partagé Pagination : la page
+        // courante porte désormais sa classe de page, plus la marque active.
+        self::assertStringContainsString('finea-pagination-page is-active', $html);
         self::assertStringContainsString('aria-current="page"', $html);
         self::assertStringContainsString('page=3', $html);
     }

@@ -11,29 +11,38 @@ use Tests\TestCase;
 /**
  * L'avis de la direction sur le portail.
  *
- * Posé le 24/09/2026 pour annoncer la fermeture obligatoire de la caisse au
- * 1er octobre. Il dure cinq jours et s'efface seul : un message qui reste des
- * semaines n'est plus lu, et l'on finit par ne plus voir non plus celui qui
- * compte.
+ * Posé pour annoncer la fermeture obligatoire de la caisse au 1er octobre. Il
+ * dure quelques jours et s'efface seul : un message qui reste des semaines
+ * n'est plus lu, et l'on finit par ne plus voir non plus celui qui compte.
+ *
+ * Les dates ne sont pas recopiées ici : elles changent à chaque annonce, et un
+ * test qui les fige se casse au lieu de vérifier la règle.
  */
 final class AvisPortailTest extends TestCase
 {
-    /** Le premier jour compte : cinq jours à partir du 24 se lisent jusqu'au 28. */
-    public function test_l_avis_dure_exactement_cinq_jours(): void
+    /** Le premier jour compte : un avis de cinq jours posé le 29 se lit jusqu'au 3. */
+    public function test_l_avis_dure_le_nombre_de_jours_annonce(): void
     {
-        foreach (['2026-09-24', '2026-09-25', '2026-09-26', '2026-09-27', '2026-09-28'] as $jour) {
-            self::assertCount(1, AvisPortail::actifs($jour), "L'avis doit être lisible le {$jour}.");
-        }
+        foreach (AvisPortail::tous() as $avis) {
+            $jour = $avis['debut'];
 
-        self::assertSame([], AvisPortail::actifs('2026-09-29'), "Le sixième jour, l'avis a disparu.");
-        self::assertSame([], AvisPortail::actifs('2026-10-15'));
+            for ($n = 0; $n < $avis['jours']; $n++) {
+                self::assertCount(1, AvisPortail::actifs($jour), "L'avis doit être lisible le {$jour}.");
+                $jour = date('Y-m-d', (int) strtotime($jour . ' +1 day'));
+            }
+
+            self::assertSame([], AvisPortail::actifs($jour), "Le jour suivant, l'avis a disparu.");
+            self::assertSame([], AvisPortail::actifs(date('Y-m-d', (int) strtotime($jour . ' +6 months'))));
+        }
     }
 
     /** Rien ne s'affiche avant la date de publication. */
     public function test_rien_ne_s_affiche_avant_la_publication(): void
     {
-        self::assertSame([], AvisPortail::actifs('2026-09-23'));
-        self::assertSame('', Avis::portail('2026-09-23'));
+        $veille = date('Y-m-d', (int) strtotime(AvisPortail::tous()[0]['debut'] . ' -1 day'));
+
+        self::assertSame([], AvisPortail::actifs($veille));
+        self::assertSame('', Avis::portail($veille));
     }
 
     /**
@@ -42,7 +51,7 @@ final class AvisPortailTest extends TestCase
      */
     public function test_l_avis_dit_la_regle_et_les_deux_cas_particuliers(): void
     {
-        $html = Avis::portail('2026-09-24');
+        $html = Avis::portail(AvisPortail::tous()[0]['debut']);
 
         self::assertStringContainsString('1er octobre', $html);
         self::assertStringContainsString('ni facturer ni encaisser le lendemain matin', $html);
@@ -58,7 +67,7 @@ final class AvisPortailTest extends TestCase
      */
     public function test_l_avis_ne_se_ferme_pas(): void
     {
-        $html = Avis::portail('2026-09-24');
+        $html = Avis::portail(AvisPortail::tous()[0]['debut']);
 
         self::assertStringNotContainsString('<button', $html);
         self::assertStringNotContainsString('<script', $html);

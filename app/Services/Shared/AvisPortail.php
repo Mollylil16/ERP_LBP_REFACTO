@@ -22,8 +22,12 @@ final class AvisPortail
      */
     private const AVIS = [
         [
+            // Reposé le 29/09 pour encadrer l'entrée en vigueur : il se lit du
+            // 29 septembre au 3 octobre, soit les deux jours qui précèdent, le
+            // jour même, et les deux premiers matins où la caisse peut rester
+            // fermée — c'est là que la consigne est cherchée.
             'id' => 'point-caisse-1er-octobre',
-            'debut' => '2026-09-24',
+            'debut' => '2026-09-29',
             'jours' => 5,
             'ton' => 'attention',
             'titre' => 'À toutes les agences — nouvelle règle à partir du 1er octobre',
@@ -36,6 +40,19 @@ final class AvisPortail
             ],
         ],
     ];
+
+    /**
+     * Les avis configurés, quelle que soit leur date.
+     *
+     * Sert aux tests : ils vérifient la fenêtre d'affichage sans recopier les
+     * dates, qui changent à chaque annonce.
+     *
+     * @return array<int, array{id:string, debut:string, jours:int, ton:string, titre:string, paragraphes:array<int, string>}>
+     */
+    public static function tous(): array
+    {
+        return self::AVIS;
+    }
 
     /**
      * Les avis à afficher aujourd'hui.

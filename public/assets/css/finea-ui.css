@@ -596,6 +596,60 @@ textarea.finea-input {
   line-height: 1.5;
 }
 
+/* Pagination — partagée par tous les modules.
+   Elle vivait dans rh.css, que seul le module RH charge : ailleurs les
+   numéros sortaient nus et collés les uns aux autres. */
+.finea-pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 18px;
+}
+
+.finea-pagination a {
+  min-width: 36px;
+  height: 36px;
+  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--finea-border, #dfe6f1);
+  border-radius: 9px;
+  background: #fff;
+  color: #1d2b57;
+  font-size: 0.86rem;
+  font-weight: 700;
+  text-decoration: none;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.finea-pagination a:hover,
+.finea-pagination a:focus-visible {
+  border-color: #1d2b57;
+  background: #f1f5fb;
+}
+
+.finea-pagination a.is-active {
+  background: #1d2b57;
+  border-color: #1d2b57;
+  color: #fff;
+  cursor: default;
+}
+
+.finea-pagination-fleche {
+  color: #475569;
+}
+
+.finea-pagination-coupure {
+  min-width: 22px;
+  text-align: center;
+  color: #94a3b8;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
 @media (max-width: 720px) {
   .finea-container {
     width: min(100% - 20px, 1440px);

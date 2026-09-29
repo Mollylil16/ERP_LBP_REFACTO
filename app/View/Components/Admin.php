@@ -73,16 +73,7 @@ final class Admin
     /** @param array<int,array{number:int,href:string,active:bool}> $links */
     public static function pagination(array $links): string
     {
-        if (count($links) <= 1) {
-            return '';
-        }
-        $html = '<nav class="admin-pagination" aria-label="Pagination">';
-        foreach ($links as $link) {
-            $html .= '<a class="' . ($link['active'] ? 'is-active' : '') . '" href="'
-                . View::e($link['href']) . '"' . ($link['active'] ? ' aria-current="page"' : '') . '>'
-                . (int) $link['number'] . '</a>';
-        }
-        return $html . '</nav>';
+        return Pagination::links($links, 'admin-pagination');
     }
 
     /** @param array<string,mixed> $employee */

@@ -222,39 +222,23 @@ final class Rh
             . $head . '</tr></thead><tbody>' . $body . '</tbody></table></div>';
     }
 
-    /** @param callable(int):string $href */
+    /**
+     * Ces deux méthodes sont appelées depuis le CRM, la Facturation, le
+     * Colisage et le Pilotage, qui ne chargent pas rh.css : le rendu est donc
+     * confié à Pagination, dont le style vit dans finea-ui.css. La classe
+     * « rh-pagination » reste posée pour les écrans RH déjà habillés.
+     *
+     * @param callable(int):string $href
+     */
     public static function pagination(int $currentPage, int $totalPages, callable $href): string
     {
-        if ($totalPages <= 1) {
-            return '';
-        }
-
-        $html = '<nav class="rh-pagination" aria-label="Pagination">';
-        for ($page = 1; $page <= $totalPages; $page++) {
-            $active = $page === $currentPage;
-            $html .= '<a class="' . ($active ? 'is-active' : '') . '" href="'
-                . View::e($href($page)) . '"' . ($active ? ' aria-current="page"' : '') . '>'
-                . $page . '</a>';
-        }
-
-        return $html . '</nav>';
+        return Pagination::pages($currentPage, $totalPages, $href, 'rh-pagination');
     }
 
     /** @param array<int,array{number:int,href:string,active:bool}> $links */
     public static function paginationLinks(array $links): string
     {
-        if (count($links) <= 1) {
-            return '';
-        }
-
-        $html = '<nav class="rh-pagination" aria-label="Pagination">';
-        foreach ($links as $link) {
-            $html .= '<a class="' . ($link['active'] ? 'is-active' : '') . '" href="'
-                . View::e($link['href']) . '"' . ($link['active'] ? ' aria-current="page"' : '') . '>'
-                . (int) $link['number'] . '</a>';
-        }
-
-        return $html . '</nav>';
+        return Pagination::links($links, 'rh-pagination');
     }
 
     /** @param array<string,mixed> $details */
