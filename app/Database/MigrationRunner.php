@@ -4131,16 +4131,43 @@ class MigrationRunner
 
                 if ($user) {
                     $userId = (int) $user['id'];
-                    $this->pdo->prepare("UPDATE users SET agence_id = ?, status = 'active' WHERE id = ?")->execute([$staff['agence_id'], $userId]);
-                    $this->pdo->prepare("DELETE FROM lbp_user_roles WHERE user_id = ?")->execute([$userId]);
-                    $this->pdo->prepare("INSERT INTO lbp_user_roles (user_id, role) VALUES (?, ?)")->execute([$userId, $staff['role']]);
+
+                    /*
+                     * Ce bloc amorce un compte, il ne le regouverne pas.
+                     *
+                     * Il effaçait jusqu'ici tous les rôles du compte pour
+                     * réinscrire celui d'origine, et cela à chaque requête —
+                     * run() s'exécute à chaque page servie. Nommer Mme Carine
+                     * caissière principale tenait donc jusqu'au prochain clic,
+                     * et l'appro caisse lui restait fermé. Même chose pour
+                     * toute agence ou tout statut corrigé depuis
+                     * Administration : le lendemain, c'était revenu.
+                     *
+                     * Désormais il ne comble que le vide : un compte sans
+                     * aucun rôle reçoit le sien, un compte sans agence reçoit
+                     * la sienne. Ce qu'un administrateur a décidé ensuite lui
+                     * survit.
+                     */
+                    $stmtVide = $this->pdo->prepare('SELECT COUNT(*) FROM lbp_user_roles WHERE user_id = ?');
+                    $stmtVide->execute([$userId]);
+
+                    if ((int) $stmtVide->fetchColumn() === 0) {
+                        $this->pdo->prepare('INSERT INTO lbp_user_roles (user_id, role) VALUES (?, ?)')->execute([$userId, $staff['role']]);
+                    }
+
+                    // L'agence ne se réécrit que si le compte n'en a pas. Le
+                    // statut ne se touche plus du tout : un compte désactivé
+                    // l'a été pour une raison.
+                    $this->pdo->prepare('UPDATE users SET agence_id = ? WHERE id = ? AND (agence_id IS NULL OR agence_id = 0)')
+                        ->execute([$staff['agence_id'], $userId]);
 
                     $stmtEnt = $this->pdo->prepare("SELECT id FROM permission_entities WHERE code = ? LIMIT 1");
-                    $stmtPerm = $this->pdo->prepare("
-                        INSERT INTO user_permissions (user_id, entity_id, can_view, can_create, can_update, can_delete)
+                    // IGNORE et non UPDATE : une permission deja arbitree par
+                    // l administration reste telle qu il l a voulue.
+                    $stmtPerm = $this->pdo->prepare('
+                        INSERT IGNORE INTO user_permissions (user_id, entity_id, can_view, can_create, can_update, can_delete)
                         VALUES (?, ?, ?, ?, ?, ?)
-                        ON DUPLICATE KEY UPDATE can_view = VALUES(can_view), can_create = VALUES(can_create), can_update = VALUES(can_update), can_delete = VALUES(can_delete)
-                    ");
+                    ');
 
                     foreach ($staff['permissions'] as $entCode => $rights) {
                         $stmtEnt->execute([$entCode]);
