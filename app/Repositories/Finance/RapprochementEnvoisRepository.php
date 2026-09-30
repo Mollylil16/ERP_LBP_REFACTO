@@ -210,10 +210,17 @@ final class RapprochementEnvoisRepository
      */
     public function compagnies(): array
     {
+        /*
+         * Les compagnies de transport d'abord : le comptable rapproche des
+         * factures de compagnie, pas de transitaire. Les autres prestataires
+         * restent proposés — un transitaire repris de l'ancienne base porte un
+         * type vide, et les écarter le ferait disparaître de la liste.
+         */
         $lignes = $this->pdo->query("
             SELECT id, name FROM lbp_prestataires
             WHERE is_active = 1
-            ORDER BY name
+            ORDER BY (type IN ('COMPAGNIE_AERIENNE', 'COMPAGNIE_MARITIME', 'TRANSPORTEUR_ROUTIER', 'EXPRESS')) DESC,
+                     name
         ")->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
         return array_map(static fn (array $l): array => ['id' => (int) $l['id'], 'name' => (string) $l['name']], $lignes);
