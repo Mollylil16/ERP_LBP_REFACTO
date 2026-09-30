@@ -38,6 +38,13 @@ $router->group('/finance', function (Router $router): void {
     $router->get('/clotures/{id}/bordereau-pdf', [FinanceController::class, 'exportBordereauPdf']);
     $router->post('/clotures/{id}/consolider', [FinanceController::class, 'clotureConsolider']);
 
+    // Appro caisse : l argent remis a une agence, saisi par la caissiere
+    // principale et valide par le comptable.
+    $router->get('/appro-caisse', [\App\Controllers\Finance\ApproCaisseController::class, 'index']);
+    $router->post('/appro-caisse/enregistrer', [\App\Controllers\Finance\ApproCaisseController::class, 'enregistrer']);
+    $router->post('/appro-caisse/{id}/valider', [\App\Controllers\Finance\ApproCaisseController::class, 'valider']);
+    $router->post('/appro-caisse/{id}/rejeter', [\App\Controllers\Finance\ApproCaisseController::class, 'rejeter']);
+
     // Controle des caisses : l'ecran de surveillance de la direction
     $router->get('/controle-caisse', [\App\Controllers\Finance\ControleCaisseController::class, 'index']);
     $router->get('/controle-caisse/pdf', [\App\Controllers\Finance\ControleCaisseController::class, 'exportPdf']);

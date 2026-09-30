@@ -337,6 +337,7 @@ final class ModuleDashboardService
                 ['key' => 'factures', 'label' => 'Factures Clients', 'icon' => 'FAC', 'url' => '/finance/factures', 'available' => true, 'group' => 'Facturation & Caisse'],
                 ['key' => 'portefeuilles', 'label' => 'Portefeuilles Clients', 'icon' => 'WAL', 'url' => '/finance/portefeuilles', 'available' => true, 'group' => 'Facturation & Caisse'],
                 ['key' => 'clotures', 'label' => 'Points de Caisse', 'icon' => 'CLT', 'url' => '/finance/clotures', 'available' => true, 'group' => 'Facturation & Caisse'],
+                ['key' => 'appro-caisse', 'label' => 'Appro Caisse', 'icon' => 'APP', 'url' => '/finance/appro-caisse', 'available' => \App\Security\ApproCaisseAcces::peutOuvrir(), 'group' => 'Facturation & Caisse'],
                 // Reserve a la direction : l'ecran dit ce qui a ete compte et ce qui
                 // ne l'a pas ete. Une agence qui le verrait saurait quand on regarde.
                 ['key' => 'controle-caisse', 'label' => 'Contrôle des Caisses', 'icon' => 'CTL', 'url' => '/finance/controle-caisse', 'available' => \App\Security\ControleCaisseAcces::peutOuvrir(), 'group' => 'Facturation & Caisse'],

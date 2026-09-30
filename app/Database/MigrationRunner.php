@@ -51,6 +51,64 @@ class MigrationRunner
         $this->createSignalementsTraitementTable();
         $this->createPointageColisTables();
         $this->createDossiersEnvoiTables();
+        $this->createApproCaisseTable();
+    }
+
+    /**
+     * Approvisionnement de caisse : l'argent que le siège remet à une agence.
+     *
+     * La Gestion des Fonds ne connaissait que les décaissements — l'argent qui
+     * sort. Rien ne disait ce qui entrait dans un tiroir, si bien qu'une agence
+     * approvisionnée comptait le soir plus que le logiciel n'attendait, et
+     * s'entendait reprocher un écart qu'elle n'avait pas fait.
+     *
+     * La caissière principale saisit l'appro, le comptable le valide, et à
+     * partir de sa date d'effet il entre dans l'attendu du point de caisse.
+     */
+    private function createApproCaisseTable(): void
+    {
+        try {
+            $this->pdo->exec("
+                CREATE TABLE IF NOT EXISTS lbp_appros_caisse (
+                    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                    numero VARCHAR(30) NOT NULL,
+                    agence_id INT UNSIGNED NOT NULL,
+                    montant DECIMAL(15,2) NOT NULL,
+                    devise VARCHAR(10) NOT NULL DEFAULT 'XOF',
+                    source VARCHAR(40) NOT NULL DEFAULT 'SIEGE',
+                    motif TEXT NULL,
+                    date_effet DATE NOT NULL,
+                    demandeur_id INT NOT NULL,
+                    statut ENUM('en_attente', 'validee', 'rejetee') NOT NULL DEFAULT 'en_attente',
+                    validateur_id INT NULL,
+                    date_validation DATETIME NULL,
+                    motif_rejet TEXT NULL,
+                    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME NULL,
+                    UNIQUE KEY uniq_appro_numero (numero),
+                    KEY idx_appro_agence_date (agence_id, date_effet),
+                    KEY idx_appro_statut (statut)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            ");
+
+            /*
+             * Demande de fournitures : deux validations, décidées le 30/09/2026.
+             * Le superviseur régional approuve, le comptable confirme — et c'est
+             * seulement alors que la fourniture peut être livrée.
+             */
+            if ($this->schema->tableExists('lbp_demandes_fournitures')) {
+                $this->addColumnIfMissing('lbp_demandes_fournitures', 'confirmed_by', 'INT NULL');
+                $this->addColumnIfMissing('lbp_demandes_fournitures', 'confirmed_at', 'DATETIME NULL');
+                $this->widenEnumIfMissingValues(
+                    'lbp_demandes_fournitures',
+                    'status',
+                    ['EN_ATTENTE', 'APPROUVEE', 'CONFIRMEE', 'LIVREE', 'REJETEE'],
+                    "ENUM('EN_ATTENTE', 'APPROUVEE', 'CONFIRMEE', 'LIVREE', 'REJETEE') NOT NULL DEFAULT 'EN_ATTENTE'"
+                );
+            }
+        } catch (\Throwable $e) {
+            error_log('[MigrationRunner Warning] createApproCaisseTable: ' . $e->getMessage());
+        }
     }
 
     /**

@@ -63,7 +63,7 @@ final class DemandesFondsController extends FinanceBaseController
             'stats'       => $stats,
             'agences'     => $agences,
             'isSuperUser' => $isSuperUser,
-            'canValidate' => Auth::isAdmin() || Auth::hasAnyRole(['dg', 'assistant_dg']),
+            'canValidate' => Auth::isAdmin() || Auth::hasAnyRole(['dg', 'assistant_dg', 'comptable']),
         ]);
     }
 
@@ -174,8 +174,10 @@ final class DemandesFondsController extends FinanceBaseController
     {
         AuthMiddleware::check();
 
-        if (!(Auth::isAdmin() || Auth::hasAnyRole(['dg', 'assistant_dg']))) {
-            Session::flash('error', 'Accès refusé. Seule la Direction (Assistante DG, DG ou Administrateur) peut valider les demandes de fonds.');
+        // Le comptable valide au meme titre que la Direction, decide le
+        // 30/09/2026 : c'est lui qui devra imputer la depense.
+        if (!(Auth::isAdmin() || Auth::hasAnyRole(['dg', 'assistant_dg', 'comptable']))) {
+            Session::flash('error', 'Accès refusé. Seuls la Direction et le comptable peuvent valider les demandes de fonds.');
             header('Location: ' . View::url('finance/fonds/' . $id));
             exit;
         }
@@ -208,8 +210,8 @@ final class DemandesFondsController extends FinanceBaseController
     {
         AuthMiddleware::check();
 
-        if (!(Auth::isAdmin() || Auth::hasAnyRole(['dg', 'assistant_dg']))) {
-            Session::flash('error', 'Accès refusé. Seule la Direction peut rejeter les demandes de fonds.');
+        if (!(Auth::isAdmin() || Auth::hasAnyRole(['dg', 'assistant_dg', 'comptable']))) {
+            Session::flash('error', 'Accès refusé. Seuls la Direction et le comptable peuvent rejeter les demandes de fonds.');
             header('Location: ' . View::url('finance/fonds/' . $id));
             exit;
         }
@@ -247,7 +249,7 @@ final class DemandesFondsController extends FinanceBaseController
     public function priseEnCompteIndex(): void
     {
         AuthMiddleware::check();
-        RoleMiddleware::check(['admin', 'dg', 'assistant_dg', 'caissiere_principale', 'caissiere', 'chef_agence', 'comptable', 'superviseur_general']);
+        RoleMiddleware::check(['admin', 'dg', 'assistant_dg', 'caissiere_principale', 'caissiere', 'chef_agence', 'comptable', 'superviseur_general', 'responsable_rh']);
 
         $userAgId = Auth::agenceId();
         $isSuperUser = Auth::isAdmin() || Auth::isAssistantDg() || Auth::hasAnyRole(['dg', 'assistant_dg', 'assistante_dg', 'caissiere_principale', 'comptable', 'superviseur_general']);
@@ -317,7 +319,7 @@ final class DemandesFondsController extends FinanceBaseController
     public function imputationIndex(): void
     {
         AuthMiddleware::check();
-        RoleMiddleware::check(['admin', 'dg', 'assistant_dg', 'comptable', 'chef_agence', 'caissiere_principale', 'superviseur_general', 'agent', 'suivi_recouvrement']);
+        RoleMiddleware::check(['admin', 'dg', 'assistant_dg', 'comptable', 'chef_agence', 'caissiere_principale', 'superviseur_general', 'agent', 'suivi_recouvrement', 'responsable_rh']);
 
         $userAgId = Auth::agenceId();
         $isSuperUser = Auth::isAdmin() || Auth::isAssistantDg() || Auth::hasAnyRole(['dg', 'assistant_dg', 'assistante_dg', 'caissiere_principale', 'comptable', 'superviseur_general']);

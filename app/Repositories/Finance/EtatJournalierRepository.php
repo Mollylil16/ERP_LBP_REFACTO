@@ -529,6 +529,8 @@ class EtatJournalierRepository
         $stmtEncaissements->execute(['agence_id' => $agenceId, 'date' => $date] + $scopeParam);
         $encaissementsDetails = $stmtEncaissements->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
+        $approCaisseXof = \App\Services\Finance\ApproCaisseService::montantValide($this->pdo, $agenceId, $date);
+
         return [
             'nb_colis' => $nbColis,
             'nb_factures' => $nbFactures,
@@ -544,12 +546,17 @@ class EtatJournalierRepository
             'encaisse_autre_xof' => $encaisseAutreXof > 0.009 ? $encaisseAutreXof : 0.0,
             'total_restant_du_xof' => $totalRestantDuXof,
             'total_restant_du_eur' => $totalRestantDuEur,
+            // Ce que le siege a remis a l'agence ce jour-la, une fois valide par
+            // le comptable. Cet argent est dans le tiroir au meme titre qu'un
+            // encaissement : l'omettre ferait compter a l'agence plus que
+            // l'attendu, et lui vaudrait un ecart qu'elle n'a pas fait.
+            'appro_caisse_xof' => $approCaisseXof,
             // Solde theorique de la caisse = ce qui doit se trouver dans le tiroir.
             // Seules les especes y entrent : mobile money, carte, virement, cheque et
             // portefeuille client ne passent jamais par le tiroir. Les y inclure rendait
             // l'ecart de caisse mecaniquement negatif du montant encaisse hors especes,
             // au detriment de la caissiere, et declenchait de faux signalements de fraude.
-            'solde_caisse_agence_xof' => $encaisseEspecesXof,
+            'solde_caisse_agence_xof' => $encaisseEspecesXof + $approCaisseXof,
             'solde_caisse_agence_eur' => $encaisseEspecesEur,
             'breakdown_by_type' => $breakdownByType,
             'invoices_details' => $invoicesDetails,

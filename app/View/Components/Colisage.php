@@ -2784,10 +2784,19 @@ final class Colisage
                     $actionHtml = '<form method="post" action="' . View::url('colisage/exploitation/fournitures/' . $d['id'] . '/statut') . '" style="display:inline;">'
                         . Form::hidden('_csrf_token', \App\Helpers\Csrf::token())
                         . '<input type="hidden" name="statut" value="APPROUVEE">'
-                        . Ui::button('Valider', ['type' => 'submit', 'variant' => 'accent', 'class' => 'finea-button-sm'])
+                        . Ui::button('Approuver (superviseur régional)', ['type' => 'submit', 'variant' => 'accent', 'class' => 'finea-button-sm'])
                         . '</form> '
                         . '<button type="button" class="finea-button finea-button--danger finea-button-sm" onclick="openRefusalModal(' . $d['id'] . ')">Refuser</button>';
                 } elseif ($d['status'] === 'APPROUVEE') {
+                    // Deuxieme signature : le comptable confirme avant toute
+                    // livraison. Une seule main n engage plus la depense.
+                    $actionHtml = '<form method="post" action="' . View::url('colisage/exploitation/fournitures/' . $d['id'] . '/statut') . '" style="display:inline;">'
+                        . Form::hidden('_csrf_token', \App\Helpers\Csrf::token())
+                        . '<input type="hidden" name="statut" value="CONFIRMEE">'
+                        . Ui::button('Confirmer (comptable)', ['type' => 'submit', 'variant' => 'accent', 'class' => 'finea-button-sm'])
+                        . '</form> '
+                        . '<button type="button" class="finea-button finea-button--danger finea-button-sm" onclick="openRefusalModal(' . $d['id'] . ')">Refuser</button>';
+                } elseif ($d['status'] === 'CONFIRMEE') {
                     $actionHtml = '<form method="post" action="' . View::url('colisage/exploitation/fournitures/' . $d['id'] . '/statut') . '" style="display:inline;">'
                         . Form::hidden('_csrf_token', \App\Helpers\Csrf::token())
                         . '<input type="hidden" name="statut" value="LIVREE">'

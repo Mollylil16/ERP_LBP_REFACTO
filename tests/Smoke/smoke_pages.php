@@ -110,6 +110,7 @@ $ecrans = [
     'Tableau de bord Finance' => '/finance/dashboard',
     'Points de caisse' => '/finance/clotures',
     'Factures clients' => '/finance/factures',
+    'Appro caisse' => '/finance/appro-caisse',
     'Controle des caisses' => '/finance/controle-caisse',
     'Controle des caisses PDF' => '/finance/controle-caisse/pdf',
     'Rapprochement envois' => '/finance/rapprochement-envois',
