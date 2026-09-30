@@ -189,7 +189,15 @@ final class ColisageController extends ColisageBaseController
         );
 
         for ($idx = 0; $idx < $maxRows; $idx++) {
-            $prodIds = $_POST['m_product_id_' . $idx] ?? [];
+            /*
+             * La liste des produits porte le rang de sa ligne dans son nom, et
+             * ce rang voyage avec la ligne. Compter les lignes ne suffisait
+             * pas : une ligne ajoutee ou retiree decalait tout, et la ligne se
+             * retrouvait sans produit — la facture n'affichait alors que
+             * « MARCHANDISES DIVERSES ».
+             */
+            $cle = $_POST['m_row_key'][$idx] ?? $idx;
+            $prodIds = $_POST['m_product_id_' . $cle] ?? $_POST['m_product_id_' . $idx] ?? [];
             if (!is_array($prodIds)) {
                 $prodIds = [$prodIds];
             }
@@ -405,7 +413,15 @@ final class ColisageController extends ColisageBaseController
         );
 
         for ($idx = 0; $idx < $maxRows; $idx++) {
-            $prodIds = $_POST['m_product_id_' . $idx] ?? [];
+            /*
+             * La liste des produits porte le rang de sa ligne dans son nom, et
+             * ce rang voyage avec la ligne. Compter les lignes ne suffisait
+             * pas : une ligne ajoutee ou retiree decalait tout, et la ligne se
+             * retrouvait sans produit — la facture n'affichait alors que
+             * « MARCHANDISES DIVERSES ».
+             */
+            $cle = $_POST['m_row_key'][$idx] ?? $idx;
+            $prodIds = $_POST['m_product_id_' . $cle] ?? $_POST['m_product_id_' . $idx] ?? [];
             if (!is_array($prodIds)) {
                 $prodIds = [$prodIds];
             }

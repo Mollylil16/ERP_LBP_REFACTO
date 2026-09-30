@@ -200,6 +200,41 @@ final class FactureVersoTest extends TestCase
     }
 
     /**
+     * Les produits cochés sur une ligne partent tous sur la facture, séparés
+     * par un « + » : c'est ce que le client doit lire.
+     */
+    public function test_les_produits_coches_sont_tous_repris(): void
+    {
+        $composant = (string) file_get_contents(BASE_PATH . '/app/Services/Colisage/ColisageService.php');
+
+        self::assertStringContainsString('implode(\' + \', array_unique($names))', $composant);
+    }
+
+    /**
+     * La liste des produits porte le rang de sa ligne dans son nom ; ce rang
+     * voyage avec la ligne. Compter les lignes ne suffisait pas : une ligne
+     * ajoutée ou retirée décalait tout, et la ligne se retrouvait sans produit.
+     */
+    public function test_chaque_ligne_dit_a_quel_selecteur_elle_tient(): void
+    {
+        $formulaire = (string) file_get_contents(BASE_PATH . '/app/View/Components/Colisage.php');
+
+        // Les deux tables de saisie, et la ligne ajoutée par le bouton.
+        self::assertSame(2, substr_count($formulaire, "Form::hidden('m_row_key[]'"));
+        self::assertStringContainsString('name="m_row_key[]" value="', $formulaire);
+
+        foreach ([
+            'app/Controllers/Colisage/ColisageController.php',
+            'app/Controllers/Colisage/ColisageAutresController.php',
+        ] as $controleur) {
+            $source = (string) file_get_contents(BASE_PATH . '/' . $controleur);
+
+            self::assertStringContainsString("\$cle = \$_POST['m_row_key'][\$idx] ?? \$idx;", $source, $controleur);
+            self::assertStringContainsString("\$_POST['m_product_id_' . \$cle]", $source, $controleur);
+        }
+    }
+
+    /**
      * Et pour que ce dernier recours ne serve plus, le formulaire réclame le nom
      * du produit dès qu'une ligne porte de la marchandise — côté navigateur,
      * pour ne pas perdre la saisie comme le ferait un refus du serveur.

@@ -1603,6 +1603,10 @@ final class Colisage
 
             $marchandisesHtml .= '<tr>'
                 . '<td style="text-align:center; font-weight:600;" class="row-num">' . ($i + 1) . '</td>'
+                // La liste des produits porte le rang de sa ligne dans son nom ;
+                // ce rang voyage avec la ligne, pour que le serveur les rapproche
+                // meme si l ordre des lignes change.
+                . Form::hidden('m_row_key[]', (string) $i)
                 . '<td>' . Form::rawInput('m_nbre_colis[]', '1', ['type' => 'number', 'min' => '1']) . '</td>'
                 . '<td>'
                 . $selectHtml
@@ -1884,6 +1888,9 @@ final class Colisage
             . '                optionsHtml += \'<option value="\' + p.id + \'">\' + label + \'</option>\';'
             . '            });'
             . '            tr.innerHTML = \'<td style="text-align:center; font-weight:600;" class="row-num">\' + (rowIndex + 1) + \'</td>\''
+            // La ligne ajoutee emporte elle aussi le rang de son selecteur de
+            // produits, pour que le serveur rapproche les deux sans compter.
+            . '                + \'<input type="hidden" name="m_row_key[]" value="\' + rowIndex + \'">\''
             . '                + \'<td><input class="finea-input" type="number" name="m_nbre_colis[]" value="1" min="1"></td>\''
             . '                + \'<td>\''
             . '                + \'<select class="finea-native-select finea-select-search-source" name="m_product_id_\' + rowIndex + \'[]" id="m_product_id_\' + rowIndex + \'" multiple="multiple" data-finea-select-search="1">\''
@@ -2249,7 +2256,9 @@ final class Colisage
             . '<p><strong>Montant total :</strong> <span style="font-weight: 800; color: #1e40af;">' . View::e($formattedMontant) . ' ' . View::e($colis['devise']) . '</span></p>'
             . '<p><strong>Valeur déclarée :</strong> ' . View::e(number_format((float) $colis['valeur_declaree'], 0, ',', ' ')) . ' ' . View::e($colis['devise']) . '</p>'
             . '<p><strong>Statut Assurance :</strong> ' . (!empty($colis['assurance_souscrite']) ? '<span style="background:#dcfce7; color:#15803d; font-weight:700; padding:2px 8px; border-radius:4px;">ASSURÉ (Prime: ' . number_format((float)($colis['montant_assurance'] ?? 0), 0, ',', ' ') . ' FCFA - Couverture: ' . number_format((float)$colis['valeur_declaree'], 0, ',', ' ') . ' FCFA)</span>' : '<span style="background:#f1f5f9; color:#64748b; font-weight:600; padding:2px 8px; border-radius:4px;">Non souscrite</span>') . '</p>'
-            . '<p><strong>Catégorie Fret :</strong> ' . View::e(str_replace('_', ' ', $colis['type_expediteur'])) . '</p>'
+            // Un colis repris d'un import ancien peut n'avoir aucune catégorie :
+            // la fiche entière tombait alors en erreur.
+            . '<p><strong>Catégorie Fret :</strong> ' . View::e(str_replace('_', ' ', (string) ($colis['type_expediteur'] ?? ''))) . '</p>'
             . '</div>'
             . '<div>'
             . '<p><strong>Agence départ :</strong> ' . View::e($colis['agence_depart_name'] ?? 'Non spécifiée') . '</p>'
@@ -3302,6 +3311,7 @@ final class Colisage
         for ($i = 0; $i < 5; $i++) {
             $rows .= '<tr>'
                 . '<td style="text-align:center; font-weight:600;">' . ($i + 1) . '</td>'
+                . Form::hidden('m_row_key[]', (string) $i)
                 . '<td>' . Form::rawInput('m_nbre_colis[]', '1', ['type' => 'number', 'min' => '1']) . '</td>'
                 . '<td>'
                 . Form::rawSelect('m_product_id_' . $i . '[]', $prodOptions, '', [
