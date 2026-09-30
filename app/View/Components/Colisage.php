@@ -1699,6 +1699,21 @@ final class Colisage
             // La quantité décrit le contenu (100 habits) : elle ne se facture pas.
             . '            const lineTotal = (weight * prixKg) + (qteEmb * prixEmb) + (nbEtiq * prixEtiq);'
             . '            grandTotal += lineTotal;'
+            // Une ligne qui porte de la marchandise doit dire laquelle : sans nom
+            // ni produit choisi, la facture du client n'affichait que
+            // « MARCHANDISES DIVERSES ». Le navigateur le reclame avant l'envoi,
+            // ce qui evite de perdre la saisie comme le ferait un refus serveur.
+            . '            const nomProduit = row.querySelector(\'input[name="m_custom_name[]"]\');'
+            . '            const listeProduits = row.querySelector(\'select[name^="m_product_id_"]\');'
+            . '            const produitChoisi = listeProduits ? Array.from(listeProduits.selectedOptions).some(o => o.value !== "") : false;'
+            . '            if (nomProduit) {'
+            . '                if ((weight > 0 || prixKg > 0) && !produitChoisi) {'
+            . '                    nomProduit.setAttribute("required", "required");'
+            . '                    nomProduit.setAttribute("title", "Nommez la marchandise : ce nom part sur la facture du client.");'
+            . '                } else {'
+            . '                    nomProduit.removeAttribute("required");'
+            . '                }'
+            . '            }'
             . '            const totalSpan = row.querySelector(".ligne-total");'
             . '            if (totalSpan) {'
             . '                totalSpan.textContent = new Intl.NumberFormat("fr-FR").format(Math.round(lineTotal)) + " FCFA";'

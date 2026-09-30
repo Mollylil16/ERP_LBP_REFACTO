@@ -258,9 +258,7 @@ final class ColisageService
                         $description = implode(' + ', array_unique($names));
                     }
 
-                    if ($description === '') {
-                        $description = 'MARCHANDISES DIVERSES';
-                    }
+                    $description = self::descriptionLigne($m, $description);
 
                     if ($description !== '') {
                         $embName = isset($m['emballage']) ? trim((string) $m['emballage']) : '';
@@ -371,6 +369,43 @@ final class ColisageService
         }
     }
 
+    /**
+     * Ce que la facture affichera dans la colonne « Description ».
+     *
+     * Le client lit cette ligne : elle doit nommer ce qu'il a confie. Faute de
+     * produit choisi ou de nom saisi, la facture n'affichait que
+     * « MARCHANDISES DIVERSES » — signale par l'agence le 30/09/2026, sur une
+     * facture ou les deux lignes portaient ce meme libelle.
+     *
+     * Une ligne qui ne vend que des etiquettes ou de l'emballage porte
+     * desormais son propre nom ; le libelle generique ne reste que pour ce qui
+     * n'est ni l'un ni l'autre, et le formulaire reclame maintenant le nom du
+     * produit des qu'une ligne porte de la marchandise.
+     *
+     * @param array<string, mixed> $m ligne de marchandise soumise
+     */
+    public static function descriptionLigne(array $m, string $description): string
+    {
+        if ($description !== '') {
+            return $description;
+        }
+
+        $poids = (float) ($m['poids_unitaire'] ?? 0);
+        $prixKg = (float) ($m['prix_kg'] ?? 0);
+        $porteMarchandise = $poids > 0 || $prixKg > 0;
+
+        if (!$porteMarchandise && (int) ($m['nbre_etiquettes'] ?? 0) > 0) {
+            return 'ÉTIQUETTES LBP';
+        }
+
+        $emballage = trim((string) ($m['emballage'] ?? ''));
+        if (!$porteMarchandise && $emballage !== '') {
+            return mb_strtoupper($emballage, 'UTF-8');
+        }
+
+        return 'MARCHANDISES DIVERSES';
+    }
+
     /** @param array<string, mixed> $data */
     public function updateParcel(int $parcelId, array $data): void
     {
@@ -400,9 +435,7 @@ final class ColisageService
                         $description = implode(' + ', array_unique($names));
                     }
 
-                    if ($description === '') {
-                        $description = 'MARCHANDISES DIVERSES';
-                    }
+                    $description = self::descriptionLigne($m, $description);
 
                     $embName = isset($m['emballage']) ? trim((string) $m['emballage']) : '';
                     $qteEmb = (int) ($m['qte_emballage'] ?? 1);

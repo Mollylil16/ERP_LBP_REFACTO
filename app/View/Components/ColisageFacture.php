@@ -66,6 +66,9 @@ final class ColisageFacture
             . self::paiementEtSignatures($facture)
             . self::pied($colis, $operateur, $reference)
             . '</div>'
+            // Le verso de la feuille : la fiche d'engagement part avec chaque
+            // facture remise au client, pré-remplie de ce qui vient d'être saisi.
+            . FicheEngagement::verso($colis, $facture, $operateur)
             . self::scriptImpression()
             . '</body></html>';
     }

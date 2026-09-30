@@ -592,3 +592,219 @@ body {
         margin: 7mm;
     }
 }
+
+/* ==========================================================================
+   Verso de la facture : fiche d'engagement client — garantie colis.
+
+   Elle s'imprime au dos de la feuille, en une seule page. Tout y est resserré
+   — corps de 8 pt, tableaux compacts — parce que le document engage et que
+   rien ne peut en être retiré : ni une clause, ni une exclusion, ni une case.
+   ========================================================================== */
+.fiche-verso {
+    max-width: 210mm;
+    margin: 28px auto 0;
+    padding: 6mm 8mm;
+    background: #ffffff;
+    color: #111827;
+    font-size: 7.4pt;
+    line-height: 1.22;
+    border-top: 4px solid #1e3a5f;
+}
+
+.fiche-entete {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border-bottom: 2px solid #1e3a5f;
+    padding-bottom: 5px;
+    margin-bottom: 6px;
+}
+
+.fiche-logo {
+    height: 34px;
+    width: auto;
+}
+
+.fiche-titre h1 {
+    margin: 0;
+    font-size: 10.5pt;
+    letter-spacing: 0.2px;
+    color: #1e3a5f;
+}
+
+.fiche-titre p {
+    margin: 1px 0 0;
+    font-size: 7.5pt;
+    color: #475569;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+
+.fiche-bloc {
+    margin-bottom: 3px;
+}
+
+.fiche-bloc h2 {
+    margin: 0 0 3px;
+    font-size: 8pt;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    color: #1e3a5f;
+    border-bottom: 1px solid #f0b429;
+    padding-bottom: 1px;
+}
+
+/* Les deux identifications côte à côte : la fiche doit tenir sur une page. */
+.fiche-colonnes {
+    display: flex;
+    gap: 7px;
+    align-items: flex-start;
+}
+
+.fiche-colonnes > .fiche-bloc {
+    flex: 1;
+    min-width: 0;
+}
+
+.fiche-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+}
+
+.fiche-table td {
+    border: 1px solid #cbd5e1;
+    padding: 1px 3px;
+    vertical-align: top;
+    word-break: break-word;
+}
+
+.fiche-libelle {
+    display: block;
+    font-size: 6.5pt;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    color: #64748b;
+}
+
+.fiche-rempli {
+    font-weight: 700;
+    color: #0f172a;
+}
+
+/* Les series de cases a cocher reviennent a la ligne : figees sur une seule,
+   elles debordaient sur la colonne voisine. */
+.fiche-cases {
+    display: block;
+    white-space: normal;
+    font-size: 6.8pt;
+}
+
+/* Les cases a cocher sont tracees, jamais ecrites : le caractere « boite »
+   s'imprime au hasard des polices. */
+.fiche-choix {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    margin-right: 8px;
+    white-space: nowrap;
+}
+
+.fiche-case {
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    border: 1px solid #475569;
+    background: #ffffff;
+    position: relative;
+    flex: 0 0 auto;
+}
+
+.fiche-case.is-cochee::after {
+    content: "";
+    position: absolute;
+    left: 1px;
+    top: 1px;
+    right: 1px;
+    bottom: 1px;
+    background: #1e3a5f;
+}
+
+/* Une case que le logiciel ne connaît pas se remplit au stylo. */
+.fiche-pointilles {
+    display: inline-block;
+    border-bottom: 1px dotted #94a3b8;
+    height: 9px;
+    width: 100%;
+}
+
+.fiche-valeur {
+    margin: 3px 0 1px;
+    font-size: 8.2pt;
+}
+
+.fiche-valeur .fiche-pointilles {
+    width: 60mm;
+}
+
+.fiche-note {
+    margin: 1px 0;
+    font-size: 6.6pt;
+    color: #334155;
+    text-align: justify;
+}
+
+/* Une ligne de cases a cocher ne se justifie pas : les blancs s etirent. */
+.fiche-note--cases {
+    text-align: left;
+}
+
+.fiche-liste {
+    margin: 0;
+    padding-left: 13px;
+    columns: 2;
+    column-gap: 10px;
+    font-size: 6.6pt;
+}
+
+.fiche-liste li {
+    margin-bottom: 1px;
+    break-inside: avoid;
+}
+
+.fiche-signatures td {
+    height: 40px;
+    font-size: 7pt;
+}
+
+.fiche-signatures .fiche-pointilles {
+    width: 34mm;
+}
+
+.fiche-avis {
+    margin: 3px 0 0;
+    padding: 2px 5px;
+    border: 1px solid #f0b429;
+    background: #fffdf5;
+    font-size: 6.8pt;
+    text-align: justify;
+}
+
+@media print {
+    /* Recto la facture, verso la fiche : sur la même feuille. */
+    .fiche-verso {
+        page-break-before: always;
+        break-before: page;
+        margin: 0;
+        padding: 0 2mm;
+        border-top: 0;
+        /* Le pied de page est épinglé au bas de chaque feuille imprimée : il
+           revient donc aussi au dos, et la fiche lui laisse sa place. */
+        padding-bottom: 42mm;
+    }
+
+    .fiche-bloc,
+    .fiche-table tr {
+        page-break-inside: avoid;
+    }
+}
