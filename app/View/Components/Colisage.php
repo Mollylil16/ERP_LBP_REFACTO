@@ -885,7 +885,12 @@ final class Colisage
             . $creditModal;
     }
 
-    public static function fournituresPage(array $demandes, array $sites): string
+    /**
+     * @param array<int, array<string, mixed>> $demandes
+     * @param array<int, array<string, mixed>> $sites
+     * @param array{peutApprouver?:bool, peutConfirmer?:bool} $droits
+     */
+    public static function fournituresPage(array $demandes, array $sites, array $droits = []): string
     {
         $siteOpts = [];
         foreach ($sites as $s) {
@@ -2787,6 +2792,10 @@ final class Colisage
                         . Ui::button('Approuver (superviseur régional)', ['type' => 'submit', 'variant' => 'accent', 'class' => 'finea-button-sm'])
                         . '</form> '
                         . '<button type="button" class="finea-button finea-button--danger finea-button-sm" onclick="openRefusalModal(' . $d['id'] . ')">Refuser</button>';
+
+                    if (empty($droits['peutApprouver'])) {
+                        $actionHtml = '<span style="color:#64748b; font-size:0.85rem; font-weight:600;">En attente du superviseur régional</span>';
+                    }
                 } elseif ($d['status'] === 'APPROUVEE') {
                     // Deuxieme signature : le comptable confirme avant toute
                     // livraison. Une seule main n engage plus la depense.
@@ -2796,6 +2805,10 @@ final class Colisage
                         . Ui::button('Confirmer (comptable)', ['type' => 'submit', 'variant' => 'accent', 'class' => 'finea-button-sm'])
                         . '</form> '
                         . '<button type="button" class="finea-button finea-button--danger finea-button-sm" onclick="openRefusalModal(' . $d['id'] . ')">Refuser</button>';
+
+                    if (empty($droits['peutConfirmer'])) {
+                        $actionHtml = '<span style="color:#64748b; font-size:0.85rem; font-weight:600;">Approuvée — en attente du comptable</span>';
+                    }
                 } elseif ($d['status'] === 'CONFIRMEE') {
                     $actionHtml = '<form method="post" action="' . View::url('colisage/exploitation/fournitures/' . $d['id'] . '/statut') . '" style="display:inline;">'
                         . Form::hidden('_csrf_token', \App\Helpers\Csrf::token())

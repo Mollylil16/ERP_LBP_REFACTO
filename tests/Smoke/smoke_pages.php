@@ -111,6 +111,7 @@ $ecrans = [
     'Points de caisse' => '/finance/clotures',
     'Factures clients' => '/finance/factures',
     'Appro caisse' => '/finance/appro-caisse',
+    'Fournitures de bureau' => '/colisage/exploitation/fournitures',
     'Controle des caisses' => '/finance/controle-caisse',
     'Controle des caisses PDF' => '/finance/controle-caisse/pdf',
     'Rapprochement envois' => '/finance/rapprochement-envois',

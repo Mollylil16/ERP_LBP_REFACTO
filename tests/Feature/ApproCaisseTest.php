@@ -206,6 +206,37 @@ final class ApproCaisseTest extends TestCase
     }
 
     /**
+     * Demander des fournitures est ouvert à toutes les agences.
+     *
+     * L'écran exigeait la permission « Fournitures de bureau », qui décrit la
+     * validation et non la demande : Adjamé, qui n'a que ses droits de saisie,
+     * se voyait refuser l'accès et ne pouvait rien commander.
+     */
+    public function test_toutes_les_agences_peuvent_demander_des_fournitures(): void
+    {
+        $source = (string) file_get_contents(BASE_PATH . '/app/Controllers/Colisage/ExploitationController.php');
+        $ecran = substr($source, strpos($source, 'public function fournitures(): void') ?: 0, 2000);
+
+        self::assertStringNotContainsString('checkPermission(PermissionEntityRegistry::EXPLOITATION_FOURNITURES)', $ecran);
+        self::assertStringContainsString('AuthMiddleware::check();', $ecran);
+
+        // La tuile du menu ne dépend plus, elle non plus, de cette permission.
+        $navigation = (string) file_get_contents(BASE_PATH . '/app/Services/Shared/ModuleDashboardService.php');
+        self::assertStringNotContainsString('Auth::can(\App\Security\PermissionEntityRegistry::EXPLOITATION_FOURNITURES)', $navigation);
+    }
+
+    /** Une agence ne voit et ne commande que pour elle-même. */
+    public function test_une_agence_ne_voit_que_ses_demandes(): void
+    {
+        $source = (string) file_get_contents(BASE_PATH . '/app/Controllers/Colisage/ExploitationController.php');
+
+        self::assertStringContainsString('WHERE f.agency_id = :agence', $source);
+        self::assertStringContainsString('voitToutesLesDemandes()', $source);
+        // Une requête forgée ne commande pas au nom d'une autre agence.
+        self::assertStringContainsString('$agenceId = $agenceUtilisateur;', $source);
+    }
+
+    /**
      * Fournitures : le superviseur régional approuve, le comptable confirme, et
      * la livraison n'est possible qu'après les deux signatures.
      */

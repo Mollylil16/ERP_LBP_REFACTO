@@ -376,7 +376,7 @@ final class ModuleDashboardService
                 ['key' => 'parametres', 'label' => 'Délais & Gardiennage', 'icon' => 'PR', 'url' => '/logistique/parametres', 'available' => true, 'group' => 'Paramétrage & Gardiennage'],
                 ['key' => 'parcels', 'label' => 'Gestion des Colis', 'icon' => 'CL', 'url' => '/colisage/parcels', 'available' => true, 'group' => 'Expéditions & Fret'],
                 ['key' => 'tracking', 'label' => 'Suivi GPS', 'icon' => 'GPS', 'url' => '/colisage/exploitation/tracking', 'available' => true, 'group' => 'Suivi & Transport'],
-                ['key' => 'exploitation_fournitures', 'label' => 'Fournitures bureau', 'icon' => 'FT', 'url' => '/colisage/exploitation/fournitures', 'available' => \App\Helpers\Auth::can(\App\Security\PermissionEntityRegistry::EXPLOITATION_FOURNITURES), 'group' => 'Ressources Internes'],
+                ['key' => 'exploitation_fournitures', 'label' => 'Fournitures bureau', 'icon' => 'FT', 'url' => '/colisage/exploitation/fournitures', 'available' => true, 'group' => 'Ressources Internes'],
             ];
         }
 
