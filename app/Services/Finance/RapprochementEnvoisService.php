@@ -60,9 +60,9 @@ final class RapprochementEnvoisService
     }
 
     /** @return array<string, mixed>|null */
-    public function ligne(int $dossierId): ?array
+    public function ligne(int $expeditionId): ?array
     {
-        $brute = $this->repo->trouver($dossierId);
+        $brute = $this->repo->trouver($expeditionId);
 
         return $brute === null ? null : Regles::composer($brute);
     }
@@ -73,13 +73,13 @@ final class RapprochementEnvoisService
      * @param array<string, mixed> $saisie
      * @return array{0:string, 1:array<int, string>} message, erreurs
      */
-    public function enregistrer(int $dossierId, array $saisie, RapprochementEnvoisAcces $acces): array
+    public function enregistrer(int $expeditionId, array $saisie, RapprochementEnvoisAcces $acces): array
     {
         if (!$acces->peutSaisir()) {
             return ['', ['Votre profil consulte le rapprochement sans le modifier.']];
         }
 
-        $ligne = $this->ligne($dossierId);
+        $ligne = $this->ligne($expeditionId);
 
         if ($ligne === null) {
             return ['', ['Ce départ est introuvable.']];
@@ -97,9 +97,9 @@ final class RapprochementEnvoisService
             throw new RuntimeException('Session expirée.');
         }
 
-        $this->repo->enregistrer($dossierId, $valeurs, $userId);
+        $this->repo->enregistrer($expeditionId, $ligne['dossier_id'] ?? null, $valeurs, $userId);
 
-        return ['Rapprochement du départ ' . ($ligne['numero'] ?: (string) $dossierId) . ' enregistré.', []];
+        return ['Rapprochement du départ ' . ($ligne['numero'] ?: (string) $expeditionId) . ' enregistré.', []];
     }
 
     /**

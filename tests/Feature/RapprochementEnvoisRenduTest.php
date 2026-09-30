@@ -163,7 +163,12 @@ final class RapprochementEnvoisRenduTest extends TestCase
 
         $html = RapprochementEnvois::page($donnees);
 
-        self::assertStringContainsString('Aucun envoi sur cette période', $html);
+        self::assertStringContainsString('Aucun départ sur cette période', $html);
         self::assertStringNotContainsString('<tbody></tbody>', $html);
+
+        // Un écran vide doit dire d'où viennent les lignes : le comptable a cru
+        // l'écran cassé alors qu'aucun départ n'avait encore été enregistré.
+        self::assertStringContainsString('Groupage', $html);
+        self::assertStringContainsString('Préparer un départ', $html);
     }
 }

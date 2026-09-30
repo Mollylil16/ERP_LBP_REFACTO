@@ -148,7 +148,12 @@ final class RapprochementEnvois
         $lignes = $p['lignes'];
 
         if ($lignes === []) {
-            return Ui::emptyState('Aucun envoi sur cette période', 'Élargissez les dates, ou retirez le filtre « écarts seulement ».');
+            return Ui::emptyState(
+                'Aucun départ sur cette période',
+                'Le tableau se remplit tout seul à partir des départs enregistrés par les agences '
+                . '— « Groupage & Expéditions » ou « Préparer un départ ». Élargissez les dates, '
+                . 'ou retirez le filtre « écarts seulement ».'
+            );
         }
 
         $corps = '';
@@ -175,7 +180,7 @@ final class RapprochementEnvois
     private static function ligne(array $ligne, array $p): string
     {
         $etat = (string) $ligne['etat'];
-        $id = (int) $ligne['dossier_id'];
+        $id = (int) $ligne['id'];
 
         $classe = 'lbp-rappro-ligne';
         if ($etat === 'ECART_A_JUSTIFIER') {
@@ -252,7 +257,7 @@ final class RapprochementEnvois
      */
     private static function panneau(array $ligne, array $p): string
     {
-        $id = (int) $ligne['dossier_id'];
+        $id = (int) $ligne['id'];
         $f = $p['filtres'];
         $peutSaisir = !empty($p['peutSaisir']);
 
@@ -292,7 +297,16 @@ final class RapprochementEnvois
             $modes[] = ['value' => $code, 'label' => $libelle];
         }
 
+        // Un départ groupé ne porte ni compagnie ni numéro de LTA : ils
+        // n'arrivent qu'avec la facture, et c'est ici qu'on les inscrit.
+        $compagnies = [['value' => '', 'label' => 'À renseigner']];
+        foreach ($p['compagnies'] as $compagnie) {
+            $compagnies[] = ['value' => (string) $compagnie['id'], 'label' => (string) $compagnie['name']];
+        }
+
         $champs = '<div class="lbp-rappro-champs">'
+            . Form::select('transporteur_id', $compagnies, (string) ($ligne['compagnie_id'] ?? ''), ['label' => 'Compagnie', 'id' => 'compagnie-' . $id])
+            . Form::input('numero_document', ['label' => 'N° de LTA', 'value' => (string) ($ligne['document_saisi'] ?? ''), 'id' => 'document-' . $id, 'placeholder' => '483-20428520'])
             . Form::input('colis_lta', ['label' => 'Colis sur la LTA', 'value' => self::champ($ligne['colis_lta']), 'id' => 'colis-lta-' . $id, 'inputmode' => 'numeric'])
             . Form::input('poids_lta_kg', ['label' => 'Poids final (kg)', 'value' => self::champ($ligne['poids_lta'], 1), 'id' => 'poids-lta-' . $id, 'inputmode' => 'decimal'])
             . Form::input('poids_divers_kg', ['label' => 'Dont poids divers (kg)', 'value' => self::champ($ligne['poids_divers'], 1), 'id' => 'divers-' . $id, 'inputmode' => 'decimal'])

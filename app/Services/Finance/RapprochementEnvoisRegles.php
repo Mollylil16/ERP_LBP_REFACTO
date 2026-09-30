@@ -90,11 +90,18 @@ final class RapprochementEnvoisRegles
             || trim((string) ($ligne['r_motif_correction'] ?? '')) !== '';
 
         return [
-            'dossier_id' => (int) $ligne['id'],
+            // La ligne est le départ, c'est-à-dire l'expédition : le dossier
+            // d'envoi ne l'accompagne que lorsque l'agent export en a ouvert un.
+            'id' => (int) $ligne['id'],
+            'dossier_id' => self::entier($ligne['dossier_id'] ?? null),
             'numero' => (string) ($ligne['numero'] ?? ''),
             'date' => $ligne['date_reference'] ?? $ligne['date_depart_effective'] ?? null,
             'compagnie' => (string) ($ligne['transporteur'] ?? ''),
+            'compagnie_id' => self::entier($ligne['transporteur_id'] ?? null),
             'document' => (string) ($ligne['numero_document'] ?? ''),
+            // Le numéro porté par le départ ne se saisit pas ici : seul celui
+            // que le comptable a lu sur la facture revient dans son formulaire.
+            'document_saisi' => (string) ($ligne['r_numero_document'] ?? ''),
             'agence_depart' => (string) ($ligne['agence_depart'] ?? ''),
             'agence_arrivee' => (string) ($ligne['agence_arrivee'] ?? ''),
 
@@ -293,8 +300,18 @@ final class RapprochementEnvoisRegles
             $erreurs[] = 'Un règlement par chèque doit porter son numéro.';
         }
 
+        /*
+         * Un départ groupé ne porte ni compagnie ni numéro de LTA : ils ne sont
+         * connus qu'à réception de la facture, et c'est le comptable qui les
+         * inscrit. Quand le départ les porte déjà, la saisie ne les écrase pas.
+         */
+        $compagnie = self::entierSaisi($saisie['transporteur_id'] ?? null);
+        $document = trim((string) ($saisie['numero_document'] ?? ''));
+
         return [
             'valeurs' => [
+                'transporteur_id' => $compagnie !== null && $compagnie > 0 ? $compagnie : null,
+                'numero_document' => $document === '' ? null : $document,
                 'colis_lta' => $colis,
                 'poids_lta_kg' => $poids,
                 'motif_correction' => $motif === '' ? null : $motif,

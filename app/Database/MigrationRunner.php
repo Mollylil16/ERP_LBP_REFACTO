@@ -259,6 +259,52 @@ class MigrationRunner
             $this->addColumnIfMissing('lbp_dossiers_envoi', 'colis_erp', 'INT NULL');
             $this->addColumnIfMissing('lbp_dossiers_envoi', 'poids_erp_kg', 'DECIMAL(12,1) NULL');
             $this->addColumnIfMissing('lbp_dossiers_envoi', 'commentaire_dg', 'TEXT NULL');
+
+            /*
+             * Le rapprochement porte désormais sur le départ lui-même, c'est-à-dire
+             * l'expédition, et non plus sur le dossier d'envoi (30/09/2026).
+             *
+             * Les agences groupent leurs colis par « Groupage & Expéditions », qui
+             * crée une expédition sans dossier : ces départs-là n'apparaissaient
+             * nulle part dans le rapprochement, et l'écran restait vide. Le
+             * comptable saisit donc aussi la compagnie et le numéro de LTA quand le
+             * départ ne les porte pas.
+             */
+            $this->addColumnIfMissing('lbp_envois_rapprochement', 'expedition_id', 'INT UNSIGNED NULL');
+            $this->addColumnIfMissing('lbp_envois_rapprochement', 'transporteur_id', 'INT UNSIGNED NULL');
+            $this->addColumnIfMissing('lbp_envois_rapprochement', 'numero_document', 'VARCHAR(60) NULL');
+
+            // Une ligne peut ne tenir qu'à son expédition : le dossier devient
+            // facultatif. La lecture d'information_schema évite de rejouer l'ALTER
+            // à chaque requête — run() s'exécute à chaque page servie.
+            $nullable = $this->pdo->query("
+                SELECT IS_NULLABLE FROM information_schema.COLUMNS
+                WHERE TABLE_SCHEMA = DATABASE()
+                  AND TABLE_NAME = 'lbp_envois_rapprochement'
+                  AND COLUMN_NAME = 'dossier_id'
+            ")->fetchColumn();
+
+            if ($nullable === 'NO') {
+                $this->pdo->exec('ALTER TABLE lbp_envois_rapprochement MODIFY COLUMN dossier_id INT UNSIGNED NULL');
+            }
+
+            /*
+             * Rattache les rapprochements déjà saisis à leur expédition. La
+             * condition « expedition_id IS NULL » borne le travail : dès le premier
+             * passage il ne reste plus rien à reprendre, et la requête ne touche
+             * plus aucune ligne. Elle ne remplit qu'un vide, elle n'écrase rien.
+             */
+            $this->pdo->exec("
+                UPDATE lbp_envois_rapprochement r
+                  JOIN lbp_dossiers_envoi d ON d.id = r.dossier_id
+                   SET r.expedition_id = d.expedition_id
+                 WHERE r.expedition_id IS NULL
+                   AND d.expedition_id IS NOT NULL
+            ");
+
+            // En dernier : si des doublons subsistaient, l'index échouerait et
+            // priverait les instructions suivantes de leur tour.
+            $this->addUniqueIndexIfMissing('lbp_envois_rapprochement', 'uniq_rapprochement_expedition', 'expedition_id');
         } catch (\Throwable $e) {
             error_log('[MigrationRunner Warning] createDossiersEnvoiTables: ' . $e->getMessage());
         }
