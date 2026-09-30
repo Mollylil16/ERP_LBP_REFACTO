@@ -235,27 +235,33 @@ final class ColisageService
 
                     $description = '';
                     if ($customName !== '') {
-                        $description = mb_strtoupper($customName, 'UTF-8');
-                        // Enregistrer dans le référentiel produit si nouveau
-                        try {
-                            $existing = $this->repository->findProductByName($customName);
-                            if ($existing === null) {
-                                $this->repository->createProduct([
-                                    'nom' => $customName,
-                                    'prix_unitaire' => (float) ($m['custom_price'] ?? 0.0),
-                                    'description' => 'Créé à la volée depuis colisage',
-                                ]);
+                        $produits = self::produitsSaisis($customName);
+                        $description = self::joindreProduits($produits);
+
+                        // Chaque produit rejoint le référentiel sous son propre
+                        // nom : ils partagent le prix de la ligne, puisqu'une
+                        // ligne ne réunit que des produits de même prix.
+                        foreach ($produits as $produit) {
+                            try {
+                                if ($this->repository->findProductByName($produit) === null) {
+                                    $this->repository->createProduct([
+                                        'nom' => $produit,
+                                        'prix_unitaire' => (float) ($m['custom_price'] ?? 0.0),
+                                        'description' => 'Créé à la volée depuis colisage',
+                                    ]);
+                                }
+                            } catch (\Throwable $e) {
                             }
-                        } catch (\Throwable $e) {}
+                        }
                     } elseif (!empty($prodIds)) {
                         $names = [];
                         foreach ($prodIds as $pid) {
                             $name = $this->repository->getProductNameById((int) $pid);
                             if ($name) {
-                                $names[] = mb_strtoupper($name, 'UTF-8');
+                                $names[] = $name;
                             }
                         }
-                        $description = implode(' + ', array_unique($names));
+                        $description = self::joindreProduits($names);
                     }
 
                     $description = self::descriptionLigne($m, $description);
@@ -370,6 +376,54 @@ final class ColisageService
     }
 
     /**
+     * Les produits qu'une ligne réunit, à partir de ce que l'agent a tapé.
+     *
+     * Une ligne ne réunit que des produits de même prix — c'est la règle de la
+     * maison, et le formulaire l'impose. L'agent les sépare au clavier par une
+     * barre oblique ; chacun devient un produit du référentiel, au lieu d'une
+     * seule entrée « ARACHIDE/BAOBAB/AKPI » qui ne se retrouve jamais.
+     *
+     * @return array<int, string>
+     */
+    public static function produitsSaisis(string $saisie): array
+    {
+        $morceaux = preg_split('#[/;]+#u', $saisie) ?: [$saisie];
+
+        $produits = [];
+        foreach ($morceaux as $morceau) {
+            $nom = trim(preg_replace('/\s+/u', ' ', $morceau) ?? '');
+            if ($nom !== '') {
+                $produits[] = mb_strtoupper($nom, 'UTF-8');
+            }
+        }
+
+        return array_values(array_unique($produits));
+    }
+
+    /**
+     * Les produits d'une ligne, tels que le client les lira sur sa facture.
+     *
+     * Séparés par une espace, demandé par la direction le 30/09/2026 : la barre
+     * oblique se lisait mal une fois imprimée et donnait l'impression d'un seul
+     * article au nom interminable.
+     *
+     * @param array<int, string> $produits
+     */
+    public static function joindreProduits(array $produits): string
+    {
+        $noms = [];
+        foreach ($produits as $produit) {
+            $nom = trim(preg_replace('#[/;]+#u', ' ', (string) $produit) ?? '');
+            $nom = trim(preg_replace('/\s+/u', ' ', $nom) ?? '');
+            if ($nom !== '') {
+                $noms[] = mb_strtoupper($nom, 'UTF-8');
+            }
+        }
+
+        return implode(' ', array_unique($noms));
+    }
+
+    /**
      * Ce que la facture affichera dans la colonne « Description ».
      *
      * Le client lit cette ligne : elle doit nommer ce qu'il a confie. Faute de
@@ -423,16 +477,16 @@ final class ColisageService
 
                     $description = '';
                     if ($customName !== '') {
-                        $description = mb_strtoupper($customName, 'UTF-8');
+                        $description = self::joindreProduits(self::produitsSaisis($customName));
                     } elseif (!empty($prodIds)) {
                         $names = [];
                         foreach ($prodIds as $pid) {
                             $name = $this->repository->getProductNameById((int) $pid);
                             if ($name) {
-                                $names[] = mb_strtoupper($name, 'UTF-8');
+                                $names[] = $name;
                             }
                         }
-                        $description = implode(' + ', array_unique($names));
+                        $description = self::joindreProduits($names);
                     }
 
                     $description = self::descriptionLigne($m, $description);

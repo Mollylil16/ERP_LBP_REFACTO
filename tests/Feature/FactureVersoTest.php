@@ -205,9 +205,64 @@ final class FactureVersoTest extends TestCase
      */
     public function test_les_produits_coches_sont_tous_repris(): void
     {
-        $composant = (string) file_get_contents(BASE_PATH . '/app/Services/Colisage/ColisageService.php');
+        self::assertSame(
+            'ATTIEKE PIMENT EN POUDRE',
+            ColisageService::joindreProduits(['Attieke', 'Piment en poudre'])
+        );
 
-        self::assertStringContainsString('implode(\' + \', array_unique($names))', $composant);
+        // Le même produit coché deux fois ne s'écrit qu'une.
+        self::assertSame('ATTIEKE', ColisageService::joindreProduits(['Attieke', 'ATTIEKE']));
+    }
+
+    /**
+     * Une ligne ne réunit que des produits de même prix, et le client les lit
+     * séparés par une espace : la barre oblique se lisait mal une fois
+     * imprimée et donnait l'impression d'un seul article interminable.
+     */
+    public function test_les_produits_d_une_ligne_sont_separes_par_une_espace(): void
+    {
+        self::assertSame(
+            'ARACHIDE BAOBAB AKPI',
+            ColisageService::joindreProduits(['Arachide', 'Baobab', 'Akpi'])
+        );
+
+        // Ce que l'agent a tapé d'un trait est nettoyé de la même façon.
+        self::assertSame(
+            'VETEMENT 1CARTON',
+            ColisageService::joindreProduits(ColisageService::produitsSaisis('VETEMENT/1CARTON'))
+        );
+
+        self::assertStringNotContainsString('/', ColisageService::joindreProduits(['A/B', 'C']));
+    }
+
+    /**
+     * Chaque produit tapé rejoint le référentiel sous son propre nom : une
+     * seule entrée « ARACHIDE/BAOBAB/AKPI » ne se retrouvait jamais ensuite.
+     */
+    public function test_les_produits_tapes_ensemble_sont_separes(): void
+    {
+        self::assertSame(
+            ['ARACHIDE', 'BAOBAB', 'AKPI', 'CACAOUETTE'],
+            ColisageService::produitsSaisis('arachide/baobab/akpi/cacaouette')
+        );
+
+        // Un trait d'union appartient au nom, il ne sépare rien.
+        self::assertSame(
+            ['VETEMENTS -ECORCES-MECHES'],
+            ColisageService::produitsSaisis('Vetements -ecorces-meches')
+        );
+
+        self::assertSame([], ColisageService::produitsSaisis('   /  / '));
+    }
+
+    /** La règle est écrite au-dessus du tableau, là où l'agent saisit. */
+    public function test_la_regle_est_rappelee_a_l_agent(): void
+    {
+        $formulaire = (string) file_get_contents(BASE_PATH . '/app/View/Components/Colisage.php');
+
+        self::assertStringContainsString('Une ligne ne réunit que des produits', $formulaire);
+        self::assertStringContainsString('Deux produits de prix différents vont sur deux lignes', $formulaire);
+        self::assertStringContainsString('lbp-marchandises-regle', $formulaire);
     }
 
     /**

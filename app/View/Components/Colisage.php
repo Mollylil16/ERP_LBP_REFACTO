@@ -49,6 +49,9 @@ final class Colisage
     public static function marchandisesStyles(): string
     {
         return '<style>'
+            // La règle des lignes, rappelée au-dessus du tableau.
+            . '.lbp-marchandises-regle{margin:.25rem 0 .75rem;font-size:.85rem;color:#475569;line-height:1.55}'
+            . '.lbp-marchandises-regle em{color:#1e3a5f;font-style:normal;font-weight:600}'
             . '.lbp-marchandises input[type="number"]{-moz-appearance:textfield;appearance:textfield}'
             . '.lbp-marchandises input[type="number"]::-webkit-outer-spin-button,'
             . '.lbp-marchandises input[type="number"]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}'
@@ -1573,6 +1576,7 @@ final class Colisage
         $marchandisesHtml = self::marchandisesStyles()
             . '<div style="margin-top: 1.5rem;">'
             . '<h3>Marchandises contenues dans le colis</h3>'
+            . '<p class="lbp-marchandises-regle">Une ligne ne réunit que des produits <strong>de même prix</strong>. Deux produits de prix différents vont sur deux lignes. Pour en nommer plusieurs sur la même ligne, séparez-les par une barre oblique : <em>arachide/baobab/akpi</em> — la facture les affichera séparés par une espace.</p>'
             . '<div class="finea-table-wrapper" style="margin-top:0.5rem;">'
             . '<table class="finea-table lbp-marchandises" style="table-layout: auto;" id="marchandises-table">'
             . '<thead><tr style="background:#1e3a5f; color:#fff;">'
