@@ -344,8 +344,47 @@ body.module-body {
 }
 
 .finea-kpi-grid {
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(195px, 1fr));
   margin: 20px 0;
+}
+
+/*
+ * L'en-tete des modules etait decrit dans colisage.css, avec des !important :
+ * les modules qui ne chargent pas cette feuille — Finance, Logistique — en
+ * recevaient un autre. Le meme logiciel se presentait de trois facons. La
+ * definition vit desormais ici, ou tous les modules la lisent.
+ */
+.rh-hero-white {
+  background: linear-gradient(135deg, var(--finea-navy) 0%, #1e293b 100%);
+  color: #ffffff;
+  border-radius: 16px;
+  padding: 2.25rem 2.5rem;
+  box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.18);
+  margin-bottom: 1.75rem;
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.rh-hero-white::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -20%;
+  width: 300px;
+  height: 300px;
+  background: radial-gradient(circle, rgba(59, 130, 246, 0.16) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.rh-hero-white h1 {
+  font-size: clamp(1.6rem, 2vw, 2.2rem);
+  letter-spacing: -0.025em;
+}
+
+.rh-hero-white p {
+  color: #94a3b8;
+  max-width: 70ch;
 }
 
 .finea-kpi-card,
@@ -378,6 +417,14 @@ body.module-body {
   font-size: 1.75rem;
   line-height: 1.1;
   font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+/* Un montant long tient sur une ligne plutot que de se rompre au milieu. */
+.finea-kpi-value.is-longue {
+  font-size: 1.35rem;
+  white-space: nowrap;
 }
 
 .finea-kpi-meta {

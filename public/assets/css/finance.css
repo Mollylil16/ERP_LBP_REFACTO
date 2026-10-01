@@ -16,28 +16,9 @@
 }
 
 /* Modernized Page Header Banner */
-.finea-page-header {
-    background: linear-gradient(135deg, #1d2b57 0%, #2563eb 100%) !important;
-    border-radius: 16px !important;
-    padding: 2.2rem !important;
-    box-shadow: 0 16px 36px rgba(29, 67, 180, 0.14) !important;
-    border: none !important;
-    margin-bottom: 2rem;
-}
-
-.finea-page-header h1 {
-    font-family: 'Inter', sans-serif;
-    font-weight: 800;
-    font-size: 2rem;
-    letter-spacing: -0.02em;
-    color: #ffffff;
-}
-
-.finea-page-header p {
-    color: rgba(255, 255, 255, 0.85) !important;
-    font-size: 0.95rem;
-    margin-top: 0.5rem;
-}
+/* L'en-tete des modules est decrit une seule fois, dans finea-ui.css. La
+   version qui vivait ici imposait a Finance un degrade bleu que les autres
+   modules n avaient pas : le meme logiciel se presentait de trois facons. */
 
 /* Section Cards & KPI Blocks */
 .finea-section-card {

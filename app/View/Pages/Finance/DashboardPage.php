@@ -21,14 +21,16 @@ final class DashboardPage
     /** @var array<int,array{label:string,href:string,icon:string,variant?:string}> */
     public readonly array $quickActions;
 
+    /** Ce qui attend une décision. @var array<int,array<string,mixed>> */
+    public readonly array $enAttente;
+
     public function __construct(
         public readonly array $stats,
         array $recentFactures,
         array $recentEcritures,
         array $recentEtats,
         public readonly array $trendData = [],
-        /** Ce qui attend une décision. @var array<int,array<string,mixed>> */
-        public readonly array $enAttente = []
+        array $enAttente = []
     ) {
         $tauxChange = (float) ($stats['taux_change_eur'] ?? 655.957);
         if ($tauxChange <= 0) {
@@ -104,14 +106,21 @@ final class DashboardPage
                 'tone' => 'danger',
                 'href' => 'finance/depenses'
             ],
-            [
-                'label' => 'Clôtures Caisse d\'Agences',
-                'value' => (string) ($stats['pending_closures'] ?? 0),
-                'meta' => 'Rapports à consolider',
-                'tone' => 'info',
-                'href' => 'finance/clotures'
-            ]
         ];
+
+        /*
+         * Les points de caisse à consolider ne sont pas un chiffre d'affaires :
+         * c'est une tâche. Ils rejoignent « ce qui attend une décision », et la
+         * rangée d'indicateurs retrouve ses quatre cartes — la cinquième
+         * restait seule sur sa ligne, avec un grand vide à sa droite.
+         */
+        $this->enAttente = array_merge($enAttente, [[
+            'libelle' => 'Points de caisse à consolider',
+            'valeur' => (int) ($stats['pending_closures'] ?? 0),
+            'detail' => 'Soumis par les agences, en attente de la direction',
+            'href' => 'finance/clotures',
+            'urgent' => (int) ($stats['pending_closures'] ?? 0) > 0,
+        ]]);
 
         $this->recentFactures = array_map(static function (array $f): array {
             $f['formatted_date'] = $f['date_emission'] ? date('d/m/Y', strtotime($f['date_emission'])) : '—';

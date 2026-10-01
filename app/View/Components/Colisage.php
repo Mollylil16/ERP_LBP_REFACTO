@@ -180,7 +180,6 @@ final class Colisage
 
         $kpis = \App\View\Components\Dashboard::kpis($page->kpis);
         $activite = self::activiteDuMois($page);
-        $overview = self::agencesOverview();
         $recentParcels = self::recentParcels($page->recentParcels);
         $recentExpeditions = self::recentExpeditions($page->recentExpeditions);
         $actions = \App\View\Components\Dashboard::actions($page->quickActions, [
@@ -194,12 +193,10 @@ final class Colisage
             . '<div class="rh-dashboard-grid" style="margin-top: 2rem;">'
             . '<div class="rh-dashboard-main">'
             . $kpis
+            // « Réseau des agences actives » listait les agences sans un seul
+            // chiffre, juste au-dessous de leur activité réelle : deux fois la
+            // même idée, dont une muette.
             . $activite
-            . '<div style="margin-top: 2rem;">'
-            . '<h3>Réseau des Agences Actives</h3>'
-            . '<p style="color: #64748b; font-size: 0.95rem; margin-top: 0.2rem;">Suivi de l\'activité par point de vente / agence d\'expédition.</p>'
-            . $overview
-            . '</div>'
             . '<div style="margin-top: 2rem; display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">'
             . '<div>'
             . '<h3>Derniers Colis Enregistrés</h3>'

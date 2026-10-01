@@ -35,9 +35,15 @@ final class Dashboard
             ? ' href="' . View::url(ltrim($href, '/')) . '" aria-label="' . View::e('Ouvrir : ' . (string) $item['label']) . '"'
             : '';
         $iconHtml = $icon !== '' ? '<span class="finea-kpi-icon-badge">' . $icon . '</span>' : '';
+
+        // « 1 035 000 XOF » se cassait en deux lignes et sortait de la carte.
+        // Une valeur longue s'affiche plus petite plutot que de se rompre.
+        $valeur = (string) $item['value'];
+        $classeValeur = 'finea-kpi-value' . (mb_strlen($valeur) > 11 ? ' is-longue' : '');
+
         return '<' . $tag . ' class="' . View::e($class) . '"' . $attributes . '>'
             . '<div class="finea-kpi-header">' . $iconHtml . '<span class="finea-kpi-label">' . View::e((string) $item['label']) . '</span></div>'
-            . '<strong class="finea-kpi-value">' . View::e((string) $item['value']) . '</strong>'
+            . '<strong class="' . $classeValeur . '">' . View::e($valeur) . '</strong>'
             . '<small class="finea-kpi-meta">' . View::e((string) ($item['meta'] ?? '')) . '</small>'
             . ($href !== '' ? '<span class="finea-kpi-arrow" aria-hidden="true">→</span>' : '')
             . '</' . $tag . '>';

@@ -44,7 +44,9 @@ final class Finance
         return '<style>'
             . '.lbp-attente{margin-top:1.5rem}'
             . '.lbp-attente-titre{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#5b6472;margin:0 0 10px}'
-            . '.lbp-attente-grille{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:12px}'
+            // Cinq cases : la grille doit les tenir sur une ligne, sinon la
+            // derniere reste seule avec un vide a sa droite.
+            . '.lbp-attente-grille{display:grid;grid-template-columns:repeat(auto-fit,minmax(178px,1fr));gap:12px}'
             . '.lbp-attente-case{display:flex;flex-direction:column;gap:3px;padding:14px 16px;border:1px solid #e3e6ea;border-left:4px solid #cbd5e1;border-radius:12px;background:#fff;text-decoration:none;color:inherit}'
             . '.lbp-attente-case:hover{border-color:#1e3a5f;box-shadow:0 6px 18px -12px rgba(15,23,42,.45)}'
             . '.lbp-attente-case.is-urgente{border-left-color:#b54708;background:#fffbf5}'
