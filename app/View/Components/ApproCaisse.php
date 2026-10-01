@@ -47,6 +47,10 @@ final class ApproCaisse
                 self::formulaire($p),
                 "Il n'entre dans la caisse de l'agence qu'une fois validé par le comptable."
             );
+        } else {
+            // Un écran sans formulaire paraît amputé. Il dit donc à qui revient
+            // la saisie, plutôt que de laisser croire à une panne.
+            $html .= self::rappelDesRoles($p);
         }
 
         $html .= Ui::section(
@@ -101,6 +105,27 @@ final class ApproCaisse
             . '<button type="submit" class="rh-filter-btn rh-filter-btn--primary">' . self::icone('filtrer') . 'Afficher</button>'
             . '<a href="' . $action . '" class="rh-filter-btn rh-filter-btn--reset">' . self::icone('reinitialiser') . 'Ce mois-ci</a>'
             . '</div></form>';
+    }
+
+    /**
+     * Pourquoi cet écran n'offre pas le formulaire de saisie.
+     *
+     * L'appro se saisit d'une main et se valide d'une autre : qui n'a ni l'une
+     * ni l'autre consulte. Le dire évite de chercher un bouton qui n'existe
+     * pas, et de croire l'écran incomplet.
+     *
+     * @param array<string, mixed> $p
+     */
+    private static function rappelDesRoles(array $p): string
+    {
+        $texte = !empty($p['peutValider'])
+            ? "Vous validez ici les approvisionnements saisis par la caissière principale. "
+                . "Un appro validé entre dans la caisse de l'agence au jour de sa remise."
+            : "Vous consultez les approvisionnements. La saisie revient à la caissière principale, "
+                . "la validation au comptable — et un appro validé entre dans la caisse de l'agence "
+                . "au jour de sa remise, ce que votre comptage du soir doit retrouver.";
+
+        return '<p class="lbp-appro-rappel">' . View::e($texte) . '</p>';
     }
 
     /** @param array<string, mixed> $p */
@@ -279,6 +304,7 @@ final class ApproCaisse
             . '.lbp-appro-grille{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}'
             . '.lbp-appro-actions{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:12px;flex-wrap:wrap}'
             . '.lbp-appro-note{font-size:12px;color:#5b6472}'
+            . '.lbp-appro-rappel{margin:0 0 18px;padding:12px 16px;border:1px solid #dbe3ef;border-left:4px solid #1e3a5f;border-radius:10px;background:#f8fafc;color:#334155;font-size:13px;line-height:1.55}'
             . '.lbp-appro-table-enveloppe{overflow-x:auto}'
             . '.lbp-appro-table{width:100%;font-size:13px}'
             . '.lbp-appro-table th{white-space:nowrap}'

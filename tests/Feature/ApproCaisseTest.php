@@ -160,6 +160,22 @@ final class ApproCaisseTest extends TestCase
         self::assertStringNotContainsString('Nouvel approvisionnement', ApproCaisse::page($this->donnees(false)));
     }
 
+    /**
+     * Un écran sans formulaire paraît amputé : il dit donc à qui revient la
+     * saisie, plutôt que de laisser croire à une panne.
+     */
+    public function test_l_ecran_sans_formulaire_dit_pourquoi(): void
+    {
+        $consultation = ApproCaisse::page($this->donnees(false, false));
+        $comptable = ApproCaisse::page($this->donnees(false, true));
+
+        self::assertStringContainsString('La saisie revient à la caissière principale', $consultation);
+        self::assertStringContainsString('Vous validez ici les approvisionnements', $comptable);
+
+        // Celui qui saisit n'a pas besoin qu'on le lui explique.
+        self::assertStringNotContainsString('lbp-appro-rappel">', ApproCaisse::page($this->donnees(true)));
+    }
+
     /** Les boutons de décision n'apparaissent qu'au comptable, et sur ce qui attend. */
     public function test_la_decision_est_reservee_au_comptable(): void
     {
