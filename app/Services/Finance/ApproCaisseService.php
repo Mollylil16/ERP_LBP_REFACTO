@@ -32,6 +32,14 @@ final class ApproCaisseService
         'AUTRE' => 'Autre',
     ];
 
+    /**
+     * Les monnaies d'un tiroir. Paris compte en euros : un appro saisi en
+     * francs y serait attendu dans la mauvaise caisse.
+     *
+     * @var array<string, string>
+     */
+    public const DEVISES = ['XOF' => 'FCFA', 'EUR' => 'EUR'];
+
     /** @var array<string, string> */
     public const STATUTS = [
         'en_attente' => 'En attente de validation',
@@ -189,16 +197,19 @@ final class ApproCaisseService
             return ['', $erreurs];
         }
 
+        $devise = (string) ($saisie['devise'] ?? 'XOF');
+
         $stmt = $this->pdo->prepare("
             INSERT INTO lbp_appros_caisse
                 (numero, agence_id, montant, devise, source, motif, date_effet, demandeur_id, statut, created_at)
             VALUES
-                (:numero, :agence, :montant, 'XOF', :source, :motif, :date_effet, :demandeur, 'en_attente', NOW())
+                (:numero, :agence, :montant, :devise, :source, :motif, :date_effet, :demandeur, 'en_attente', NOW())
         ");
         $stmt->execute([
             'numero' => $this->prochainNumero(),
             'agence' => $agence,
             'montant' => $montant,
+            'devise' => isset(self::DEVISES[$devise]) ? $devise : 'XOF',
             'source' => isset(self::SOURCES[$source]) ? $source : 'AUTRE',
             'motif' => $motif,
             'date_effet' => $dateEffet,

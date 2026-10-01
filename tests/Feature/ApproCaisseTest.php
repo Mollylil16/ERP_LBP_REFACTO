@@ -121,6 +121,23 @@ final class ApproCaisseTest extends TestCase
         self::assertSame(0.0, ApproCaisseService::montantValide($pdo, 3400, '2026-09-30'));
     }
 
+    /**
+     * Paris compte en euros : un appro saisi en francs y serait attendu dans
+     * la mauvaise caisse, et le comptage du soir ne tomberait jamais juste.
+     */
+    public function test_la_caisse_de_paris_compte_en_euros(): void
+    {
+        self::assertSame(['XOF' => 'FCFA', 'EUR' => 'EUR'], ApproCaisseService::DEVISES);
+
+        $source = (string) file_get_contents(BASE_PATH . '/app/Repositories/Finance/EtatJournalierRepository.php');
+        self::assertStringContainsString("'solde_caisse_agence_eur' => \$encaisseEspecesEur + \$approCaisseEur", $source);
+        self::assertStringContainsString("montantValide(\$this->pdo, \$agenceId, \$date, 'EUR')", $source);
+
+        // Le formulaire laisse choisir la monnaie, il ne la devine pas.
+        $html = ApproCaisse::page($this->donnees(true));
+        self::assertStringContainsString('name="devise"', $html);
+    }
+
     // ------------------------------------------------------------------
     // Les totaux et l'écran
     // ------------------------------------------------------------------

@@ -111,12 +111,18 @@ final class ApproCaisse
             $sources[] = ['value' => $code, 'label' => $libelle];
         }
 
+        $devises = [];
+        foreach (Service::DEVISES as $code => $libelle) {
+            $devises[] = ['value' => $code, 'label' => $libelle];
+        }
+
         return '<form method="post" action="' . View::e(View::url('finance/appro-caisse/enregistrer')) . '" class="lbp-appro-formulaire">'
             . Csrf::field()
             . self::filtresCaches($p)
             . '<div class="lbp-appro-grille">'
             . Form::select('agence_id', self::optionsAgences($p, 'Choisir une agence'), '', ['label' => 'Agence approvisionnée', 'id' => 'appro-f-agence'])
-            . Form::input('montant', ['label' => 'Montant remis (FCFA)', 'value' => '', 'id' => 'appro-f-montant', 'inputmode' => 'numeric', 'placeholder' => '250 000'])
+            . Form::input('montant', ['label' => 'Montant remis', 'value' => '', 'id' => 'appro-f-montant', 'inputmode' => 'numeric', 'placeholder' => '250 000'])
+            . Form::select('devise', $devises, 'XOF', ['label' => 'Monnaie', 'id' => 'appro-f-devise'])
             . Form::input('date_effet', ['label' => 'Date de remise', 'type' => 'date', 'value' => date('Y-m-d'), 'id' => 'appro-f-date'])
             . Form::select('source', $sources, 'SIEGE', ['label' => 'Provenance', 'id' => 'appro-f-source'])
             . '</div>'
@@ -169,7 +175,8 @@ final class ApproCaisse
             . '<td class="lbp-appro-mono">' . View::e((string) $l['numero']) . '</td>'
             . '<td class="lbp-appro-mono">' . View::e(self::date((string) $l['date_effet'])) . '</td>'
             . '<td>' . View::e((string) ($l['agence'] ?? '—')) . '</td>'
-            . '<td class="lbp-appro-droite lbp-appro-mono"><strong>' . View::e(self::montant((float) $l['montant'])) . '</strong></td>'
+            . '<td class="lbp-appro-droite lbp-appro-mono"><strong>' . View::e(self::montant((float) $l['montant'])) . '</strong>'
+            . self::sous(Service::DEVISES[(string) ($l['devise'] ?? 'XOF')] ?? (string) $l['devise']) . '</td>'
             . '<td>' . View::e(Service::SOURCES[(string) $l['source']] ?? (string) $l['source']) . '</td>'
             . '<td><span class="lbp-appro-motif">' . View::e($motif) . '</span>'
             . ($rejet !== '' ? self::sous('Rejet : ' . $rejet) : '') . '</td>'

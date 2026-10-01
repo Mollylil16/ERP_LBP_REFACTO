@@ -530,6 +530,8 @@ class EtatJournalierRepository
         $encaissementsDetails = $stmtEncaissements->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
         $approCaisseXof = \App\Services\Finance\ApproCaisseService::montantValide($this->pdo, $agenceId, $date);
+        // Paris compte en euros : son tiroir a sa propre ligne.
+        $approCaisseEur = \App\Services\Finance\ApproCaisseService::montantValide($this->pdo, $agenceId, $date, 'EUR');
 
         return [
             'nb_colis' => $nbColis,
@@ -557,7 +559,8 @@ class EtatJournalierRepository
             // l'ecart de caisse mecaniquement negatif du montant encaisse hors especes,
             // au detriment de la caissiere, et declenchait de faux signalements de fraude.
             'solde_caisse_agence_xof' => $encaisseEspecesXof + $approCaisseXof,
-            'solde_caisse_agence_eur' => $encaisseEspecesEur,
+            'appro_caisse_eur' => $approCaisseEur,
+            'solde_caisse_agence_eur' => $encaisseEspecesEur + $approCaisseEur,
             'breakdown_by_type' => $breakdownByType,
             'invoices_details' => $invoicesDetails,
             'encaissements_details' => $encaissementsDetails,
