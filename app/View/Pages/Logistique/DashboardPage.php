@@ -12,12 +12,24 @@ final class DashboardPage
     /** @var array<int,array{label:string,href:string,icon:string,variant?:string}> */
     public readonly array $quickActions;
 
+    /** Le magasin, agence par agence. @var array<int,array<string,mixed>> */
+    public readonly array $colisParAgence;
+
+    /** Les emballages passés sous leur seuil d'alerte. @var array<int,array<string,mixed>> */
+    public readonly array $emballagesAlertes;
+
     public function __construct(array $moduleData)
     {
+        // La teinte dit l'urgence : un colis en souffrance n'a pas la même
+        // couleur qu'un compteur ordinaire. Les écraser toutes en « primary »
+        // revenait à ne rien signaler.
         $this->kpis = array_map(static function (array $kpi): array {
-            $kpi['tone'] = 'primary';
+            $kpi['tone'] = $kpi['tone'] ?? 'primary';
             return $kpi;
         }, $moduleData['kpis'] ?? []);
+
+        $this->colisParAgence = $moduleData['colisParAgence'] ?? [];
+        $this->emballagesAlertes = $moduleData['emballagesAlertes'] ?? [];
 
         $this->quickActions = [
             ['label' => 'Enregistrer un colis', 'href' => 'colisage/parcels/nouveau', 'icon' => '<svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>', 'variant' => 'accent'],

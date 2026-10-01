@@ -13,6 +13,52 @@ use App\View\Components\Form;
 
 final class Finance
 {
+    /**
+     * Ce qui attend une décision, en tête du tableau de bord.
+     *
+     * L'écran disait l'argent ; il ne disait pas le travail. Ces quatre cases
+     * sont la liste du matin : une caisse jamais comptée, un approvisionnement
+     * qui dort, un envoi non rapproché, une demande de fonds sans réponse.
+     * Chacune mène à l'écran où l'on tranche.
+     *
+     * @param array<int, array<string, mixed>> $lignes
+     */
+    private static function fileDAttente(array $lignes): string
+    {
+        if ($lignes === []) {
+            return '';
+        }
+
+        $cases = '';
+        foreach ($lignes as $ligne) {
+            $urgent = !empty($ligne['urgent']);
+
+            $cases .= '<a class="lbp-attente-case' . ($urgent ? ' is-urgente' : '') . '" href="'
+                . View::e(View::url((string) $ligne['href'])) . '">'
+                . '<span class="lbp-attente-valeur">' . View::e((string) $ligne['valeur']) . '</span>'
+                . '<span class="lbp-attente-libelle">' . View::e((string) $ligne['libelle']) . '</span>'
+                . '<span class="lbp-attente-detail">' . View::e((string) $ligne['detail']) . '</span>'
+                . '</a>';
+        }
+
+        return '<style>'
+            . '.lbp-attente{margin-top:1.5rem}'
+            . '.lbp-attente-titre{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#5b6472;margin:0 0 10px}'
+            . '.lbp-attente-grille{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:12px}'
+            . '.lbp-attente-case{display:flex;flex-direction:column;gap:3px;padding:14px 16px;border:1px solid #e3e6ea;border-left:4px solid #cbd5e1;border-radius:12px;background:#fff;text-decoration:none;color:inherit}'
+            . '.lbp-attente-case:hover{border-color:#1e3a5f;box-shadow:0 6px 18px -12px rgba(15,23,42,.45)}'
+            . '.lbp-attente-case.is-urgente{border-left-color:#b54708;background:#fffbf5}'
+            . '.lbp-attente-valeur{font-size:24px;font-weight:800;line-height:1.1;color:#0f172a}'
+            . '.lbp-attente-case.is-urgente .lbp-attente-valeur{color:#b54708}'
+            . '.lbp-attente-libelle{font-size:13px;font-weight:700;color:#1e3a5f}'
+            . '.lbp-attente-detail{font-size:11.5px;color:#64748b}'
+            . '</style>'
+            . '<section class="lbp-attente">'
+            . '<p class="lbp-attente-titre">Ce qui attend une décision</p>'
+            . '<div class="lbp-attente-grille">' . $cases . '</div>'
+            . '</section>';
+    }
+
     public static function dashboardPage(\App\View\Pages\Finance\DashboardPage $page, array $dashboardModule): string
     {
         $style = '<style>'
@@ -40,6 +86,7 @@ final class Finance
         );
 
         $kpis = \App\View\Components\Dashboard::kpis($page->kpis);
+        $attente = self::fileDAttente($page->enAttente);
         $recentFactures = self::recentFactures($page->recentFactures);
         $recentEcritures = self::recentEcritures($page->recentEcritures);
         $recentEtats = self::recentEtats($page->recentEtats);
@@ -56,6 +103,7 @@ final class Finance
             . '<div class="rh-dashboard-grid" style="margin-top: 2rem;">'
             . '<div class="rh-dashboard-main">'
             . $kpis
+            . $attente
             . '<div style="margin-top: 2rem;">'
             . $trendWidget
             . '</div>'

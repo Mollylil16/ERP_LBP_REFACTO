@@ -19,6 +19,16 @@ final class FinanceDashboardService extends \App\Services\Shared\AbstractModuleD
     /**
      * Get rich financial statistics
      */
+    /**
+     * Ce qui attend une décision, aujourd'hui, dans le module Finance.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function enAttente(): array
+    {
+        return $this->repository->enAttente();
+    }
+
     public function getFinanceStats(): array
     {
         return $this->financeRepository->getFinanceStats();

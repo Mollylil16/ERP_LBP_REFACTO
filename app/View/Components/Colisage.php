@@ -82,6 +82,91 @@ final class Colisage
             . '</div>';
     }
 
+    /**
+     * L'activité du mois : ce que chaque agence a enregistré, et sur quelles
+     * lignes ces colis partent.
+     *
+     * Le tableau de bord ne montrait que des compteurs d'état ; il ne disait
+     * pas qui travaille ni vers où. Ces deux tableaux viennent des colis déjà
+     * saisis : rien n'y est ressaisi.
+     */
+    private static function activiteDuMois(\App\View\Pages\Colisage\DashboardPage $page): string
+    {
+        if ($page->activiteAgences === [] && $page->activiteTrafics === []) {
+            return '';
+        }
+
+        $nombre = static fn (float $v, int $d = 0): string => number_format($v, $d, ',', ' ');
+
+        $agences = '';
+        $totalColis = 0;
+        $totalPoids = 0.0;
+        $totalMontant = 0.0;
+
+        foreach ($page->activiteAgences as $ligne) {
+            $totalColis += (int) $ligne['colis'];
+            $totalPoids += (float) $ligne['poids'];
+            $totalMontant += (float) $ligne['montant'];
+
+            $agences .= '<tr>'
+                . '<td><strong>' . View::e((string) $ligne['agence']) . '</strong>'
+                . '<span class="lbp-activite-sous">' . View::e($nombre((float) $ligne['saisies']) . ' saisie(s)') . '</span></td>'
+                . '<td style="text-align:right;">' . View::e($nombre((float) $ligne['colis'])) . '</td>'
+                . '<td style="text-align:right;">' . View::e($nombre((float) $ligne['poids'], 1)) . ' kg</td>'
+                . '<td style="text-align:right;"><strong>' . View::e($nombre((float) $ligne['montant'])) . ' F</strong></td>'
+                . '</tr>';
+        }
+
+        if ($agences === '') {
+            $agences = '<tr><td colspan="4" style="text-align:center; color:#64748b; padding:14px;">Aucun colis enregistré ce mois-ci.</td></tr>';
+        }
+
+        $trafics = '';
+        foreach ($page->activiteTrafics as $ligne) {
+            $part = $totalColis > 0 ? round((int) $ligne['colis'] * 100 / $totalColis) : 0;
+
+            $trafics .= '<tr>'
+                . '<td>' . View::e(str_replace('_', ' → ', (string) $ligne['trafic'])) . '</td>'
+                . '<td style="text-align:right;">' . View::e($nombre((float) $ligne['colis'])) . '</td>'
+                . '<td style="text-align:right;">' . View::e($nombre((float) $ligne['poids'], 1)) . ' kg</td>'
+                . '<td style="width:34%;"><div class="lbp-activite-barre"><span style="width:' . $part . '%"></span></div></td>'
+                . '</tr>';
+        }
+
+        if ($trafics === '') {
+            $trafics = '<tr><td colspan="4" style="text-align:center; color:#64748b; padding:14px;">Aucun trafic ce mois-ci.</td></tr>';
+        }
+
+        return '<style>'
+            // Deux tableaux larges cote a cote debordaient de la colonne du
+            // tableau de bord : ils se lisent l un sous l autre.
+            . '.lbp-activite{display:grid;grid-template-columns:1fr;gap:1.5rem;margin-top:2rem}'
+            . '.lbp-activite-sous{display:block;font-size:11px;color:#8b94a1}'
+            . '.lbp-activite-barre{height:8px;border-radius:999px;background:#e2e8f0;overflow:hidden}'
+            . '.lbp-activite-barre span{display:block;height:100%;background:#2563eb}'
+            . '</style>'
+            . '<div class="lbp-activite">'
+            . Ui::section(
+                'Activité de ' . $page->moisLibelle,
+                '<div class="finea-table-wrap"><table class="finea-table">'
+                . '<thead><tr><th>Agence</th><th style="text-align:right;">Colis</th><th style="text-align:right;">Poids</th><th style="text-align:right;">Facturé</th></tr></thead>'
+                . '<tbody>' . $agences . '</tbody>'
+                . '<tfoot><tr><td>Total</td><td style="text-align:right;">' . View::e($nombre((float) $totalColis)) . '</td>'
+                . '<td style="text-align:right;">' . View::e($nombre($totalPoids, 1)) . ' kg</td>'
+                . '<td style="text-align:right;">' . View::e($nombre($totalMontant)) . ' F</td></tr></tfoot>'
+                . '</table></div>',
+                'Ce que chaque agence a enregistré, repris des colis saisis.'
+            )
+            . Ui::section(
+                'Lignes les plus chargées',
+                '<div class="finea-table-wrap"><table class="finea-table">'
+                . '<thead><tr><th>Trafic</th><th style="text-align:right;">Colis</th><th style="text-align:right;">Poids</th><th>Part</th></tr></thead>'
+                . '<tbody>' . $trafics . '</tbody></table></div>',
+                'Où partent les colis du mois.'
+            )
+            . '</div>';
+    }
+
     public static function dashboardPage(\App\View\Pages\Colisage\DashboardPage $page, array $dashboardModule): string
     {
         $header = \App\View\Components\Dashboard::header(
@@ -94,6 +179,7 @@ final class Colisage
         );
 
         $kpis = \App\View\Components\Dashboard::kpis($page->kpis);
+        $activite = self::activiteDuMois($page);
         $overview = self::agencesOverview();
         $recentParcels = self::recentParcels($page->recentParcels);
         $recentExpeditions = self::recentExpeditions($page->recentExpeditions);
@@ -108,6 +194,7 @@ final class Colisage
             . '<div class="rh-dashboard-grid" style="margin-top: 2rem;">'
             . '<div class="rh-dashboard-main">'
             . $kpis
+            . $activite
             . '<div style="margin-top: 2rem;">'
             . '<h3>Réseau des Agences Actives</h3>'
             . '<p style="color: #64748b; font-size: 0.95rem; margin-top: 0.2rem;">Suivi de l\'activité par point de vente / agence d\'expédition.</p>'

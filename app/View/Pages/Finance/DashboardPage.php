@@ -26,7 +26,9 @@ final class DashboardPage
         array $recentFactures,
         array $recentEcritures,
         array $recentEtats,
-        public readonly array $trendData = []
+        public readonly array $trendData = [],
+        /** Ce qui attend une décision. @var array<int,array<string,mixed>> */
+        public readonly array $enAttente = []
     ) {
         $tauxChange = (float) ($stats['taux_change_eur'] ?? 655.957);
         if ($tauxChange <= 0) {

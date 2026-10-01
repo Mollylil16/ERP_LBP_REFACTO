@@ -18,17 +18,29 @@ final class DashboardPage
     /** @var array<int,array{label:string,href:string,icon:string,variant?:string}> */
     public readonly array $quickActions;
 
+    /** Ce que chaque agence a enregistré ce mois-ci. @var array<int,array<string,mixed>> */
+    public readonly array $activiteAgences;
+
+    /** Et sur quelles lignes ces colis partent. @var array<int,array<string,mixed>> */
+    public readonly array $activiteTrafics;
+
+    public readonly string $moisLibelle;
+
     public function __construct(array $moduleData)
     {
         $this->kpis = $moduleData['kpis'] ?? [];
 
         $this->recentParcels = array_map(static function (array $p): array {
             $statut = (string) ($p['statut'] ?? '');
-            $p['status_tone'] = match($statut) {
-                'RETIRÉ', 'LIVRÉ' => 'success',
-                'RÉCEPTIONNÉ' => 'info',
-                'EN_PRÉPARATION' => 'warning',
-                'EN_TRANSIT' => 'primary',
+            // La table ecrit « enregistre », « en_transit », « arrive »,
+            // « livre », « retire » : les libelles accentues ne tombaient
+            // jamais, et toutes les lignes sortaient en gris.
+            $p['status_tone'] = match (strtolower($statut)) {
+                'retire', 'livre' => 'success',
+                'enregistre' => 'info',
+                'facture' => 'warning',
+                'en_transit' => 'primary',
+                'arrive' => 'accent',
                 default => 'neutral'
             };
             return $p;
@@ -36,14 +48,18 @@ final class DashboardPage
 
         $this->recentExpeditions = array_map(static function (array $e): array {
             $statut = (string) ($e['statut'] ?? '');
-            $e['status_tone'] = match($statut) {
-                'ARRIVÉ' => 'success',
+            $e['status_tone'] = match (strtoupper($statut)) {
+                'ARRIVE', 'CLOTURE' => 'success',
                 'EN_TRANSIT' => 'primary',
+                'EN_PREPARATION' => 'warning',
                 default => 'neutral'
             };
             return $e;
         }, $moduleData['recentExpeditions'] ?? []);
 
         $this->quickActions = $moduleData['quickActions'] ?? [];
+        $this->activiteAgences = $moduleData['activiteAgences'] ?? [];
+        $this->activiteTrafics = $moduleData['activiteTrafics'] ?? [];
+        $this->moisLibelle = (string) ($moduleData['moisLibelle'] ?? '');
     }
 }

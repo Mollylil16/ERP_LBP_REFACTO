@@ -14,6 +14,70 @@ use App\View\Pages\Logistique\DashboardPage;
 
 final class Logistique
 {
+    /**
+     * L'état du magasin : ce qui dort en agence, et ce qui va manquer.
+     *
+     * Les deux questions que la logistique se pose chaque matin. Elles se
+     * lisent des colis et des stocks déjà saisis : rien n'y est ressaisi.
+     */
+    private static function etatDuMagasin(DashboardPage $page): string
+    {
+        if ($page->colisParAgence === [] && $page->emballagesAlertes === []) {
+            return '';
+        }
+
+        $nombre = static fn (float $v): string => number_format($v, 0, ',', ' ');
+
+        $magasin = '';
+        foreach ($page->colisParAgence as $ligne) {
+            $souffrance = (int) $ligne['souffrance'];
+
+            $magasin .= '<tr>'
+                . '<td><strong>' . View::e((string) $ligne['agence']) . '</strong></td>'
+                . '<td style="text-align:right;">' . View::e($nombre((float) $ligne['en_magasin'])) . '</td>'
+                . '<td style="text-align:right;">' . ($souffrance > 0
+                    ? '<span style="color:#b54708; font-weight:700;">' . View::e($nombre((float) $souffrance)) . '</span>'
+                    : '0') . '</td>'
+                . '<td style="text-align:right;">' . View::e($nombre((float) $ligne['en_transit'])) . '</td>'
+                . '</tr>';
+        }
+
+        if ($magasin === '') {
+            $magasin = '<tr><td colspan="4" style="text-align:center; color:#64748b; padding:14px;">Aucun colis en magasin ni en transit.</td></tr>';
+        }
+
+        $alertes = '';
+        foreach ($page->emballagesAlertes as $ligne) {
+            $alertes .= '<tr>'
+                . '<td><strong>' . View::e((string) $ligne['libelle']) . '</strong>'
+                . '<span style="display:block; font-size:11px; color:#8b94a1;">' . View::e((string) $ligne['type'] . ' · ' . (string) $ligne['agence']) . '</span></td>'
+                . '<td style="text-align:right; color:#b42318; font-weight:700;">' . View::e($nombre((float) $ligne['disponible'])) . '</td>'
+                . '<td style="text-align:right; color:#64748b;">' . View::e($nombre((float) $ligne['seuil'])) . '</td>'
+                . '</tr>';
+        }
+
+        if ($alertes === '') {
+            $alertes = '<tr><td colspan="3" style="text-align:center; color:#027a48; padding:14px;">Aucun emballage sous son seuil.</td></tr>';
+        }
+
+        return '<div style="display:grid; grid-template-columns:1fr; gap:1.5rem; margin-top:2rem;">'
+            . Ui::section(
+                'Le magasin, agence par agence',
+                '<div class="finea-table-wrap"><table class="finea-table">'
+                . '<thead><tr><th>Agence</th><th style="text-align:right;">En magasin</th><th style="text-align:right;">En souffrance</th><th style="text-align:right;">En transit</th></tr></thead>'
+                . '<tbody>' . $magasin . '</tbody></table></div>',
+                "Un colis en souffrance attend son destinataire depuis plus d'une semaine."
+            )
+            . Ui::section(
+                'Emballages à réapprovisionner',
+                '<div class="finea-table-wrap"><table class="finea-table">'
+                . '<thead><tr><th>Emballage</th><th style="text-align:right;">Disponible</th><th style="text-align:right;">Seuil</th></tr></thead>'
+                . '<tbody>' . $alertes . '</tbody></table></div>',
+                'Ce qui va manquer au comptoir si personne ne commande.'
+            )
+            . '</div>';
+    }
+
     public static function dashboardPage(DashboardPage $page, array $dashboardModule, array $rayons = [], array $settings = []): string
     {
         $header = Dashboard::header(
@@ -26,6 +90,7 @@ final class Logistique
         );
 
         $kpis = Dashboard::kpis($page->kpis);
+        $magasin = self::etatDuMagasin($page);
 
         $quickActionsList = array_merge($page->quickActions, [
             ['label' => 'Gestion des Rayons', 'href' => 'logistique/rayons', 'icon' => '<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/></svg>', 'variant' => 'primary'],
@@ -46,6 +111,7 @@ final class Logistique
             . '<div class="rh-dashboard-grid" style="margin-top: 2rem;">'
             . '<div class="rh-dashboard-main">'
             . $kpis
+            . $magasin
             . '<div style="margin-top: 2rem;">'
             . $section
             . '</div>'

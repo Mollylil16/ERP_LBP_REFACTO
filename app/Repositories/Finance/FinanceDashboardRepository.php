@@ -21,6 +21,96 @@ final class FinanceDashboardRepository extends \App\Repositories\Shared\ModuleDa
      *
      * @return array<string, mixed>
      */
+    /**
+     * Ce qui attend une décision, aujourd'hui, dans le module Finance.
+     *
+     * Le tableau de bord disait l'argent ; il ne disait pas le travail. Ces
+     * quatre lignes sont la liste du matin : une caisse jamais comptée, un
+     * approvisionnement qui dort, un envoi non rapproché, une demande de fonds
+     * sans réponse. Chacune renvoie à l'écran où l'on tranche.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function enAttente(): array
+    {
+        $hier = date('Y-m-d', strtotime('-1 day'));
+        $moisDebut = date('Y-m-01');
+
+        $caisses = (int) $this->compte("
+            SELECT COUNT(DISTINCT jours.agence_id)
+            FROM (
+                SELECT DATE(p.date_paiement) AS jour, COALESCE(p.agence_id, u.agence_id, f.agence_id) AS agence_id
+                FROM lbp_paiements p
+                JOIN lbp_factures f ON f.id = p.facture_id
+                LEFT JOIN users u ON u.id = p.caissiere_id
+                WHERE DATE(p.date_paiement) = :jour AND p.devise = 'XOF'
+                GROUP BY jour, agence_id
+            ) AS jours
+            LEFT JOIN lbp_etats_journaliers e
+                   ON e.agence_id = jours.agence_id AND e.date_jour = jours.jour
+                  AND e.statut IN ('soumis', 'consolide')
+            WHERE e.id IS NULL
+        ", ['jour' => $hier]);
+
+        $appros = (int) $this->compte("SELECT COUNT(*) FROM lbp_appros_caisse WHERE statut = 'en_attente'");
+
+        $envois = (int) $this->compte(
+            'SELECT COUNT(*) FROM lbp_rappro_envois WHERE date_envoi >= :debut AND colis_factures IS NULL',
+            ['debut' => $moisDebut]
+        );
+
+        $fonds = (int) $this->compte("SELECT COUNT(*) FROM lbp_demandes_fonds WHERE statut = 'en_attente'");
+
+        return [
+            [
+                'libelle' => 'Caisses non comptées hier',
+                'valeur' => $caisses,
+                'detail' => $caisses > 0 ? 'Ces agences sont bloquées ce matin' : 'Toutes les caisses ont été soumises',
+                'href' => 'finance/controle-caisse?jour=' . $hier,
+                'urgent' => $caisses > 0,
+            ],
+            [
+                'libelle' => 'Approvisionnements à valider',
+                'valeur' => $appros,
+                'detail' => "Saisis par la caissière principale",
+                'href' => 'finance/appro-caisse?statut=en_attente',
+                'urgent' => $appros > 0,
+            ],
+            [
+                'libelle' => 'Envois à rapprocher',
+                'valeur' => $envois,
+                'detail' => "La facture de la compagnie n'est pas encore saisie",
+                'href' => 'finance/rapprochement-envois',
+                'urgent' => false,
+            ],
+            [
+                'libelle' => 'Demandes de fonds en attente',
+                'valeur' => $fonds,
+                'detail' => 'À valider ou à rejeter',
+                'href' => 'finance/fonds?statut=en_attente',
+                'urgent' => $fonds > 0,
+            ],
+        ];
+    }
+
+    /**
+     * Un compteur qui ne fait pas tomber l'écran si la table n'existe pas
+     * encore sur cette base.
+     *
+     * @param array<string, mixed> $parametres
+     */
+    private function compte(string $sql, array $parametres = []): float
+    {
+        try {
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->execute($parametres);
+
+            return (float) $stmt->fetchColumn();
+        } catch (\Throwable $e) {
+            return 0.0;
+        }
+    }
+
     public function getFinanceStats(): array
     {
         // Dynamic exchange rate
