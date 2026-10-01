@@ -39,8 +39,15 @@ set_exception_handler(static function (Throwable $e): void {
     exit(3);
 });
 
-/** Les compagnies de transport de LBP, telles que la direction les nomme. */
-const COMPAGNIES = ['AIR CI', 'AIR FRET', 'K2S'];
+/**
+ * Les compagnies de transport de LBP, telles que la direction les nomme.
+ *
+ * « AIR CI » n'y figure pas : la direction confirme le 01/10/2026 que c'est le
+ * nom court d'« Air Cote d'Ivoire », deja presente au referentiel. La creer
+ * aurait fabrique un doublon, et les envois se seraient repartis entre deux
+ * lignes pour une seule compagnie.
+ */
+const COMPAGNIES = ['AIR FRET', 'K2S'];
 
 const TYPE_COMPAGNIE = 'COMPAGNIE_AERIENNE';
 
