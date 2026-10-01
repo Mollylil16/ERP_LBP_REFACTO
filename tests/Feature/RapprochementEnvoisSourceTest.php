@@ -29,48 +29,40 @@ final class RapprochementEnvoisSourceTest extends TestCase
         return (string) file_get_contents(BASE_PATH . '/app/Repositories/Finance/RapprochementEnvoisRepository.php');
     }
 
-    /** Le départ groupé n'a pas de dossier : partir du dossier le rendait invisible. */
-    public function test_les_lignes_partent_des_departs_pas_des_dossiers(): void
+    /**
+     * Une ligne est un envoi : une date, une compagnie, une LTA — le grain du
+     * tableur que la direction tenait à la main. Partir du départ d'une seule
+     * agence ne montrait jamais la somme que la compagnie facture.
+     */
+    public function test_les_lignes_sont_des_envois(): void
     {
         $sql = $this->sql();
 
-        self::assertStringContainsString('FROM lbp_expeditions e', $sql);
-        self::assertStringContainsString('LEFT JOIN lbp_dossiers_envoi d ON d.expedition_id = e.id', $sql);
-        self::assertStringNotContainsString('FROM lbp_dossiers_envoi d', $sql);
+        self::assertStringContainsString('FROM lbp_rappro_envois e', $sql);
+        self::assertStringContainsString('e.date_envoi AS date_reference', $sql);
+        self::assertStringContainsString('lbp_rappro_envois_agences', $sql);
     }
 
     /**
-     * Les colis et le poids de l'agence viennent du comptage figé au départ
-     * quand il existe, et sinon des colis rattachés à l'expédition.
+     * Les colis et le poids se somment sur les agences cochées, par leur date
+     * de départ prévue : c'est le suivi de colisage que chacune remet la veille
+     * ou le matin même, et il est déjà dans le logiciel.
      */
-    public function test_les_chiffres_de_l_agence_se_remplissent_seuls(): void
+    public function test_les_chiffres_des_agences_se_somment_seuls(): void
     {
         $sql = $this->sql();
 
-        self::assertStringContainsString('COALESCE(d.colis_erp, c.colis) AS colis_erp', $sql);
-        self::assertStringContainsString('COALESCE(d.poids_erp_kg, c.poids) AS poids_erp_kg', $sql);
-        self::assertStringContainsString('FROM lbp_colis', $sql);
+        self::assertStringContainsString('FROM lbp_colis c', $sql);
+        self::assertStringContainsString('COALESCE(c.date_depart_prevue, DATE(c.created_at)) = ?', $sql);
         // Un envoi de plusieurs colis compte pour autant, jamais pour un seul.
-        self::assertStringContainsString('SUM(COALESCE(NULLIF(nombre_colis, 0), 1)) AS colis', $sql);
+        self::assertStringContainsString('SUM(COALESCE(NULLIF(c.nombre_colis, 0), 1)) AS colis', $sql);
+        // Deux compagnies peuvent partir le même jour : seules les agences
+        // cochées entrent dans la somme.
+        self::assertStringContainsString('AND c.agence_depart_id IN ({$marques})', $sql);
     }
 
-    /**
-     * Les filtres proposaient les seules valeurs déjà rencontrées : sans aucun
-     * départ, ils s'ouvraient sur rien. Une liste de référence ne dépend pas de
-     * ce que le logiciel a déjà vu.
-     */
-    public function test_les_filtres_listent_les_compagnies_et_agences_de_reference(): void
-    {
-        $sql = $this->sql();
-
-        self::assertStringContainsString('SELECT id, name FROM lbp_prestataires', $sql);
-        self::assertStringContainsString('SELECT id, name FROM company_sites', $sql);
-        self::assertStringNotContainsString('SELECT DISTINCT t.id', $sql);
-        self::assertStringNotContainsString('SELECT DISTINCT s.id', $sql);
-    }
-
-    /** Un départ groupé, sans dossier : la ligne tient debout quand même. */
-    public function test_un_depart_groupe_compose_une_ligne_complete(): void
+    /** Un envoi sans facture encore reçue tient debout : il est en attente. */
+    public function test_un_envoi_sans_facture_compose_une_ligne_complete(): void
     {
         $ligne = Regles::composer([
             'id' => 42,
@@ -87,8 +79,7 @@ final class RapprochementEnvoisSourceTest extends TestCase
             'poids_brut_kg' => null,
         ]);
 
-        self::assertSame(42, $ligne['id'], "La ligne s'identifie par son départ.");
-        self::assertNull($ligne['dossier_id']);
+        self::assertSame(42, $ligne['id'], "La ligne s'identifie par son envoi.");
         self::assertSame(11, $ligne['colis_agence']);
         self::assertSame(268.5, $ligne['poids_agence']);
         self::assertNull($ligne['colis_lta'], "Le document n'est pas encore arrivé.");
@@ -109,9 +100,9 @@ final class RapprochementEnvoisSourceTest extends TestCase
         ], ['colis_declare' => null, 'poids_declare' => null, 'motif_correction' => null]);
 
         self::assertSame(3, $valeurs['transporteur_id']);
-        self::assertSame('483-20428520', $valeurs['numero_document']);
-        self::assertSame(11, $valeurs['colis_lta']);
-        self::assertSame(275.0, $valeurs['poids_lta_kg']);
+        self::assertSame('483-20428520', $valeurs['numero_lta']);
+        self::assertSame(11, $valeurs['colis_factures']);
+        self::assertSame(275.0, $valeurs['poids_facture_kg']);
         self::assertNotContains('', $erreurs);
     }
 
@@ -124,7 +115,7 @@ final class RapprochementEnvoisSourceTest extends TestCase
         );
 
         self::assertNull($valeurs['transporteur_id']);
-        self::assertNull($valeurs['numero_document']);
+        self::assertNull($valeurs['numero_lta']);
     }
 
     /** Le formulaire du comptable porte les deux champs qu'il doit remplir. */

@@ -74,6 +74,55 @@ final class RapprochementEnvoisController extends FinanceBaseController
         $this->retour($retour);
     }
 
+    /** Ouvre un envoi : une date, une compagnie, les agences qui ont chargé. */
+    public function ouvrir(): void
+    {
+        $acces = $this->acces();
+        $retour = 'finance/rapprochement-envois' . $this->requete();
+
+        if (!Csrf::verify($_POST['_csrf_token'] ?? null)) {
+            Session::flash('error', 'Session expirée ou requête invalide. Veuillez réessayer.');
+            $this->retour($retour);
+        }
+
+        try {
+            [$message, $erreurs] = $this->service->ouvrirEnvoi($_POST, $acces);
+        } catch (Throwable $e) {
+            error_log('[Rapprochement envois] ouvrir : ' . $e->getMessage());
+            Session::flash('error', "L'envoi n'a pas été ouvert. Rien n'a été modifié : réessayez.");
+            $this->retour($retour);
+
+            return;
+        }
+
+        Session::flash($erreurs === [] ? 'success' : 'error', $erreurs === [] ? $message : implode(' ', $erreurs));
+        $this->retour($retour);
+    }
+
+    public function supprimer(string $id): void
+    {
+        $acces = $this->acces();
+        $retour = 'finance/rapprochement-envois' . $this->requete();
+
+        if (!Csrf::verify($_POST['_csrf_token'] ?? null)) {
+            Session::flash('error', 'Session expirée ou requête invalide. Veuillez réessayer.');
+            $this->retour($retour);
+        }
+
+        try {
+            [$message, $erreurs] = $this->service->supprimer((int) $id, $acces);
+        } catch (Throwable $e) {
+            error_log('[Rapprochement envois] supprimer : ' . $e->getMessage());
+            Session::flash('error', "L'envoi n'a pas été supprimé.");
+            $this->retour($retour);
+
+            return;
+        }
+
+        Session::flash($erreurs === [] ? 'success' : 'error', $erreurs === [] ? $message : implode(' ', $erreurs));
+        $this->retour($retour);
+    }
+
     public function exportPdf(): void
     {
         $this->acces();

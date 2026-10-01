@@ -97,6 +97,12 @@ final class RapprochementEnvoisRegles
             'numero' => (string) ($ligne['numero'] ?? ''),
             'date' => $ligne['date_reference'] ?? $ligne['date_depart_effective'] ?? null,
             'compagnie' => (string) ($ligne['transporteur'] ?? ''),
+            // Les agences qui ont chargé sur cet envoi, et ce que chacune a
+            // enregistré : c'est le détail que la direction ouvre quand la
+            // compagnie facture plus que ce qui lui a été confié.
+            'agences' => is_array($ligne['agences'] ?? null) ? $ligne['agences'] : [],
+            'detail_agences' => is_array($ligne['detail_agences'] ?? null) ? $ligne['detail_agences'] : [],
+            'agence_depart' => (string) ($ligne['agence_depart'] ?? ''),
             'compagnie_id' => self::entier($ligne['transporteur_id'] ?? null),
             'document' => (string) ($ligne['numero_document'] ?? ''),
             // Le numéro porté par le départ ne se saisit pas ici : seul celui
@@ -306,27 +312,37 @@ final class RapprochementEnvoisRegles
          * inscrit. Quand le départ les porte déjà, la saisie ne les écrase pas.
          */
         $compagnie = self::entierSaisi($saisie['transporteur_id'] ?? null);
-        $document = trim((string) ($saisie['numero_document'] ?? ''));
+        $document = trim((string) ($saisie['numero_document'] ?? $saisie['numero_lta'] ?? ''));
 
-        return [
-            'valeurs' => [
-                'transporteur_id' => $compagnie !== null && $compagnie > 0 ? $compagnie : null,
-                'numero_document' => $document === '' ? null : $document,
-                'colis_lta' => $colis,
-                'poids_lta_kg' => $poids,
-                'motif_correction' => $motif === '' ? null : $motif,
-                'poids_divers_kg' => self::decimalSaisi($saisie['poids_divers_kg'] ?? null),
-                'poids_perissable_kg' => self::decimalSaisi($saisie['poids_perissable_kg'] ?? null),
-                'montant_compagnie' => $montant,
-                'devise_compagnie' => $devise,
-                'taux_eur_xof' => self::taux($ligne),
-                'mode_reglement' => $mode,
-                'numero_cheque' => $cheque === '' ? null : $cheque,
-                'date_reglement' => $dateReglement,
-                'observation' => trim((string) ($saisie['observation'] ?? '')) ?: null,
-            ],
-            'erreurs' => $erreurs,
+        $valeurs = [
+            'colis_factures' => $colis,
+            'poids_facture_kg' => $poids,
+            'motif_correction' => $motif === '' ? null : $motif,
+            'poids_divers_kg' => self::decimalSaisi($saisie['poids_divers_kg'] ?? null),
+            'poids_perissable_kg' => self::decimalSaisi($saisie['poids_perissable_kg'] ?? null),
+            'montant_compagnie' => $montant,
+            'devise_compagnie' => $devise,
+            'taux_eur_xof' => self::taux($ligne),
+            'mode_reglement' => $mode,
+            'numero_cheque' => $cheque === '' ? null : $cheque,
+            'date_reglement' => $dateReglement,
+            'observation' => trim((string) ($saisie['observation'] ?? '')) ?: null,
         ];
+
+        /*
+         * La compagnie et la LTA ne s'effacent que si l'on y touche : un
+         * formulaire qui ne les porte pas — une saisie partielle, un script —
+         * ne doit pas les retirer de l'envoi au passage.
+         */
+        if (array_key_exists('transporteur_id', $saisie)) {
+            $valeurs['transporteur_id'] = $compagnie !== null && $compagnie > 0 ? $compagnie : null;
+        }
+
+        if (array_key_exists('numero_document', $saisie) || array_key_exists('numero_lta', $saisie)) {
+            $valeurs['numero_lta'] = $document === '' ? null : $document;
+        }
+
+        return ['valeurs' => $valeurs, 'erreurs' => $erreurs];
     }
 
     // ------------------------------------------------------------------

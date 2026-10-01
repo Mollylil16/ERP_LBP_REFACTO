@@ -242,8 +242,8 @@ final class RapprochementEnvoisReglesTest extends TestCase
         );
 
         self::assertSame([], $erreurs);
-        self::assertSame(260, $valeurs['colis_lta']);
-        self::assertSame(2858.5, $valeurs['poids_lta_kg']);
+        self::assertSame(260, $valeurs['colis_factures']);
+        self::assertSame(2858.5, $valeurs['poids_facture_kg']);
     }
 
     public function test_une_case_laissee_vide_reste_inconnue_et_ne_vaut_pas_zero(): void
@@ -252,7 +252,7 @@ final class RapprochementEnvoisReglesTest extends TestCase
 
         ['valeurs' => $valeurs] = Regles::lireSaisie(['colis_lta' => '', 'montant_compagnie' => ''], $ligne);
 
-        self::assertNull($valeurs['colis_lta']);
+        self::assertNull($valeurs['colis_factures']);
         self::assertNull($valeurs['montant_compagnie']);
     }
 }

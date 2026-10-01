@@ -68,10 +68,20 @@ final class RapprochementEnvois
 
         $html .= self::kpis($t) . self::filtres($p);
 
+        if (!empty($p['peutSaisir'])) {
+            $html .= Ui::section(
+                'Ouvrir un envoi',
+                self::formulaireEnvoi($p),
+                'Une date, une compagnie, et les agences qui ont chargé : le logiciel reprend leurs colis et leur poids.'
+            );
+        }
+
         $html .= Ui::section(
             'Envois du ' . self::date($f['du']) . ' au ' . self::date($f['au']),
             self::tableau($p),
-            'Écarts calculés sur les départs documentés. Seuil d\'alerte ' . Regles::nombre(Regles::SEUIL_POURCENT, 0) . ' %.'
+            'Colis et poids enregistrés : somme des agences cochées, reprise du logiciel. '
+            . 'Colis et poids facturés : saisis à réception de la facture. Seuil d\'alerte '
+            . Regles::nombre(Regles::SEUIL_POURCENT, 0) . ' %.'
         );
 
         return self::styles() . '<div class="finea-shell lbp-rappro"><div class="finea-container">' . $html . '</div></div>' . self::script();
@@ -142,6 +152,78 @@ final class RapprochementEnvois
             . '</div></form>';
     }
 
+    /**
+     * Ouvrir un envoi : la date, la compagnie, les agences qui ont chargé.
+     *
+     * Le suivi du jour s'affiche dessous — ce que chaque agence a enregistré
+     * pour cette date — pour que le comptable coche en connaissance de cause,
+     * et voie tout de suite si une agence manque à l'appel.
+     *
+     * @param array<string, mixed> $p
+     */
+    private static function formulaireEnvoi(array $p): string
+    {
+        $f = $p['filtres'];
+
+        $compagnies = [['value' => '', 'label' => 'À renseigner']];
+        foreach ($p['compagnies'] as $compagnie) {
+            $compagnies[] = ['value' => (string) $compagnie['id'], 'label' => (string) $compagnie['name']];
+        }
+
+        $cases = '';
+        foreach ($p['agences'] as $agence) {
+            $cases .= '<label class="lbp-rappro-agence">'
+                . '<input type="checkbox" name="agences[]" value="' . (int) $agence['id'] . '">'
+                . View::e((string) $agence['name']) . '</label>';
+        }
+
+        return '<form method="post" action="' . View::e(View::url('finance/rapprochement-envois/ouvrir')) . '" class="lbp-rappro-ouvrir">'
+            . Csrf::field()
+            . '<div class="lbp-rappro-champs">'
+            . Form::input('date_envoi', ['label' => "Date de l'envoi", 'type' => 'date', 'value' => (string) $f['au'], 'id' => 'envoi-date'])
+            . Form::select('transporteur_id', $compagnies, '', ['label' => 'Compagnie', 'id' => 'envoi-compagnie'])
+            . Form::input('numero_lta', ['label' => 'N° de LTA', 'value' => '', 'id' => 'envoi-lta', 'placeholder' => '483-20428520'])
+            . '</div>'
+            . '<div class="lbp-rappro-agences"><span class="lbp-rappro-libelle">Agences qui ont chargé</span>' . $cases . '</div>'
+            . self::suiviDuJour($p)
+            . '<div class="lbp-rappro-actions">'
+            . '<span class="lbp-rappro-note">Les colis et le poids enregistrés se calculent seuls à partir des agences cochées.</span>'
+            . '<button type="submit" class="rh-filter-btn rh-filter-btn--primary">' . View::e("Ouvrir l'envoi") . '</button>'
+            . '</div></form>';
+    }
+
+    /**
+     * Ce que les agences ont enregistré pour la date affichée.
+     *
+     * @param array<string, mixed> $p
+     */
+    private static function suiviDuJour(array $p): string
+    {
+        $suivi = $p['suiviDuJour'] ?? [];
+
+        if ($suivi === []) {
+            return '<p class="lbp-rappro-note">Aucun colis enregistré pour le ' . View::e(self::date($p['filtres']['au'])) . '.</p>';
+        }
+
+        $cellules = '';
+        $colis = 0;
+        $poids = 0.0;
+
+        foreach ($suivi as $ligne) {
+            $colis += (int) $ligne['colis'];
+            $poids += (float) $ligne['poids'];
+
+            $cellules .= '<div><span>' . View::e((string) $ligne['agence']) . '</span><strong>'
+                . View::e(Regles::nombre((float) $ligne['colis']) . ' colis · ' . Regles::nombre((float) $ligne['poids'], 1) . ' kg')
+                . '</strong></div>';
+        }
+
+        return '<div class="lbp-rappro-rappel">'
+            . '<div><span>Suivi du ' . View::e(self::date($p['filtres']['au'])) . ', toutes agences</span><strong>'
+            . View::e(Regles::nombre((float) $colis) . ' colis · ' . Regles::nombre($poids, 1) . ' kg') . '</strong></div>'
+            . $cellules . '</div>';
+    }
+
     /** @param array<string, mixed> $p */
     private static function tableau(array $p): string
     {
@@ -163,10 +245,10 @@ final class RapprochementEnvois
 
         return '<div class="lbp-rappro-table-enveloppe"><table class="finea-table lbp-rappro-table">'
             . '<thead><tr>'
-            . '<th>Date</th><th>Compagnie</th><th>N° envoi / LTA</th>'
-            . '<th class="lbp-rappro-droite">Colis agence</th><th class="lbp-rappro-droite">Colis LTA</th><th class="lbp-rappro-droite">Écart</th>'
-            . '<th class="lbp-rappro-droite">Poids agence</th><th class="lbp-rappro-droite">Poids LTA</th><th class="lbp-rappro-droite">Écart poids</th>'
-            . '<th class="lbp-rappro-droite">Montant compagnie</th><th>Règlement</th><th>État</th>'
+            . '<th>' . View::e("Date de l'envoi") . '</th><th>Compagnie</th><th>N° LTA / agences</th>'
+            . '<th class="lbp-rappro-droite">Colis enregistrés</th><th class="lbp-rappro-droite">Colis expédiés</th><th class="lbp-rappro-droite">Écart colis</th>'
+            . '<th class="lbp-rappro-droite">Poids enregistré</th><th class="lbp-rappro-droite">Poids final</th><th class="lbp-rappro-droite">Écart poids</th>'
+            . '<th class="lbp-rappro-droite">Facturé</th><th>Règlement</th><th>Statut</th>'
             . '</tr></thead>'
             . '<tbody>' . $corps . '</tbody>'
             . self::pied($p['totaux'])
@@ -197,7 +279,8 @@ final class RapprochementEnvois
         return '<tr class="' . $classe . '">'
             . '<td class="lbp-rappro-mono">' . View::e(self::date($ligne['date'])) . '</td>'
             . '<td>' . self::valeur($ligne['compagnie']) . '</td>'
-            . '<td class="lbp-rappro-mono">' . self::valeur($ligne['document']) . '<span class="lbp-rappro-sous">' . View::e((string) $ligne['numero']) . '</span></td>'
+            . '<td class="lbp-rappro-mono">' . self::valeur($ligne['document'])
+            . '<span class="lbp-rappro-sous">' . View::e((string) $ligne['agence_depart'] ?: 'aucune agence cochée') . '</span></td>'
             . '<td class="lbp-rappro-droite lbp-rappro-mono">' . self::nombreOuTiret($ligne['colis_agence']) . '</td>'
             . '<td class="lbp-rappro-droite lbp-rappro-mono">' . self::colisLta($ligne) . '</td>'
             . '<td class="lbp-rappro-droite">' . self::badgeEcart($ligne['ecart_colis'], '') . '</td>'
@@ -271,9 +354,18 @@ final class RapprochementEnvois
                 . '</p>';
         }
 
+        // Le détail agence par agence : c'est lui que la direction ouvre quand
+        // la compagnie facture plus que ce qui a été confié.
+        $parAgence = '';
+        foreach (($ligne['detail_agences'] ?? []) as $agence) {
+            $parAgence .= '<div><span>' . View::e((string) $agence['agence']) . '</span><strong>'
+                . View::e(Regles::nombre((float) $agence['colis']) . ' colis · ' . Regles::nombre((float) $agence['poids'], 1) . ' kg')
+                . '</strong></div>';
+        }
+
         $rappel = '<div class="lbp-rappro-rappel">'
-            . '<div><span>Saisie des agences</span><strong>' . View::e(self::nombreBrut($ligne['colis_agence']) . ' colis · ' . self::nombreBrut($ligne['poids_agence'], 1) . ' kg') . '</strong></div>'
-            . '<div><span>Lu sur le document par l\'agent export</span><strong>' . View::e(self::nombreBrut($ligne['colis_declare']) . ' colis · ' . self::nombreBrut($ligne['poids_declare'], 1) . ' kg') . '</strong></div>'
+            . '<div><span>Enregistré par les agences</span><strong>' . View::e(self::nombreBrut($ligne['colis_agence']) . ' colis · ' . self::nombreBrut($ligne['poids_agence'], 1) . ' kg') . '</strong></div>'
+            . $parAgence
             . ($ligne['rapproche_par'] ? '<div><span>Dernière saisie</span><strong>' . View::e((string) $ligne['rapproche_par'] . ' · ' . self::date($ligne['rapproche_le'])) . '</strong></div>' : '')
             . '</div>';
 
@@ -307,11 +399,11 @@ final class RapprochementEnvois
         $champs = '<div class="lbp-rappro-champs">'
             . Form::select('transporteur_id', $compagnies, (string) ($ligne['compagnie_id'] ?? ''), ['label' => 'Compagnie', 'id' => 'compagnie-' . $id])
             . Form::input('numero_document', ['label' => 'N° de LTA', 'value' => (string) ($ligne['document_saisi'] ?? ''), 'id' => 'document-' . $id, 'placeholder' => '483-20428520'])
-            . Form::input('colis_lta', ['label' => 'Colis sur la LTA', 'value' => self::champ($ligne['colis_lta']), 'id' => 'colis-lta-' . $id, 'inputmode' => 'numeric'])
-            . Form::input('poids_lta_kg', ['label' => 'Poids final (kg)', 'value' => self::champ($ligne['poids_lta'], 1), 'id' => 'poids-lta-' . $id, 'inputmode' => 'decimal'])
+            . Form::input('colis_lta', ['label' => 'Colis expédiés (facture)', 'value' => self::champ($ligne['colis_lta']), 'id' => 'colis-lta-' . $id, 'inputmode' => 'numeric'])
+            . Form::input('poids_lta_kg', ['label' => 'Poids final facturé (kg)', 'value' => self::champ($ligne['poids_lta'], 1), 'id' => 'poids-lta-' . $id, 'inputmode' => 'decimal'])
             . Form::input('poids_divers_kg', ['label' => 'Dont poids divers (kg)', 'value' => self::champ($ligne['poids_divers'], 1), 'id' => 'divers-' . $id, 'inputmode' => 'decimal'])
             . Form::input('poids_perissable_kg', ['label' => 'Dont poids périssable (kg)', 'value' => self::champ($ligne['poids_perissable'], 1), 'id' => 'perissable-' . $id, 'inputmode' => 'decimal'])
-            . Form::input('montant_compagnie', ['label' => 'Montant facturé', 'value' => self::champ($ligne['montant'], 2), 'id' => 'montant-' . $id, 'inputmode' => 'decimal'])
+            . Form::input('montant_compagnie', ['label' => 'Montant facturé par la compagnie', 'value' => self::champ($ligne['montant'], 2), 'id' => 'montant-' . $id, 'inputmode' => 'decimal'])
             . Form::select('devise_compagnie', $devises, (string) $ligne['devise'], ['label' => 'Devise', 'id' => 'devise-' . $id])
             . Form::select('mode_reglement', $modes, (string) ($ligne['mode_reglement'] ?? ''), ['label' => 'Moyen de règlement', 'id' => 'mode-' . $id])
             . Form::input('numero_cheque', ['label' => 'N° de chèque', 'value' => (string) ($ligne['numero_cheque'] ?? ''), 'id' => 'cheque-' . $id])
@@ -626,6 +718,9 @@ final class RapprochementEnvois
             . '.lbp-rappro-actions{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:12px;flex-wrap:wrap}'
             . '.lbp-rappro-note{font-size:12px;color:#5b6472}'
             . '.lbp-rappro-lecture p{margin:4px 0;font-size:13px}'
+            . '.lbp-rappro-agences{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:4px 0 12px}'
+            . '.lbp-rappro-agence{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border:1px solid #cbd5e1;border-radius:999px;font-size:13px;font-weight:600;background:#fff;cursor:pointer}'
+            . '.lbp-rappro-libelle{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#5b6472;width:100%}'
             . '.lbp-rappro-icone{flex-shrink:0}'
             . '</style>';
     }

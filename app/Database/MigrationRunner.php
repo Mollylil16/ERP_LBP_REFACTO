@@ -360,6 +360,58 @@ class MigrationRunner
                    AND d.expedition_id IS NOT NULL
             ");
 
+            /*
+             * Le rapprochement des envois, au grain du tableur que la direction
+             * tenait à la main (01/10/2026).
+             *
+             * Une ligne est un envoi : une date de départ, une compagnie, une
+             * LTA. Côté Abidjan, le logiciel somme les colis des agences qui
+             * ont chargé ce jour-là — c'est le suivi de colisage que chacune
+             * remet la veille ou le matin même. Côté compagnie, le comptable
+             * saisit à réception de la facture hebdomadaire ce que MENZIES a
+             * pesé à l'aéroport. L'écart entre les deux est ce que la maison
+             * paie sans l'avoir confié.
+             */
+            $this->pdo->exec("
+                CREATE TABLE IF NOT EXISTS lbp_rappro_envois (
+                    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                    date_envoi DATE NOT NULL,
+                    transporteur_id INT UNSIGNED NULL,
+                    numero_lta VARCHAR(60) NULL,
+                    colis_factures INT NULL,
+                    poids_facture_kg DECIMAL(12,1) NULL,
+                    poids_divers_kg DECIMAL(12,1) NULL,
+                    poids_perissable_kg DECIMAL(12,1) NULL,
+                    montant_compagnie DECIMAL(15,2) NULL,
+                    devise_compagnie CHAR(3) NOT NULL DEFAULT 'EUR',
+                    taux_eur_xof DECIMAL(12,6) NULL,
+                    mode_reglement VARCHAR(20) NULL,
+                    numero_cheque VARCHAR(60) NULL,
+                    date_reglement DATE NULL,
+                    motif_correction TEXT NULL,
+                    observation TEXT NULL,
+                    cree_par INT NULL,
+                    rapproche_par INT NULL,
+                    rapproche_le DATETIME NULL,
+                    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME NULL,
+                    KEY idx_rappro_envois_date (date_envoi),
+                    KEY idx_rappro_envois_transporteur (transporteur_id),
+                    KEY idx_rappro_envois_reglement (date_reglement)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            ");
+
+            // Les agences qui ont chargé sur cet envoi : deux compagnies peuvent
+            // partir le même jour, et il faut savoir laquelle emporte quoi.
+            $this->pdo->exec("
+                CREATE TABLE IF NOT EXISTS lbp_rappro_envois_agences (
+                    envoi_id INT UNSIGNED NOT NULL,
+                    agence_id INT UNSIGNED NOT NULL,
+                    PRIMARY KEY (envoi_id, agence_id),
+                    KEY idx_rappro_envois_agence (agence_id)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            ");
+
             // En dernier : si des doublons subsistaient, l'index échouerait et
             // priverait les instructions suivantes de leur tour.
             $this->addUniqueIndexIfMissing('lbp_envois_rapprochement', 'uniq_rapprochement_expedition', 'expedition_id');

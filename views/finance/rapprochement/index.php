@@ -11,5 +11,6 @@ echo RapprochementEnvois::page([
     'compagnies' => $compagnies ?? [],
     'agences' => $agences ?? [],
     'filtres' => $filtres ?? [],
+    'suiviDuJour' => $suiviDuJour ?? [],
     'peutSaisir' => $peutSaisir ?? false,
 ]);

@@ -92,7 +92,9 @@ $router->group('/finance', function (Router $router): void {
     $router->get('/rapprochement-envois', [\App\Controllers\Finance\RapprochementEnvoisController::class, 'index']);
     $router->get('/rapprochement-envois/pdf', [\App\Controllers\Finance\RapprochementEnvoisController::class, 'exportPdf']);
     $router->get('/rapprochement-envois/excel', [\App\Controllers\Finance\RapprochementEnvoisController::class, 'exportExcel']);
+    $router->post('/rapprochement-envois/ouvrir', [\App\Controllers\Finance\RapprochementEnvoisController::class, 'ouvrir']);
     $router->post('/rapprochement-envois/{id}/enregistrer', [\App\Controllers\Finance\RapprochementEnvoisController::class, 'enregistrer']);
+    $router->post('/rapprochement-envois/{id}/supprimer', [\App\Controllers\Finance\RapprochementEnvoisController::class, 'supprimer']);
 
     // ==========================================
     // GESTION DES FONDS (Décaissements, Caisse & Imputation)

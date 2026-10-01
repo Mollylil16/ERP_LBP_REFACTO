@@ -70,8 +70,10 @@ final class RapprochementEnvoisRenduTest extends TestCase
     {
         $html = RapprochementEnvois::page($this->donnees());
 
-        foreach (['Date', 'Compagnie', 'N° envoi / LTA', 'Colis agence', 'Colis LTA', 'Écart',
-            'Poids agence', 'Poids LTA', 'Écart poids', 'Montant compagnie', 'Règlement', 'État'] as $colonne) {
+        foreach (['Date de l&#039;envoi', 'Compagnie', 'N° LTA / agences',
+            'Colis enregistrés', 'Colis expédiés', 'Écart colis',
+            'Poids enregistré', 'Poids final', 'Écart poids',
+            'Facturé', 'Règlement', 'Statut'] as $colonne) {
             self::assertStringContainsString('>' . $colonne . '</th>', $html, "Colonne « {$colonne} » absente.");
         }
 
@@ -112,15 +114,14 @@ final class RapprochementEnvoisRenduTest extends TestCase
 
         self::assertStringNotContainsString('rapprochement-envois/7/enregistrer', $sans, "L'assistante DG lit sans corriger.");
         self::assertStringNotContainsString('name="colis_lta"', $sans);
-        self::assertStringContainsString('Saisie des agences', $sans, 'Elle voit tout de même les deux chiffres comparés.');
+        self::assertStringContainsString('Enregistré par les agences', $sans, 'Elle voit tout de même les deux chiffres comparés.');
     }
 
     public function test_le_panneau_rappelle_la_saisie_d_origine_des_agences(): void
     {
         $html = RapprochementEnvois::page($this->donnees());
 
-        self::assertStringContainsString('Saisie des agences', $html);
-        self::assertStringContainsString("Lu sur le document par l'agent export", $html);
+        self::assertStringContainsString('Enregistré par les agences', $html);
         self::assertStringContainsString("La saisie des agences n'est jamais écrasée", $html);
     }
 

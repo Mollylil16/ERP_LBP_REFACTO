@@ -56,13 +56,76 @@ final class RapprochementEnvoisService
             'compagnies' => $this->repo->compagnies(),
             'agences' => $this->repo->agences(),
             'filtres' => $filtres,
+            // Ce que les agences ont enregistré pour la date proposée : le
+            // comptable le lit avant de cocher ses agences.
+            'suiviDuJour' => $this->repo->suiviDuJour($filtres['au']),
         ];
     }
 
-    /** @return array<string, mixed>|null */
-    public function ligne(int $expeditionId): ?array
+    /**
+     * Ouvre un envoi : une date, une compagnie, les agences qui ont chargé.
+     *
+     * @param array<string, mixed> $saisie
+     * @return array{0:string, 1:array<int, string>}
+     */
+    public function ouvrirEnvoi(array $saisie, RapprochementEnvoisAcces $acces): array
     {
-        $brute = $this->repo->trouver($expeditionId);
+        if (!$acces->peutSaisir()) {
+            return ['', ['Votre profil consulte le rapprochement sans le modifier.']];
+        }
+
+        $date = trim((string) ($saisie['date_envoi'] ?? ''));
+        $agences = is_array($saisie['agences'] ?? null) ? array_map('intval', $saisie['agences']) : [];
+        $transporteur = (int) ($saisie['transporteur_id'] ?? 0);
+        $lta = trim((string) ($saisie['numero_lta'] ?? ''));
+
+        $erreurs = [];
+
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) !== 1) {
+            $erreurs[] = "La date de l'envoi est obligatoire : c'est elle qui rassemble les colis des agences.";
+        }
+
+        if ($agences === []) {
+            $erreurs[] = 'Cochez au moins une agence : sans elles, la colonne « colis enregistrés » resterait vide.';
+        }
+
+        if ($erreurs !== []) {
+            return ['', $erreurs];
+        }
+
+        $userId = $acces->userId();
+
+        if ($userId === null) {
+            throw new RuntimeException('Session expirée.');
+        }
+
+        $this->repo->creer($date, $transporteur > 0 ? $transporteur : null, $lta === '' ? null : $lta, $agences, $userId);
+
+        return ['Envoi du ' . $date . ' ouvert. Les colis des agences cochées y sont repris.', []];
+    }
+
+    /**
+     * @return array{0:string, 1:array<int, string>}
+     */
+    public function supprimer(int $envoiId, RapprochementEnvoisAcces $acces): array
+    {
+        if (!$acces->peutSaisir()) {
+            return ['', ['Votre profil consulte le rapprochement sans le modifier.']];
+        }
+
+        if ($this->ligne($envoiId) === null) {
+            return ['', ['Cet envoi est introuvable.']];
+        }
+
+        $this->repo->supprimer($envoiId);
+
+        return ['Envoi supprimé.', []];
+    }
+
+    /** @return array<string, mixed>|null */
+    public function ligne(int $envoiId): ?array
+    {
+        $brute = $this->repo->trouver($envoiId);
 
         return $brute === null ? null : Regles::composer($brute);
     }
@@ -73,13 +136,13 @@ final class RapprochementEnvoisService
      * @param array<string, mixed> $saisie
      * @return array{0:string, 1:array<int, string>} message, erreurs
      */
-    public function enregistrer(int $expeditionId, array $saisie, RapprochementEnvoisAcces $acces): array
+    public function enregistrer(int $envoiId, array $saisie, RapprochementEnvoisAcces $acces): array
     {
         if (!$acces->peutSaisir()) {
             return ['', ['Votre profil consulte le rapprochement sans le modifier.']];
         }
 
-        $ligne = $this->ligne($expeditionId);
+        $ligne = $this->ligne($envoiId);
 
         if ($ligne === null) {
             return ['', ['Ce départ est introuvable.']];
@@ -97,9 +160,20 @@ final class RapprochementEnvoisService
             throw new RuntimeException('Session expirée.');
         }
 
-        $this->repo->enregistrer($expeditionId, $ligne['dossier_id'] ?? null, $valeurs, $userId);
+        if (isset($saisie['agences']) && is_array($saisie['agences'])) {
+            $valeurs['agences'] = array_map('intval', $saisie['agences']);
+        }
 
-        return ['Rapprochement du départ ' . ($ligne['numero'] ?: (string) $expeditionId) . ' enregistré.', []];
+        $this->repo->enregistrer($envoiId, $valeurs, $userId);
+
+        return ["Rapprochement de l'envoi du " . $this->jour((string) $ligne['date']) . ' enregistré.', []];
+    }
+
+    private function jour(string $date): string
+    {
+        $objet = date_create($date);
+
+        return $objet === false ? $date : $objet->format('d/m/Y');
     }
 
     /**
