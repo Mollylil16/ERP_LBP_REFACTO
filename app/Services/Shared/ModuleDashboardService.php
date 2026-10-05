@@ -378,6 +378,7 @@ final class ModuleDashboardService
                 ['key' => 'parcels', 'label' => 'Gestion des Colis', 'icon' => 'CL', 'url' => '/colisage/parcels', 'available' => true, 'group' => 'Expéditions & Fret'],
                 ['key' => 'tracking', 'label' => 'Suivi GPS', 'icon' => 'GPS', 'url' => '/colisage/exploitation/tracking', 'available' => true, 'group' => 'Suivi & Transport'],
                 ['key' => 'exploitation_fournitures', 'label' => 'Fournitures bureau', 'icon' => 'FT', 'url' => '/colisage/exploitation/fournitures', 'available' => true, 'group' => 'Ressources Internes'],
+                ['key' => 'exploitation_fournitures_historique', 'label' => 'Historique fournitures', 'icon' => 'HFT', 'url' => '/colisage/exploitation/fournitures/historique', 'available' => true, 'group' => 'Ressources Internes'],
             ];
         }
 

@@ -116,6 +116,11 @@ $router->group('/colisage', function (Router $router): void {
     $router->post('/exploitation/credits/{id}/regler', [ExploitationController::class, 'reglerCredit']);
     $router->get('/exploitation/fournitures', [ExploitationController::class, 'fournitures']);
     $router->post('/exploitation/fournitures/demander', [ExploitationController::class, 'soumettreDemande']);
+    // Le journal des decisions : avant /{id}/statut, qui est un POST, mais
+    // au meme endroit pour que les trois adresses se lisent ensemble.
+    $router->get('/exploitation/fournitures/historique', [ExploitationController::class, 'fournituresHistorique']);
+    $router->get('/exploitation/fournitures/historique/pdf', [ExploitationController::class, 'fournituresHistoriquePdf']);
+    $router->get('/exploitation/fournitures/historique/excel', [ExploitationController::class, 'fournituresHistoriqueExcel']);
     $router->post('/exploitation/fournitures/{id}/statut', [ExploitationController::class, 'updateFournituresStatus']);
 });
 
