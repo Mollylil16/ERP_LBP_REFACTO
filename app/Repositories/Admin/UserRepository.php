@@ -349,6 +349,7 @@ class UserRepository
             roles: $roles,
             createdAt: $row['created_at'] ?? null,
             updatedAt: $row['updated_at'] ?? null,
+            lastLoginAt: $row['last_login_at'] ?? null,
         );
     }
 }

@@ -27,6 +27,8 @@ class User implements ArrayAccess
         public array $roles = [],
         public ?string $createdAt = null,
         public ?string $updatedAt = null,
+        /** Derniere ouverture du logiciel : « jamais » se lit a null. */
+        public ?string $lastLoginAt = null,
     ) {}
 
     public function offsetExists(mixed $offset): bool

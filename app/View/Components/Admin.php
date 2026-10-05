@@ -25,6 +25,85 @@ final class Admin
         return $html . '</div>';
     }
 
+    /**
+     * Ce qui attend une decision sur les comptes.
+     *
+     * Les cinq compteurs d avant denombraient sans rien demander : savoir
+     * qu il y a quarante comptes n a jamais fait agir personne. Ici chaque
+     * case nomme un travail, et mene a l ecran ou on le fait.
+     *
+     * @param array<string, mixed> $attente
+     */
+    public static function fileDAttente(array $attente): string
+    {
+        $sansRole = is_array($attente['sans_role'] ?? null) ? $attente['sans_role'] : [];
+        $dormants = is_array($attente['dormants'] ?? null) ? $attente['dormants'] : [];
+        $admins = is_array($attente['administrateurs'] ?? null) ? $attente['administrateurs'] : [];
+        $duMois = (int) ($attente['du_mois'] ?? 0);
+
+        $cases = [
+            [
+                'libelle' => 'Comptes sans aucun rôle',
+                'valeur' => count($sansRole),
+                'detail' => $sansRole === []
+                    ? 'Chaque compte actif porte au moins un rôle.'
+                    : 'Ils se connectent et ne peuvent rien faire.',
+                'href' => 'admin/roles',
+                'urgent' => $sansRole !== [],
+            ],
+            [
+                'libelle' => 'Comptes dormants',
+                'valeur' => count($dormants),
+                'detail' => 'Aucune connexion depuis 60 jours, ou jamais.',
+                'href' => 'admin/roles',
+                'urgent' => $dormants !== [],
+            ],
+            [
+                'libelle' => 'Administrateurs',
+                'valeur' => count($admins),
+                'detail' => 'Ils contournent les validations à deux mains.',
+                'href' => 'admin/users?profile=admin',
+                // Au-dela de deux, les controles poses ailleurs ne protegent
+                // plus grand-chose.
+                'urgent' => count($admins) > 2,
+            ],
+            [
+                'libelle' => 'Comptes ouverts ce mois',
+                'valeur' => $duMois,
+                'detail' => 'À rapprocher des arrivées réelles.',
+                'href' => 'admin/journal?action=create_user',
+                'urgent' => false,
+            ],
+        ];
+
+        $html = '';
+        foreach ($cases as $c) {
+            $html .= '<a class="admin-attente-case' . ($c['urgent'] ? ' is-urgent' : '') . '"'
+                . ' href="' . View::url((string) $c['href']) . '">'
+                . '<span class="admin-attente-libelle">' . View::e((string) $c['libelle']) . '</span>'
+                . '<strong>' . (int) $c['valeur'] . '</strong>'
+                . '<span class="admin-attente-detail">' . View::e((string) $c['detail']) . '</span>'
+                . '</a>';
+        }
+
+        return '<section class="admin-attente">'
+            . '<h2 class="admin-attente-titre">Ce qui attend une décision</h2>'
+            . '<div class="admin-attente-grille">' . $html . '</div>'
+            . '<style>'
+            . '.admin-attente{margin:22px 0}'
+            . '.admin-attente-titre{font-size:.75rem;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:#5b6472;margin:0 0 12px}'
+            . '.admin-attente-grille{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:14px}'
+            . '.admin-attente-case{background:#fff;border:1px solid #e3e6ea;border-radius:14px;padding:16px 18px;'
+            . 'display:flex;flex-direction:column;gap:5px;text-decoration:none;color:inherit;transition:border-color .13s,transform .13s}'
+            . '.admin-attente-case:hover{border-color:#cbd5e1;transform:translateY(-2px)}'
+            . '.admin-attente-case.is-urgent{border-color:#fecdca;background:#fef6f5}'
+            . '.admin-attente-case strong{font-size:27px;font-weight:700;letter-spacing:-.02em;line-height:1.1}'
+            . '.admin-attente-case.is-urgent strong{color:#b42318}'
+            . '.admin-attente-libelle{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#5b6472}'
+            . '.admin-attente-detail{font-size:12px;color:#5b6472;line-height:1.45}'
+            . '</style></section>';
+    }
+
     public static function securityCard(): string
     {
         return '<aside class="admin-security-card"><p class="admin-eyebrow">Bonnes pratiques</p>'
@@ -55,19 +134,48 @@ final class Admin
                 . View::e((string) ($user['status_tone'] ?? 'warning')) . '">'
                 . View::e((string) ($user['status'] ?? '')) . '</span></td>'
                 . '<td>' . View::e((string) ($user['created_at'] ?? '—')) . '</td>'
+                . '<td>' . self::derniereConnexion($user['last_login_at'] ?? null) . '</td>'
                 . '<td><div class="admin-row-actions">' . $actions . '</div></td></tr>';
         }
 
         if ($body === '') {
-            $body = '<tr><td colspan="6">' . Ui::emptyState(
+            $body = '<tr><td colspan="7">' . Ui::emptyState(
                 'Aucun utilisateur',
                 'Aucun compte ne correspond aux critères.'
             ) . '</td></tr>';
         }
 
         return '<div class="finea-table-wrap"><table class="finea-table"><thead><tr>'
-            . '<th>Utilisateur</th><th>Contact</th><th>Profil</th><th>Statut</th><th>Création</th><th>Actions</th>'
+            . '<th>Utilisateur</th><th>Contact</th><th>Profil</th><th>Statut</th><th>Création</th>'
+            . '<th>Dernière connexion</th><th>Actions</th>'
             . '</tr></thead><tbody>' . $body . '</tbody></table></div>';
+    }
+
+    /**
+     * Quand ce compte a-t-il servi pour la derniere fois ?
+     *
+     * « Jamais » se dit en toutes lettres : un tiret laisserait croire a une
+     * donnee manquante, alors que c est l information elle-meme — un compte
+     * ouvert et jamais utilise est le premier a fermer.
+     */
+    private static function derniereConnexion(mixed $quand): string
+    {
+        $quand = trim((string) $quand);
+
+        if ($quand === '') {
+            return '<span class="admin-jamais">Jamais</span>';
+        }
+
+        $horodatage = (int) strtotime($quand);
+        $jours = (int) floor((time() - $horodatage) / 86400);
+
+        $texte = date('d/m/Y', $horodatage);
+
+        if ($jours >= 60) {
+            return '<span class="admin-dormant" title="' . View::e($jours . ' jours') . '">' . View::e($texte) . '</span>';
+        }
+
+        return View::e($texte);
     }
 
     /** @param array<int,array{number:int,href:string,active:bool}> $links */

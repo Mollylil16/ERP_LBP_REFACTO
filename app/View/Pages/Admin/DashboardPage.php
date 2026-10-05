@@ -12,11 +12,15 @@ final class DashboardPage
     public readonly array $entities;
     public readonly int $grantedPermissions;
 
+    /** Ce qui demande une decision : comptes sans role, dormants, admins. */
+    public readonly array $attente;
+
     /** @param array<string,mixed> $data */
     public function __construct(array $data)
     {
         $this->statistics = is_array($data['statistics'] ?? null) ? $data['statistics'] : [];
         $this->entities = is_array($data['entities'] ?? null) ? $data['entities'] : [];
         $this->grantedPermissions = (int) ($data['grantedPermissions'] ?? 0);
+        $this->attente = is_array($data['attente'] ?? null) ? $data['attente'] : [];
     }
 }

@@ -52,6 +52,7 @@ class MigrationRunner
         $this->createPointageColisTables();
         $this->createDossiersEnvoiTables();
         $this->createApproCaisseTable();
+        $this->createComptesAuditTable();
     }
 
     /**
@@ -65,6 +66,27 @@ class MigrationRunner
      * La caissière principale saisit l'appro, le comptable le valide, et à
      * partir de sa date d'effet il entre dans l'attendu du point de caisse.
      */
+    /**
+     * La derniere connexion de chaque compte.
+     *
+     * Sans elle, impossible de dire quels comptes dorment depuis six mois, ni
+     * de voir un compte inactif se reveiller. C est le premier geste d hygiene
+     * quand quelqu un quitte l entreprise.
+     *
+     * Le journal des comptes, lui, n a pas eu besoin de table : lbp_audit_logs
+     * existait deja, chainee en SHA-256 et verifiable. En creer une seconde
+     * aurait coupe la piste en deux, et seule l une des deux aurait ete
+     * controlee par VerifyAuditIntegrity.
+     */
+    private function createComptesAuditTable(): void
+    {
+        try {
+            $this->addColumnIfMissing('users', 'last_login_at', 'DATETIME NULL');
+        } catch (\Throwable $e) {
+            error_log('[MigrationRunner Warning] last_login_at: ' . $e->getMessage());
+        }
+    }
+
     private function createApproCaisseTable(): void
     {
         try {

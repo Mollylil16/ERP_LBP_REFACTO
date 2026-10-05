@@ -28,6 +28,16 @@ class AuditLogService
         ?array $newValues = null,
         ?string $userAgent = null
     ): ?int {
+        /*
+         * Les tests unitaires travaillent sur des doublures, sans base. Et
+         * Database::getConnection() ne leve pas d exception quand la connexion
+         * manque : il arrete le processus. Un simple try/catch ne protege donc
+         * de rien, et le premier service qui journalise ferait tomber la suite.
+         */
+        if (($_ENV['APP_ENV'] ?? $_SERVER['APP_ENV'] ?? '') === 'testing') {
+            return null;
+        }
+
         try {
             $pdo = Database::getConnection();
 

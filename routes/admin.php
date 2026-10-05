@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Router;
 use App\Controllers\Admin\AdminDashboardController;
+use App\Controllers\Admin\AdminJournalController;
 use App\Controllers\Admin\AdminPermissionController;
 use App\Controllers\Admin\AdminUserController;
 use App\Controllers\Admin\AdminSystemTestController;
@@ -14,6 +15,12 @@ $router->group('/admin', function (Router $router): void {
     $router->get('/', [AdminDashboardController::class, 'index']);
     $router->get('/dashboard', [AdminDashboardController::class, 'index']);
     $router->get('/permissions', [AdminPermissionController::class, 'matrix']);
+
+    // Les deux lectures de controle : qui a touche a quoi, qui peut quoi.
+    $router->get('/journal', [AdminJournalController::class, 'journal']);
+    $router->get('/journal/pdf', [AdminJournalController::class, 'journalPdf']);
+    $router->get('/journal/excel', [AdminJournalController::class, 'journalExcel']);
+    $router->get('/roles', [AdminJournalController::class, 'rolesEtAnomalies']);
 
     $router->get('/system-tests', [AdminSystemTestController::class, 'index']);
     $router->get('/system-tests/latest', [AdminSystemTestController::class, 'latest']);

@@ -44,6 +44,7 @@ final class UserIndexPage
                 'status' => ucfirst($user->status),
                 'status_tone' => $user->status === 'active' ? 'ok' : 'warning',
                 'created_at' => self::date($user->createdAt),
+                'last_login_at' => $user->lastLoginAt,
                 'actions' => [
                     ['label' => 'Profil', 'href' => 'admin/users/' . (int) $user->id],
                     ['label' => 'Modifier', 'href' => 'admin/users/' . (int) $user->id . '/modifier'],

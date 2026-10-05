@@ -3,6 +3,7 @@
 namespace App\Services\Admin;
 
 use App\Helpers\Auth;
+use App\Services\Shared\AuditLogService;
 use App\Models\User;
 use App\Repositories\Admin\PermissionRepository;
 use App\Repositories\Rh\RhPersonnelRepository;
@@ -180,6 +181,17 @@ class AdminService
             $this->users->setRoles($id, $this->rolesApresFormulaire($input, []));
 
             $this->pdo->commit();
+
+            // Qui a ouvert ce compte, avec quels roles et quel niveau : c est
+            // la premiere question qu on pose quand un acces surprend.
+            AuditLogService::log('create_user', 'users', $id, null, [
+                'full_name' => $fullName,
+                'email' => $email,
+                'is_admin' => $data['is_admin'] ? 'oui' : 'non',
+                'agence_id' => $agenceId,
+                'roles' => $this->users->getRoles($id),
+            ]);
+
             return $id;
         } catch (\Throwable $e) {
             if ($this->pdo->inTransaction()) {
@@ -194,6 +206,10 @@ class AdminService
         $this->requireUser($userId);
         $defaultHash = password_hash('lbp2026', PASSWORD_DEFAULT);
         $this->users->updatePassword($userId, $defaultHash);
+
+        // Le mot de passe n est jamais inscrit, seulement le geste : un
+        // journal qui porterait le secret serait une porte de plus.
+        AuditLogService::log('reset_password', 'users', $userId, null, ['par' => 'reinitialisation administrateur']);
     }
 
     public function bulkSetStatus(array $userIds, bool $active, int $actorId): void
@@ -261,8 +277,37 @@ class AdminService
             $this->replacePermissions($id, $input);
         }
 
-        // Save functional roles
-        $this->users->setRoles($id, $this->rolesApresFormulaire($input, $user->roles));
+        /*
+         * Les roles s ecrivent par un effacement suivi d une reecriture : sans
+         * l etat d avant, une erreur ne se repare plus. C est exactement ce
+         * qui a manque le 30/09/2026, quand les roles du personnel ont ete
+         * reecrits sans que personne ne puisse dire lesquels avaient saute.
+         */
+        $rolesAvant = $user->roles;
+        $rolesApres = $this->rolesApresFormulaire($input, $user->roles);
+        $this->users->setRoles($id, $rolesApres);
+
+        if (self::different($rolesAvant, $rolesApres)) {
+            AuditLogService::log(
+                'set_roles',
+                'users',
+                $id,
+                ['roles' => $rolesAvant],
+                ['roles' => $rolesApres]
+            );
+        }
+
+        $avant = ['is_admin' => $user->isAdmin ? 'oui' : 'non', 'agence_id' => $user->agenceId];
+        $apres = ['is_admin' => $data['is_admin'] ? 'oui' : 'non', 'agence_id' => $data['agence_id']];
+
+        if (self::different($avant, $apres)) {
+            AuditLogService::log('update_user', 'users', $id, $avant, $apres);
+        }
+
+        if (($data['password_hash'] ?? null) !== null) {
+            // Jamais le mot de passe lui-meme : seulement qu il a change.
+            AuditLogService::log('reset_password', 'users', $id, null, ['par' => 'formulaire de modification']);
+        }
 
         Auth::reset();
     }
@@ -307,6 +352,14 @@ class AdminService
             throw new RuntimeException('Vous ne pouvez pas désactiver votre propre compte.');
         }
         $this->users->setStatus($id, $active ? 'active' : 'inactive');
+
+        AuditLogService::log(
+            $active ? 'activate_user' : 'deactivate_user',
+            'users',
+            $id,
+            ['statut' => $active ? 'inactif' : 'actif'],
+            ['statut' => $active ? 'actif' : 'inactif']
+        );
     }
 
     public function savePermissions(int $userId, array $input): void
@@ -317,6 +370,12 @@ class AdminService
         }
 
         $this->replacePermissions($userId, $input);
+
+        // Le detail des droits tient dans la matrice ; ici on retient qu ils
+        // ont bouge, par qui et quand, ce qui suffit a remonter la piste.
+        AuditLogService::log('set_permissions', 'users', $userId, null, [
+            'entites' => count(is_array($input['permissions'] ?? null) ? $input['permissions'] : []),
+        ]);
     }
 
     private function replacePermissions(int $userId, array $input): void
@@ -369,4 +428,32 @@ class AdminService
         }
         return $user;
     }
+    /**
+     * Deux etats different-ils vraiment ?
+     *
+     * Inscrire un geste qui n a rien change noie le journal : au bout d un
+     * mois, personne ne le lit plus.
+     *
+     * @param array<string, mixed> $avant
+     * @param array<string, mixed> $apres
+     */
+    private static function different(array $avant, array $apres): bool
+    {
+        $aplatir = static function (array $valeurs): string {
+            $copie = [];
+            foreach ($valeurs as $cle => $valeur) {
+                if (is_array($valeur)) {
+                    sort($valeur);
+                    $valeur = implode(',', array_map('strval', $valeur));
+                }
+                $copie[$cle] = trim((string) $valeur);
+            }
+            ksort($copie);
+
+            return json_encode($copie, JSON_UNESCAPED_UNICODE) ?: '';
+        };
+
+        return $aplatir($avant) !== $aplatir($apres);
+    }
+
 }

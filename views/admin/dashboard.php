@@ -24,13 +24,19 @@ ob_start();
             ]
         ) ?>
 
+        <?php
+        /*
+         * Deux compteurs suffisent a dire la taille de la maison. Les trois
+         * autres ne faisaient agir personne : ils cedent la place, plus bas,
+         * a ce qui attend une decision.
+         */
+        ?>
         <?= Dashboard::kpis([
-            ['label' => 'Utilisateurs', 'value' => $page->statistics['total'] ?? 0, 'meta' => 'Comptes enregistrés', 'href' => 'admin/users'],
-            ['label' => 'Comptes actifs', 'value' => $page->statistics['active'] ?? 0, 'meta' => 'Accès à la plateforme', 'href' => 'admin/users?status=active'],
-            ['label' => 'Accès restreints', 'value' => $page->statistics['restricted'] ?? 0, 'meta' => 'Inactifs ou bloqués', 'href' => 'admin/users?status=inactive'],
-            ['label' => 'Administrateurs', 'value' => $page->statistics['administrators'] ?? 0, 'meta' => 'Accès complets', 'href' => 'admin/users?profile=admin'],
+            ['label' => 'Comptes actifs', 'value' => $page->statistics['active'] ?? 0, 'meta' => ($page->statistics['total'] ?? 0) . ' enregistrés en tout', 'href' => 'admin/users?status=active'],
             ['label' => 'Droits attribués', 'value' => $page->grantedPermissions, 'meta' => 'Couples utilisateur / entité', 'href' => 'admin/permissions'],
         ]) ?>
+
+        <?= Admin::fileDAttente($page->attente) ?>
 
         <div class="admin-dashboard-grid">
             <?= Ui::section(
