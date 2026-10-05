@@ -328,6 +328,78 @@ final class DemandesFondsController extends FinanceBaseController
     }
 
     /**
+     * Le journal des decisions : qui a valide, qui a rejete, quand, pourquoi.
+     *
+     * Chaque decision etait deja tracee, mais ne se lisait que demande par
+     * demande. Pour repondre a une contestation il fallait rouvrir les
+     * demandes une a une ; ici tout tient dans un tableau, filtrable et
+     * exportable.
+     */
+    public function historique(): void
+    {
+        AuthMiddleware::check();
+        RoleMiddleware::check(['admin', 'dg', 'assistant_dg', 'comptable', 'superviseur_general', 'responsable_rh', 'chef_agence']);
+
+        $filtres = $this->filtresHistorique();
+
+        $this->financeView('finance/fonds/historique', 'Historique des décisions — LBP Finance', 'fonds_historique', [
+            'lignes'  => $this->fondsRepo->historiqueGlobal($filtres),
+            'filtres' => $filtres,
+            'agences' => $this->fondsRepo->getAgences(),
+            'auteurs' => $this->fondsRepo->auteursDeDecisions(),
+        ]);
+    }
+
+    public function historiquePdf(): void
+    {
+        AuthMiddleware::check();
+        RoleMiddleware::check(['admin', 'dg', 'assistant_dg', 'comptable', 'superviseur_general', 'responsable_rh', 'chef_agence']);
+
+        $filtres = $this->filtresHistorique();
+        $lignes = $this->fondsRepo->historiqueGlobal($filtres);
+        $editePar = Auth::user()?->fullName ?? '';
+
+        require BASE_PATH . '/views/finance/fonds/historique_pdf.php';
+    }
+
+    public function historiqueExcel(): void
+    {
+        AuthMiddleware::check();
+        RoleMiddleware::check(['admin', 'dg', 'assistant_dg', 'comptable', 'superviseur_general', 'responsable_rh', 'chef_agence']);
+
+        $filtres = $this->filtresHistorique();
+        $lignes = $this->fondsRepo->historiqueGlobal($filtres);
+
+        $suffixe = trim((string) $filtres['du']) === '' ? date('Y-m-d') : $filtres['du'] . '_' . $filtres['au'];
+
+        header('Content-Type: application/vnd.ms-excel; charset=utf-8');
+        header('Content-Disposition: attachment; filename="historique_decisions_fonds_' . $suffixe . '.xls"');
+        header('Cache-Control: max-age=0');
+
+        // Sans cette marque, le tableur lit les accents en ISO et affiche « Ã© ».
+        echo "\xEF\xBB\xBF";
+        require BASE_PATH . '/views/finance/fonds/historique_excel.php';
+    }
+
+    /**
+     * Les memes filtres pour l ecran et pour ses deux exports : un PDF qui ne
+     * dirait pas la meme chose que l ecran d ou on l a tire ne vaudrait rien.
+     *
+     * @return array<string, mixed>
+     */
+    private function filtresHistorique(): array
+    {
+        return [
+            'du'        => trim((string) ($_GET['du'] ?? '')),
+            'au'        => trim((string) ($_GET['au'] ?? '')),
+            'action'    => trim((string) ($_GET['action'] ?? '')),
+            'agence_id' => (int) ($_GET['agence_id'] ?? 0),
+            'user_id'   => (int) ($_GET['user_id'] ?? 0),
+            'q'         => trim((string) ($_GET['q'] ?? '')),
+        ];
+    }
+
+    /**
      * Sous-menu 3 : Imputation (Justificatifs & Restitution de reliquats).
      */
     public function imputationIndex(): void

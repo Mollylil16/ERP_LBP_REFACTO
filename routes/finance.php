@@ -104,6 +104,11 @@ $router->group('/finance', function (Router $router): void {
     $router->get('/fonds', [\App\Controllers\Finance\DemandesFondsController::class, 'index']);
     $router->get('/fonds/nouveau', [\App\Controllers\Finance\DemandesFondsController::class, 'create']);
     $router->post('/fonds/enregistrer', [\App\Controllers\Finance\DemandesFondsController::class, 'store']);
+    // Le journal des decisions : il doit passer avant /fonds/{id}, sinon le
+    // routeur lit « historique » comme un identifiant de demande.
+    $router->get('/fonds/historique', [\App\Controllers\Finance\DemandesFondsController::class, 'historique']);
+    $router->get('/fonds/historique/pdf', [\App\Controllers\Finance\DemandesFondsController::class, 'historiquePdf']);
+    $router->get('/fonds/historique/excel', [\App\Controllers\Finance\DemandesFondsController::class, 'historiqueExcel']);
     $router->get('/fonds/prise-en-compte', [\App\Controllers\Finance\DemandesFondsController::class, 'priseEnCompteIndex']);
     $router->get('/fonds/imputation', [\App\Controllers\Finance\DemandesFondsController::class, 'imputationIndex']);
     $router->get('/fonds/{id}', [\App\Controllers\Finance\DemandesFondsController::class, 'show']);

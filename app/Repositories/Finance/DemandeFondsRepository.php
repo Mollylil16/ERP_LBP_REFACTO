@@ -479,6 +479,126 @@ final class DemandeFondsRepository
     }
 
     /**
+     * Le journal complet des décisions, toutes demandes confondues.
+     *
+     * L'historique existait déjà, mais demande par demande : pour savoir qui
+     * avait rejeté quoi et pourquoi au mois de septembre, il fallait ouvrir
+     * les demandes une à une. Ici, tout tient dans un tableau que la direction
+     * peut lire, filtrer et sortir en PDF ou en tableur.
+     *
+     * @param array<string, mixed> $filtres
+     * @return array<int, array<string, mixed>>
+     */
+    public function historiqueGlobal(array $filtres = []): array
+    {
+        $conditions = ['1 = 1'];
+        $params = [];
+
+        $du = trim((string) ($filtres['du'] ?? ''));
+        $au = trim((string) ($filtres['au'] ?? ''));
+
+        if ($du !== '') {
+            $conditions[] = 'DATE(h.created_at) >= :du';
+            $params['du'] = $du;
+        }
+
+        if ($au !== '') {
+            $conditions[] = 'DATE(h.created_at) <= :au';
+            $params['au'] = $au;
+        }
+
+        $action = strtoupper(trim((string) ($filtres['action'] ?? '')));
+        if ($action !== '') {
+            $conditions[] = 'h.action = :action';
+            $params['action'] = $action;
+        }
+
+        $agence = (int) ($filtres['agence_id'] ?? 0);
+        if ($agence > 0) {
+            $conditions[] = 'df.agence_id = :agence';
+            $params['agence'] = $agence;
+        }
+
+        $auteur = (int) ($filtres['user_id'] ?? 0);
+        if ($auteur > 0) {
+            $conditions[] = 'h.user_id = :auteur';
+            $params['auteur'] = $auteur;
+        }
+
+        // Une recherche libre sur le numéro, le motif de la demande ou le
+        // commentaire de la décision : c'est par là qu'on retrouve une affaire
+        // dont on ne se rappelle qu'un mot.
+        $q = trim((string) ($filtres['q'] ?? ''));
+        if ($q !== '') {
+            $conditions[] = '(df.numero_demande LIKE :q1 OR df.motif LIKE :q2 OR h.commentaire LIKE :q3)';
+            $params['q1'] = '%' . $q . '%';
+            $params['q2'] = '%' . $q . '%';
+            $params['q3'] = '%' . $q . '%';
+        }
+
+        $sql = '
+            SELECT
+                h.id,
+                h.demande_fonds_id,
+                h.action,
+                h.statut_avant,
+                h.statut_apres,
+                h.commentaire,
+                h.created_at,
+                u.full_name AS auteur_nom,
+                u.email AS auteur_email,
+                df.numero_demande,
+                df.motif,
+                df.montant,
+                df.devise,
+                df.cadre,
+                df.statut AS statut_actuel,
+                s.name AS agence_nom,
+                dem.full_name AS demandeur_nom
+            FROM lbp_demandes_fonds_historique h
+            LEFT JOIN users u ON u.id = h.user_id
+            LEFT JOIN lbp_demandes_fonds df ON df.id = h.demande_fonds_id
+            LEFT JOIN company_sites s ON s.id = df.agence_id
+            LEFT JOIN users dem ON dem.id = df.demandeur_id
+            WHERE ' . implode(' AND ', $conditions) . '
+            ORDER BY h.created_at DESC, h.id DESC
+            LIMIT 2000';
+
+        try {
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->execute($params);
+
+            return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        } catch (\Throwable $e) {
+            error_log('[DemandeFondsRepository] historiqueGlobal : ' . $e->getMessage());
+
+            return [];
+        }
+    }
+
+    /**
+     * Les personnes qui ont deja pose une decision : de quoi remplir le filtre
+     * « Par qui » sans y lister tout le personnel.
+     *
+     * @return array<int, array{id: int, name: string}>
+     */
+    public function auteursDeDecisions(): array
+    {
+        try {
+            $stmt = $this->pdo->query('
+                SELECT DISTINCT u.id, u.full_name AS name
+                FROM lbp_demandes_fonds_historique h
+                JOIN users u ON u.id = h.user_id
+                ORDER BY u.full_name ASC
+            ');
+
+            return $stmt ? ($stmt->fetchAll(PDO::FETCH_ASSOC) ?: []) : [];
+        } catch (\Throwable $e) {
+            return [];
+        }
+    }
+
+    /**
      * Enregistre un événement dans l'historique d'audit.
      */
     public function logHistorique(
