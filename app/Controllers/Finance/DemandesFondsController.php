@@ -162,7 +162,7 @@ final class DemandesFondsController extends FinanceBaseController
          * pour faire ce qu il avait le droit de faire sous les yeux.
          */
         $canValidate = Auth::isAdmin() || Auth::hasAnyRole(['dg', 'assistant_dg', 'comptable']);
-        $canDecaisser = Auth::isAdmin() || Auth::hasAnyRole(['dg', 'assistant_dg', 'caissiere_principale', 'caissiere', 'chef_agence']);
+        $canDecaisser = Auth::isAdmin() || Auth::hasAnyRole(['dg', 'assistant_dg', 'caissiere_principale']);
         $canImputer = Auth::isAdmin() || Auth::hasAnyRole(['dg', 'assistant_dg', 'comptable', 'chef_agence']) || (int) Auth::id() === $demande->demandeurId;
 
         $this->financeView('finance/fonds/show', 'Demande ' . $demande->numeroDemande . ' — LBP Finance', 'fonds', [
@@ -256,7 +256,7 @@ final class DemandesFondsController extends FinanceBaseController
     public function priseEnCompteIndex(): void
     {
         AuthMiddleware::check();
-        RoleMiddleware::check(['admin', 'dg', 'assistant_dg', 'caissiere_principale', 'caissiere', 'chef_agence', 'comptable', 'superviseur_general', 'responsable_rh']);
+        RoleMiddleware::check(['admin', 'dg', 'assistant_dg', 'caissiere_principale', 'comptable', 'superviseur_general', 'responsable_rh']);
 
         $userAgId = Auth::agenceId();
         $isSuperUser = Auth::isAdmin() || Auth::isAssistantDg() || Auth::hasAnyRole(['dg', 'assistant_dg', 'assistante_dg', 'caissiere_principale', 'comptable', 'superviseur_general']);
@@ -296,7 +296,14 @@ final class DemandesFondsController extends FinanceBaseController
     public function decaisser(string $id): void
     {
         AuthMiddleware::check();
-        RoleMiddleware::check(['admin', 'dg', 'assistant_dg', 'caissiere_principale', 'caissiere', 'chef_agence']);
+
+        /*
+         * La direction tranche le 05/10/2026 : une seule caisse sort l argent.
+         * Les caissieres d agence et les chefs d agence y avaient acces, ce qui
+         * faisait autant de mains sur le tiroir que d agences, sans qu une
+         * seule personne reponde du total decaisse.
+         */
+        RoleMiddleware::check(['admin', 'dg', 'assistant_dg', 'caissiere_principale']);
 
         if (!Csrf::verify($_POST['_csrf_token'] ?? null)) {
             Session::flash('error', 'Session expirée ou requête invalide (CSRF).');

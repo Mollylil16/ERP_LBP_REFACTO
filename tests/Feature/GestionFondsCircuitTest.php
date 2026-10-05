@@ -49,15 +49,29 @@ final class GestionFondsCircuitTest extends TestCase
 
     public function test_le_decaissement_reste_a_la_caisse(): void
     {
-        // Valider n'est pas payer : celui qui autorise la dépense ne doit pas
-        // être le seul maillon jusqu'à la sortie des espèces.
+        /*
+         * Valider n'est pas payer : celui qui autorise la dépense ne doit pas
+         * être le seul maillon jusqu'à la sortie des espèces.
+         *
+         * Et une seule caisse sort l'argent, décidé par la direction le
+         * 05/10/2026. Les caissières d'agence et les chefs d'agence pouvaient
+         * décaisser : autant de mains sur le tiroir que d'agences, sans que
+         * personne ne réponde du total.
+         */
         $source = $this->source();
 
         self::assertStringContainsString(
-            "RoleMiddleware::check(['admin', 'dg', 'assistant_dg', 'caissiere_principale', 'caissiere', 'chef_agence'])",
+            "RoleMiddleware::check(['admin', 'dg', 'assistant_dg', 'caissiere_principale'])",
             $source
         );
-        self::assertStringNotContainsString("statut = 'decaissee'\n", $source);
+
+        foreach (["'caissiere',", "'chef_agence'"] as $role) {
+            self::assertStringNotContainsString(
+                $role,
+                substr($source, (int) strpos($source, 'public function decaisser'), 700),
+                'Le décaissement est réservé à la caisse principale.'
+            );
+        }
     }
 
     public function test_le_rejet_revient_aux_memes_personnes_que_la_validation(): void
