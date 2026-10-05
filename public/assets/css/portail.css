@@ -1,0 +1,344 @@
+/*
+ * Le portail : l'écran que chacun ouvre dix fois par jour.
+ *
+ * Il tenait jusqu'ici dans 180 lignes de CSS écrites au milieu du PHP, plus
+ * des style="..." en dur sur chaque balise. C'est pourquoi il vieillissait à
+ * part du reste du logiciel : personne n'allait le retoucher là.
+ *
+ * Le parti pris, décidé le 05/10/2026 : un lanceur, pas une page de lecture.
+ * Des tuiles compactes rangées par métier, la description au survol seulement,
+ * et en haut la poignée de modules que la personne ouvre vraiment.
+ */
+
+.portail {
+  --portail-encre: #0f172a;
+  --portail-trait: #e2e8f0;
+  --portail-gris: #64748b;
+  --portail-pale: #94a3b8;
+}
+
+/* ---- Accueil : une ligne, pas un panneau ---- */
+
+.portail-accueil {
+  margin: 0 0 22px;
+}
+
+.portail-salut {
+  margin: 0 0 4px;
+  font-size: 1.65rem;
+  font-weight: 800;
+  letter-spacing: -0.6px;
+  color: var(--portail-encre);
+}
+
+.portail-sous {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--portail-gris);
+}
+
+/* ---- Recherche ---- */
+
+.portail-recherche {
+  max-width: 540px;
+  margin-bottom: 26px;
+}
+
+.portail-recherche .portal-module-filter-field label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/*
+ * Le champ de recherche se laisse retrecir.
+ *
+ * Sa largeur de base est celle de son texte d invite ; porte par un flex sans
+ * base nulle, il imposait 403 px au telephone et poussait toute la page
+ * au-dela de l ecran, qui se decalait lateralement a chaque defilement.
+ */
+.portail-recherche .finea-select-input {
+  flex: 1 1 0%;
+  width: 0;
+  min-width: 0;
+}
+
+.portail-recherche .finea-select-control {
+  max-width: 100%;
+}
+
+.portail-recherche-meta {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 9px;
+  font-size: 0.82rem;
+  color: var(--portail-pale);
+  font-weight: 600;
+}
+
+/* ---- Accès rapides : la rangée du haut ---- */
+
+.portail-rapides {
+  background: var(--portail-encre);
+  border-radius: 16px;
+  padding: 17px 19px 19px;
+  margin-bottom: 28px;
+}
+
+.portail-rapides > h2 {
+  margin: 0 0 13px;
+  font-size: 0.71rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.portail-rapides .portail-tuile {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.portail-rapides .portail-tuile:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.22);
+}
+
+.portail-rapides .portail-code {
+  color: #64748b;
+}
+
+/* ---- Groupes métier ---- */
+
+.portail-groupe {
+  margin-bottom: 28px;
+}
+
+.portail-groupe > h2 {
+  margin: 0 0 12px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--portail-pale);
+}
+
+.portail-rangee {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(152px, 1fr));
+  gap: 11px;
+}
+
+/* ---- La tuile ---- */
+
+.portail-tuile {
+  position: relative;
+  background: #fff;
+  border: 1px solid var(--portail-trait);
+  border-radius: 14px;
+  padding: 16px 13px 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 9px;
+  text-align: center;
+  text-decoration: none;
+  color: inherit;
+  transition:
+    transform 0.13s ease,
+    box-shadow 0.13s ease,
+    border-color 0.13s ease;
+}
+
+.portail-tuile:hover,
+.portail-tuile:focus-visible {
+  transform: translateY(-3px);
+  box-shadow: 0 14px 26px -16px rgba(15, 23, 42, 0.4);
+  border-color: #cbd5e1;
+  outline: none;
+}
+
+.portail-tuile:focus-visible {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.22);
+}
+
+.portail-pastille {
+  width: 46px;
+  height: 46px;
+  border-radius: 13px;
+  background: var(--portail-couleur, #475569);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.portail-pastille svg {
+  width: 22px;
+  height: 22px;
+}
+
+.portail-nom {
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: -0.1px;
+  line-height: 1.25;
+}
+
+.portail-code {
+  font-size: 0.67rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--portail-pale);
+}
+
+/*
+ * La description ne s'affiche qu'au survol : elle sert à celui qui découvre,
+ * pas à celui qui vient tous les jours. Lue par les lecteurs d'écran dans
+ * tous les cas, puisqu'elle reste dans le document.
+ */
+.portail-desc {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 8px);
+  transform: translateX(-50%) translateY(4px);
+  width: 210px;
+  background: var(--portail-encre);
+  color: #e2e8f0;
+  font-size: 0.74rem;
+  line-height: 1.45;
+  font-weight: 500;
+  text-align: left;
+  padding: 9px 11px;
+  border-radius: 9px;
+  box-shadow: 0 12px 24px -10px rgba(15, 23, 42, 0.5);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    opacity 0.14s ease,
+    transform 0.14s ease,
+    visibility 0.14s;
+  z-index: 20;
+}
+
+.portail-desc::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: var(--portail-encre);
+}
+
+.portail-tuile:hover .portail-desc,
+.portail-tuile:focus-visible .portail-desc {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* ---- Module en maintenance ---- */
+
+.portail-tuile.is-maintenance {
+  background: #f8fafc;
+  cursor: not-allowed;
+}
+
+.portail-tuile.is-maintenance .portail-pastille {
+  background: #cbd5e1;
+}
+
+.portail-tuile.is-maintenance:hover {
+  transform: none;
+  box-shadow: none;
+  border-color: var(--portail-trait);
+}
+
+.portail-maintenance {
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #b45309;
+}
+
+/* ---- Rien trouvé ---- */
+
+.portail-vide {
+  background: #fff;
+  border: 1px solid var(--portail-trait);
+  border-radius: 16px;
+  padding: 38px;
+  text-align: center;
+  color: var(--portail-gris);
+  font-size: 0.95rem;
+}
+
+/* ---- Pied ---- */
+
+.portail-pied {
+  margin-top: 30px;
+  padding-top: 18px;
+  border-top: 1px solid var(--portail-trait);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px;
+  font-size: 0.82rem;
+  color: var(--portail-pale);
+}
+
+/* ---- Téléphone ---- */
+
+@media (max-width: 640px) {
+  /*
+   * Trois tuiles par rangee sur un telephone de 375 px, gouttiere comprise.
+   * Au-dela, la derniere colonne passait hors de l ecran et la page se
+   * decalait lateralement a chaque defilement.
+   */
+  .portail-rangee {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .portail-rapides {
+    padding: 14px 12px 16px;
+  }
+
+  .portail-recherche {
+    max-width: 100%;
+  }
+
+
+  .portail-salut {
+    font-size: 1.35rem;
+  }
+
+  .portail-tuile {
+    padding: 13px 8px 11px;
+  }
+
+  .portail-pastille {
+    width: 40px;
+    height: 40px;
+    border-radius: 11px;
+  }
+
+  .portail-nom {
+    font-size: 0.78rem;
+  }
+
+  /* Il n'y a pas de survol au doigt : l'infobulle ne ferait qu'encombrer. */
+  .portail-desc {
+    display: none;
+  }
+}
