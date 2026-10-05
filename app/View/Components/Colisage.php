@@ -997,7 +997,7 @@ final class Colisage
             ]
         );
 
-        $table = self::fournituresTable($demandes);
+        $table = self::fournituresTable($demandes, $droits);
         $modal = self::fournitureModal($siteOpts);
         $refusal = self::refusalModal();
 
@@ -2852,7 +2852,12 @@ final class Colisage
 
     // ─── FOURNITURES ─────────────────────────────────────────────────
 
-    public static function fournituresTable(array $demandes): string
+    /**
+     * @param array{peutApprouver?:bool,peutConfirmer?:bool} $droits Les deux
+     *        signatures que l'utilisateur courant a le droit de poser. Sans
+     *        elles, aucun bouton de decision n'est propose.
+     */
+    public static function fournituresTable(array $demandes, array $droits = []): string
     {
         $rows = '';
         if ($demandes === []) {
@@ -2860,10 +2865,10 @@ final class Colisage
         } else {
             foreach ($demandes as $d) {
                 $tone = match ($d['status']) {
-                    'EN_ATTENTE' => 'primary', 'APPROUVEE' => 'info', 'LIVREE' => 'success', 'REJETEE' => 'danger', default => 'neutral'
+                    'EN_ATTENTE' => 'primary', 'APPROUVEE' => 'info', 'CONFIRMEE' => 'info', 'LIVREE' => 'success', 'REJETEE' => 'danger', default => 'neutral'
                 };
                 $statusLabel = match ($d['status']) {
-                    'EN_ATTENTE' => 'SOUMIS', 'APPROUVEE' => 'VALIDÉE', 'LIVREE' => 'LIVRÉE', 'REJETEE' => 'REFUSÉE', default => $d['status']
+                    'EN_ATTENTE' => 'SOUMIS', 'APPROUVEE' => 'VALIDÉE', 'CONFIRMEE' => 'CONFIRMÉE', 'LIVREE' => 'LIVRÉE', 'REJETEE' => 'REFUSÉE', default => $d['status']
                 };
                 $rejectionHtml = $d['rejection_reason']
                     ? '<div style="margin-top:0.4rem; padding:0.5rem; background:#fef2f2; border:1px solid #fecaca; border-radius:6px; color:#dc2626; font-size:0.8rem;"><strong>Motif de refus :</strong> ' . View::e($d['rejection_reason']) . '</div>'
