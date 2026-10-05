@@ -154,7 +154,14 @@ final class DemandesFondsController extends FinanceBaseController
         }
 
         $historique = $this->fondsRepo->getHistorique($demandeId);
-        $canValidate = Auth::isAdmin() || Auth::hasAnyRole(['dg', 'assistant_dg']);
+
+        /*
+         * Le comptable valide : valider() et la liste le reconnaissent depuis
+         * toujours, la fiche detaillee l avait oublie. Il y lisait donc une
+         * demande sans pouvoir la trancher, et devait repasser par la liste
+         * pour faire ce qu il avait le droit de faire sous les yeux.
+         */
+        $canValidate = Auth::isAdmin() || Auth::hasAnyRole(['dg', 'assistant_dg', 'comptable']);
         $canDecaisser = Auth::isAdmin() || Auth::hasAnyRole(['dg', 'assistant_dg', 'caissiere_principale', 'caissiere', 'chef_agence']);
         $canImputer = Auth::isAdmin() || Auth::hasAnyRole(['dg', 'assistant_dg', 'comptable', 'chef_agence']) || (int) Auth::id() === $demande->demandeurId;
 
