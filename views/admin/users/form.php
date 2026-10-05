@@ -31,9 +31,24 @@ ob_start();
 
             <?php ob_start(); ?>
             <?php if ($page->isEdit): ?>
-                <?= $page->employee
-                    ? Admin::employeeProfile($page->employee)
-                    : '<div class="admin-legacy-notice">Compte créé directement en mode administration (sans dossier RH rattaché).</div>' ?>
+                <?php if ($page->employee): ?>
+                    <?= Admin::employeeProfile($page->employee) ?>
+                <?php else: ?>
+                    <?php
+                    /*
+                     * Un compte sans dossier RH tient son identité de ce
+                     * formulaire, et de nulle part ailleurs. L'écran n'offrait
+                     * ici qu'un constat : une faute de frappe à la création ne
+                     * se corrigeait plus que par la base.
+                     */
+                    ?>
+                    <div class="admin-legacy-notice">Compte créé directement en mode administration (sans dossier RH rattaché) : son identité se corrige ici.</div>
+                    <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:12px; margin-top:12px;">
+                        <?= Form::input('full_name', ['label' => 'Nom &amp; Prénoms *', 'value' => (string) ($page->user?->fullName ?? '')]) ?>
+                        <?= Form::input('email', ['label' => 'Adresse Email *', 'type' => 'email', 'value' => (string) ($page->user?->email ?? '')]) ?>
+                        <?= Form::input('phone', ['label' => 'Téléphone', 'value' => (string) ($page->user?->phone ?? '')]) ?>
+                    </div>
+                <?php endif; ?>
             <?php else: ?>
                 <?php
                 $empOpts = array_merge(

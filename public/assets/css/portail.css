@@ -11,6 +11,12 @@
  */
 
 .portail {
+  /*
+   * Sur un ecran large, les tuiles s arretaient a mi-chemin et le reste de la
+   * page restait vide : on croyait a un affichage casse plutot qu a un choix.
+   */
+  max-width: 1280px;
+  margin-inline: auto;
   --portail-encre: #0f172a;
   --portail-trait: #e2e8f0;
   --portail-gris: #64748b;
@@ -20,12 +26,12 @@
 /* ---- Accueil : une ligne, pas un panneau ---- */
 
 .portail-accueil {
-  margin: 0 0 22px;
+  margin: 0 0 14px;
 }
 
 .portail-salut {
-  margin: 0 0 4px;
-  font-size: 1.65rem;
+  margin: 0 0 3px;
+  font-size: 1.5rem;
   font-weight: 800;
   letter-spacing: -0.6px;
   color: var(--portail-encre);
@@ -40,8 +46,8 @@
 /* ---- Recherche ---- */
 
 .portail-recherche {
-  max-width: 540px;
-  margin-bottom: 26px;
+  max-width: 460px;
+  margin-bottom: 18px;
 }
 
 .portail-recherche .portal-module-filter-field label {
@@ -84,13 +90,13 @@
 
 .portail-rapides {
   background: var(--portail-encre);
-  border-radius: 16px;
-  padding: 17px 19px 19px;
-  margin-bottom: 28px;
+  border-radius: 14px;
+  padding: 13px 14px 15px;
+  margin-bottom: 20px;
 }
 
 .portail-rapides > h2 {
-  margin: 0 0 13px;
+  margin: 0 0 10px;
   font-size: 0.71rem;
   font-weight: 800;
   letter-spacing: 0.1em;
@@ -113,14 +119,23 @@
   color: #64748b;
 }
 
+/*
+ * Les acces rapides occupent toute la largeur du bandeau : cinq tuiles
+ * serrees a gauche d un rectangle sombre donnaient l impression d un bloc
+ * inacheve.
+ */
+.portail-rapides .portail-rangee {
+  grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
+}
+
 /* ---- Groupes métier ---- */
 
 .portail-groupe {
-  margin-bottom: 28px;
+  margin-bottom: 20px;
 }
 
 .portail-groupe > h2 {
-  margin: 0 0 12px;
+  margin: 0 0 9px;
   font-size: 0.72rem;
   font-weight: 800;
   letter-spacing: 0.1em;
@@ -130,8 +145,9 @@
 
 .portail-rangee {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(152px, 1fr));
-  gap: 11px;
+  grid-template-columns: repeat(auto-fill, minmax(128px, 158px));
+  justify-content: start;
+  gap: 10px;
 }
 
 /* ---- La tuile ---- */
@@ -140,12 +156,12 @@
   position: relative;
   background: #fff;
   border: 1px solid var(--portail-trait);
-  border-radius: 14px;
-  padding: 16px 13px 14px;
+  border-radius: 13px;
+  padding: 13px 10px 12px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 9px;
+  gap: 7px;
   text-align: center;
   text-decoration: none;
   color: inherit;
@@ -169,9 +185,9 @@
 }
 
 .portail-pastille {
-  width: 46px;
-  height: 46px;
-  border-radius: 13px;
+  width: 40px;
+  height: 40px;
+  border-radius: 11px;
   background: var(--portail-couleur, #475569);
   color: #fff;
   display: grid;
@@ -180,19 +196,19 @@
 }
 
 .portail-pastille svg {
-  width: 22px;
-  height: 22px;
+  width: 20px;
+  height: 20px;
 }
 
 .portail-nom {
-  font-size: 0.85rem;
+  font-size: 0.81rem;
   font-weight: 700;
   letter-spacing: -0.1px;
   line-height: 1.25;
 }
 
 .portail-code {
-  font-size: 0.67rem;
+  font-size: 0.64rem;
   font-weight: 700;
   letter-spacing: 0.08em;
   color: var(--portail-pale);
@@ -285,8 +301,8 @@
 /* ---- Pied ---- */
 
 .portail-pied {
-  margin-top: 30px;
-  padding-top: 18px;
+  margin-top: 20px;
+  padding-top: 14px;
   border-top: 1px solid var(--portail-trait);
   display: flex;
   align-items: center;

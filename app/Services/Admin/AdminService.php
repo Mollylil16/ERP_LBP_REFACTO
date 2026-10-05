@@ -263,9 +263,30 @@ class AdminService
                 throw new RuntimeException('L’adresse email du profil RH est déjà utilisée.');
             }
         } else {
-            $data['full_name'] = $user->fullName;
-            $data['email'] = $user->email;
-            $data['phone'] = $user->phone;
+            /*
+             * Un compte sans profil RH tient son identite de ce formulaire, et
+             * de nulle part ailleurs. Il recopiait pourtant l ancienne valeur :
+             * le champ « Nom & Prenoms » s affichait, se saisissait, et son
+             * contenu partait a la poubelle — une faute de frappe a la creation
+             * ne se corrigeait plus que par la base.
+             */
+            $nomSaisi = trim((string) ($input['full_name'] ?? ''));
+            $emailSaisi = strtolower(trim((string) ($input['email'] ?? '')));
+
+            $data['full_name'] = $nomSaisi !== '' ? $nomSaisi : $user->fullName;
+            $data['phone'] = trim((string) ($input['phone'] ?? '')) ?: $user->phone;
+
+            if ($emailSaisi === '' || $emailSaisi === strtolower($user->email)) {
+                $data['email'] = $user->email;
+            } else {
+                if (!filter_var($emailSaisi, FILTER_VALIDATE_EMAIL)) {
+                    throw new RuntimeException('L’adresse email saisie est invalide.');
+                }
+                if ($this->users->emailExists($emailSaisi, $id)) {
+                    throw new RuntimeException('L’adresse email est déjà utilisée par un autre compte.');
+                }
+                $data['email'] = $emailSaisi;
+            }
         }
         if ($id === $actorId && (!$data['is_admin'] || $data['status'] !== 'active')) {
             throw new RuntimeException('Vous ne pouvez pas retirer votre propre accès administrateur ni désactiver votre compte.');
@@ -297,8 +318,18 @@ class AdminService
             );
         }
 
-        $avant = ['is_admin' => $user->isAdmin ? 'oui' : 'non', 'agence_id' => $user->agenceId];
-        $apres = ['is_admin' => $data['is_admin'] ? 'oui' : 'non', 'agence_id' => $data['agence_id']];
+        $avant = [
+            'full_name' => $user->fullName,
+            'email' => $user->email,
+            'is_admin' => $user->isAdmin ? 'oui' : 'non',
+            'agence_id' => $user->agenceId,
+        ];
+        $apres = [
+            'full_name' => $data['full_name'],
+            'email' => $data['email'],
+            'is_admin' => $data['is_admin'] ? 'oui' : 'non',
+            'agence_id' => $data['agence_id'],
+        ];
 
         if (self::different($avant, $apres)) {
             AuditLogService::log('update_user', 'users', $id, $avant, $apres);
