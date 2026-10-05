@@ -69,8 +69,18 @@ final class RouterTest extends TestCase
         self::assertSame('portal', $output);
     }
 
+    /**
+     * Un routeur nu : ni maintenance, ni verrou de module reserve.
+     *
+     * Sans le second, /rh/... repondrait 404 des que personne n est connecte —
+     * ce qui est la bonne reponse en production, mais pas ce que ce test
+     * verifie.
+     */
     private function routerWithoutMaintenance(): Router
     {
-        return new Router(static fn(string $path): ?array => null);
+        return new Router(
+            static fn(string $path): ?array => null,
+            static fn(string $path): bool => false
+        );
     }
 }

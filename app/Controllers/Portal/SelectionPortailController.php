@@ -11,6 +11,7 @@ use App\Models\Database;
 use App\Repositories\Admin\ModuleMaintenanceRepository;
 use App\Security\PermissionAction;
 use App\Security\ModuleAccess;
+use App\Security\ModuleReserve;
 use App\Security\PermissionEntityRegistry;
 use App\Services\Admin\ModuleMaintenanceService;
 use App\Services\Shared\ModuleDashboardService;
@@ -55,14 +56,14 @@ final class SelectionPortailController extends BaseController
                 return Auth::user()?->isAdmin ?? false;
             }
             if ($module['key'] === 'rh') {
-                if (Auth::hasAnyRole(['dg', 'assistant_dg']) || Auth::isAdmin()) {
-                    return true;
-                }
-                $requirements = array_fill_keys(
-                    PermissionEntityRegistry::codesForModule('Ressources humaines'),
-                    PermissionAction::VIEW
-                );
-                return Auth::canAny($requirements);
+                /*
+                 * Les Ressources humaines sont un module reserve depuis le
+                 * 05/10/2026 : salaires, contrats, sanctions et sorties n ont
+                 * pas a figurer, meme en tuile grisee, sur l ecran de tous.
+                 * Une permission RH ne suffit plus — la liste des trois est au
+                 * meme endroit que la porte, dans ModuleReserve.
+                 */
+                return ModuleReserve::peutOuvrir('rh');
             }
             if ($module['key'] === 'call-center') {
                 if (Auth::hasAnyRole(['dg', 'assistant_dg']) || Auth::isAdmin()) {

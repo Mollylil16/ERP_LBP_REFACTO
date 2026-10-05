@@ -4,6 +4,7 @@ namespace App;
 
 use App\Controllers\Error\ErrorController;
 use App\Middleware\ModuleMaintenanceMiddleware;
+use App\Security\ModuleReserve;
 use Closure;
 
 class Router
@@ -12,10 +13,17 @@ class Router
     private array $groupPrefixes = [];
     private Closure $maintenanceResolver;
 
-    public function __construct(?callable $maintenanceResolver = null)
+    /** Le verrou des modules reserves, injectable pour rester testable. */
+    private Closure $reserveResolver;
+
+    public function __construct(?callable $maintenanceResolver = null, ?callable $reserveResolver = null)
     {
         $this->maintenanceResolver = Closure::fromCallable(
             $maintenanceResolver ?? [ModuleMaintenanceMiddleware::class, 'stateForPath']
+        );
+
+        $this->reserveResolver = Closure::fromCallable(
+            $reserveResolver ?? [ModuleReserve::class, 'refuse']
         );
     }
 
@@ -58,6 +66,18 @@ class Router
         $maintenance = ($this->maintenanceResolver)($requestUri);
         if ($maintenance !== null) {
             (new ErrorController())->maintenance($maintenance);
+            return;
+        }
+
+        /*
+         * Un module reserve se ferme ici, avant tout controleur : ni page, ni
+         * formulaire, ni export, meme en tapant l adresse a la main. Le refus
+         * est un 404 et non un 403, parce que « acces refuse » confirmerait
+         * que le module existe.
+         */
+        if ((bool) ($this->reserveResolver)($requestUri)) {
+            (new ErrorController())->notFound($requestUri);
+
             return;
         }
 
