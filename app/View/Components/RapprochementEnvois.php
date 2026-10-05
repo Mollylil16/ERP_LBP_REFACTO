@@ -240,7 +240,9 @@ final class RapprochementEnvois
 
         $corps = '';
         foreach ($lignes as $ligne) {
-            $corps .= self::ligne($ligne, $p) . self::panneau($ligne, $p);
+            $corps .= self::ligne($ligne, $p)
+                . self::detailAgences($ligne)
+                . self::panneau($ligne, $p);
         }
 
         $saisissable = !empty($p['peutSaisir']);
@@ -345,6 +347,48 @@ final class RapprochementEnvois
             . '<td>' . Ui::badge(Regles::ETATS[$etat] ?? $etat, self::TONS_ETAT[$etat] ?? 'neutral') . ' ' . $bouton
             . ($saisissable ? self::memoire($id, $ligne) : '') . '</td>'
             . '</tr>';
+    }
+
+    /**
+     * Ce que chaque agence a charge sur cet envoi, sous le total.
+     *
+     * La direction compare un total a la facture de la compagnie ; mais quand
+     * l ecart apparait, la premiere question est « laquelle des trois ? ». Le
+     * detail dormait dans un panneau qu il fallait deplier envoi par envoi.
+     *
+     * Les lignes de detail ne portent pas data-rappro-ligne : elles ne se
+     * saisissent pas, et le script ne doit pas les prendre pour des lignes a
+     * enregistrer.
+     *
+     * @param array<string, mixed> $ligne
+     */
+    private static function detailAgences(array $ligne): string
+    {
+        $agences = $ligne['detail_agences'] ?? [];
+
+        if (!is_array($agences) || $agences === []) {
+            return '';
+        }
+
+        // Une seule agence : le total est deja son chiffre, le repeter en
+        // dessous n apprendrait rien et doublerait la hauteur du tableau.
+        if (count($agences) < 2) {
+            return '';
+        }
+
+        $html = '';
+        foreach ($agences as $agence) {
+            $html .= '<tr class="lbp-rappro-detail">'
+                . '<td colspan="3"><span class="lbp-rappro-puce" aria-hidden="true"></span>'
+                . View::e((string) ($agence['agence'] ?? '—')) . '</td>'
+                . '<td class="lbp-rappro-droite lbp-rappro-mono">' . self::nombreOuTiret($agence['colis'] ?? null) . '</td>'
+                . '<td colspan="2"></td>'
+                . '<td class="lbp-rappro-droite lbp-rappro-mono">' . self::nombreOuTiret($agence['poids'] ?? null, 1) . '</td>'
+                . '<td colspan="6"></td>'
+                . '</tr>';
+        }
+
+        return $html;
     }
 
     /**
@@ -650,7 +694,7 @@ final class RapprochementEnvois
             'Poids divers kg', 'Poids périssable kg',
             'Montant compagnie', 'Devise', 'Montant XOF', 'Taux',
             'Moyen de règlement', 'N° de chèque', 'Date de règlement', 'Reste à régler XOF',
-            'État', 'Motif de la correction', 'Observation', 'Rapproché par', 'Rapproché le'];
+            'État', 'Motif de la correction', 'Observation', 'Détail par agence', 'Rapproché par', 'Rapproché le'];
 
         $lignes = '';
         foreach ($p['lignes'] as $l) {
@@ -681,6 +725,7 @@ final class RapprochementEnvois
                 . self::xTexte(Regles::ETATS[(string) $l['etat']] ?? (string) $l['etat'])
                 . self::xTexte((string) ($l['motif_correction'] ?? ''))
                 . self::xTexte((string) ($l['observation'] ?? ''))
+                . self::xTexte(self::detailEnLigne($l))
                 . self::xTexte((string) ($l['rapproche_par'] ?? ''))
                 . self::xTexte((string) ($l['rapproche_le'] ?? ''))
                 . '</tr>';
@@ -772,6 +817,32 @@ final class RapprochementEnvois
             . (self::ICONES[$nom] ?? '') . '</svg>';
     }
 
+    /**
+     * Le detail par agence, tenu sur une seule cellule.
+     *
+     * Le tableur sert aux recoupements : qui a charge combien, et pour quel
+     * poids, doit pouvoir s y relire sans rouvrir le logiciel.
+     *
+     * @param array<string, mixed> $l
+     */
+    private static function detailEnLigne(array $l): string
+    {
+        $agences = $l['detail_agences'] ?? [];
+
+        if (!is_array($agences) || $agences === []) {
+            return '';
+        }
+
+        $morceaux = [];
+        foreach ($agences as $agence) {
+            $morceaux[] = (string) ($agence['agence'] ?? '—')
+                . ' : ' . Regles::nombre((float) ($agence['colis'] ?? 0)) . ' colis'
+                . ' / ' . Regles::nombre((float) ($agence['poids'] ?? 0), 1) . ' kg';
+        }
+
+        return implode(' · ', $morceaux);
+    }
+
     private static function xTexte(string $valeur): string
     {
         return '<td>' . View::e($valeur) . '</td>';
@@ -835,6 +906,11 @@ final class RapprochementEnvois
             // colonne haute et illisible, juste la ou l oeil doit se poser.
             . '.lbp-rappro-table td[data-rappro-ecart] .finea-badge{white-space:nowrap}'
             . '.lbp-rappro-observation{max-width:220px;color:#475569}'
+            // Le detail par agence : visiblement subordonne au total, sans
+            // attirer l oeil plus que la ligne qu il explique.
+            . '.lbp-rappro-detail>td{background:#fbfcfd;border-top:0;padding-top:5px;padding-bottom:5px;font-size:12px;color:#5b6472}'
+            . '.lbp-rappro-detail>td:first-child{padding-left:26px}'
+            . '.lbp-rappro-puce{display:inline-block;width:5px;height:5px;border-radius:50%;background:#cbd5e1;margin-right:9px;vertical-align:middle}'
             . '.lbp-rappro-barre{position:sticky;bottom:0;z-index:5;display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:12px;padding:12px 16px;background:#0f172a;border-radius:12px;box-shadow:0 -6px 18px rgba(15,23,42,.12)}'
             . '.lbp-rappro-barre-compte{font-size:13px;font-weight:700;color:#fff}'
             . '.lbp-rappro-barre-note{font-size:12px;color:#94a3b8;flex:1 1 220px}'

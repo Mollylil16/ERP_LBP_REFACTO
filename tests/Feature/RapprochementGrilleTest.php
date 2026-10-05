@@ -37,6 +37,11 @@ final class RapprochementGrilleTest extends TestCase
                 'r_mode_reglement' => 'CHEQUE',
                 'r_numero_cheque' => '0042189',
                 'taux_eur_xof' => 655.957,
+                'detail_agences' => [
+                    ['agence' => 'Agence Abobo Dokui', 'colis' => 142, 'poids' => 1180.0],
+                    ['agence' => 'Agence Adjamé Pharmacie Latin', 'colis' => 96, 'poids' => 840.5],
+                    ['agence' => 'Aéroport Port Bouët Fret', 'colis' => 72, 'poids' => 573.5],
+                ],
             ]),
         ];
 
@@ -66,6 +71,46 @@ final class RapprochementGrilleTest extends TestCase
                 "La case « {$champ} » ne se saisit pas dans le tableau."
             );
         }
+    }
+
+    public function test_chaque_agence_a_sa_ligne_sous_le_total(): void
+    {
+        /*
+         * La direction compare un total a la facture de la compagnie ; mais
+         * quand l ecart apparait, la premiere question est « laquelle des
+         * trois ? ». Le detail dormait dans un panneau qu il fallait deplier
+         * envoi par envoi.
+         */
+        $html = RapprochementEnvois::page($this->donnees());
+
+        foreach (['Agence Abobo Dokui', 'Pharmacie Latin', 'Port Bou'] as $agence) {
+            self::assertStringContainsString($agence, $html, "L'agence « {$agence} » n'apparaît pas sous le total.");
+        }
+
+        self::assertStringContainsString('lbp-rappro-detail', $html);
+        // 142 + 96 + 72 = 310 : le total reste celui de la ligne principale.
+        self::assertStringContainsString('142', $html);
+        self::assertStringContainsString('1 180,0', $html);
+    }
+
+    public function test_le_detail_ne_se_saisit_pas(): void
+    {
+        // Les lignes de detail ne doivent pas etre prises pour des lignes a
+        // enregistrer, ni compter dans la recherche.
+        $html = RapprochementEnvois::page($this->donnees());
+
+        $morceau = substr($html, (int) strpos($html, 'lbp-rappro-detail'), 700);
+
+        self::assertStringNotContainsString('data-rappro-ligne', $morceau);
+        self::assertStringNotContainsString('name="lignes[', $morceau);
+    }
+
+    public function test_le_tableur_porte_aussi_le_detail(): void
+    {
+        $xls = RapprochementEnvois::exportExcel($this->donnees());
+
+        self::assertStringContainsString('Détail par agence', $xls);
+        self::assertStringContainsString('Agence Abobo Dokui : 142 colis', $xls);
     }
 
     public function test_les_colonnes_automatiques_ne_se_saisissent_pas(): void
