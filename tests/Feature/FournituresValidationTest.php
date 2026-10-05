@@ -20,11 +20,12 @@ use Tests\TestCase;
 final class FournituresValidationTest extends TestCase
 {
     /** @return array<int, array<string, mixed>> */
-    private function demande(string $statut): array
+    private function demande(string $statut, int $approuvePar = 0): array
     {
         return [[
             'id' => 7,
             'status' => $statut,
+            'validated_by' => $approuvePar,
             'rejection_reason' => null,
             'quantite' => 3,
             'prix_unitaire' => 1500,
@@ -67,6 +68,31 @@ final class FournituresValidationTest extends TestCase
 
         $this->assertStringNotContainsString('value="CONFIRMEE"', $html);
         $this->assertStringContainsString('en attente du comptable', $html);
+    }
+
+    public function testLaDirectionPeutConfirmerElleAussi(): void
+    {
+        // Demande du 05/10/2026 : le DG et son assistante ne doivent pas
+        // attendre le comptable pour debloquer une fourniture.
+        $html = Colisage::fournituresTable(
+            $this->demande('APPROUVEE', 12),
+            ['peutConfirmer' => true, 'utilisateur' => 3]
+        );
+
+        $this->assertStringContainsString('value="CONFIRMEE"', $html);
+    }
+
+    public function testPersonneNeConfirmeCeQuIlAApprouve(): void
+    {
+        // Meme avec le droit, poser les deux signatures soi-meme viderait le
+        // controle a deux mains de son sens.
+        $html = Colisage::fournituresTable(
+            $this->demande('APPROUVEE', 3),
+            ['peutConfirmer' => true, 'utilisateur' => 3]
+        );
+
+        $this->assertStringNotContainsString('value="CONFIRMEE"', $html);
+        $this->assertStringContainsString('un autre doit confirmer', $html);
     }
 
     public function testLeStatutConfirmeEstEcritEnFrancais(): void

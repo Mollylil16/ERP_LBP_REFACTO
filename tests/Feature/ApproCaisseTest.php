@@ -272,13 +272,18 @@ final class ApproCaisseTest extends TestCase
     /**
      * Fournitures : le superviseur régional approuve, le comptable confirme, et
      * la livraison n'est possible qu'après les deux signatures.
+     *
+     * Depuis le 05/10/2026 la direction confirme elle aussi, pour ne pas
+     * dépendre de la présence du comptable — mais jamais ce qu'elle a
+     * elle-même approuvé, sinon la double signature ne protège plus de rien.
      */
     public function test_les_fournitures_demandent_deux_signatures(): void
     {
         $source = (string) file_get_contents(BASE_PATH . '/app/Controllers/Colisage/ExploitationController.php');
 
         self::assertStringContainsString("Auth::hasAnyRole(['superviseur_regional', 'dg', 'assistant_dg'])", $source);
-        self::assertStringContainsString("Auth::hasAnyRole(['comptable'])", $source);
+        self::assertStringContainsString("Auth::hasAnyRole(['comptable', 'dg', 'assistant_dg'])", $source);
+        self::assertStringContainsString("\$status === 'CONFIRMEE' && \$approuvePar === \$currentUserId", $source);
         self::assertStringContainsString("\$status === 'CONFIRMEE' && \$etat !== 'APPROUVEE'", $source);
         self::assertStringContainsString("\$status === 'LIVREE' && \$etat !== 'CONFIRMEE'", $source);
 

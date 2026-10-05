@@ -2895,8 +2895,17 @@ final class Colisage
                         . '</form> '
                         . '<button type="button" class="finea-button finea-button--danger finea-button-sm" onclick="openRefusalModal(' . $d['id'] . ')">Refuser</button>';
 
-                    if (empty($droits['peutConfirmer'])) {
-                        $actionHtml = '<span style="color:#64748b; font-size:0.85rem; font-weight:600;">Approuvée — en attente du comptable</span>';
+                    // Celui qui a approuve ne confirme pas : lui montrer le
+                    // bouton serait lui promettre une action qui sera refusee.
+                    $aDejaSigne = (int) ($d['validated_by'] ?? 0) > 0
+                        && (int) ($d['validated_by'] ?? 0) === (int) ($droits['utilisateur'] ?? 0);
+
+                    if (empty($droits['peutConfirmer']) || $aDejaSigne) {
+                        $actionHtml = '<span style="color:#64748b; font-size:0.85rem; font-weight:600;">'
+                            . ($aDejaSigne
+                                ? "Vous l'avez approuvée — un autre doit confirmer"
+                                : 'Approuvée — en attente du comptable')
+                            . '</span>';
                     }
                 } elseif ($d['status'] === 'CONFIRMEE') {
                     $actionHtml = '<form method="post" action="' . View::url('colisage/exploitation/fournitures/' . $d['id'] . '/statut') . '" style="display:inline;">'
