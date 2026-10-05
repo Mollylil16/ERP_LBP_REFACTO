@@ -243,16 +243,49 @@ final class RapprochementEnvois
             $corps .= self::ligne($ligne, $p) . self::panneau($ligne, $p);
         }
 
-        return '<div class="lbp-rappro-table-enveloppe"><table class="finea-table lbp-rappro-table">'
-            . '<thead><tr>'
+        $saisissable = !empty($p['peutSaisir']);
+
+        $entete = '<thead><tr>'
             . '<th>' . View::e("Date de l'envoi") . '</th><th>Compagnie</th><th>N° LTA / agences</th>'
             . '<th class="lbp-rappro-droite">Colis enregistrés</th><th class="lbp-rappro-droite">Colis expédiés</th><th class="lbp-rappro-droite">Écart colis</th>'
             . '<th class="lbp-rappro-droite">Poids enregistré</th><th class="lbp-rappro-droite">Poids final</th><th class="lbp-rappro-droite">Écart poids</th>'
-            . '<th class="lbp-rappro-droite">Facturé</th><th>Règlement</th><th>Statut</th>'
-            . '</tr></thead>'
+            . '<th class="lbp-rappro-droite">Facturé</th><th>Observation</th><th>Règlement</th><th>Statut</th>'
+            . '</tr></thead>';
+
+        $table = '<div class="lbp-rappro-table-enveloppe"><table class="finea-table lbp-rappro-table' . ($saisissable ? ' is-saisissable' : '') . '">'
+            . $entete
             . '<tbody>' . $corps . '</tbody>'
             . self::pied($p['totaux'])
             . '</table></div>';
+
+        if (!$saisissable) {
+            return $table;
+        }
+
+        /*
+         * Le comptable depouille sa facture comme dans son tableur : il remplit
+         * les cases a la suite, voit l ecart bouger sous ses yeux, puis
+         * enregistre une seule fois. La barre d enregistrement ne sort de sa
+         * cachette qu une fois quelque chose modifie.
+         */
+        $f = $p['filtres'];
+        $caches = '';
+        foreach (['du', 'au', 'transporteur_id', 'agence_id', 'reglement', 'q'] as $champ) {
+            $valeur = (string) ($f[$champ] ?? '');
+            if ($valeur !== '' && $valeur !== '0') {
+                $caches .= '<input type="hidden" name="f_' . $champ . '" value="' . View::e($valeur) . '">';
+            }
+        }
+
+        return '<form method="post" action="' . View::e(View::url('finance/rapprochement-envois/enregistrer-lot')) . '" class="lbp-rappro-grille" data-rappro-grille>'
+            . Csrf::field() . $caches
+            . $table
+            . '<div class="lbp-rappro-barre" data-rappro-barre hidden>'
+            . '<span class="lbp-rappro-barre-compte" data-rappro-compte>Aucune ligne modifiée</span>'
+            . '<span class="lbp-rappro-barre-note">' . View::e("Les colonnes grisées viennent du logiciel : elles ne se saisissent pas.") . '</span>'
+            . '<button type="submit" class="rh-filter-btn rh-filter-btn--primary">Enregistrer le tableau</button>'
+            . '</div>'
+            . '</form>';
     }
 
     /**
@@ -276,21 +309,106 @@ final class RapprochementEnvois
         $bouton = '<button type="button" class="lbp-rappro-declencheur" data-rappro-cible="rappro-panneau-' . $id . '" aria-expanded="false" aria-controls="rappro-panneau-' . $id . '">'
             . View::e(!empty($p['peutSaisir']) ? 'Rapprocher' : 'Détail') . '</button>';
 
-        return '<tr class="' . $classe . '">'
+        $saisissable = !empty($p['peutSaisir']);
+
+        $colonneLta = '<td class="lbp-rappro-mono">' . self::valeur($ligne['document'])
+            . '<span class="lbp-rappro-sous">' . View::e((string) $ligne['agence_depart'] ?: 'aucune agence cochée') . '</span></td>';
+        $colisLta = '<td class="lbp-rappro-droite lbp-rappro-mono">' . self::colisLta($ligne) . '</td>';
+        $poidsLta = '<td class="lbp-rappro-droite lbp-rappro-mono">' . self::nombreOuTiret($ligne['poids_lta'], 1) . '</td>';
+        $montant = '<td class="lbp-rappro-droite lbp-rappro-mono">' . self::montant($ligne) . '</td>';
+        $observation = '<td class="lbp-rappro-observation">' . self::valeur($ligne['observation'] ?? null) . '</td>';
+
+        if ($saisissable) {
+            $colonneLta = '<td class="lbp-rappro-mono">' . self::caseSaisie($id, 'numero_document', (string) ($ligne['document_saisi'] ?? ''), 'texte', '483-20428520')
+                . '<span class="lbp-rappro-sous">' . View::e((string) $ligne['agence_depart'] ?: 'aucune agence cochée') . '</span></td>';
+            $colisLta = '<td class="lbp-rappro-droite">' . self::caseSaisie($id, 'colis_lta', self::champ($ligne['colis_lta']), 'nombre', 'à saisir') . '</td>';
+            $poidsLta = '<td class="lbp-rappro-droite">' . self::caseSaisie($id, 'poids_lta_kg', self::champ($ligne['poids_lta'], 1), 'decimal', 'à saisir') . '</td>';
+            $montant = '<td class="lbp-rappro-droite">' . self::caseSaisie($id, 'montant_compagnie', self::champ($ligne['montant'], 2), 'decimal', 'à saisir') . '</td>';
+            $observation = '<td>' . self::caseSaisie($id, 'observation', (string) ($ligne['observation'] ?? ''), 'texte') . '</td>';
+        }
+
+        return '<tr class="' . $classe . '" data-rappro-ligne="' . $id . '"'
+            . ' data-colis-agence="' . View::e(self::nombreMachine($ligne['colis_agence'])) . '"'
+            . ' data-poids-agence="' . View::e(self::nombreMachine($ligne['poids_agence'])) . '">'
             . '<td class="lbp-rappro-mono">' . View::e(self::date($ligne['date'])) . '</td>'
             . '<td>' . self::valeur($ligne['compagnie']) . '</td>'
-            . '<td class="lbp-rappro-mono">' . self::valeur($ligne['document'])
-            . '<span class="lbp-rappro-sous">' . View::e((string) $ligne['agence_depart'] ?: 'aucune agence cochée') . '</span></td>'
-            . '<td class="lbp-rappro-droite lbp-rappro-mono">' . self::nombreOuTiret($ligne['colis_agence']) . '</td>'
-            . '<td class="lbp-rappro-droite lbp-rappro-mono">' . self::colisLta($ligne) . '</td>'
-            . '<td class="lbp-rappro-droite">' . self::badgeEcart($ligne['ecart_colis'], '') . '</td>'
-            . '<td class="lbp-rappro-droite lbp-rappro-mono">' . self::nombreOuTiret($ligne['poids_agence'], 1) . '</td>'
-            . '<td class="lbp-rappro-droite lbp-rappro-mono">' . self::nombreOuTiret($ligne['poids_lta'], 1) . '</td>'
-            . '<td class="lbp-rappro-droite">' . self::badgeEcart($ligne['ecart_poids'], ' kg', 1) . '</td>'
-            . '<td class="lbp-rappro-droite lbp-rappro-mono">' . self::montant($ligne) . '</td>'
+            . $colonneLta
+            . '<td class="lbp-rappro-droite lbp-rappro-mono lbp-rappro-auto">' . self::nombreOuTiret($ligne['colis_agence']) . '</td>'
+            . $colisLta
+            . '<td class="lbp-rappro-droite" data-rappro-ecart="colis">' . self::badgeEcart($ligne['ecart_colis'], '') . '</td>'
+            . '<td class="lbp-rappro-droite lbp-rappro-mono lbp-rappro-auto">' . self::nombreOuTiret($ligne['poids_agence'], 1) . '</td>'
+            . $poidsLta
+            . '<td class="lbp-rappro-droite" data-rappro-ecart="poids">' . self::badgeEcart($ligne['ecart_poids'], ' kg', 1) . '</td>'
+            . $montant
+            . $observation
             . '<td>' . self::reglement($ligne) . '</td>'
-            . '<td>' . Ui::badge(Regles::ETATS[$etat] ?? $etat, self::TONS_ETAT[$etat] ?? 'neutral') . ' ' . $bouton . '</td>'
+            . '<td>' . Ui::badge(Regles::ETATS[$etat] ?? $etat, self::TONS_ETAT[$etat] ?? 'neutral') . ' ' . $bouton
+            . ($saisissable ? self::memoire($id, $ligne) : '') . '</td>'
             . '</tr>';
+    }
+
+    /**
+     * Une case du tableau, saisie comme dans un tableur.
+     *
+     * Le nom est indexe par l envoi : le serveur retrouve chaque valeur sous
+     * son envoi, et le script n envoie que les lignes reellement touchees.
+     */
+    private static function caseSaisie(int $id, string $champ, string $valeur, string $genre, string $exemple = ''): string
+    {
+        $attributs = 'type="text" class="lbp-rappro-case lbp-rappro-case--' . $genre . '"'
+            . ' name="lignes[' . $id . '][' . $champ . ']"'
+            . ' value="' . View::e($valeur) . '"'
+            . ' data-rappro-champ="' . $champ . '"'
+            . ' data-rappro-initial="' . View::e($valeur) . '"'
+            . ' autocomplete="off"';
+
+        if ($genre === 'nombre') {
+            $attributs .= ' inputmode="numeric"';
+        } elseif ($genre === 'decimal') {
+            $attributs .= ' inputmode="decimal"';
+        }
+
+        if ($exemple !== '') {
+            $attributs .= ' placeholder="' . View::e($exemple) . '"';
+        }
+
+        return '<input ' . $attributs . '>';
+    }
+
+    /**
+     * Ce que la saisie en ligne ne montre pas mais ne doit pas perdre.
+     *
+     * Le service relit toute la ligne a chaque enregistrement : sans ces
+     * valeurs, la devise retomberait a l euro et le reglement deja saisi
+     * s effacerait, alors que personne n y aurait touche.
+     *
+     * @param array<string, mixed> $ligne
+     */
+    private static function memoire(int $id, array $ligne): string
+    {
+        $garde = [
+            'transporteur_id' => (string) ($ligne['compagnie_id'] ?? ''),
+            'devise_compagnie' => (string) ($ligne['devise'] ?? 'EUR'),
+            'mode_reglement' => (string) ($ligne['mode_reglement'] ?? ''),
+            'numero_cheque' => (string) ($ligne['numero_cheque'] ?? ''),
+            'date_reglement' => (string) ($ligne['date_reglement'] ?? ''),
+            'poids_divers_kg' => self::champ($ligne['poids_divers'] ?? null, 1),
+            'poids_perissable_kg' => self::champ($ligne['poids_perissable'] ?? null, 1),
+            'motif_correction' => (string) ($ligne['motif_correction'] ?? ''),
+        ];
+
+        $html = '';
+        foreach ($garde as $champ => $valeur) {
+            $html .= '<input type="hidden" name="lignes[' . $id . '][' . $champ . ']" value="' . View::e($valeur) . '">';
+        }
+
+        return $html;
+    }
+
+    /** Le nombre tel que le script le relira : un point, pas d espace. */
+    private static function nombreMachine(mixed $valeur): string
+    {
+        return $valeur === null ? '' : (string) (float) $valeur;
     }
 
     /** @param array<string, mixed> $ligne */
@@ -376,7 +494,7 @@ final class RapprochementEnvois
                 . '<p><strong>Observation :</strong> ' . self::valeur($ligne['observation']) . '</p>'
                 . '</div>';
 
-            return '<tr class="lbp-rappro-panneau" id="rappro-panneau-' . $id . '" hidden><td colspan="12">' . $alerte . $lecture . '</td></tr>';
+            return '<tr class="lbp-rappro-panneau" id="rappro-panneau-' . $id . '" hidden><td colspan="13">' . $alerte . $lecture . '</td></tr>';
         }
 
         $devises = [];
@@ -427,7 +545,7 @@ final class RapprochementEnvois
             . '<button type="submit" class="rh-filter-btn rh-filter-btn--primary">Enregistrer le rapprochement</button>'
             . '</div></form>';
 
-        return '<tr class="lbp-rappro-panneau" id="rappro-panneau-' . $id . '" hidden><td colspan="12">' . $alerte . $rappel . $formulaire . '</td></tr>';
+        return '<tr class="lbp-rappro-panneau" id="rappro-panneau-' . $id . '" hidden><td colspan="13">' . $alerte . $rappel . $formulaire . '</td></tr>';
     }
 
     /** @param array<string, mixed> $t */
@@ -695,6 +813,32 @@ final class RapprochementEnvois
             . '.lbp-rappro-filtres-grille{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}'
             . '.lbp-rappro-bascule{display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:#0f766e;padding:0 14px;min-height:42px;border:1px solid #0f766e;border-radius:10px;background:#f0fdfa}'
             . '.lbp-rappro-table-enveloppe{overflow-x:auto}'
+            // La grille de saisie : des cases qui se donnent a remplir, et des
+            // colonnes grisees qui disent « ceci vient du logiciel ».
+            . '.lbp-rappro-table.is-saisissable th,.lbp-rappro-table.is-saisissable td{padding-left:9px;padding-right:9px}'
+            // Treize colonnes ne tiennent pas sur une seule ligne d en-tete :
+            // les replier sur deux rend le tableau lisible sans defilement.
+            . '.lbp-rappro-table.is-saisissable th{white-space:normal;max-width:98px;line-height:1.25}'
+            . '.lbp-rappro-table.is-saisissable .lbp-rappro-sous{max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}'
+            . '.lbp-rappro-case{width:100%;min-width:62px;border:1px solid transparent;border-radius:6px;background:#fff;padding:5px 7px;font:inherit;font-size:13px;color:#0f172a}'
+            . '.lbp-rappro-case--nombre,.lbp-rappro-case--decimal{text-align:right;font-variant-numeric:tabular-nums}'
+            . '.lbp-rappro-case--texte{min-width:100px}'
+            . '.lbp-rappro-case:hover{border-color:#cbd5e1}'
+            . '.lbp-rappro-case:focus{outline:none;border-color:#0f766e;box-shadow:0 0 0 3px rgba(15,118,110,.15);background:#f0fdfa}'
+            . '.lbp-rappro-case::placeholder{color:#cbd5e1}'
+            . '.lbp-rappro-auto{background:#f8fafc;color:#475569}'
+            . '.lbp-rappro-table.is-saisissable td{vertical-align:middle}'
+            . '.lbp-rappro-ligne.is-modifiee>td{background:#fffbeb}'
+            . '.lbp-rappro-ligne.is-modifiee>td:first-child{box-shadow:inset 3px 0 0 #f59e0b}'
+            . '.lbp-rappro-ecart-vif{font-variant-numeric:tabular-nums}'
+            // L ecart tient sur une ligne : replie, la pastille devenait une
+            // colonne haute et illisible, juste la ou l oeil doit se poser.
+            . '.lbp-rappro-table td[data-rappro-ecart] .finea-badge{white-space:nowrap}'
+            . '.lbp-rappro-observation{max-width:220px;color:#475569}'
+            . '.lbp-rappro-barre{position:sticky;bottom:0;z-index:5;display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:12px;padding:12px 16px;background:#0f172a;border-radius:12px;box-shadow:0 -6px 18px rgba(15,23,42,.12)}'
+            . '.lbp-rappro-barre-compte{font-size:13px;font-weight:700;color:#fff}'
+            . '.lbp-rappro-barre-note{font-size:12px;color:#94a3b8;flex:1 1 220px}'
+            . '@media(max-width:640px){.lbp-rappro-barre{flex-direction:column;align-items:stretch}}'
             . '.lbp-rappro-table{width:100%;font-size:13px}'
             . '.lbp-rappro-table th{white-space:nowrap}'
             . '.lbp-rappro-droite{text-align:right}'
@@ -735,6 +879,71 @@ final class RapprochementEnvois
             . 'var ouvert=panneau.hasAttribute("hidden");'
             . 'if(ouvert){panneau.removeAttribute("hidden");}else{panneau.setAttribute("hidden","hidden");}'
             . 'bouton.setAttribute("aria-expanded",ouvert?"true":"false");'
-            . '});});})();</script>';
+            . '});});'
+            . self::scriptGrille()
+            . '})();</script>';
+    }
+
+    /**
+     * La grille de saisie : l ecart suit la frappe, et seules les lignes
+     * touchees partent au serveur.
+     *
+     * Montrer l ecart seulement apres enregistrement obligerait a enregistrer
+     * pour savoir si on s est trompe. Ici le chiffre bouge sous les doigts,
+     * comme dans le tableur ou la direction travaille aujourd hui.
+     */
+    private static function scriptGrille(): string
+    {
+        return 'var grille=document.querySelector("[data-rappro-grille]");'
+            . 'if(!grille){return;}'
+            . 'var barre=grille.querySelector("[data-rappro-barre]");'
+            . 'var compte=grille.querySelector("[data-rappro-compte]");'
+            . 'var touchees={};'
+            // Une virgule au clavier francais vaut un point : refuser la saisie
+            // du comptable pour un signe de ponctuation serait absurde.
+            . 'function lire(v){if(v===null){return null;}v=String(v).replace(/\s/g,"").replace(",",".");if(v===""){return null;}var n=parseFloat(v);return isNaN(n)?null:n;}'
+            . 'function format(n,d){return n.toFixed(d).replace(".",",").replace(/\B(?=(\d{3})+(?!\d))/g," ");}'
+            . 'function peindre(cellule,ecart,unite,d){'
+            . 'if(ecart===null){cellule.innerHTML="<span class=\'lbp-rappro-vide\'>&mdash;</span>";return;}'
+            . 'var signe=ecart>0?"+":(ecart<0?"\u2212":"");'
+            . 'var ton=Math.abs(ecart)<0.0001?"success":"warning";'
+            . 'cellule.innerHTML="<span class=\'finea-badge finea-badge--"+ton+" lbp-rappro-ecart-vif\'>"+signe+format(Math.abs(ecart),d)+unite+"</span>";'
+            . '}'
+            . 'function recalculer(tr){'
+            . 'var colisAgence=lire(tr.getAttribute("data-colis-agence"));'
+            . 'var poidsAgence=lire(tr.getAttribute("data-poids-agence"));'
+            . 'var colis=lire((tr.querySelector("[data-rappro-champ=colis_lta]")||{}).value);'
+            . 'var poids=lire((tr.querySelector("[data-rappro-champ=poids_lta_kg]")||{}).value);'
+            . 'var cColis=tr.querySelector("[data-rappro-ecart=colis]");'
+            . 'var cPoids=tr.querySelector("[data-rappro-ecart=poids]");'
+            . 'if(cColis){peindre(cColis,(colis===null||colisAgence===null)?null:(colis-colisAgence),"",0);}'
+            . 'if(cPoids){peindre(cPoids,(poids===null||poidsAgence===null)?null:(poids-poidsAgence)," kg",1);}'
+            . '}'
+            . 'function etat(){'
+            . 'var n=Object.keys(touchees).length;'
+            . 'if(n===0){barre.setAttribute("hidden","hidden");return;}'
+            . 'barre.removeAttribute("hidden");'
+            . 'compte.textContent=n===1?"1 ligne modifi\u00e9e, pas encore enregistr\u00e9e":(n+" lignes modifi\u00e9es, pas encore enregistr\u00e9es");'
+            . '}'
+            . 'grille.querySelectorAll("[data-rappro-champ]").forEach(function(champ){'
+            . 'champ.addEventListener("input",function(){'
+            . 'var tr=champ.closest("[data-rappro-ligne]");'
+            . 'if(!tr){return;}'
+            . 'var id=tr.getAttribute("data-rappro-ligne");'
+            // Revenir a la valeur de depart, c est ne plus avoir rien modifie.
+            . 'var bouge=false;'
+            . 'tr.querySelectorAll("[data-rappro-champ]").forEach(function(c){'
+            . 'if(c.value!==c.getAttribute("data-rappro-initial")){bouge=true;}});'
+            . 'if(bouge){touchees[id]=true;tr.classList.add("is-modifiee");}'
+            . 'else{delete touchees[id];tr.classList.remove("is-modifiee");}'
+            . 'recalculer(tr);etat();'
+            . '});});'
+            // Envoyer les lignes intactes les reecrirait pour rien, et
+            // horodaterait un rapprochement que personne n a refait.
+            . 'grille.addEventListener("submit",function(){'
+            . 'grille.querySelectorAll("[data-rappro-ligne]").forEach(function(tr){'
+            . 'if(touchees[tr.getAttribute("data-rappro-ligne")]){return;}'
+            . 'tr.querySelectorAll("input[name^=lignes]").forEach(function(c){c.removeAttribute("name");});'
+            . '});});';
     }
 }

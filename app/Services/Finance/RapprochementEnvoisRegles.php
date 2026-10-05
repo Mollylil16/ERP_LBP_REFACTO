@@ -282,13 +282,23 @@ final class RapprochementEnvoisRegles
             }
         }
 
-        // Corriger sans dire pourquoi reviendrait à effacer l'écart en silence.
+        /*
+         * Corriger sans dire pourquoi reviendrait a effacer l ecart en silence.
+         *
+         * Mais ce motif ne vaut que pour une CORRECTION : revenir sur un
+         * chiffre deja enregistre. La regle se comparait a colis_declare, une
+         * cle que la requete ne ramene jamais — elle etait donc toujours nulle,
+         * et la premiere saisie de la facture se voyait reclamer un motif de
+         * correction alors qu elle ne corrigeait rien.
+         */
         $motif = trim((string) ($saisie['motif_correction'] ?? ''));
-        $corrige = ($colis !== null && $colis !== self::entier($ligne['colis_declare'] ?? null))
-            || ($poids !== null && $poids !== self::decimal($ligne['poids_declare'] ?? null));
+        $colisEnregistre = self::entier($ligne['colis_lta'] ?? null);
+        $poidsEnregistre = self::decimal($ligne['poids_lta'] ?? null);
+        $corrige = ($colisEnregistre !== null && $colis !== null && $colis !== $colisEnregistre)
+            || ($poidsEnregistre !== null && $poids !== null && abs($poids - $poidsEnregistre) > 0.001);
 
         if ($corrige && $motif === '') {
-            $erreurs[] = "Corriger les colis ou le poids du document exige un motif : c'est lui que la direction lira.";
+            $erreurs[] = "Revenir sur les colis ou le poids deja enregistres exige un motif : c'est lui que la direction lira.";
         }
 
         $mode = (string) ($saisie['mode_reglement'] ?? '');

@@ -131,6 +131,62 @@ final class RapprochementEnvoisService
     }
 
     /**
+     * Enregistre d un coup les lignes saisies a meme le tableau.
+     *
+     * Le comptable depouille une facture hebdomadaire : il remplit six ou dix
+     * lignes d affilee, comme dans son tableur, puis enregistre une fois. Une
+     * ligne refusee n empeche pas les autres de passer — sans quoi une faute de
+     * frappe sur la derniere ligne ferait perdre tout le depouillement.
+     *
+     * @param array<int|string, array<string, mixed>> $lignes
+     * @return array{0:string, 1:array<int, string>} message, erreurs
+     */
+    public function enregistrerLot(array $lignes, RapprochementEnvoisAcces $acces): array
+    {
+        if (!$acces->peutSaisir()) {
+            return ['', ['Votre profil consulte le rapprochement sans le modifier.']];
+        }
+
+        $enregistrees = 0;
+        $erreurs = [];
+
+        foreach ($lignes as $id => $saisie) {
+            $envoiId = (int) $id;
+
+            if ($envoiId <= 0 || !is_array($saisie)) {
+                continue;
+            }
+
+            [, $erreursLigne] = $this->enregistrer($envoiId, $saisie, $acces);
+
+            if ($erreursLigne === []) {
+                $enregistrees++;
+
+                continue;
+            }
+
+            // Nommer le jour : avec dix lignes a l ecran, « le poids ne peut
+            // pas etre negatif » ne dit pas laquelle refuse.
+            $ligne = $this->ligne($envoiId);
+            $jour = $ligne === null ? ('envoi #' . $envoiId) : ('envoi du ' . $this->jour((string) $ligne['date']));
+
+            foreach ($erreursLigne as $erreur) {
+                $erreurs[] = ucfirst($jour) . ' : ' . $erreur;
+            }
+        }
+
+        if ($enregistrees === 0) {
+            return ['', $erreurs === [] ? ['Aucune ligne modifiee : rien a enregistrer.'] : $erreurs];
+        }
+
+        $message = $enregistrees === 1
+            ? '1 envoi rapproche.'
+            : $enregistrees . ' envois rapproches.';
+
+        return [$message, $erreurs];
+    }
+
+    /**
      * Enregistre la saisie du comptable.
      *
      * @param array<string, mixed> $saisie

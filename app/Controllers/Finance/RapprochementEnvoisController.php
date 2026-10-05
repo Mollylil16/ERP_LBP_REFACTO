@@ -74,6 +74,53 @@ final class RapprochementEnvoisController extends FinanceBaseController
         $this->retour($retour);
     }
 
+    /**
+     * Enregistre le tableau entier, comme on enregistre un classeur.
+     *
+     * Le navigateur n envoie que les lignes touchees : le script marque celles
+     * qui ont change et laisse les autres de cote. Une ligne refusee ne fait
+     * pas perdre les autres, et le message dit laquelle.
+     */
+    public function enregistrerLot(): void
+    {
+        $acces = $this->acces();
+        $retour = 'finance/rapprochement-envois' . $this->requete();
+
+        if (!Csrf::verify($_POST['_csrf_token'] ?? null)) {
+            Session::flash('error', 'Session expirée ou requête invalide. Veuillez réessayer.');
+            $this->retour($retour);
+
+            return;
+        }
+
+        $lignes = $_POST['lignes'] ?? [];
+
+        if (!is_array($lignes) || $lignes === []) {
+            Session::flash('error', "Aucune ligne modifiée : rien n'a été enregistré.");
+            $this->retour($retour);
+
+            return;
+        }
+
+        try {
+            [$message, $erreurs] = $this->service->enregistrerLot($lignes, $acces);
+        } catch (Throwable $e) {
+            error_log('[Rapprochement envois] enregistrerLot : ' . $e->getMessage());
+            Session::flash('error', "Le tableau n'a pas été enregistré. Rien n'a été modifié : réessayez.");
+            $this->retour($retour);
+
+            return;
+        }
+
+        if ($message !== '') {
+            Session::flash('success', $message . ($erreurs === [] ? '' : ' ' . implode(' ', $erreurs)));
+        } else {
+            Session::flash('error', implode(' ', $erreurs));
+        }
+
+        $this->retour($retour);
+    }
+
     /** Ouvre un envoi : une date, une compagnie, les agences qui ont chargé. */
     public function ouvrir(): void
     {
