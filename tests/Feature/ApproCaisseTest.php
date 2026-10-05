@@ -228,10 +228,16 @@ final class ApproCaisseTest extends TestCase
     {
         $source = (string) file_get_contents(BASE_PATH . '/app/Controllers/Finance/DemandesFondsController.php');
 
+        /*
+         * Quatre endroits, et ils doivent rester d'accord : valider(),
+         * rejeter(), le bouton de la liste et celui de la fiche détaillée.
+         * Ce dernier manquait — le comptable lisait la demande sans pouvoir
+         * la trancher. Voir [[GestionFondsCircuitTest]].
+         */
         self::assertSame(
-            3,
+            4,
             substr_count($source, "Auth::hasAnyRole(['dg', 'assistant_dg', 'comptable'])"),
-            'Valider, rejeter, et le bouton qui les propose.'
+            'Valider, rejeter, et les deux écrans qui proposent le bouton.'
         );
 
         // La responsable RH entre dans la gestion des fonds.
