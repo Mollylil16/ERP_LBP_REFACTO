@@ -49,7 +49,7 @@ class GroupageCodesNonPayesController extends LogistiqueBaseController
             $dateFin = $dateDebut;
         }
 
-        $selectedAgence = trim((string) ($_GET['agence_id'] ?? 'all'));
+        $selectedAgence = $this->agenceDemandee();
         $typeTransport = trim((string) ($_GET['type_transport'] ?? 'all'));
         $dateFilterType = trim((string) ($_GET['date_filter_type'] ?? 'facture'));
         $search = trim((string) ($_GET['q'] ?? ''));
@@ -149,7 +149,7 @@ class GroupageCodesNonPayesController extends LogistiqueBaseController
             $dateFin = $dateDebut;
         }
 
-        $selectedAgence = trim((string) ($_GET['agence_id'] ?? 'all'));
+        $selectedAgence = $this->agenceDemandee();
         $typeTransport = trim((string) ($_GET['type_transport'] ?? 'all'));
         $dateFilterType = trim((string) ($_GET['date_filter_type'] ?? 'facture'));
         $search = trim((string) ($_GET['q'] ?? ''));
@@ -201,7 +201,7 @@ class GroupageCodesNonPayesController extends LogistiqueBaseController
             $dateFin = $dateDebut;
         }
 
-        $selectedAgence = trim((string) ($_GET['agence_id'] ?? 'all'));
+        $selectedAgence = $this->agenceDemandee();
         $typeTransport = trim((string) ($_GET['type_transport'] ?? 'all'));
         $dateFilterType = trim((string) ($_GET['date_filter_type'] ?? 'facture'));
         $search = trim((string) ($_GET['q'] ?? ''));
@@ -345,6 +345,40 @@ class GroupageCodesNonPayesController extends LogistiqueBaseController
      * @param array<string,string> $params
      * @return array<string,mixed>
      */
+    /**
+     * L agence a lire, bornee a celle de l utilisateur quand son role l exige.
+     *
+     * L ecran ne bornait personne : un chef d agence y lisait la dette client
+     * de tout le reseau, et l export la lui donnait en fichier, telephones
+     * compris. Le verrou vit ici et non dans index(), parce que les deux
+     * exports relisent la meme chose : l y oublier aurait laisse l adresse
+     * suffire a le contourner.
+     *
+     * La liste de reference du logiciel dit qui est borne ; on la lit plutot
+     * que d en ecrire une seconde qui divergerait au premier role ajoute. Le
+     * responsable groupage general n en est pas — son role figure dans les
+     * portees reseau, et il suit bien les trois agences.
+     */
+    private function agenceDemandee(): string
+    {
+        $demandee = trim((string) ($_GET['agence_id'] ?? 'all'));
+
+        if (Auth::isAdmin() || Auth::hasAnyRole(Auth::ROLES_PORTEE_RESEAU)) {
+            return $demandee;
+        }
+
+        if (!Auth::hasAnyRole(Auth::ROLES_PORTEE_AGENCE)) {
+            return $demandee;
+        }
+
+        /*
+         * Sans agence de rattachement, il ne lit rien : lui ouvrir le reseau
+         * serait exactement la fuite qu on ferme ici. Zero ne correspond a
+         * aucune agence, la requete ne rendra donc aucune ligne.
+         */
+        return (string) (int) (Auth::agenceId() ?? 0);
+    }
+
     private function fetchData(PDO $pdo, array $params): array
     {
         $dateDebut = $params['date_debut'];
@@ -502,19 +536,33 @@ class GroupageCodesNonPayesController extends LogistiqueBaseController
         ];
 
         foreach ($rows as &$r) {
-            // Groupe affiché : priorité au groupe_code saisi (ex: A1, A2), puis à l'expédition ERP, sinon 'Sans Groupe'
-            $groupeDisplay = !empty($r['groupe_code'])
-                ? trim($r['groupe_code'])
-                : (!empty($r['expedition_reference']) ? trim($r['expedition_reference']) : 'Sans Groupe');
-
-            $r['groupe_display'] = $groupeDisplay;
-
             // Date formatée
             $rawDate = !empty($r['date_emission']) ? $r['date_emission'] : $r['colis_date_creation'];
             $r['date_formatted'] = date('d/m/Y', strtotime($rawDate));
 
             // Agence d'affichage
             $r['agence_nom'] = $r['agence_facture_nom'] ?? $r['agence_depart_nom'] ?? 'N/A';
+
+            /*
+             * Groupe affiché : le groupe saisi s'il existe, sinon L'AGENCE.
+             *
+             * Le responsable groupage range ses codes sous A1, A2 et A3 — ses
+             * trois agences. Le logiciel sait affecter ce groupe colis par
+             * colis, mais personne ne s'en est jamais servi : sur 802 colis en
+             * production, aucun n'en porte. Tout retombait donc dans un seul
+             * tas « Sans Groupe », et c'est pourquoi son classeur a survécu à
+             * l'écran.
+             *
+             * L'agence est le repli juste : elle donne exactement son
+             * découpage, sans qu'il ait rien à saisir. La référence
+             * d'expédition, qui servait de repli avant, éclatait au contraire
+             * le relevé en autant de groupes que de départs.
+             */
+            $groupeDisplay = !empty($r['groupe_code'])
+                ? trim((string) $r['groupe_code'])
+                : (string) $r['agence_nom'];
+
+            $r['groupe_display'] = $groupeDisplay;
 
             // Détection Export
             $isExport = str_contains(strtolower(($r['type_expediteur'] ?? '') . ' ' . ($r['trajet_type_transport'] ?? '') . ' ' . ($r['trajet_code'] ?? '') . ' ' . ($r['colis_trajet'] ?? '')), 'export');
