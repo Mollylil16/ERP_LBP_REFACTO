@@ -335,6 +335,10 @@ final class ModuleDashboardService
                 ['key' => 'prise_en_compte', 'label' => 'Prise en Compte', 'icon' => 'PEC', 'url' => '/finance/fonds/prise-en-compte', 'available' => true, 'group' => 'Gestion des Fonds'],
                 ['key' => 'imputation', 'label' => 'Imputation', 'icon' => 'IMP', 'url' => '/finance/fonds/imputation', 'available' => true, 'group' => 'Gestion des Fonds'],
                 ['key' => 'fonds_historique', 'label' => 'Historique', 'icon' => 'HIS', 'url' => '/finance/fonds/historique', 'available' => true, 'group' => 'Gestion des Fonds'],
+                // Les entrees et les sorties du jour, tiroir par tiroir. Reserve
+                // a qui tient ou controle une caisse : l'ecran dit ce qu'une
+                // agence a encaisse et decaisse, au franc.
+                ['key' => 'mouvements-caisse', 'label' => 'Mouvements de Caisse', 'icon' => 'MVT', 'url' => '/finance/mouvements-caisse', 'available' => \App\Security\MouvementsCaisseAcces::peutOuvrir(), 'group' => 'Gestion des Fonds'],
                 ['key' => 'factures', 'label' => 'Factures Clients', 'icon' => 'FAC', 'url' => '/finance/factures', 'available' => true, 'group' => 'Facturation & Caisse'],
                 ['key' => 'portefeuilles', 'label' => 'Portefeuilles Clients', 'icon' => 'WAL', 'url' => '/finance/portefeuilles', 'available' => true, 'group' => 'Facturation & Caisse'],
                 ['key' => 'clotures', 'label' => 'Points de Caisse', 'icon' => 'CLT', 'url' => '/finance/clotures', 'available' => true, 'group' => 'Facturation & Caisse'],

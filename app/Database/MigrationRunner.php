@@ -53,6 +53,86 @@ class MigrationRunner
         $this->createDossiersEnvoiTables();
         $this->createApproCaisseTable();
         $this->createComptesAuditTable();
+        $this->createMouvementsCaisseTables();
+    }
+
+    /**
+     * Mouvements de caisse : les entrées et les sorties d'un tiroir, par jour.
+     *
+     * Deux retouches de structure, aucune donnée touchée.
+     *
+     * Les caisses, d'abord : lbp_caisses n'en admettait qu'une par agence et
+     * sans nom, quand la direction en tient plusieurs et les appelle par leur
+     * nom. L'unique sur agency_id est donc retiré — mais seulement après avoir
+     * créé l'index qui le remplace, sinon InnoDB refuse la suppression : c'est
+     * ce même index qui porte la clé étrangère vers company_sites.
+     *
+     * Les mouvements, ensuite : la table ne disait que « combien » et « quand
+     * enregistré ». Elle dit maintenant à quel cadre, quel dossier, quel tiers
+     * et quel jour de caisse la somme appartient. Le jour reste nul sur les
+     * lignes antérieures : il est relu par COALESCE(date_mouvement,
+     * DATE(created_at)) plutôt que par une mise à jour en masse, run() passant
+     * à chaque requête HTTP.
+     */
+    private function createMouvementsCaisseTables(): void
+    {
+        try {
+            if ($this->schema->tableExists('lbp_caisses')) {
+                $this->addColumnIfMissing('lbp_caisses', 'nom', "VARCHAR(80) NOT NULL DEFAULT ''");
+                $this->addColumnIfMissing('lbp_caisses', 'code', 'VARCHAR(30) NULL');
+                $this->addColumnIfMissing('lbp_caisses', 'type', "ENUM('EXPLOITATION', 'FONCTIONNEMENT') NOT NULL DEFAULT 'EXPLOITATION'");
+                $this->addColumnIfMissing('lbp_caisses', 'actif', 'TINYINT(1) NOT NULL DEFAULT 1');
+
+                // Dans cet ordre, et pas l'inverse : la clé étrangère doit
+                // toujours trouver un index dont agency_id est en tête.
+                $this->addIndexIfMissing('lbp_caisses', 'idx_lbp_caisses_agence', 'agency_id, actif');
+
+                /*
+                 * L unique ne porte pas le nom que ce fichier lui donne.
+                 *
+                 * Le CREATE TABLE d ici le nomme « uniq_lbp_caisses_agency »,
+                 * mais la table existait deja en production, creee hors
+                 * migration : MySQL y a nomme l index d apres la colonne, et
+                 * il s appelle « agency_id ». Verifie sur la base du
+                 * 10/10/2026. Chercher le nom ecrit ici revenait a ne rien
+                 * retirer du tout, et une agence serait restee limitee a une
+                 * seule caisse malgre le reste du travail.
+                 *
+                 * On lit donc le nom reel plutot que de le deviner.
+                 */
+                $this->dropUniqueOnColumn('lbp_caisses', 'agency_id');
+            }
+
+            if ($this->schema->tableExists('lbp_mouvements_caisse')) {
+                $this->addColumnIfMissing('lbp_mouvements_caisse', 'cadre', "VARCHAR(30) NOT NULL DEFAULT 'AUTRE'");
+                $this->addColumnIfMissing('lbp_mouvements_caisse', 'dossier_numero', 'VARCHAR(60) NULL');
+                $this->addColumnIfMissing('lbp_mouvements_caisse', 'libelle', 'VARCHAR(255) NULL');
+                $this->addColumnIfMissing('lbp_mouvements_caisse', 'reference', 'VARCHAR(80) NULL');
+                $this->addColumnIfMissing('lbp_mouvements_caisse', 'mode_reglement', "VARCHAR(30) NOT NULL DEFAULT 'ESPECES'");
+                $this->addColumnIfMissing('lbp_mouvements_caisse', 'tiers', 'VARCHAR(180) NULL');
+                $this->addColumnIfMissing('lbp_mouvements_caisse', 'agence_id', 'INT UNSIGNED NULL');
+
+                /*
+                 * La caisse nommee devient facultative : l unite de cet ecran
+                 * est l agence, comme partout ailleurs dans le logiciel. La
+                 * table lbp_caisses est vide chez LBP — l exiger rendait la
+                 * saisie impossible dans les cinq agences.
+                 */
+                $this->rendreColonneNullable('lbp_mouvements_caisse', 'caisse_id', 'INT UNSIGNED NULL');
+                $this->addColumnIfMissing('lbp_mouvements_caisse', 'devise', "CHAR(3) NOT NULL DEFAULT 'XOF'");
+                $this->addColumnIfMissing('lbp_mouvements_caisse', 'date_mouvement', 'DATE NULL');
+
+                // Un mouvement d'argent ne s'efface pas : il s'annule, en
+                // gardant la main et l'heure de celui qui l'a retiré.
+                $this->addColumnIfMissing('lbp_mouvements_caisse', 'annule_le', 'DATETIME NULL');
+                $this->addColumnIfMissing('lbp_mouvements_caisse', 'annule_par', 'INT NULL');
+
+                $this->addIndexIfMissing('lbp_mouvements_caisse', 'idx_mvt_caisse_jour', 'date_mouvement, type');
+                $this->addIndexIfMissing('lbp_mouvements_caisse', 'idx_mvt_caisse_agence_jour', 'agence_id, date_mouvement');
+            }
+        } catch (\Throwable $e) {
+            error_log('[MigrationRunner Warning] createMouvementsCaisseTables: ' . $e->getMessage());
+        }
     }
 
     /**
@@ -2729,6 +2809,92 @@ class MigrationRunner
     {
         if (!$this->schema->indexExists($table, $index)) {
             $this->pdo->exec("CREATE UNIQUE INDEX {$index} ON {$table} ({$columns})");
+        }
+    }
+
+    /**
+     * Retire un index, s'il est encore là.
+     *
+     * Sert aux contraintes d'unicité que la règle métier a rendues fausses. Un
+     * index qui porte une clé étrangère ne peut pas être retiré seul : il faut
+     * d'abord créer celui qui la portera. L'échec est capturé pour la même
+     * raison que les autres ALTER d'ici — run() tourne à chaque requête HTTP,
+     * et le schéma qui résiste ne doit pas renvoyer l'utilisateur à une page
+     * blanche.
+     */
+    /**
+     * Retire l unique qui porte sur une colonne, quel que soit son nom.
+     *
+     * Un index cree hors migration porte le nom que le moteur lui a donne, et
+     * pas celui qu un CREATE TABLE ecrit plus tard imagine. Le chercher par
+     * son nom suppose connaitre l histoire de la base ; le chercher par sa
+     * colonne suppose seulement savoir ce qu on veut.
+     *
+     * La cle primaire est evidemment epargnee.
+     */
+    /**
+     * Rend une colonne nullable, et seulement si elle ne l est pas deja.
+     *
+     * Un MODIFY est idempotent dans son effet, mais run() tourne a chaque
+     * requete HTTP : le lancer a chaque fois reecrirait la definition de la
+     * colonne des milliers de fois par jour pour rien. On lit donc d abord.
+     */
+    private function rendreColonneNullable(string $table, string $colonne, string $definition): void
+    {
+        try {
+            $stmt = $this->pdo->prepare("
+                SELECT is_nullable
+                FROM information_schema.columns
+                WHERE table_schema = DATABASE()
+                  AND table_name = :table
+                  AND column_name = :colonne
+                LIMIT 1
+            ");
+            $stmt->execute(['table' => $table, 'colonne' => $colonne]);
+            $nullable = $stmt->fetchColumn();
+
+            if ($nullable === false || strtoupper((string) $nullable) === 'YES') {
+                return;
+            }
+
+            $this->pdo->exec("ALTER TABLE {$table} MODIFY {$colonne} {$definition}");
+        } catch (\Throwable $e) {
+            error_log('[MigrationRunner Warning] rendreColonneNullable ' . $table . '.' . $colonne . ' : ' . $e->getMessage());
+        }
+    }
+
+    private function dropUniqueOnColumn(string $table, string $colonne): void
+    {
+        try {
+            $stmt = $this->pdo->prepare("
+                SELECT DISTINCT index_name
+                FROM information_schema.statistics
+                WHERE table_schema = DATABASE()
+                  AND table_name = :table
+                  AND column_name = :colonne
+                  AND non_unique = 0
+                  AND index_name <> 'PRIMARY'
+            ");
+            $stmt->execute(['table' => $table, 'colonne' => $colonne]);
+
+            foreach ($stmt->fetchAll(\PDO::FETCH_COLUMN) ?: [] as $nom) {
+                $this->dropIndexIfExists($table, (string) $nom);
+            }
+        } catch (\Throwable $e) {
+            error_log('[MigrationRunner Warning] dropUniqueOnColumn ' . $table . '.' . $colonne . ' : ' . $e->getMessage());
+        }
+    }
+
+    private function dropIndexIfExists(string $table, string $index): void
+    {
+        if (!$this->schema->indexExists($table, $index)) {
+            return;
+        }
+
+        try {
+            $this->pdo->exec("DROP INDEX {$index} ON {$table}");
+        } catch (\Throwable $e) {
+            error_log('[MigrationRunner Warning] dropIndexIfExists ' . $table . '.' . $index . ' : ' . $e->getMessage());
         }
     }
 

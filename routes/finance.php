@@ -45,6 +45,22 @@ $router->group('/finance', function (Router $router): void {
     $router->post('/appro-caisse/{id}/valider', [\App\Controllers\Finance\ApproCaisseController::class, 'valider']);
     $router->post('/appro-caisse/{id}/rejeter', [\App\Controllers\Finance\ApproCaisseController::class, 'rejeter']);
 
+    // Mouvements de caisse : les entrees et les sorties du jour, lues dans LBP.
+    // La saisie ne sert qu a ce que LBP ne connait pas ; une ligne reprise d un
+    // paiement ou d un appro se corrige a sa source, pas ici.
+    $router->get('/mouvements-caisse', [\App\Controllers\Finance\MouvementsCaisseController::class, 'index']);
+    $router->post('/mouvements-caisse/versement', [\App\Controllers\Finance\MouvementsCaisseController::class, 'versement']);
+    $router->post('/mouvements-caisse/retrait', [\App\Controllers\Finance\MouvementsCaisseController::class, 'retrait']);
+    $router->post('/mouvements-caisse/{id}/supprimer', [\App\Controllers\Finance\MouvementsCaisseController::class, 'supprimer']);
+    // Les deux historiques, en page imprimable et en tableur. Les routes sont
+    // ecrites avant /{id}/supprimer dans l esprit, mais celle-la est en POST :
+    // aucune collision possible. Elles relisent les filtres de l ecran dans la
+    // meme requete GET, pour sortir exactement les lignes affichees.
+    $router->get('/mouvements-caisse/versements/pdf', [\App\Controllers\Finance\MouvementsCaisseController::class, 'versementsPdf']);
+    $router->get('/mouvements-caisse/versements/excel', [\App\Controllers\Finance\MouvementsCaisseController::class, 'versementsExcel']);
+    $router->get('/mouvements-caisse/retraits/pdf', [\App\Controllers\Finance\MouvementsCaisseController::class, 'retraitsPdf']);
+    $router->get('/mouvements-caisse/retraits/excel', [\App\Controllers\Finance\MouvementsCaisseController::class, 'retraitsExcel']);
+
     // Controle des caisses : l'ecran de surveillance de la direction
     $router->get('/controle-caisse', [\App\Controllers\Finance\ControleCaisseController::class, 'index']);
     $router->get('/controle-caisse/pdf', [\App\Controllers\Finance\ControleCaisseController::class, 'exportPdf']);
