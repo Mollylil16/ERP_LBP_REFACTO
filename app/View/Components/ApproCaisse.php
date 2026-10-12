@@ -39,6 +39,19 @@ final class ApproCaisse
             ['eyebrow' => 'Finance', 'class' => 'rh-hero-white']
         );
 
+        /*
+         * Le rappel des rôles passe AVANT les compteurs, et non après.
+         *
+         * Il était un paragraphe discret sous les filtres : le comptable
+         * arrivait sur un écran sans bouton « Nouvel approvisionnement », en
+         * concluait qu'il manquait de droits, et le signalait à la direction.
+         * Le 12/10/2026 encore. Ce qui explique l'absence d'un bouton doit se
+         * lire avant qu'on s'étonne de ne pas le trouver.
+         */
+        if (empty($p['peutSaisir'])) {
+            $html .= self::rappelDesRoles($p);
+        }
+
         $html .= self::kpis($p) . self::filtres($p);
 
         if (!empty($p['peutSaisir'])) {
@@ -47,10 +60,6 @@ final class ApproCaisse
                 self::formulaire($p),
                 "Il n'entre dans la caisse de l'agence qu'une fois validé par le comptable."
             );
-        } else {
-            // Un écran sans formulaire paraît amputé. Il dit donc à qui revient
-            // la saisie, plutôt que de laisser croire à une panne.
-            $html .= self::rappelDesRoles($p);
         }
 
         $html .= Ui::section(
@@ -118,14 +127,43 @@ final class ApproCaisse
      */
     private static function rappelDesRoles(array $p): string
     {
-        $texte = !empty($p['peutValider'])
-            ? "Vous validez ici les approvisionnements saisis par la caissière principale. "
-                . "Un appro validé entre dans la caisse de l'agence au jour de sa remise."
-            : "Vous consultez les approvisionnements. La saisie revient à la caissière principale, "
-                . "la validation au comptable — et un appro validé entre dans la caisse de l'agence "
-                . "au jour de sa remise, ce que votre comptage du soir doit retrouver.";
+        $valide = !empty($p['peutValider']);
 
-        return '<p class="lbp-appro-rappel">' . View::e($texte) . '</p>';
+        /*
+         * Le titre dit d'emblée ce que la personne PEUT faire, et le corps
+         * pourquoi elle ne peut pas saisir. Dans l'autre sens — « vous ne
+         * pouvez pas saisir » d'abord — l'écran se lit comme un refus, alors
+         * que le comptable y tient le rôle le plus important.
+         */
+        $titre = $valide
+            ? 'Vous validez les approvisionnements'
+            : 'Vous consultez les approvisionnements';
+
+        $texte = $valide
+            ? "La saisie revient à la caissière principale : c'est elle qui remet l'argent, et "
+                . "l'écran ne vous propose donc pas de formulaire. Vous validez ou rejetez ce "
+                . "qu'elle a saisi, sur la ligne même du tableau ci-dessous. Deux mains, deux "
+                . "rôles — celui qui remet l'argent n'est pas celui qui l'inscrit aux comptes."
+            : "La saisie revient à la caissière principale, la validation au comptable. Vous "
+                . "n'avez donc ni formulaire ni bouton, et ce n'est pas un défaut de vos droits.";
+
+        $suite = $valide
+            ? "Un appro validé entre dans la caisse de l'agence au jour de la REMISE, pas au jour "
+                . "de votre validation. Validez-le avant la fermeture de caisse de ce jour-là : "
+                . "après, l'écart déjà enregistré ne se recalcule plus."
+            : "Un appro validé entre dans la caisse de l'agence au jour de sa remise, ce que votre "
+                . "comptage du soir doit retrouver.";
+
+        return '<section class="lbp-appro-rappel' . ($valide ? ' is-acteur' : '') . '">'
+            . '<span class="lbp-appro-rappel-icone" aria-hidden="true">'
+            . '<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor"'
+            . ' stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">'
+            . '<circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line>'
+            . '<line x1="12" y1="8" x2="12.01" y2="8"></line></svg></span>'
+            . '<div><strong>' . View::e($titre) . '</strong>'
+            . '<p>' . View::e($texte) . '</p>'
+            . '<p class="lbp-appro-rappel-suite">' . View::e($suite) . '</p></div>'
+            . '</section>';
     }
 
     /** @param array<string, mixed> $p */
@@ -304,7 +342,17 @@ final class ApproCaisse
             . '.lbp-appro-grille{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}'
             . '.lbp-appro-actions{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:12px;flex-wrap:wrap}'
             . '.lbp-appro-note{font-size:12px;color:#5b6472}'
-            . '.lbp-appro-rappel{margin:0 0 18px;padding:12px 16px;border:1px solid #dbe3ef;border-left:4px solid #1e3a5f;border-radius:10px;background:#f8fafc;color:#334155;font-size:13px;line-height:1.55}'
+            // Le bandeau qui dit a qui revient la saisie : lu avant les
+            // compteurs, il evite de chercher un bouton qui n existe pas.
+            . '.lbp-appro-rappel{display:flex;gap:12px;margin:0 0 18px;padding:14px 18px;border:1px solid #dbe3ef;border-left:4px solid #1e3a5f;border-radius:12px;background:#f8fafc;color:#334155;font-size:13px;line-height:1.55}'
+            // Celui qui peut agir n est pas averti du meme ton que celui
+            // qui ne fait que lire : le vert dit « votre role est ici ».
+            . '.lbp-appro-rappel.is-acteur{border-left-color:#027a48;background:#f6fdf9;border-color:#cfead9}'
+            . '.lbp-appro-rappel-icone{flex-shrink:0;color:#1e3a5f;margin-top:1px}'
+            . '.lbp-appro-rappel.is-acteur .lbp-appro-rappel-icone{color:#027a48}'
+            . '.lbp-appro-rappel strong{display:block;font-size:14px;color:#0f172a;margin-bottom:4px}'
+            . '.lbp-appro-rappel p{margin:0}'
+            . '.lbp-appro-rappel-suite{margin-top:6px !important;color:#5b6472}'
             . '.lbp-appro-table-enveloppe{overflow-x:auto}'
             . '.lbp-appro-table{width:100%;font-size:13px}'
             . '.lbp-appro-table th{white-space:nowrap}'

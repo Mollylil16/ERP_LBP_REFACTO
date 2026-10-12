@@ -170,10 +170,27 @@ final class ApproCaisseTest extends TestCase
         $comptable = ApproCaisse::page($this->donnees(false, true));
 
         self::assertStringContainsString('La saisie revient à la caissière principale', $consultation);
-        self::assertStringContainsString('Vous validez ici les approvisionnements', $comptable);
+        self::assertStringContainsString('Vous validez les approvisionnements', $comptable);
+
+        /*
+         * Le bandeau passe AVANT les compteurs. Discret sous les filtres, il
+         * ne portait pas : le comptable arrivait sur un écran sans bouton
+         * « Nouvel approvisionnement », en concluait qu'il manquait de droits,
+         * et le signalait à la direction — le 12/10/2026 encore.
+         */
+        // Les positions dans le BALISAGE : les deux noms de classe
+        // apparaissent d'abord dans la feuille de style, en tête de page.
+        self::assertLessThan(
+            (int) strpos($comptable, 'class="lbp-appro-kpis"'),
+            (int) strpos($comptable, 'class="lbp-appro-rappel'),
+            "Ce qui explique l'absence du bouton doit se lire avant qu'on s'étonne de ne pas le trouver."
+        );
+
+        // Et il dit explicitement pourquoi il n'y a pas de formulaire.
+        self::assertStringContainsString('ne vous propose donc pas de formulaire', $comptable);
 
         // Celui qui saisit n'a pas besoin qu'on le lui explique.
-        self::assertStringNotContainsString('lbp-appro-rappel">', ApproCaisse::page($this->donnees(true)));
+        self::assertStringNotContainsString('lbp-appro-rappel"', ApproCaisse::page($this->donnees(true)));
     }
 
     /** Les boutons de décision n'apparaissent qu'au comptable, et sur ce qui attend. */
