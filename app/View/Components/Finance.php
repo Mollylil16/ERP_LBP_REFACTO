@@ -1288,6 +1288,17 @@ final class Finance
             $encEspeces = (float) ($activeReport['encaisseEspecesXof'] ?? $activeReport['encaisse_especes_xof'] ?? 0);
             // Le solde theorique oppose au comptage physique est le liquide attendu en tiroir.
             $soldeTheoriqueEspeces = (float) ($activeReport['soldeCaisseAgenceXof'] ?? $activeReport['solde_caisse_agence_xof'] ?? $encEspeces);
+            /*
+             * L appro de caisse : l argent que le siege a remis a l agence ce
+             * jour-la, et qui entre dans ce qu on attend du tiroir.
+             *
+             * Il etait fondu dans le solde theorique sans ligne a lui :
+             * l agence voyait son attendu augmenter sans savoir pourquoi, et
+             * devait ouvrir Finance / Appro Caisse pour comprendre. C est
+             * exactement le genre d ecart inexplique qui a fait accuser des
+             * agences a tort en septembre.
+             */
+            $approCaisse = (float) ($activeReport['approCaisseXof'] ?? $activeReport['appro_caisse_xof'] ?? 0);
             $encDigital = (float) ($activeReport['encaisseDigitalXof'] ?? $activeReport['encaisse_digital_xof'] ?? 0);
             $encCheque = (float) ($activeReport['encaisseChequeXof'] ?? $activeReport['encaisse_cheque_xof'] ?? 0);
             $encPortefeuille = (float) ($activeReport['encaissePortefeuilleXof'] ?? $activeReport['encaisse_portefeuille_xof'] ?? 0);
@@ -1374,14 +1385,30 @@ final class Finance
                 . '<div><small style="color:#64748b; font-weight:600;">' . ($estPerimetreAgent ? 'Encaissé par moi :' : 'Solde Caisse Live (Encaissé) :') . '</small><br><strong style="font-size:1.3rem; color:#16a34a;">' . number_format($totalEncaisseXof, 0, ',', ' ') . ' XOF</strong></div>'
                 . '<div><small style="color:#64748b; font-weight:600;">Reste à Recouvrer :</small><br><strong style="font-size:1.2rem; color:#dc2626;">' . number_format($totalRestantXof, 0, ',', ' ') . ' XOF</strong></div>'
                 . '</div>'
-                . '<div style="background:#f1f5f9; border:1px solid #cbd5e1; padding:0.75rem 1.25rem; font-size:0.82rem; color:#475569; display:flex; gap:1.5rem; flex-wrap:wrap; border-radius:0 0 10px 10px; margin-bottom:1rem;">'
+                . '<div style="background:#f1f5f9; border:1px solid #cbd5e1; padding:0.75rem 1.25rem; font-size:0.82rem; color:#475569; display:flex; gap:1.5rem; flex-wrap:wrap; border-radius:0 0 10px 10px; margin-bottom:' . ($approCaisse > 0 ? '0' : '1rem') . ';">'
                 . '<div><strong style="color:#0f172a;">Encaissements par Canal :</strong></div>'
                 . '<div><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#16a34a" stroke-width="2" style="display:inline; margin-right:3px; vertical-align:-2px;"><rect x="2" y="6" width="20" height="12" rx="2"></rect><circle cx="12" cy="12" r="3"></circle></svg> Espèces (Tiroir) : <strong style="color:#0f172a;">' . number_format($encEspeces, 0, ',', ' ') . ' XOF</strong></div>'
+                . ($approCaisse > 0 ? '<div title="Argent remis a l agence par le siege, valide par le comptable. Il s ajoute aux especes dans ce que le logiciel attend du tiroir."><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#0f766e" stroke-width="2" style="display:inline; margin-right:3px; vertical-align:-2px;"><line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline></svg> Appro de caisse (recu du siege) : <strong style="color:#0f766e;">+ ' . number_format($approCaisse, 0, ',', ' ') . ' XOF</strong></div>' : '')
                 . '<div><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#2563eb" stroke-width="2" style="display:inline; margin-right:3px; vertical-align:-2px;"><rect x="5" y="2" width="14" height="20" rx="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg> Mobile Money / Carte : <strong style="color:#0f172a;">' . number_format($encDigital, 0, ',', ' ') . ' XOF</strong></div>'
                 . '<div><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#d97706" stroke-width="2" style="display:inline; margin-right:3px; vertical-align:-2px;"><rect x="3" y="4" width="18" height="16" rx="2"></rect><line x1="7" y1="8" x2="17" y2="8"></line></svg> Chèques / Virements : <strong style="color:#0f172a;">' . number_format($encCheque, 0, ',', ' ') . ' XOF</strong></div>'
                 . ($encPortefeuille > 0 ? '<div><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#7c3aed" stroke-width="2" style="display:inline; margin-right:3px; vertical-align:-2px;"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"></path><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"></path><path d="M18 12a2 2 0 0 0 0 4h4v-4z"></path></svg> Portefeuille Client : <strong style="color:#0f172a;">' . number_format($encPortefeuille, 0, ',', ' ') . ' XOF</strong></div>' : '')
                 . ($encAutre > 0 ? '<div title="Encaissements dont le mode de règlement n\'est pas reconnu : à vérifier."><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#dc2626" stroke-width="2" style="display:inline; margin-right:3px; vertical-align:-2px;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg> Mode non identifié : <strong style="color:#dc2626;">' . number_format($encAutre, 0, ',', ' ') . ' XOF</strong></div>' : '')
-                . '</div>';
+                . '</div>'
+                /*
+                 * Le calcul ecrit en toutes lettres, et seulement quand un
+                 * appro existe : « especes + appro = attendu ». Donner le
+                 * resultat sans l operation laissait la caissiere deviner
+                 * d ou venait la difference.
+                 */
+                . ($approCaisse > 0
+                    ? '<div style="background:#f0fdfa; border:1px solid #99f6e4; border-top:0; padding:0.6rem 1.25rem; font-size:0.82rem; color:#0f766e; border-radius:0 0 10px 10px; margin-bottom:1rem;">'
+                        . '<strong>Attendu dans le tiroir ce jour :</strong> '
+                        . number_format($encEspeces, 0, ',', ' ') . ' XOF d\'espèces encaissées + '
+                        . number_format($approCaisse, 0, ',', ' ') . ' XOF d\'appro reçu du siège = <strong>'
+                        . number_format($soldeTheoriqueEspeces, 0, ',', ' ') . ' XOF</strong>. '
+                        . 'Le détail de l\'appro est dans Finance / Appro Caisse.'
+                        . '</div>'
+                    : '');
 
             // Ventilation des encaissements par type d'envoi (LB-CI, CA-CI, LB-FR, etc.)
             $breakdownList = $activeReport['breakdown_by_type'] ?? [];
