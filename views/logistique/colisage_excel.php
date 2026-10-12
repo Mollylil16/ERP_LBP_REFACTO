@@ -30,16 +30,16 @@ $dateDisplay = ($dateStart === $dateEnd)
 
     <table>
         <tr>
-            <td colspan="10" class="header-title">ERP LBP - SUIVI COLISAGE LOGISTIQUE (SANS MONTANT)</td>
+            <td colspan="13" class="header-title">ERP LBP - SUIVI COLISAGE LOGISTIQUE (SANS MONTANT)</td>
         </tr>
         <tr>
-            <td colspan="10" class="meta">
+            <td colspan="13" class="meta">
                 <b>Agence :</b> <?= View::e($agenceName) ?> | 
                 <b>Période :</b> <?= View::e($dateDisplay) ?> | 
                 <b>Généré le :</b> <?= date('d/m/Y H:i') ?>
             </td>
         </tr>
-        <tr><td colspan="10"></td></tr>
+        <tr><td colspan="13"></td></tr>
         <thead>
             <tr>
                 <th>N° Tracking</th>
@@ -47,6 +47,7 @@ $dateDisplay = ($dateStart === $dateEnd)
                 <th>Expéditeur</th>
                 <th>Destinataire</th>
                 <th>Téléphone Destinataire</th>
+                <th>Nature des produits</th>
                 <th>Nombre Colis</th>
                 <th>Poids Total (kg)</th>
                 <th>Trajet / Code Transport</th>
@@ -73,6 +74,12 @@ $dateDisplay = ($dateStart === $dateEnd)
                     <td><?= View::e($p['expediteur_name'] ?: 'Passager / Standard') ?></td>
                     <td><?= View::e($p['destinataire_name'] ?: 'Non renseigné') ?></td>
                     <td>'<?= View::e($p['destinataire_phone'] ?: '-') ?></td>
+                    <?php
+                    // Le tableur sert a trier et a recouper : la nature du
+                    // contenu y est aussi utile qu a l ecran.
+                    $nature = trim((string) ($p['marchandises'] ?? ''));
+                    ?>
+                    <td><?= View::e($nature !== '' ? $nature : 'Non précisée') ?></td>
                     <td class="center"><?= (int) $p['nombre_colis'] ?></td>
                     <td class="number"><?= number_format((float) $p['poids_total'], 2, '.', '') ?></td>
                     <td><?= View::e($trajetDisplay) ?></td>

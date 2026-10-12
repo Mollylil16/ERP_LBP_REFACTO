@@ -163,6 +163,7 @@ $dateDisplay = ($dateStart === $dateEnd)
                 <th>Expéditeur</th>
                 <th>Destinataire</th>
                 <th>Contact Destinataire</th>
+                <th>Nature des produits</th>
                 <th class="text-center">Nb Colis</th>
                 <th class="text-right">Poids (kg)</th>
                 <th>Trajet / Envoi</th>
@@ -174,7 +175,7 @@ $dateDisplay = ($dateStart === $dateEnd)
         <tbody>
             <?php if (empty($parcels)): ?>
                 <tr>
-                    <td colspan="11" class="text-center" style="padding: 20px; color: #64748b;">
+                    <td colspan="12" class="text-center" style="padding: 20px; color: #64748b;">
                         Aucun colis enregistré <?= View::e($dateDisplay) ?> pour cette sélection.
                     </td>
                 </tr>
@@ -190,6 +191,18 @@ $dateDisplay = ($dateStart === $dateEnd)
                         <td><?= View::e($p['expediteur_name'] ?: 'Passager') ?></td>
                         <td class="font-bold"><?= View::e($p['destinataire_name'] ?: 'N/A') ?></td>
                         <td><?= View::e($p['destinataire_phone'] ?: '-') ?></td>
+                        <?php
+                        /*
+                         * La nature des produits : deux colis de meme poids
+                         * n ont rien de commun, et l etat ne disait que le
+                         * poids. « Non precisee » plutot qu un tiret : c est
+                         * une saisie manquante, pas une absence de contenu.
+                         */
+                        $nature = trim((string) ($p['marchandises'] ?? ''));
+                        ?>
+                        <td><?= $nature === ''
+                            ? '<em style="color:#777">Non précisée</em>'
+                            : View::e($nature) ?></td>
                         <td class="text-center font-bold"><?= (int) $p['nombre_colis'] ?></td>
                         <td class="text-right font-bold"><?= number_format((float) $p['poids_total'], 2, ',', ' ') ?></td>
                         <td><?= View::e(str_replace('_', ' → ', $trajetDisplay)) ?></td>
@@ -202,7 +215,7 @@ $dateDisplay = ($dateStart === $dateEnd)
         </tbody>
         <tfoot>
             <tr style="background: #f8fafc; font-weight: bold;">
-                <td colspan="5" class="text-right">TOTAL GENERAL :</td>
+                <td colspan="6" class="text-right">TOTAL GENERAL :</td>
                 <td class="text-center"><?= number_format($totalNombreColis, 0, ',', ' ') ?></td>
                 <td class="text-right"><?= number_format($totalPoids, 2, ',', ' ') ?> kg</td>
                 <td colspan="4"></td>

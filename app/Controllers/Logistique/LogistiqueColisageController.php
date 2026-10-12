@@ -187,7 +187,26 @@ final class LogistiqueColisageController extends LogistiqueBaseController
                 COALESCE(u.full_name, 'Agent') AS agent_name,
                 t.code AS trajet_code,
                 t.libelle AS trajet_libelle,
-                t.type_transport AS trajet_transport
+                t.type_transport AS trajet_transport,
+                (
+                    /*
+                     * La nature des produits : vetements, poisson fume, gari.
+                     * L etat ne disait que le poids et le nombre, et deux
+                     * colis de meme poids n ont pourtant rien de commun — la
+                     * douane, le client et l agence de destination veulent
+                     * savoir ce qu il y a dedans.
+                     *
+                     * Sous-requete et non jointure : un colis porte plusieurs
+                     * marchandises, et une jointure l aurait compte autant de
+                     * fois, faussant le nombre de colis et le poids total.
+                     */
+                    SELECT GROUP_CONCAT(
+                               DISTINCT NULLIF(TRIM(m.description), '')
+                               ORDER BY m.description SEPARATOR ', '
+                           )
+                    FROM lbp_marchandises m
+                    WHERE m.colis_id = c.id
+                ) AS marchandises
             FROM lbp_colis c
             LEFT JOIN lbp_clients exp ON c.expediteur_id = exp.id
             LEFT JOIN lbp_clients dest ON c.destinataire_id = dest.id
