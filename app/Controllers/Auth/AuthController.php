@@ -31,8 +31,9 @@ class AuthController extends BaseController
     public function login(): void
     {
         if (!Csrf::verify($_POST['_csrf_token'] ?? null)) {
-            Session::flash('error', 'Jeton CSRF invalide.');
-            $this->back();
+            $this->jetonPerime();
+
+            return;
         }
 
         $result = $this->authService->login($_POST);
@@ -65,6 +66,41 @@ class AuthController extends BaseController
 
         Session::flash('success', 'Connexion réussie.');
         $this->redirect('/selection_portail');
+    }
+
+    /**
+     * Le jeton de la page de connexion n'est plus reconnu.
+     *
+     * Le logiciel repondait « Jeton CSRF invalide » puis renvoyait l'agent sur
+     * la page precedente. Deux defauts : la phrase ne veut rien dire pour lui,
+     * et le retour dependait du referent envoye par le navigateur — quand il
+     * manque, l'agent retombait sur la meme page morte et tournait en rond.
+     * C'est ce qui a tenu KOUAKOU SALES dehors du 09 au 13/10/2026 alors que
+     * son compte etait actif et son mot de passe bon.
+     *
+     * On reaffiche donc le formulaire NOUS-MEMES, avec un jeton frais et une
+     * phrase qui dit quoi faire. Rien n'est affaibli : personne n'est connecte,
+     * le mot de passe est redemande.
+     */
+    private function jetonPerime(): void
+    {
+        // Le navigateur n'a envoye aucun cookie de session : ce n'est pas une
+        // page trop vieille, c'est le navigateur qui refuse de les garder. Les
+        // deux causes n'appellent pas le meme geste, on ne les confond pas.
+        $cookieAbsent = empty($_COOKIE[session_name()]);
+
+        $message = $cookieAbsent
+            ? "Votre navigateur n'a pas accepté le cookie de connexion. Autorisez les cookies "
+                . "pour ce site, ou essayez une fenêtre de navigation privée, puis reconnectez-vous."
+            : "Cette page de connexion était ouverte depuis trop longtemps et n'était plus valide. "
+                . "Elle vient d'être rafraîchie : saisissez à nouveau votre mot de passe.";
+
+        Session::flash('error', $message);
+
+        // La vue regenere le jeton depuis la session courante : la page rendue
+        // ici est donc utilisable immediatement, sans que l'agent ait a la
+        // recharger lui-meme.
+        $this->view('auth/login', ['pageTitle' => 'Connexion']);
     }
 
     public function logout(): void
