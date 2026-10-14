@@ -12,6 +12,7 @@ use App\Helpers\View;
 use App\Middleware\AuthMiddleware;
 use App\Middleware\RoleMiddleware;
 use App\Repositories\Finance\DemandeFondsRepository;
+use App\Security\DemandesFondsAcces;
 use App\Services\Shared\AuditLogService;
 
 final class DemandesFondsController extends FinanceBaseController
@@ -63,7 +64,7 @@ final class DemandesFondsController extends FinanceBaseController
             'stats'       => $stats,
             'agences'     => $agences,
             'isSuperUser' => $isSuperUser,
-            'canValidate' => Auth::isAdmin() || Auth::hasAnyRole(['dg', 'assistant_dg', 'comptable']),
+            'canValidate' => DemandesFondsAcces::peutValider(),
         ]);
     }
 
@@ -155,14 +156,16 @@ final class DemandesFondsController extends FinanceBaseController
 
         $historique = $this->fondsRepo->getHistorique($demandeId);
 
+        $canValidate = DemandesFondsAcces::peutValider();
+
         /*
-         * Le comptable valide : valider() et la liste le reconnaissent depuis
-         * toujours, la fiche detaillee l avait oublie. Il y lisait donc une
-         * demande sans pouvoir la trancher, et devait repasser par la liste
-         * pour faire ce qu il avait le droit de faire sous les yeux.
+         * Le panneau de decaissement disparait pour qui a valide cette
+         * demande-la. Le laisser visible puis refuser au clic serait pire que
+         * de ne rien montrer : le comptable a cherche pendant deux jours une
+         * fenetre qu'il n'avait pas.
          */
-        $canValidate = Auth::isAdmin() || Auth::hasAnyRole(['dg', 'assistant_dg', 'comptable']);
-        $canDecaisser = Auth::isAdmin() || Auth::hasAnyRole(['dg', 'assistant_dg', 'caissiere_principale']);
+        $canDecaisser = DemandesFondsAcces::peutDecaisser()
+            && !DemandesFondsAcces::aDejaValide($demande->validateurId);
         $canImputer = Auth::isAdmin() || Auth::hasAnyRole(['dg', 'assistant_dg', 'comptable', 'chef_agence']) || (int) Auth::id() === $demande->demandeurId;
 
         $this->financeView('finance/fonds/show', 'Demande ' . $demande->numeroDemande . ' — LBP Finance', 'fonds', [
@@ -181,10 +184,8 @@ final class DemandesFondsController extends FinanceBaseController
     {
         AuthMiddleware::check();
 
-        // Le comptable valide au meme titre que la Direction, decide le
-        // 30/09/2026 : c'est lui qui devra imputer la depense.
-        if (!(Auth::isAdmin() || Auth::hasAnyRole(['dg', 'assistant_dg', 'comptable']))) {
-            Session::flash('error', 'Accès refusé. Seuls la Direction et le comptable peuvent valider les demandes de fonds.');
+        if (!DemandesFondsAcces::peutValider()) {
+            Session::flash('error', "Accès refusé. La validation des demandes de fonds revient à la Direction et à l'assistante DG. Le comptable, lui, procède au décaissement.");
             header('Location: ' . View::url('finance/fonds/' . $id));
             exit;
         }
@@ -217,8 +218,9 @@ final class DemandesFondsController extends FinanceBaseController
     {
         AuthMiddleware::check();
 
-        if (!(Auth::isAdmin() || Auth::hasAnyRole(['dg', 'assistant_dg', 'comptable']))) {
-            Session::flash('error', 'Accès refusé. Seuls la Direction et le comptable peuvent rejeter les demandes de fonds.');
+        // Rejeter, c'est trancher : meme main que valider, donc meme regle.
+        if (!DemandesFondsAcces::peutValider()) {
+            Session::flash('error', "Accès refusé. Le sort d'une demande de fonds se décide à la Direction et chez l'assistante DG.");
             header('Location: ' . View::url('finance/fonds/' . $id));
             exit;
         }
@@ -302,8 +304,11 @@ final class DemandesFondsController extends FinanceBaseController
          * Les caissieres d agence et les chefs d agence y avaient acces, ce qui
          * faisait autant de mains sur le tiroir que d agences, sans qu une
          * seule personne reponde du total decaisse.
+         *
+         * Le 14/10/2026 le comptable rejoint la caissiere principale, et
+         * l assistante DG s en retire : elle valide desormais, il decaisse.
          */
-        RoleMiddleware::check(['admin', 'dg', 'assistant_dg', 'caissiere_principale']);
+        RoleMiddleware::check(array_merge(['admin'], DemandesFondsAcces::ROLES_DECAISSEMENT));
 
         if (!Csrf::verify($_POST['_csrf_token'] ?? null)) {
             Session::flash('error', 'Session expirée ou requête invalide (CSRF).');
@@ -312,6 +317,29 @@ final class DemandesFondsController extends FinanceBaseController
         }
 
         $demandeId = (int) $id;
+        $demande = $this->fondsRepo->findDemandeById($demandeId);
+
+        if (!$demande) {
+            Session::flash('error', 'Demande de fonds introuvable.');
+            header('Location: ' . View::url('finance/fonds/prise-en-compte'));
+            exit;
+        }
+
+        /*
+         * Deux mains, toujours : qui a autorise la depense ne sort pas
+         * l argent de la meme demande. Le DG et l administrateur gardent les
+         * deux gestes pour qu un jour de conge ne bloque rien ; ce refus fait
+         * que ce cumul ne se referme jamais sur une demande precise.
+         */
+        if (DemandesFondsAcces::aDejaValide($demande->validateurId)) {
+            Session::flash(
+                'error',
+                "Vous avez vous-même validé cette demande : son décaissement revient à quelqu'un d'autre."
+            );
+            header('Location: ' . View::url('finance/fonds/' . $demandeId));
+            exit;
+        }
+
         $modePaiement = trim((string) ($_POST['mode_paiement'] ?? 'Espèces'));
 
         $ok = $this->fondsRepo->decaisserDemande($demandeId, (int) Auth::id(), $modePaiement);

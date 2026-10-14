@@ -25,24 +25,20 @@ final class GestionFondsCircuitTest extends TestCase
     public function test_la_fiche_montre_le_bouton_a_qui_a_le_droit_de_valider(): void
     {
         /*
-         * show() omettait le comptable, que valider() accepte. Il voyait donc
-         * la fiche sans pouvoir la trancher.
+         * show() omettait le comptable, que valider() acceptait. Il voyait donc
+         * la fiche sans pouvoir la trancher. Depuis le partage du 14/10/2026 il
+         * ne valide plus — mais le principe demeure : l'ecran et l'action
+         * doivent nommer les memes personnes, et c'est desormais une seule
+         * regle qui les sert tous les deux.
          */
         $source = $this->source();
 
-        $roles = "Auth::hasAnyRole(['dg', 'assistant_dg', 'comptable'])";
+        self::assertStringContainsString('$canValidate = DemandesFondsAcces::peutValider()', $source);
 
-        self::assertStringContainsString(
-            '$canValidate = Auth::isAdmin() || ' . $roles,
-            $source,
-            "La fiche détaillée doit proposer le bouton à tous ceux qui peuvent valider."
-        );
-
-        // valider() et rejeter() portent la même condition : l'écran doit
-        // s'accorder avec les deux, pas avec une seule.
+        // valider() et rejeter() : deux portes, une seule serrure.
         self::assertSame(
             2,
-            substr_count($source, 'if (!(Auth::isAdmin() || ' . $roles . '))'),
+            substr_count($source, 'if (!DemandesFondsAcces::peutValider())'),
             "Valider et rejeter doivent reconnaître les mêmes personnes."
         );
     }
@@ -56,12 +52,13 @@ final class GestionFondsCircuitTest extends TestCase
          * Et une seule caisse sort l'argent, décidé par la direction le
          * 05/10/2026. Les caissières d'agence et les chefs d'agence pouvaient
          * décaisser : autant de mains sur le tiroir que d'agences, sans que
-         * personne ne réponde du total.
+         * personne ne réponde du total. Le 14/10/2026, le comptable rejoint la
+         * caissière principale — à la place de l'assistante DG, qui valide.
          */
         $source = $this->source();
 
         self::assertStringContainsString(
-            "RoleMiddleware::check(['admin', 'dg', 'assistant_dg', 'caissiere_principale'])",
+            "RoleMiddleware::check(array_merge(['admin'], DemandesFondsAcces::ROLES_DECAISSEMENT))",
             $source
         );
 
@@ -69,7 +66,7 @@ final class GestionFondsCircuitTest extends TestCase
             self::assertStringNotContainsString(
                 $role,
                 substr($source, (int) strpos($source, 'public function decaisser'), 700),
-                'Le décaissement est réservé à la caisse principale.'
+                'Le décaissement est réservé à la caisse principale et au comptable.'
             );
         }
     }
@@ -80,7 +77,7 @@ final class GestionFondsCircuitTest extends TestCase
 
         $extrait = substr($source, (int) strpos($source, 'public function rejeter'));
 
-        self::assertStringContainsString("Auth::hasAnyRole(['dg', 'assistant_dg', 'comptable'])", $extrait);
+        self::assertStringContainsString('if (!DemandesFondsAcces::peutValider())', $extrait);
     }
 
     public function test_le_demandeur_peut_justifier_sa_propre_depense(): void

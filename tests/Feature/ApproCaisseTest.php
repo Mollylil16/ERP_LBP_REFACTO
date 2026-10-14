@@ -240,22 +240,32 @@ final class ApproCaisseTest extends TestCase
     // Les autres validations décidées le même jour
     // ------------------------------------------------------------------
 
-    /** Le comptable valide les décaissements au même titre que la Direction. */
-    public function test_le_comptable_valide_aussi_les_demandes_de_fonds(): void
+    /**
+     * Sur les demandes de fonds, le comptable décaisse — il ne valide plus.
+     *
+     * Le 30/09/2026 il validait au même titre que la Direction, et quatre
+     * endroits du contrôleur recopiaient la liste. Le 14/10/2026 il demande
+     * lui-même le partage : l'assistante DG valide, lui décaisse. La règle
+     * tient maintenant dans [[DemandesFondsAcces]], une seule fois.
+     *
+     * À ne pas confondre avec l'appro de caisse, où il valide toujours ce que
+     * la caissière principale a saisi : ce sont deux circuits distincts.
+     */
+    public function test_le_comptable_decaisse_les_demandes_de_fonds(): void
     {
         $source = (string) file_get_contents(BASE_PATH . '/app/Controllers/Finance/DemandesFondsController.php');
 
-        /*
-         * Quatre endroits, et ils doivent rester d'accord : valider(),
-         * rejeter(), le bouton de la liste et celui de la fiche détaillée.
-         * Ce dernier manquait — le comptable lisait la demande sans pouvoir
-         * la trancher. Voir [[GestionFondsCircuitTest]].
-         */
         self::assertSame(
-            4,
+            0,
             substr_count($source, "Auth::hasAnyRole(['dg', 'assistant_dg', 'comptable'])"),
-            'Valider, rejeter, et les deux écrans qui proposent le bouton.'
+            "La liste de rôles recopiée doit avoir disparu du contrôleur."
         );
+
+        self::assertContains('comptable', \App\Security\DemandesFondsAcces::ROLES_DECAISSEMENT);
+        self::assertNotContains('comptable', \App\Security\DemandesFondsAcces::ROLES_VALIDATION);
+
+        // Sur l'appro, en revanche, il reste le valideur et personne d'autre.
+        self::assertSame(['comptable'], \App\Security\ApproCaisseAcces::ROLES_VALIDATION);
 
         // La responsable RH entre dans la gestion des fonds.
         self::assertStringContainsString("'responsable_rh'", $source);
