@@ -481,6 +481,11 @@ final class FinanceController extends FinanceBaseController
             'client' => $client,
             'marchandises' => $marchandises,
             'clientWalletBalance' => $clientWalletBalance,
+            // Qui peut defaire un encaissement errone : la meme main que celle
+            // qui peut tout reinitialiser, plus le comptable qui le constate.
+            'peutAnnulerPaiement' => Auth::isAdmin() || Auth::hasAnyRole(
+                ['caissiere', 'caissiere_principale', 'chef_agence', 'comptable', 'assistant_dg', 'dg']
+            ),
         ]);
     }
 
@@ -780,6 +785,133 @@ final class FinanceController extends FinanceBaseController
         } catch (\Throwable $e) {
             $this->db->rollBack();
             Session::flash('error', 'Erreur lors de la réinitialisation de la facture : ' . $e->getMessage());
+        }
+
+        header('Location: ' . View::url('finance/factures/' . $id));
+        exit;
+    }
+
+    /**
+     * Annuler UN encaissement, et lui seul.
+     *
+     * Il n'existait que « Réinitialiser », qui efface tous les règlements d'une
+     * facture. Quand deux caissières encaissent le même acompte — le
+     * 15/10/2026, 100 000 F saisis deux fois à 92 secondes d'intervalle sur la
+     * facture de la cliente MARIE — il fallait donc tout effacer puis tout
+     * ressaisir, ou corriger la facture à la main. C'est ce dernier chemin qui
+     * a ete pris : la facture affichait bien 100 000 F, mais les deux lignes de
+     * paiement subsistaient, et le rapport du jour, qui les additionne,
+     * annoncait 200 000 F encaisses — avec autant d'especes attendues dans le
+     * tiroir le soir. La caissiere serait apparue en manque de 100 000 F.
+     */
+    public function paiementAnnuler(string $id, string $paiementId): void
+    {
+        RoleMiddleware::check(['caissiere', 'caissiere_principale', 'chef_agence', 'comptable', 'assistant_dg', 'dg']);
+
+        if (!Csrf::verify($_POST['_csrf_token'] ?? null)) {
+            Session::flash('error', 'Session expirée ou requête invalide (CSRF). Veuillez réessayer.');
+            header('Location: ' . View::url('finance/factures/' . $id));
+            exit;
+        }
+
+        $id = (int) $id;
+        $facture = $this->factureRepo->findById($id);
+
+        if (!$facture) {
+            Session::flash('error', 'Facture introuvable.');
+            header('Location: ' . View::url('finance/factures'));
+            exit;
+        }
+
+        if (!Auth::checkAgencyScope($facture->agenceId)) {
+            Session::flash('error', 'Accès refusé : Cette facture appartient à une autre agence.');
+            header('Location: ' . View::url('finance/factures'));
+            exit;
+        }
+
+        $paiement = $this->paiementRepo->findById((int) $paiementId);
+
+        // Le paiement doit appartenir a CETTE facture : sans ce controle, un
+        // numero devine dans l'URL effacerait l'encaissement d'une autre.
+        if (!$paiement || $paiement->factureId !== $facture->id) {
+            Session::flash('error', "Ce règlement n'appartient pas à cette facture.");
+            header('Location: ' . View::url('finance/factures/' . $id));
+            exit;
+        }
+
+        $motif = trim((string) ($_POST['motif'] ?? ''));
+
+        if ($motif === '') {
+            Session::flash('error', "Indiquez pourquoi ce règlement est annulé : c'est ce que lira la direction.");
+            header('Location: ' . View::url('finance/factures/' . $id));
+            exit;
+        }
+
+        $jour = substr((string) ($paiement->datePaiement ?? date('Y-m-d')), 0, 10);
+        $agencePaiement = $paiement->agenceId ?: $facture->agenceId;
+
+        if ($this->paiementRepo->pointDuJourConsolide($agencePaiement, $jour)) {
+            Session::flash(
+                'error',
+                "Le point de caisse du " . date('d/m/Y', strtotime($jour)) . " est déjà consolidé. "
+                    . "Cette correction doit passer par la direction."
+            );
+            header('Location: ' . View::url('finance/factures/' . $id));
+            exit;
+        }
+
+        $ancien = [
+            'paiement_id' => $paiement->id,
+            'facture' => $facture->numeroFacture,
+            'montant' => $paiement->montant,
+            'devise' => $paiement->devise,
+            'mode' => $paiement->mode,
+            'type' => $paiement->type,
+            'date_paiement' => $paiement->datePaiement,
+            'caissiere_id' => $paiement->caissiereId,
+            'agence_id' => $paiement->agenceId,
+            'motif_annulation' => $motif,
+        ];
+
+        $this->db->beginTransaction();
+        try {
+            $this->paiementRepo->supprimer((int) $paiement->id, $agencePaiement, $jour);
+
+            /*
+             * Les montants de la facture se recalculent sur ce qui RESTE, et ne
+             * se contentent pas d'une soustraction : c'est le seul moyen que la
+             * facture et ses reglements ne divergent plus jamais.
+             */
+            $restants = $this->paiementRepo->findByFactureId($facture->id);
+            $encaisse = 0.0;
+            foreach ($restants as $r) {
+                $encaisse += $r->montant;
+            }
+
+            $facture->montantEncaisse = $encaisse;
+            $facture->montantRestant = max(0.0, $facture->montantTotal - $encaisse);
+            $facture->statut = $facture->montantRestant <= 0.01
+                ? 'payee'
+                : ($encaisse > 0 ? 'partiellement_payee' : 'emise');
+
+            $this->factureRepo->update($facture);
+
+            AuditLogService::log('cancel_payment', 'lbp_paiements', (int) $paiement->id, $ancien, (array) $facture);
+
+            $this->db->commit();
+
+            Session::flash('success', sprintf(
+                "Règlement de %s %s annulé. La facture est à %s %s encaissés, %s %s restants.",
+                number_format($ancien['montant'], 0, ',', ' '),
+                $ancien['devise'],
+                number_format($encaisse, 0, ',', ' '),
+                $facture->devise,
+                number_format($facture->montantRestant, 0, ',', ' '),
+                $facture->devise
+            ));
+        } catch (\Throwable $e) {
+            $this->db->rollBack();
+            Session::flash('error', "Annulation impossible, rien n'a été modifié : " . $e->getMessage());
         }
 
         header('Location: ' . View::url('finance/factures/' . $id));

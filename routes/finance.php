@@ -23,6 +23,8 @@ $router->group('/finance', function (Router $router): void {
     $router->post('/factures/{id}/encaisser', [FinanceController::class, 'factureEncaisser']);
     $router->post('/factures/{id}/payer-portefeuille', [FinanceController::class, 'facturePayerPortefeuille']);
     $router->post('/factures/{id}/reinitialiser', [FinanceController::class, 'factureReinitialiser']);
+    // Annuler UN règlement, sans effacer les autres : voir paiementAnnuler().
+    $router->post('/factures/{id}/paiements/{paiementId}/annuler', [FinanceController::class, 'paiementAnnuler']);
     $router->post('/factures/{id}/relancer', [FinanceController::class, 'factureRelancer']);
     $router->get('/factures/{id}/modifier', [\App\Controllers\Facturation\FactureEditController::class, 'edit']);
     $router->post('/factures/{id}/modifier', [\App\Controllers\Facturation\FactureEditController::class, 'update']);

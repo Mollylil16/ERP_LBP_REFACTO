@@ -85,6 +85,58 @@ class PaiementRepository
     }
 
     /**
+     * Le point du jour est-il déjà consolidé ?
+     *
+     * Consolidé veut dire validé par la caissière principale. Retirer un
+     * encaissement d'un jour clos changerait un total que quelqu'un a signé,
+     * sans qu'il le sache : cela passe par la direction, pas par ce bouton.
+     */
+    public function pointDuJourConsolide(?int $agenceId, string $jour): bool
+    {
+        if (empty($agenceId)) {
+            return false;
+        }
+
+        try {
+            $stmt = $this->pdo->prepare("
+                SELECT 1 FROM lbp_etats_journaliers
+                 WHERE agence_id = :agence AND date_jour = :jour AND statut = 'consolide'
+                 LIMIT 1
+            ");
+            $stmt->execute(['agence' => $agenceId, 'jour' => $jour]);
+
+            return (bool) $stmt->fetchColumn();
+        } catch (\Throwable $e) {
+            // Sans réponse, on ne bloque pas une correction légitime : le point
+            // de caisse n'est pas la raison d'être de cet écran.
+            error_log('[Point de caisse] consolidation illisible : ' . $e->getMessage());
+
+            return false;
+        }
+    }
+
+    /**
+     * Supprime un encaissement enregistré par erreur.
+     *
+     * Le 15/10/2026, deux caissières de la même agence ont encaissé le même
+     * acompte de 100 000 F à 92 secondes d'intervalle. La facture se corrigeait
+     * à la main, mais les deux lignes de paiement restaient : le rapport du
+     * jour, qui les additionne, annonçait le double — et autant d'espèces
+     * attendues dans le tiroir le soir. Il n'existait alors que
+     * « Réinitialiser », qui efface TOUS les règlements d'une facture.
+     *
+     * Le jour du paiement voit ses totaux changer : son point repasse en
+     * brouillon, comme lors d'un encaissement tardif.
+     */
+    public function supprimer(int $id, ?int $agenceId, string $jour): void
+    {
+        $stmt = $this->pdo->prepare('DELETE FROM lbp_paiements WHERE id = :id');
+        $stmt->execute(['id' => $id]);
+
+        $this->rouvrirLePointDuJour($agenceId, $jour);
+    }
+
+    /**
      * Rouvre le point de caisse du jour dès qu'un encaissement lui succède.
      *
      * Une agence signe son point au milieu de l'après-midi et continue

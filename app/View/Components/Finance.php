@@ -649,7 +649,7 @@ final class Finance
     /**
      * Fiche d'une facture + encaissement.
      */
-    public static function factureShowPage(Facture $facture, array $paiements, array $callbacks, array $colis, array $client, array $marchandises = [], float $clientWalletBalance = 0.0): string
+    public static function factureShowPage(Facture $facture, array $paiements, array $callbacks, array $colis, array $client, array $marchandises = [], float $clientWalletBalance = 0.0, bool $peutAnnulerPaiement = false): string
     {
         $badgeTone = match($facture->statut) {
             'payee' => 'success',
@@ -803,13 +803,22 @@ final class Finance
                 . '<td>' . View::e(strtoupper($p->mode)) . '</td>'
                 . '<td>' . View::e(ucfirst($p->type)) . '</td>'
                 . '<td style="text-align:right; font-weight:600;">' . View::e(number_format($p->montant, 2, ',', ' ')) . ' ' . View::e($p->devise) . '</td>'
-                . '<td>' . Ui::button('Imprimer Reçu', ['href' => 'finance/paiements/' . $p->id . '/recu', 'variant' => 'secondary', 'class' => 'finea-button-sm']) . '</td>'
+                . '<td>' . Ui::button('Imprimer Reçu', ['href' => 'finance/paiements/' . $p->id . '/recu', 'variant' => 'secondary', 'class' => 'finea-button-sm'])
+                . self::annulationDuReglement($facture, $p, $peutAnnulerPaiement)
+                . '</td>'
                 . '</tr>';
         }
         $payTable = '<table class="finea-table" style="margin-top:0.5rem;">'
             . '<thead><tr><th>Date</th><th>Mode</th><th>Type</th><th style="text-align:right;">Montant</th><th>Actions</th></tr></thead>'
             . '<tbody>' . ($payRows ?: '<tr><td colspan="5">Aucun encaissement enregistré.</td></tr>') . '</tbody>'
-            . '</table>';
+            . '</table>'
+            . ($peutAnnulerPaiement && count($paiements) > 1
+                ? '<p style="margin:.75rem 0 0; font-size:.82rem; color:#b45309;">'
+                    . 'Cette facture porte plusieurs règlements. Si l\'un d\'eux a été saisi deux fois, '
+                    . 'annulez la ligne en trop plutôt que de corriger la facture : sinon le rapport du '
+                    . 'jour continuerait d\'additionner les deux, et le tiroir serait attendu trop plein '
+                    . 'le soir.</p>'
+                : '');
 
         // Liste des callbacks Mobile Money
         $callbackRows = '';
@@ -966,6 +975,41 @@ final class Finance
             . $encaissementForm
             . '</div>'
             . '</div></div>';
+    }
+
+    /**
+     * Le bouton qui annule un règlement, et le motif qui l'accompagne.
+     *
+     * Le motif n'est pas une formalité : c'est la seule chose que la direction
+     * lira dans le journal pour distinguer une saisie en double d'un
+     * encaissement escamoté. Il est donc obligatoire, et la confirmation
+     * rappelle la somme, pour qu'on ne supprime pas la mauvaise ligne.
+     */
+    private static function annulationDuReglement(
+        Facture $facture,
+        \App\Models\Finance\Paiement $paiement,
+        bool $autorise
+    ): string {
+        if (!$autorise) {
+            return '';
+        }
+
+        $confirmation = 'Annuler définitivement ce règlement de '
+            . number_format($paiement->montant, 0, ',', ' ') . ' ' . $paiement->devise
+            . ' du ' . (string) $paiement->datePaiement . ' ?';
+
+        $action = View::url('finance/factures/' . $facture->id . '/paiements/' . $paiement->id . '/annuler');
+
+        return '<form method="post" action="' . View::e($action) . '"'
+            . ' onsubmit="return confirm(\'' . View::e($confirmation) . '\');"'
+            . ' style="display:flex; gap:.4rem; align-items:center; margin-top:.4rem;">'
+            . Form::hidden('_csrf_token', Csrf::token())
+            . '<input type="text" name="motif" required maxlength="200"'
+            . ' placeholder="Motif (ex. saisi deux fois)"'
+            . ' style="flex:1; min-width:150px; padding:.35rem .5rem; border:1px solid #cbd5e1; border-radius:6px; font-size:.8rem;">'
+            . '<button type="submit" class="finea-button finea-button--danger finea-button-sm"'
+            . ' style="white-space:nowrap;">Annuler ce règlement</button>'
+            . '</form>';
     }
 
     /**
