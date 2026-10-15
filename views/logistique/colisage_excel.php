@@ -30,21 +30,23 @@ $dateDisplay = ($dateStart === $dateEnd)
 
     <table>
         <tr>
-            <td colspan="13" class="header-title">ERP LBP - SUIVI COLISAGE LOGISTIQUE (SANS MONTANT)</td>
+            <td colspan="14" class="header-title">ERP LBP - SUIVI COLISAGE LOGISTIQUE (SANS MONTANT)</td>
         </tr>
         <tr>
-            <td colspan="13" class="meta">
+            <td colspan="14" class="meta">
                 <b>Agence :</b> <?= View::e($agenceName) ?> | 
+                <b>Catégorie :</b> <?= View::e($categorieLabel ?? 'Toutes les catégories') ?> | 
                 <b>Période :</b> <?= View::e($dateDisplay) ?> | 
                 <b>Généré le :</b> <?= date('d/m/Y H:i') ?>
             </td>
         </tr>
-        <tr><td colspan="13"></td></tr>
+        <tr><td colspan="14"></td></tr>
         <thead>
             <tr>
                 <th>N° Tracking</th>
                 <th>Heure Saisie</th>
                 <th>Expéditeur</th>
+                <th>Téléphone Expéditeur</th>
                 <th>Destinataire</th>
                 <th>Téléphone Destinataire</th>
                 <th>Nature des produits</th>
@@ -72,6 +74,8 @@ $dateDisplay = ($dateStart === $dateEnd)
                     <td>'<?= View::e($p['numero_tracking']) ?></td>
                     <td class="center"><?= date('H:i', strtotime($p['created_at'])) ?></td>
                     <td><?= View::e($p['expediteur_name'] ?: 'Passager / Standard') ?></td>
+                    <?php // L apostrophe force le tableur a garder le numero en texte : sans elle, un 0708... perd son zero. ?>
+                    <td>'<?= View::e($p['expediteur_phone'] ?: '-') ?></td>
                     <td><?= View::e($p['destinataire_name'] ?: 'Non renseigné') ?></td>
                     <td>'<?= View::e($p['destinataire_phone'] ?: '-') ?></td>
                     <?php
@@ -91,8 +95,16 @@ $dateDisplay = ($dateStart === $dateEnd)
             <?php endforeach; ?>
         </tbody>
         <tfoot>
+            <?php
+            /*
+             * Quatorze colonnes : le libelle du total en couvre sept, puis
+             * viennent le nombre et le poids, puis les cinq dernieres. Le pied
+             * etait decale avant l ajout du telephone — les totaux tombaient
+             * sous « Nature des produits » au lieu de leurs propres colonnes.
+             */
+            ?>
             <tr class="total-row">
-                <td colspan="5" style="text-align: right;"><b>TOTAL :</b></td>
+                <td colspan="7" style="text-align: right;"><b>TOTAL :</b></td>
                 <td class="center"><b><?= $sumColis ?></b></td>
                 <td class="number"><b><?= number_format($sumPoids, 2, '.', '') ?></b></td>
                 <td colspan="5"></td>

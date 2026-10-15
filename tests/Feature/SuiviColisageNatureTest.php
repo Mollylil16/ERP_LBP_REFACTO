@@ -67,7 +67,8 @@ final class SuiviColisageNatureTest extends TestCase
     public function test_le_pied_de_tableau_reste_aligne(): void
     {
         /*
-         * Douze colonnes désormais : le libellé du total en couvre six, puis
+         * Treize colonnes depuis que le contact de l'expéditeur a rejoint
+         * celui du destinataire : le libellé du total en couvre sept, puis
          * viennent le nombre et le poids, puis les quatre dernières. Une
          * colonne ajoutée sans toucher aux colspan décale tout le pied.
          */
@@ -75,8 +76,8 @@ final class SuiviColisageNatureTest extends TestCase
 
         // Les fermetures, et non les ouvertures : « <thead> » commence lui
         // aussi par « <th » et fausserait le compte.
-        self::assertSame(12, substr_count($pdf, '</th>'), 'Douze colonnes attendues.');
-        self::assertStringContainsString('<td colspan="6" class="text-right">TOTAL GENERAL :</td>', $pdf);
-        self::assertStringContainsString('<td colspan="12" class="text-center"', $pdf);
+        self::assertSame(13, substr_count($pdf, '</th>'), 'Treize colonnes attendues.');
+        self::assertStringContainsString('<td colspan="7" class="text-right">TOTAL GENERAL :</td>', $pdf);
+        self::assertStringContainsString('<td colspan="13" class="text-center"', $pdf);
     }
 }

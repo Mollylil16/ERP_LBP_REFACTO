@@ -135,6 +135,14 @@ $dateDisplay = ($dateStart === $dateEnd)
         </div>
         <div class="meta-info">
             <div><strong>Agence :</strong> <?= View::e($agenceName) ?></div>
+            <?php
+            /*
+             * La categorie tiree. Un etat filtre sur LB-CI et un etat complet
+             * se ressemblent trop une fois imprimes : sans cette ligne, on ne
+             * sait plus, trois jours apres, ce que la liasse contient.
+             */
+            ?>
+            <div><strong>Catégorie :</strong> <?= View::e($categorieLabel ?? 'Toutes les catégories') ?></div>
             <div><strong>Période :</strong> <?= View::e($dateDisplay) ?></div>
             <div><strong>Date d'impression :</strong> <?= date('d/m/Y H:i') ?></div>
         </div>
@@ -161,6 +169,7 @@ $dateDisplay = ($dateStart === $dateEnd)
                 <th>N° Tracking</th>
                 <th>Heure</th>
                 <th>Expéditeur</th>
+                <th>Contact Expéditeur</th>
                 <th>Destinataire</th>
                 <th>Contact Destinataire</th>
                 <th>Nature des produits</th>
@@ -175,7 +184,7 @@ $dateDisplay = ($dateStart === $dateEnd)
         <tbody>
             <?php if (empty($parcels)): ?>
                 <tr>
-                    <td colspan="12" class="text-center" style="padding: 20px; color: #64748b;">
+                    <td colspan="13" class="text-center" style="padding: 20px; color: #64748b;">
                         Aucun colis enregistré <?= View::e($dateDisplay) ?> pour cette sélection.
                     </td>
                 </tr>
@@ -189,6 +198,7 @@ $dateDisplay = ($dateStart === $dateEnd)
                         <td class="font-bold"><?= View::e($p['numero_tracking']) ?></td>
                         <td><?= date('H:i', strtotime($p['created_at'])) ?></td>
                         <td><?= View::e($p['expediteur_name'] ?: 'Passager') ?></td>
+                        <td><?= View::e($p['expediteur_phone'] ?: '-') ?></td>
                         <td class="font-bold"><?= View::e($p['destinataire_name'] ?: 'N/A') ?></td>
                         <td><?= View::e($p['destinataire_phone'] ?: '-') ?></td>
                         <?php
@@ -215,7 +225,7 @@ $dateDisplay = ($dateStart === $dateEnd)
         </tbody>
         <tfoot>
             <tr style="background: #f8fafc; font-weight: bold;">
-                <td colspan="6" class="text-right">TOTAL GENERAL :</td>
+                <td colspan="7" class="text-right">TOTAL GENERAL :</td>
                 <td class="text-center"><?= number_format($totalNombreColis, 0, ',', ' ') ?></td>
                 <td class="text-right"><?= number_format($totalPoids, 2, ',', ' ') ?> kg</td>
                 <td colspan="4"></td>

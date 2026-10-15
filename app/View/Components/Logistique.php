@@ -378,13 +378,30 @@ final class Logistique
      * @param array<int, array<string, mixed>> $parcels
      * @param array<string, mixed> $kpis
      */
-    public static function colisageSuiviPage(array $sites, string $period, string $dateStart, string $dateEnd, int $selectedAgenceId, array $parcels, array $kpis): string
-    {
+    public static function colisageSuiviPage(
+        array $sites,
+        string $period,
+        string $dateStart,
+        string $dateEnd,
+        int $selectedAgenceId,
+        array $parcels,
+        array $kpis,
+        array $trajets = [],
+        array $filtres = ['trajet' => '', 'q' => ''],
+        bool $peutVoirFacture = false
+    ): string {
+        $trajetChoisi = (string) ($filtres['trajet'] ?? '');
+        $recherche = (string) ($filtres['q'] ?? '');
+
+        // Les exports doivent partir avec les memes filtres que l ecran :
+        // sinon on tire un etat complet en croyant tirer le LB-CI affiche.
         $exportQuery = http_build_query([
             'agence_id' => $selectedAgenceId,
             'period' => $period,
             'date_start' => $dateStart,
-            'date_end' => $dateEnd
+            'date_end' => $dateEnd,
+            'trajet_code' => $trajetChoisi,
+            'q' => $recherche,
         ]);
 
         $header = Ui::pageHeader(
@@ -414,12 +431,35 @@ final class Logistique
             ['value' => 'custom', 'label' => 'Période personnalisée'],
         ];
 
+        /*
+         * La categorie de code. Les treize codes du catalogue y figurent, y
+         * compris ceux qu'aucun colis ne porte encore : les retirer ferait
+         * croire qu'ils n'existent pas le jour ou une agence s'en servira.
+         */
+        $trajetOpts = [['value' => '', 'label' => '-- Toutes les catégories --']];
+        foreach ($trajets as $t) {
+            $trajetOpts[] = [
+                'value' => (string) $t['code'],
+                'label' => $t['code'] . ' — ' . $t['libelle'],
+            ];
+        }
+
         $filterForm = '<form method="get" action="' . View::url('logistique/colisage') . '" class="rh-form-grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)) auto; align-items:end;">'
+            . Form::input('q', [
+                'label' => 'Rechercher',
+                'value' => $recherche,
+                'placeholder' => 'N° colis, facture, nom ou téléphone',
+                'hint' => 'Une recherche cherche sur toutes les dates, sans tenir compte de la période.',
+            ])
             . Form::select('agence_id', $siteOpts, (string) $selectedAgenceId, ['label' => 'Agence de saisie'])
+            . Form::select('trajet_code', $trajetOpts, $trajetChoisi, ['label' => 'Catégorie de code'])
             . Form::select('period', $periodOpts, $period, ['label' => 'Période', 'id' => 'filter-period'])
             . Form::input('date_start', ['label' => 'Date de début', 'type' => 'date', 'value' => $dateStart, 'id' => 'filter-date-start'])
             . Form::input('date_end', ['label' => 'Date de fin', 'type' => 'date', 'value' => $dateEnd, 'id' => 'filter-date-end'])
-            . '<div>' . Ui::button('Filtrer', ['type' => 'submit', 'variant' => 'primary']) . '</div>'
+            . '<div style="display:flex; gap:.5rem;">'
+            . Ui::button('Filtrer', ['type' => 'submit', 'variant' => 'primary'])
+            . Ui::button('Réinitialiser', ['href' => 'logistique/colisage', 'variant' => 'secondary'])
+            . '</div>'
             . '</form>';
 
         $kpisHtml = Dashboard::kpis([
@@ -432,9 +472,22 @@ final class Logistique
             ? date('d/m/Y', strtotime($dateStart))
             : 'du ' . date('d/m/Y', strtotime($dateStart)) . ' au ' . date('d/m/Y', strtotime($dateEnd));
 
-        $tableHtml = self::colisageSuiviTable($parcels);
+        /*
+         * Le titre dit sur quoi porte la liste. Un ecran filtre sur LB-CI et un
+         * ecran complet se ressemblent trop ; et pendant une recherche, le
+         * titre ne doit surtout pas annoncer une periode qu'on vient d'ignorer.
+         */
+        $titre = $recherche !== ''
+            ? 'Résultats de la recherche « ' . View::e($recherche) .' » — toutes dates'
+            : 'Liste des colis enregistrés ' . $dateDisplay;
+
+        if ($trajetChoisi !== '') {
+            $titre .= ' — catégorie ' . View::e($trajetChoisi);
+        }
+
+        $tableHtml = self::colisageSuiviTable($parcels, $peutVoirFacture);
         $tableSection = Ui::section(
-            'Liste des colis enregistrés ' . $dateDisplay,
+            $titre,
             $tableHtml,
             count($parcels) . ' entrée(s)'
         );
@@ -517,12 +570,14 @@ final class Logistique
     }
 
     /** @param array<int, array<string, mixed>> $parcels */
-    private static function colisageSuiviTable(array $parcels): string
+    private static function colisageSuiviTable(array $parcels, bool $peutVoirFacture = false): string
     {
         if (empty($parcels)) {
             return Ui::emptyState(
                 'Aucun colis trouvé pour cette sélection',
-                'Aucune saisie n\'a été enregistrée pour l\'agence et la date sélectionnées.'
+                'Aucune saisie ne correspond à l\'agence, à la catégorie de code et à la période choisies. '
+                    . 'Pour retrouver un colis dont vous ignorez la date, saisissez son numéro dans Rechercher : '
+                    . 'la période est alors ignorée.'
             );
         }
 
@@ -536,8 +591,11 @@ final class Logistique
             $rows .= '<tr>'
                 . '<td><a href="' . View::url('colisage/parcels/' . $p['id']) . '"><strong>' . View::e($p['numero_tracking']) . '</strong></a></td>'
                 . '<td>' . $heure . '</td>'
-                . '<td>' . View::e($p['expediteur_name'] ?: 'Passager / Standard') . '</td>'
+                // Le numero sous le nom, comme pour le destinataire : on
+                // rappelle aussi souvent l expediteur depuis un quai.
+                . '<td>' . View::e($p['expediteur_name'] ?: 'Passager / Standard') . (!empty($p['expediteur_phone']) ? '<br><small>' . View::e($p['expediteur_phone']) . '</small>' : '') . '</td>'
                 . '<td>' . View::e($p['destinataire_name'] ?: 'Non renseigné') . (!empty($p['destinataire_phone']) ? '<br><small>' . View::e($p['destinataire_phone']) . '</small>' : '') . '</td>'
+                . self::celluleFacture($p, $peutVoirFacture)
                 . '<td style="text-align:center;"><strong>' . (int) $p['nombre_colis'] . '</strong></td>'
                 . '<td style="text-align:right;"><strong>' . number_format((float) $p['poids_total'], 2, ',', ' ') . '</strong></td>'
                 . '<td>' . Ui::badge(str_replace('_', ' → ', (string) $trajetDisplay), 'primary') . '</td>'
@@ -548,9 +606,39 @@ final class Logistique
         }
 
         return '<div class="finea-table-wrapper"><table class="finea-table"><thead><tr>'
-            . '<th>N° Tracking</th><th>Heure</th><th>Expéditeur</th><th>Destinataire & Contact</th>'
+            . '<th>N° Tracking</th><th>Heure</th><th>Expéditeur &amp; Contact</th><th>Destinataire &amp; Contact</th>'
+            . ($peutVoirFacture ? '<th>Facture</th>' : '')
             . '<th>Colis</th><th>Poids (kg)</th><th>Trajet / Envoi</th><th>Agence Départ / Arrivée</th><th>Agent Saisisseur</th><th>Statut</th>'
             . '</tr></thead><tbody>' . $rows . '</tbody></table></div>';
+    }
+
+    /**
+     * La facture du colis, atteignable d'un clic.
+     *
+     * Retrouver la facture d'un client depuis le suivi obligeait a noter le
+     * numero de colis, quitter le module, ouvrir Finance et chercher a nouveau.
+     * La colonne ne porte aucun montant : ce sous-module les masque
+     * volontairement, et la fiche de la facture garde ses propres droits.
+     *
+     * @param array<string, mixed> $p
+     */
+    private static function celluleFacture(array $p, bool $autorise): string
+    {
+        if (!$autorise) {
+            return '';
+        }
+
+        $numero = trim((string) ($p['facture_numero'] ?? ''));
+        $id = (int) ($p['facture_id'] ?? 0);
+
+        if ($numero === '' || $id <= 0) {
+            // « Non facturé » et non un tiret : c'est une facture qui manque,
+            // et c'est une information en soi pour l'agence.
+            return '<td><small style="color:#b45309;">Non facturé</small></td>';
+        }
+
+        return '<td><a href="' . View::url('finance/factures/' . $id) . '">'
+            . '<strong>' . View::e($numero) . '</strong></a></td>';
     }
 
     public static function emballagesPage(array $stocks, array $mouvements, array $sites, ?int $selectedAgenceId): string

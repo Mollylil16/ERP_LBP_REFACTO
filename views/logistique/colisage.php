@@ -11,5 +11,19 @@ use App\View\Components\Logistique;
 /** @var int $selectedAgenceId */
 /** @var array<int, array<string, mixed>> $parcels */
 /** @var array<string, mixed> $kpis */
+/** @var array<int, array{code: string, libelle: string}> $trajets */
+/** @var array{trajet: string, q: string} $filtres */
+/** @var bool $peutVoirFacture */
 
-echo Logistique::colisageSuiviPage($sites, $period, $dateStart, $dateEnd, $selectedAgenceId, $parcels, $kpis);
+echo Logistique::colisageSuiviPage(
+    $sites,
+    $period,
+    $dateStart,
+    $dateEnd,
+    $selectedAgenceId,
+    $parcels,
+    $kpis,
+    $trajets ?? [],
+    $filtres ?? ['trajet' => '', 'q' => ''],
+    (bool) ($peutVoirFacture ?? false)
+);
