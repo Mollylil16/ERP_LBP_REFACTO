@@ -23,6 +23,9 @@ $errorMessage = Session::getFlash('error');
     <link rel="shortcut icon" href="<?= View::asset('images/logo-lbp.png') ?>">
     <link href="<?= View::asset('css/app.css') ?>" rel="stylesheet">
     <link href="<?= View::asset('css/components.css') ?>" rel="stylesheet">
+    <?php /* Le decor du panneau de connexion ne concerne que cette entree : il
+             n'a pas sa place dans app.css, charge par tout le logiciel. */ ?>
+    <link href="<?= View::asset('css/auth.css') ?>" rel="stylesheet">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">

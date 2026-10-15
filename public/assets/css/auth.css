@@ -1,0 +1,295 @@
+/* ==========================================================================
+   Page de connexion — panneau de gauche
+   --------------------------------------------------------------------------
+   Ces regles ne servent qu'a un seul ecran : elles sont sorties de app.css,
+   qui est charge par tout le logiciel. Le decor est du SVG en ligne, donc
+   aucune requete supplementaire, et il reste ici au lieu d'etre dilue dans la
+   feuille commune.
+
+   Le decor raconte la ligne reelle de l'entreprise, de gauche a droite et de
+   bas en haut : un agent saisit a son comptoir, les colis partent sur le
+   convoyeur, l'avion decolle vers Paris. Les coins du panneau sont libres, le
+   texte occupe le centre gauche — le decor vit dans les marges et n'entre
+   jamais en concurrence avec ce qu'il y a a lire.
+   ========================================================================== */
+
+.auth-visual-panel {
+    /* Encre du decor. Quatre valeurs seulement : au-dela, le trait perd son
+       unite et la composition ressemble a un assemblage de vignettes. */
+    --auth-faint: rgba(148, 163, 184, 0.16);
+    --auth-soft: rgba(191, 219, 254, 0.26);
+    --auth-sky: rgba(56, 189, 248, 0.32);
+    --auth-gold: rgba(250, 189, 2, 0.5);
+}
+
+/* Le contenu passe au-dessus du decor, et lui seul recoit les clics :
+   le decor est inerte, un lien ou un champ ne doit jamais etre intercepte. */
+.auth-visual-content {
+    position: relative;
+    z-index: 1;
+}
+
+.auth-scene {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    overflow: hidden;
+    pointer-events: none;
+    /* Deux sources de lumiere, qui disent le trajet avant tout dessin :
+       chaud en bas a gauche (Abidjan, le depart), froid en haut a droite
+       (l'Europe, l'arrivee). */
+    background:
+        radial-gradient(circle at 92% 6%, rgba(56, 189, 248, 0.10), transparent 42%),
+        radial-gradient(circle at 6% 100%, rgba(250, 189, 2, 0.07), transparent 38%);
+}
+
+/* --------------------------------------------------------------------------
+   Calques
+   --------------------------------------------------------------------------
+   Chaque calque garde ses proportions : la taille est donnee sur un seul axe,
+   et le preserveAspectRatio du SVG l'ancre a son coin. Un calque etire au
+   panneau deformerait l'avion, et un calque unique en plein cadre se ferait
+   rogner le convoyeur sur un ecran large et court (des 1600x700).
+   -------------------------------------------------------------------------- */
+.auth-scene-sky {
+    position: absolute;
+    top: 0;
+    right: -58px;
+    height: 96%;
+    width: auto;
+    max-width: 86%;
+    aspect-ratio: 640 / 760;
+}
+
+.auth-scene-ground {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    /* Pleine largeur : le sol doit sortir du cadre par la droite. Arrete avant
+       le bord, le trait se lisait comme un dessin inacheve. */
+    width: 100%;
+    height: auto;
+    aspect-ratio: 900 / 150;
+}
+
+/* Le trait garde la meme epaisseur quelle que soit la taille du calque. Sans
+   cela il maigrit avec l'echelle : reduit a 230px sur telephone, le globe
+   descendait a un demi-pixel et disparaissait purement et simplement. */
+.auth-scene svg * {
+    vector-effect: non-scaling-stroke;
+}
+
+.auth-ink-faint { stroke: var(--auth-faint); stroke-width: 1.6; }
+.auth-ink-soft { stroke: var(--auth-soft); stroke-width: 2; }
+.auth-ink-sky { stroke: var(--auth-sky); stroke-width: 2; }
+
+.auth-scene-label {
+    stroke: none;
+    fill: rgba(148, 163, 184, 0.46);
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 3.2px;
+}
+
+/* --------------------------------------------------------------------------
+   Le ciel : globe, trajectoire, avion
+   -------------------------------------------------------------------------- */
+
+/* Les deux anneaux de l'ancienne version, conserves mais recentres sur le
+   globe. Ils respirent en decalage, sans jamais se superposer : c'est ce
+   decalage qui donne la profondeur, pas l'amplitude. */
+.auth-ring {
+    stroke-width: 2;
+    opacity: 0.55;
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: authRespire 7s ease-in-out infinite;
+}
+
+.auth-ring--gold { stroke: rgba(250, 189, 2, 0.16); }
+.auth-ring--sky { stroke: rgba(56, 189, 248, 0.14); animation-delay: -3.5s; }
+
+@keyframes authRespire {
+    0%, 100% { transform: scale(1); opacity: 0.4; }
+    50% { transform: scale(1.05); opacity: 1; }
+}
+
+.auth-route {
+    stroke: rgba(56, 189, 248, 0.26);
+    stroke-width: 2;
+    stroke-dasharray: 1.5 9;
+}
+
+/* Escales : un point plein, et un anneau qui s'ouvre comme un echo radar.
+   Sans l'anneau, les deux points se lisent comme deux taches ; avec, on
+   comprend que ce sont des emplacements. */
+.auth-pulse {
+    stroke-width: 2;
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: authEcho 4s ease-out infinite;
+}
+
+.auth-pulse--gold { stroke: var(--auth-gold); }
+.auth-pulse--sky { stroke: var(--auth-sky); animation-delay: -2s; }
+
+.auth-dot { stroke: none; }
+.auth-dot--gold { fill: rgba(250, 189, 2, 0.85); }
+.auth-dot--sky { fill: rgba(56, 189, 248, 0.8); }
+
+@keyframes authEcho {
+    0% { transform: scale(0.55); opacity: 0.85; }
+    70%, 100% { transform: scale(1.7); opacity: 0; }
+}
+
+/* L'avion est le seul element franchement visible du decor, et il porte le
+   jaune de la marque : c'est lui qu'on suit des yeux.
+
+   Il se deplace en « transform » pur, donc sans recalcul de mise en page. Les
+   positions des keyframes sont les points de la courbe tracee par .auth-route,
+   calcules pour t = 0, 0,1 ... 1 ; la rotation ne corrige que le roulis, car
+   l'icone pointe deja vers le haut a droite. Modifier le chemin dans le SVG
+   sans refaire ces positions ferait voler l'avion a cote de sa route. */
+.auth-plane {
+    stroke: rgba(250, 189, 2, 0.8);
+    stroke-width: 2.2;
+    transform-box: fill-box;
+    transform-origin: center;
+    transform: translate(337px, 546px) rotate(-7deg);
+    animation: authVol 26s linear infinite;
+}
+
+@keyframes authVol {
+    0% { transform: translate(55px, 700px) rotate(43deg); opacity: 0; }
+    6% { opacity: 0.95; }
+    8% { transform: translate(124px, 691px) rotate(32deg); }
+    16% { transform: translate(186px, 671px) rotate(21deg); }
+    25% { transform: translate(241px, 639px) rotate(10deg); }
+    33% { transform: translate(291px, 597px) rotate(0deg); }
+    41% { transform: translate(337px, 546px) rotate(-7deg); }
+    49% { transform: translate(379px, 483px) rotate(-13deg); }
+    57% { transform: translate(420px, 413px) rotate(-17deg); }
+    66% { transform: translate(459px, 331px) rotate(-20deg); }
+    74% { transform: translate(499px, 245px) rotate(-21deg); }
+    76% { opacity: 0.95; }
+    82% { transform: translate(540px, 150px) rotate(-22deg); opacity: 0; }
+    100% { transform: translate(540px, 150px) rotate(-22deg); opacity: 0; }
+}
+
+/* --------------------------------------------------------------------------
+   Le sol : comptoir, agent qui saisit, convoyeur et colis
+   -------------------------------------------------------------------------- */
+
+/* Les colis avancent vers l'endroit ou la trajectoire decolle. Les retards
+   sont negatifs : au chargement de la page les quatre sont deja sur le tapis,
+   un convoyeur vide pendant dix secondes donnerait l'impression d'un decor
+   casse. */
+.auth-colis {
+    stroke: rgba(226, 232, 240, 0.24);
+    stroke-width: 2;
+    animation: authConvoyeur 18s linear infinite;
+}
+
+.auth-colis--1 { transform: translate(240px, 114px); animation-delay: -1s; }
+.auth-colis--2 { transform: translate(400px, 114px); animation-delay: -5.5s; }
+.auth-colis--3 { transform: translate(560px, 114px); animation-delay: -10s; }
+.auth-colis--4 { transform: translate(720px, 114px); animation-delay: -14.5s; }
+
+@keyframes authConvoyeur {
+    0% { transform: translate(150px, 114px); opacity: 0; }
+    10% { opacity: 1; }
+    88% { opacity: 1; }
+    100% { transform: translate(860px, 114px); opacity: 0; }
+}
+
+/* --------------------------------------------------------------------------
+   Arguments : une icone SVG par ligne, jamais un caractere decoratif
+   -------------------------------------------------------------------------- */
+.auth-highlights {
+    list-style: none;
+    display: grid;
+    gap: 12px;
+    padding: 0;
+    margin: 26px 0 0;
+}
+
+.auth-highlights li {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: #eff6ff;
+}
+
+.auth-highlight-icon {
+    width: 30px;
+    height: 30px;
+    display: inline-grid;
+    place-items: center;
+    border-radius: 999px;
+    background: rgba(56, 189, 248, 0.16);
+    border: 1px solid rgba(56, 189, 248, 0.22);
+    color: #bfdbfe;
+    flex-shrink: 0;
+}
+
+/* --------------------------------------------------------------------------
+   Ecrans etroits
+   --------------------------------------------------------------------------
+   Sous 1100px la page passe sur une colonne : le panneau devient une banniere
+   courte, posee au-dessus du formulaire. Le sol n'a plus la place de se lire
+   et serait coupe par le bord, on le retire ; il ne reste que le coin de
+   globe, qui tient dans l'espace libre a droite du titre.
+   -------------------------------------------------------------------------- */
+@media (max-width: 1100px) {
+    .auth-scene-ground { display: none; }
+
+    /* La trajectoire demande de la hauteur : dans une banniere, elle se
+       retrouverait ecrasee contre le titre, et l'avion traverserait les mots.
+       Il ne reste que le coin de globe et ses anneaux, cale en haut a droite. */
+    .auth-route,
+    .auth-plane,
+    .auth-pulse,
+    .auth-dot,
+    .auth-scene-label {
+        display: none;
+    }
+
+    .auth-scene-sky {
+        height: auto;
+        width: 340px;
+        max-width: none;
+        top: -48px;
+        right: 38px;
+        opacity: 0.8;
+    }
+}
+
+/* Sur un telephone, il ne reste du globe qu'un arc dans le coin, au-dessus du
+   titre : assez pour que l'ecran ne soit pas nu, trop petit pour disputer la
+   place aux mots. Deux ellipses et trois traits, le cout est nul. */
+@media (max-width: 720px) {
+    .auth-scene-sky {
+        width: 230px;
+        top: -38px;
+        right: 8px;
+        opacity: 0.6;
+    }
+}
+
+/* --------------------------------------------------------------------------
+   Mouvement reduit
+   --------------------------------------------------------------------------
+   Tout s'arrete, rien ne disparait : chaque element anime a une position de
+   repos choisie (l'avion a mi-parcours, les colis repartis sur le tapis), et
+   la composition reste lisible en image fixe.
+   -------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+    .auth-ring,
+    .auth-pulse,
+    .auth-plane,
+    .auth-colis {
+        animation: none;
+    }
+
+    .auth-pulse { opacity: 0.45; }
+}

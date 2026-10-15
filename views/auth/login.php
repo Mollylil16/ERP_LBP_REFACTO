@@ -2,6 +2,7 @@
 
 use App\Helpers\Csrf;
 use App\Helpers\View;
+use App\View\Components\Auth;
 use App\View\Components\Form;
 use App\View\Components\Ui;
 
@@ -10,26 +11,7 @@ ob_start();
 ?>
 
 <section class="auth-page">
-    <div class="auth-visual-panel">
-        <div class="auth-visual-logo">
-            <img src="<?= View::asset('images/logo-lbp.png') ?>" alt="La Belle Porte - LBP CI" class="auth-logo-img">
-        </div>
-        <div class="auth-badge">ERP LBP Transit</div>
-        <h1>La Belle Porte<br><span class="auth-hero-accent">Côte d'Ivoire</span></h1>
-        <p>Votre plateforme de gestion intégrée pour le transit, la logistique et les opérations douanières.</p>
-
-        <ul class="auth-highlights">
-            <li>Gestion complète du transit et douane</li>
-            <li>Suivi des colis et expéditions en temps réel</li>
-            <li>Pilotage financier et ressources humaines</li>
-            <li>Tableau de bord multi-modules</li>
-        </ul>
-
-        <div class="auth-visual-decoration" aria-hidden="true">
-            <div class="auth-decoration-ring"></div>
-            <div class="auth-decoration-ring auth-decoration-ring--2"></div>
-        </div>
-    </div>
+    <?= Auth::panneauVisuel() ?>
 
     <div class="auth-card">
         <div class="auth-card-logo">

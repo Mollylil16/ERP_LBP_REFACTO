@@ -118,64 +118,9 @@ a { text-decoration: none; }
     line-height: 1.6;
 }
 
-.auth-highlights {
-    list-style: none;
-    display: grid;
-    gap: 10px;
-    padding: 0;
-    margin: 24px 0 0;
-}
-
-.auth-highlights li {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    color: #eff6ff;
-}
-
-.auth-highlights li::before {
-    content: '✓';
-    width: 28px;
-    height: 28px;
-    display: inline-grid;
-    place-items: center;
-    border-radius: 999px;
-    background: rgba(56, 189, 248, 0.16);
-    color: #bfdbfe;
-    font-weight: 700;
-    flex-shrink: 0;
-}
-
-/* Decorative animated rings */
-.auth-visual-decoration {
-    position: absolute;
-    bottom: -60px;
-    right: -60px;
-    pointer-events: none;
-}
-
-.auth-decoration-ring {
-    width: 220px;
-    height: 220px;
-    border: 2px solid rgba(250, 189, 2, 0.15);
-    border-radius: 50%;
-    animation: authRingPulse 4s ease-in-out infinite;
-}
-
-.auth-decoration-ring--2 {
-    position: absolute;
-    top: 30px;
-    left: 30px;
-    width: 160px;
-    height: 160px;
-    border-color: rgba(56, 189, 248, 0.12);
-    animation-delay: 2s;
-}
-
-@keyframes authRingPulse {
-    0%, 100% { transform: scale(1); opacity: 0.5; }
-    50% { transform: scale(1.08); opacity: 1; }
-}
+/* Les arguments du panneau de gauche et tout son decor sont dans auth.css :
+   ils ne servent qu'a la page de connexion, et cette feuille est chargee par
+   tout le logiciel. */
 
 .auth-credential-box {
     margin-top: 28px;
