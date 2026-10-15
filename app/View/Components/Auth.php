@@ -134,41 +134,84 @@ final class Auth
         $anneaux = '<circle class="auth-ring auth-ring--gold" cx="560" cy="110" r="190"></circle>'
             . '<circle class="auth-ring auth-ring--sky" cx="560" cy="110" r="220"></circle>';
 
-        /*
-         * La courbe longe le bas du panneau avant de monter : c'est un
-         * decollage, et c'est surtout ce qui la tient hors du texte. Une
-         * diagonale franche d'un coin a l'autre passait derriere le titre et
-         * les arguments, et l'avion y traversait les mots.
-         *
-         * La montee quasi verticale n'est pas une licence : Abidjan est a 5°N,
-         * Paris a 49°N, presque plein nord. La route dessinee est la vraie.
-         */
-        $route = '<path class="auth-route" d="M55 700 C300 690 400 480 540 150"></path>';
-
-        $escales = '<circle class="auth-pulse auth-pulse--gold" cx="55" cy="700" r="13"></circle>'
-            . '<circle class="auth-dot auth-dot--gold" cx="55" cy="700" r="3.6"></circle>'
-            . '<circle class="auth-pulse auth-pulse--sky" cx="540" cy="150" r="13"></circle>'
-            . '<circle class="auth-dot auth-dot--sky" cx="540" cy="150" r="3.6"></circle>'
-            . '<text class="auth-scene-label" x="83" y="668">ABIDJAN</text>'
-            . '<text class="auth-scene-label" x="516" y="132" text-anchor="end">PARIS</text>';
-
-        // L'icone pointe deja vers le haut a droite, soit l'orientation de la
-        // route : aucune rotation de base, les keyframes ne corrigent que le
-        // roulis. Le groupe interieur porte le centrage pour que la rotation
-        // CSS du groupe exterieur ne l'ecrase pas.
-        $avion = '<g class="auth-plane"><g transform="scale(1.4) translate(-12,-12)">'
-            . '<line x1="22" y1="2" x2="11" y2="13"></line>'
-            . '<polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>'
-            . '</g></g>';
-
         // « xMaxYMid » : quand le calque est borne en largeur sur un ecran
         // etroit, le dessin reste colle au bord droit au lieu de se recentrer
         // en laissant le globe flotter au milieu du panneau.
         return '<svg class="auth-scene-sky" viewBox="0 0 640 760" fill="none"'
             . ' preserveAspectRatio="xMaxYMid meet"'
             . ' stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">'
-            . $globe . $anneaux . $route . $escales . $avion
+            . $globe . $anneaux . self::reseau()
             . '</svg>';
+    }
+
+    /**
+     * Le reseau reel : Abidjan en hub, Paris, Dakar, le Canada.
+     *
+     * Ce sont les liaisons du catalogue de production, pas une carte d'humeur :
+     * Abidjan - Paris (aerien et express, 93 % du volume), Abidjan - Dakar,
+     * Abidjan - Canada, et Dakar - Paris. Le Canada est desservi sans y avoir
+     * d'agence, d'ou son point creux : une escale, pas un bureau. Aucune ville
+     * canadienne n'apparait dans les donnees, le libelle reste « CANADA ».
+     *
+     * Toutes les routes partent vers la droite en longeant le bas du panneau
+     * avant de monter. Ce n'est pas la geographie, c'est la seule forme qui
+     * laisse la colonne de texte intacte : une branche qui viserait le haut a
+     * gauche traverserait le titre et les arguments. Les trois branches sont
+     * emboitees, de la plus redressee (Paris) a la plus basse (Canada), et ne
+     * se croisent donc jamais.
+     *
+     * Tout est reuni dans un seul groupe pour qu'une regle suffise a le retirer
+     * sur ecran etroit, ou il n'y a plus la hauteur de le lire.
+     */
+    private static function reseau(): string
+    {
+        /*
+         * La route principale longe le bas du panneau avant de monter : c'est
+         * un decollage, et c'est surtout ce qui la tient hors du texte. Une
+         * diagonale franche d'un coin a l'autre passait derriere le titre, et
+         * l'avion y traversait les mots.
+         *
+         * La montee quasi verticale n'est pas une licence : Abidjan est a 5°N,
+         * Paris a 49°N, presque plein nord. Cette route-la est la vraie.
+         */
+        $routes = '<path class="auth-route" d="M55 700 C300 690 400 480 540 150"></path>'
+            . '<path class="auth-route auth-route--second" d="M55 700 C280 712 420 640 470 420"></path>'
+            . '<path class="auth-route auth-route--second" d="M470 420 Q530 300 540 150"></path>'
+            . '<path class="auth-route auth-route--tiers" d="M55 700 C250 700 400 690 520 610"></path>';
+
+        // Seuls les deux bouts de l'axe majeur battent. Faire pulser les quatre
+        // points transformait le panneau en sapin de Noel : les escales
+        // secondaires n'ont qu'un anneau fixe.
+        $escales = '<circle class="auth-pulse auth-pulse--gold" cx="55" cy="700" r="13"></circle>'
+            . '<circle class="auth-dot auth-dot--gold" cx="55" cy="700" r="4.4"></circle>'
+            . '<circle class="auth-pulse auth-pulse--sky" cx="540" cy="150" r="13"></circle>'
+            . '<circle class="auth-dot auth-dot--sky" cx="540" cy="150" r="3.6"></circle>'
+            . '<circle class="auth-escale" cx="470" cy="420" r="8"></circle>'
+            . '<circle class="auth-dot auth-dot--sky" cx="470" cy="420" r="3.2"></circle>'
+            . '<circle class="auth-escale auth-escale--legere" cx="520" cy="610" r="5.5"></circle>';
+
+        $libelles = '<text class="auth-scene-label auth-scene-label--hub" x="83" y="668">ABIDJAN</text>'
+            . '<text class="auth-scene-label" x="516" y="132" text-anchor="end">PARIS</text>'
+            . '<text class="auth-scene-label" x="446" y="412" text-anchor="end">DAKAR</text>'
+            . '<text class="auth-scene-label auth-scene-label--legere" x="496" y="602"'
+            . ' text-anchor="end">CANADA</text>';
+
+        /*
+         * La silhouette est vue de dessus et pointe vers le haut, pas vers le
+         * haut a droite comme le chevron qu'elle remplace. Les angles de
+         * « authVol » ont ete refaits en consequence : ils valent desormais
+         * l'angle de la tangente + 90°. Reprendre l'un sans l'autre ferait
+         * voler l'avion en crabe.
+         *
+         * Le groupe interieur porte le centrage et l'echelle en attribut, pour
+         * que la transformation CSS du groupe exterieur ne les ecrase pas.
+         */
+        $avion = '<g class="auth-plane"><g transform="scale(1.3) translate(-12,-12)">'
+            . '<path d="M12 2c1.2 0 2 1.3 2 3v6l8 5v2l-8-2.5V20l3 2v1.5L12 22.2 7 23.5V22l3-2'
+            . 'v-4.5L2 18v-2l8-5V5c0-1.7.8-3 2-3z"></path>'
+            . '</g></g>';
+
+        return '<g class="auth-reseau">' . $routes . $escales . $libelles . $avion . '</g>';
     }
 
     /**
@@ -180,31 +223,56 @@ final class Auth
      */
     private static function calqueSol(): string
     {
+        /*
+         * L'accueil se lit de gauche a droite, dans l'ordre reel du guichet :
+         * le client pose son colis sur le comptoir, l'agent le saisit a son
+         * poste, le colis repart sur le convoyeur. Il manquait le client — la
+         * scene montrait un agent seul derriere un comptoir vide, ce qui ne
+         * raconte pas une entreprise d'accueil.
+         *
+         * Les deux silhouettes ont la meme carrure : ce sont deux personnes,
+         * l'une devant, l'autre derriere, et c'est le comptoir entre elles qui
+         * dit lequel travaille la.
+         */
+        $client = '<circle cx="38" cy="58" r="11"></circle>'
+            . '<path d="M16 94a22 22 0 0 1 44 0"></path>'
+            . '<path d="M56 86 68 88"></path>';
+
+        // Le colis depose a la meme ecriture que ceux du convoyeur : c'est le
+        // meme objet, trois metres plus loin dans son parcours.
+        $colisDepose = '<rect x="70" y="72" width="26" height="22" rx="2.5"></rect>'
+            . '<line x1="70" y1="80" x2="96" y2="80"></line>'
+            . '<line x1="83" y1="72" x2="83" y2="80"></line>';
+
+        $agent = '<circle cx="154" cy="58" r="11"></circle>'
+            . '<path d="M132 94a22 22 0 0 1 44 0"></path>'
+            . '<path d="M140 86 128 80"></path>';
+
+        $comptoir = '<path d="M66 132V94h126v38"></path>'
+            . '<line x1="60" y1="94" x2="198" y2="94"></line>';
+
         $accueil = '<g class="auth-ink-soft">'
-            . '<circle cx="48" cy="58" r="11"></circle>'
-            . '<path d="M26 94a22 22 0 0 1 44 0"></path>'
-            . '<path d="M62 86 78 80"></path>'
-            . '<path d="M14 132V94h102v38"></path>'
-            . '<line x1="8" y1="94" x2="122" y2="94"></line>'
+            . $client . $colisDepose . $comptoir . $agent
             . '</g>'
             . '<g class="auth-ink-sky">'
-            . '<rect x="80" y="70" width="24" height="18" rx="2.5"></rect>'
-            . '<line x1="92" y1="88" x2="92" y2="94"></line>'
+            . '<rect x="104" y="70" width="24" height="18" rx="2.5"></rect>'
+            . '<line x1="116" y1="88" x2="116" y2="94"></line>'
             . '</g>';
 
         // Rouleaux dessines un par un : une boucle PHP evite de recopier
         // trente cercles a la main, et de se tromper d'un pas en les relisant.
         $rouleaux = '';
-        for ($x = 152; $x <= 864; $x += 24) {
+        for ($x = 218; $x <= 864; $x += 24) {
             $rouleaux .= '<circle cx="' . $x . '" cy="123" r="9"></circle>';
         }
 
         // Le tapis a deux pieds : sans eux, il se termine sur un trait coupe net
-        // et ressemble a un trace inacheve plutot qu'a une machine.
+        // et ressemble a un trace inacheve plutot qu'a une machine. Il commence
+        // apres le comptoir, la ou le colis saisi est pose.
         $convoyeur = '<g class="auth-ink-faint">'
             . '<line x1="0" y1="140" x2="900" y2="140"></line>'
-            . '<line x1="140" y1="114" x2="876" y2="114"></line>'
-            . '<line x1="142" y1="114" x2="142" y2="140"></line>'
+            . '<line x1="206" y1="114" x2="876" y2="114"></line>'
+            . '<line x1="208" y1="114" x2="208" y2="140"></line>'
             . '<line x1="874" y1="114" x2="874" y2="140"></line>'
             . $rouleaux
             . '</g>';

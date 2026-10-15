@@ -91,6 +91,11 @@
     letter-spacing: 3.2px;
 }
 
+/* Abidjan est le hub : les trois liaisons en partent. Le jaune de marque le
+   dit sans avoir a l'ecrire. */
+.auth-scene-label--hub { fill: rgba(250, 189, 2, 0.48); }
+.auth-scene-label--legere { fill: rgba(148, 163, 184, 0.34); }
+
 /* --------------------------------------------------------------------------
    Le ciel : globe, trajectoire, avion
    -------------------------------------------------------------------------- */
@@ -114,11 +119,36 @@
     50% { transform: scale(1.05); opacity: 1; }
 }
 
+/* Une seule route est franche, celle que l'avion parcourt. Les liaisons
+   secondaires sont deux crans plus bas, et le Canada un cran de plus encore :
+   quatre traits de meme intensite auraient fait un sapin de Noel, et l'axe
+   Abidjan - Paris, qui porte 93 % du volume, se serait perdu dedans. */
 .auth-route {
     stroke: rgba(56, 189, 248, 0.26);
     stroke-width: 2;
     stroke-dasharray: 1.5 9;
 }
+
+.auth-route--second {
+    stroke: rgba(56, 189, 248, 0.14);
+    stroke-width: 1.6;
+    stroke-dasharray: 1.5 11;
+}
+
+.auth-route--tiers {
+    stroke: rgba(148, 163, 184, 0.15);
+    stroke-width: 1.6;
+    stroke-dasharray: 1.5 13;
+}
+
+/* Escales secondaires : un anneau fixe, pas un echo. Le Canada est desservi
+   sans agence sur place, son point reste creux — un anneau sans pastille. */
+.auth-escale {
+    stroke: rgba(56, 189, 248, 0.24);
+    stroke-width: 2;
+}
+
+.auth-escale--legere { stroke: rgba(148, 163, 184, 0.3); }
 
 /* Escales : un point plein, et un anneau qui s'ouvre comme un echo radar.
    Sans l'anneau, les deux points se lisent comme deux taches ; avec, on
@@ -143,37 +173,40 @@
 }
 
 /* L'avion est le seul element franchement visible du decor, et il porte le
-   jaune de la marque : c'est lui qu'on suit des yeux.
+   jaune de la marque : c'est lui qu'on suit des yeux. Il ne parcourt que l'axe
+   Abidjan - Paris ; les trois autres liaisons restent des traits.
 
    Il se deplace en « transform » pur, donc sans recalcul de mise en page. Les
    positions des keyframes sont les points de la courbe tracee par .auth-route,
-   calcules pour t = 0, 0,1 ... 1 ; la rotation ne corrige que le roulis, car
-   l'icone pointe deja vers le haut a droite. Modifier le chemin dans le SVG
-   sans refaire ces positions ferait voler l'avion a cote de sa route. */
+   calcules pour t = 0, 0,1 ... 1, et les angles valent la tangente de cette
+   courbe + 90°, parce que la silhouette vue de dessus pointe vers le haut.
+   Deux pieges, donc : changer le « d » du chemin sans refaire les positions
+   fait voler l'avion a cote de sa route, et changer l'icone sans refaire les
+   angles le fait voler en crabe. */
 .auth-plane {
     stroke: rgba(250, 189, 2, 0.8);
     stroke-width: 2.2;
     transform-box: fill-box;
     transform-origin: center;
-    transform: translate(337px, 546px) rotate(-7deg);
+    transform: translate(337px, 546px) rotate(38deg);
     animation: authVol 26s linear infinite;
 }
 
 @keyframes authVol {
-    0% { transform: translate(55px, 700px) rotate(43deg); opacity: 0; }
+    0% { transform: translate(55px, 700px) rotate(88deg); opacity: 0; }
     6% { opacity: 0.95; }
-    8% { transform: translate(124px, 691px) rotate(32deg); }
-    16% { transform: translate(186px, 671px) rotate(21deg); }
-    25% { transform: translate(241px, 639px) rotate(10deg); }
-    33% { transform: translate(291px, 597px) rotate(0deg); }
-    41% { transform: translate(337px, 546px) rotate(-7deg); }
-    49% { transform: translate(379px, 483px) rotate(-13deg); }
-    57% { transform: translate(420px, 413px) rotate(-17deg); }
-    66% { transform: translate(459px, 331px) rotate(-20deg); }
-    74% { transform: translate(499px, 245px) rotate(-21deg); }
+    8% { transform: translate(124px, 691px) rotate(77deg); }
+    16% { transform: translate(186px, 671px) rotate(66deg); }
+    25% { transform: translate(241px, 639px) rotate(55deg); }
+    33% { transform: translate(291px, 597px) rotate(45deg); }
+    41% { transform: translate(337px, 546px) rotate(38deg); }
+    49% { transform: translate(379px, 483px) rotate(32deg); }
+    57% { transform: translate(420px, 413px) rotate(28deg); }
+    66% { transform: translate(459px, 331px) rotate(25deg); }
+    74% { transform: translate(499px, 245px) rotate(24deg); }
     76% { opacity: 0.95; }
-    82% { transform: translate(540px, 150px) rotate(-22deg); opacity: 0; }
-    100% { transform: translate(540px, 150px) rotate(-22deg); opacity: 0; }
+    82% { transform: translate(540px, 150px) rotate(23deg); opacity: 0; }
+    100% { transform: translate(540px, 150px) rotate(23deg); opacity: 0; }
 }
 
 /* --------------------------------------------------------------------------
@@ -190,13 +223,13 @@
     animation: authConvoyeur 18s linear infinite;
 }
 
-.auth-colis--1 { transform: translate(240px, 114px); animation-delay: -1s; }
-.auth-colis--2 { transform: translate(400px, 114px); animation-delay: -5.5s; }
-.auth-colis--3 { transform: translate(560px, 114px); animation-delay: -10s; }
-.auth-colis--4 { transform: translate(720px, 114px); animation-delay: -14.5s; }
+.auth-colis--1 { transform: translate(290px, 114px); animation-delay: -1s; }
+.auth-colis--2 { transform: translate(450px, 114px); animation-delay: -5.5s; }
+.auth-colis--3 { transform: translate(610px, 114px); animation-delay: -10s; }
+.auth-colis--4 { transform: translate(770px, 114px); animation-delay: -14.5s; }
 
 @keyframes authConvoyeur {
-    0% { transform: translate(150px, 114px); opacity: 0; }
+    0% { transform: translate(215px, 114px); opacity: 0; }
     10% { opacity: 1; }
     88% { opacity: 1; }
     100% { transform: translate(860px, 114px); opacity: 0; }
@@ -243,14 +276,11 @@
 @media (max-width: 1100px) {
     .auth-scene-ground { display: none; }
 
-    /* La trajectoire demande de la hauteur : dans une banniere, elle se
-       retrouverait ecrasee contre le titre, et l'avion traverserait les mots.
-       Il ne reste que le coin de globe et ses anneaux, cale en haut a droite. */
-    .auth-route,
-    .auth-plane,
-    .auth-pulse,
-    .auth-dot,
-    .auth-scene-label {
+    /* Le reseau demande de la hauteur : dans une banniere, les quatre routes
+       se retrouveraient ecrasees contre le titre, et l'avion traverserait les
+       mots. Il ne reste que le coin de globe et ses anneaux, cale en haut a
+       droite. Un seul groupe a retirer, c'est une seule regle a tenir. */
+    .auth-reseau {
         display: none;
     }
 
