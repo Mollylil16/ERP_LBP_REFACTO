@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Router;
 use App\Controllers\Rh\RhDashboardController;
+use App\Controllers\Rh\RhGuideController;
 use App\Controllers\Rh\RhPersonnelController;
 use App\Controllers\Rh\RhModuleController;
 use App\Controllers\Rh\RhSettingsController;
@@ -23,6 +24,8 @@ use App\Controllers\Rh\RhPayrollEngineController;
 $router->group('/rh', function (Router $router): void {
     $router->get('/', [RhDashboardController::class, 'index']);
     $router->get('/dashboard', [RhDashboardController::class, 'index']);
+    // Le tutoriel integre : parcours a cocher, fiche de chaque ecran, recherche.
+    $router->get('/guide', [RhGuideController::class, 'index']);
     $router->get('/mutations', [RhPersonnelController::class, 'mutationsIndex']);
     $router->get('/mouvements', [RhPersonnelController::class, 'movementsIndex']);
     

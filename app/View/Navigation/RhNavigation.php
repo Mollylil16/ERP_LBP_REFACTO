@@ -19,6 +19,19 @@ final class RhNavigation
                 'available' => true
             ],
             [
+                /*
+                 * Le guide se tient juste sous le tableau de bord, et non en
+                 * bas de menu avec la configuration : on le cherche le jour ou
+                 * l'on est bloque, c'est-a-dire en haut, la ou l'oeil part.
+                 */
+                'group' => 'Pilotage',
+                'key' => 'guide',
+                'label' => 'Guide interactif',
+                'icon' => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>',
+                'url' => 'rh/guide',
+                'available' => true
+            ],
+            [
                 'group' => 'Collaborateurs',
                 'key' => 'personnel',
                 'label' => 'Dossiers du personnel',
