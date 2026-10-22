@@ -143,6 +143,9 @@ final class MessagerieService
                 'role' => (string) $m['role'],
                 'actif' => (bool) $m['actif'],
                 'rejoint_at' => (string) $m['rejoint_at'],
+                // Jusqu'où chacun a lu : l'écran en tire les accusés « lu »
+                // des messages déjà affichés, que le relevé ne redonne pas.
+                'dernier_lu_id' => (int) ($m['dernier_message_lu_id'] ?? 0),
             ], $membres),
             'epingles' => $this->formaterMessages($this->depot->epingles($conversationId)),
         ];

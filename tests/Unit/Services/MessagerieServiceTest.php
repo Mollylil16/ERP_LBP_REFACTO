@@ -283,6 +283,30 @@ final class MessagerieServiceTest extends TestCase
         self::assertCount(1, $admins);
     }
 
+    public function test_le_dernier_admin_qui_part_laisse_la_main_au_plus_ancien_membre(): void
+    {
+        $groupe = $this->en(1)->creerGroupe('Export', '', [2]);
+        $this->heure = $this->heure->modify('+1 hour');
+        $this->en(1)->ajouterMembres($groupe, [3]);
+
+        $this->heure = $this->heure->modify('+1 minute');
+        $this->en(1)->quitter($groupe);
+
+        $roles = array_column($this->en(2)->detail($groupe)['membres'], 'role', 'id');
+        self::assertSame(['admin', 'membre'], [$roles[2], $roles[3]]);
+    }
+
+    public function test_un_nouveau_membre_voit_tout_l_historique_sans_non_lus(): void
+    {
+        $groupe = $this->en(1)->creerGroupe('Export', '', [2]);
+        $this->en(1)->envoyer($groupe, 'Avant l arrivée de Clarisse');
+        $this->en(1)->ajouterMembres($groupe, [3]);
+
+        $page = $this->en(3)->messages($groupe);
+        self::assertSame('Avant l arrivée de Clarisse', $page['messages'][0]['texte']);
+        self::assertSame(0, $this->en(3)->conversations()[0]['non_lus']);
+    }
+
     public function test_dans_une_discussion_d_annonces_seuls_les_admins_ecrivent(): void
     {
         $groupe = $this->en(1)->creerGroupe('Annonces LBP', '', [2, 3]);
@@ -343,6 +367,17 @@ final class MessagerieServiceTest extends TestCase
         self::assertSame(['Clarisse'], array_column($lecture['non_lu_par'], 'nom'));
         self::assertSame(0, $this->en(2)->conversations()[0]['non_lus']);
         $this->attendreRefus(404, fn() => $this->en(7)->luPar($message['id']));
+    }
+
+    public function test_la_fiche_dit_jusqu_ou_chaque_membre_a_lu(): void
+    {
+        $direct = $this->en(1)->ouvrirDirecte(2);
+        $premier = $this->en(1)->envoyer($direct, 'Le camion part à 14 h');
+        $this->en(1)->envoyer($direct, 'Tu confirmes ?');
+        $this->en(2)->marquerLu($direct, $premier['id']);
+
+        $lu = array_column($this->en(1)->detail($direct)['membres'], 'dernier_lu_id', 'id');
+        self::assertSame($premier['id'], $lu[2]);
     }
 
     public function test_marquer_lu_ne_recule_pas_et_ne_depasse_pas_le_dernier_message(): void
