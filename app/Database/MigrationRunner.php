@@ -56,7 +56,29 @@ class MigrationRunner
         $this->createMouvementsCaisseTables();
         $this->createMessagerieTables();
         $this->createMessagerieFichiersTables();
+        $this->createMessagerieNotificationsColonne();
         $this->createNoelTables();
+    }
+
+    /**
+     * Messagerie interne (lot 4, notifications) : msg_membres.dernier_push_at,
+     * l'heure de la dernière notification envoyée à ce membre pour cette
+     * discussion. Dans un groupe, il n'en part pas plus d'une par minute.
+     *
+     * Une colonne NULL ajoutée, rien de réécrit : aucune donnée existante n'est
+     * touchée. Une seule lecture d'information_schema les jours ordinaires.
+     */
+    private function createMessagerieNotificationsColonne(): void
+    {
+        try {
+            if ($this->schema->columnExists('msg_membres', 'dernier_push_at') || !$this->schema->tableExists('msg_membres')) {
+                return;
+            }
+
+            $this->pdo->exec('ALTER TABLE msg_membres ADD COLUMN dernier_push_at DATETIME NULL');
+        } catch (\Throwable $e) {
+            error_log('[MigrationRunner Warning] createMessagerieNotificationsColonne: ' . $e->getMessage());
+        }
     }
 
     /**

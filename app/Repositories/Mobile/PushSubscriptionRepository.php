@@ -12,7 +12,7 @@ use PDO;
  * Le directeur ouvre l'application sur plusieurs appareils : chacun produit son
  * propre abonnement, et une alerte part vers tous ceux qui sont encore valides.
  */
-final class PushSubscriptionRepository implements AbonnementsPushInterface
+final class PushSubscriptionRepository implements AbonnementsPushInterface, AbonnementsPushUtilisateursInterface
 {
     public function __construct(private PDO $pdo) {}
 
@@ -65,6 +65,64 @@ final class PushSubscriptionRepository implements AbonnementsPushInterface
         $stmt->execute(['user_id' => $userId]);
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    }
+
+    /**
+     * Abonnements de plusieurs utilisateurs en une requête (messagerie).
+     *
+     * @param array<int, int> $userIds
+     * @return array<int, array<string, mixed>>
+     */
+    public function pourUtilisateurs(array $userIds): array
+    {
+        $userIds = array_values(array_unique(array_map('intval', $userIds)));
+        if ($userIds === []) {
+            return [];
+        }
+
+        // Un nom par identifiant : la connexion refuse un paramètre répété.
+        $marques = [];
+        $parametres = [];
+        foreach ($userIds as $i => $id) {
+            $marques[] = ':u' . $i;
+            $parametres['u' . $i] = $id;
+        }
+
+        $stmt = $this->pdo->prepare('
+            SELECT id, user_id, endpoint, p256dh, auth
+            FROM lbp_push_subscriptions
+            WHERE user_id IN (' . implode(', ', $marques) . ')
+            ORDER BY id ASC
+        ');
+        $stmt->execute($parametres);
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    }
+
+    /**
+     * L'abonnement de ce navigateur, quel qu'en soit le titulaire.
+     *
+     * @return array<string, mixed>|null id, user_id, device_id, endpoint, p256dh, auth
+     */
+    public function parEndpoint(string $endpoint): ?array
+    {
+        $stmt = $this->pdo->prepare('
+            SELECT id, user_id, device_id, endpoint, p256dh, auth
+            FROM lbp_push_subscriptions
+            WHERE endpoint_hash = :hash
+            LIMIT 1
+        ');
+        $stmt->execute(['hash' => hash('sha256', $endpoint)]);
+        $ligne = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        return $ligne ?: null;
+    }
+
+    /** Retire l'abonnement de ce navigateur s'il appartient bien à cet utilisateur. */
+    public function supprimerPourUtilisateur(string $endpoint, int $userId): void
+    {
+        $stmt = $this->pdo->prepare('DELETE FROM lbp_push_subscriptions WHERE endpoint_hash = :hash AND user_id = :user_id');
+        $stmt->execute(['hash' => hash('sha256', $endpoint), 'user_id' => $userId]);
     }
 
     /**

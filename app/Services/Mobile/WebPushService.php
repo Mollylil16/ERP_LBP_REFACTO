@@ -20,7 +20,7 @@ use Throwable;
  * Le projet ne déclare aucune dépendance de production ; tout repose donc sur les
  * extensions openssl et curl, déjà requises par ailleurs.
  */
-final class WebPushService implements EnvoiPushInterface
+final class WebPushService implements EnvoiPushGroupeInterface
 {
     private const CLE_PUBLIQUE = 'vapid_public_key';
     private const CLE_PRIVEE = 'vapid_private_key';
@@ -109,24 +109,129 @@ final class WebPushService implements EnvoiPushInterface
      */
     public function envoyer(array $abonnement, array $charge, int $ttl = 86400): array
     {
+        $requete = $this->preparer($abonnement, $charge, $ttl);
+        if (isset($requete['refus'])) {
+            return $requete['refus'];
+        }
+
+        $ch = $this->poignee($requete);
+        $reponse = curl_exec($ch);
+        $resultat = self::resultat($reponse !== false, (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE), curl_error($ch));
+        curl_close($ch);
+
+        return $resultat;
+    }
+
+    /**
+     * Plusieurs notifications d'un coup, envoyées en parallèle (curl_multi) :
+     * vingt abonnements prennent le temps du plus lent, pas la somme de tous.
+     * Les délais sont plus courts qu'à l'unité : l'envoi groupé part après la
+     * réponse HTTP d'un agent et ne doit pas occuper le serveur longtemps.
+     *
+     * @param array<int|string, array{0: array{endpoint: string, p256dh: string, auth: string}, 1: array<string, mixed>}> $envois
+     * @return array<int|string, array{ok: bool, status: int, expire: bool, message: string}> mêmes clés que $envois
+     */
+    public function envoyerTous(array $envois, int $ttl = 86400): array
+    {
+        $resultats = [];
+        $poignees = [];
+        $multi = curl_multi_init();
+
+        foreach ($envois as $cle => [$abonnement, $charge]) {
+            $requete = $this->preparer($abonnement, $charge, $ttl);
+            if (isset($requete['refus'])) {
+                $resultats[$cle] = $requete['refus'];
+                continue;
+            }
+
+            $ch = $this->poignee($requete, 8, 4);
+            $poignees[$cle] = $ch;
+            curl_multi_add_handle($multi, $ch);
+        }
+
+        $actifs = 0;
+        do {
+            $statut = curl_multi_exec($multi, $actifs);
+            if ($actifs > 0 && curl_multi_select($multi, 1.0) === -1) {
+                usleep(20000);
+            }
+        } while ($actifs > 0 && $statut === CURLM_OK);
+
+        foreach ($poignees as $cle => $ch) {
+            $code = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+            $resultats[$cle] = self::resultat($code > 0, $code, curl_error($ch));
+            curl_multi_remove_handle($multi, $ch);
+            curl_close($ch);
+        }
+        curl_multi_close($multi);
+
+        // Dans l'ordre des envois, pour que l'appelant relise sans surprise.
+        $ordonnes = [];
+        foreach (array_keys($envois) as $cle) {
+            $ordonnes[$cle] = $resultats[$cle];
+        }
+
+        return $ordonnes;
+    }
+
+    /**
+     * Seuls les services de push des navigateurs sont acceptés : un endpoint
+     * arbitraire ferait du serveur un relais vers une adresse choisie par un
+     * tiers.
+     */
+    public static function endpointAutorise(string $endpoint): bool
+    {
+        $hote = parse_url($endpoint, PHP_URL_HOST);
+        $schema = parse_url($endpoint, PHP_URL_SCHEME);
+
+        if ($schema !== 'https' || !is_string($hote)) {
+            return false;
+        }
+
+        $suffixes = [
+            'push.services.mozilla.com',
+            'fcm.googleapis.com',
+            'android.googleapis.com',
+            'web.push.apple.com',
+            'notify.windows.com',
+        ];
+
+        foreach ($suffixes as $suffixe) {
+            if ($hote === $suffixe || str_ends_with($hote, '.' . $suffixe)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Chiffre la charge et signe la requête, sans rien envoyer.
+     *
+     * @param array{endpoint: string, p256dh: string, auth: string} $abonnement
+     * @param array<string, mixed> $charge
+     * @return array{endpoint: string, corps: string, entetes: array<int, string>}|array{refus: array{ok: bool, status: int, expire: bool, message: string}}
+     */
+    private function preparer(array $abonnement, array $charge, int $ttl): array
+    {
         $publique = $this->reglage(self::CLE_PUBLIQUE);
         $privee = $this->reglage(self::CLE_PRIVEE);
 
         if ($publique === null || $privee === null) {
-            return ['ok' => false, 'status' => 0, 'expire' => false, 'message' => 'Clés VAPID absentes.'];
+            return ['refus' => ['ok' => false, 'status' => 0, 'expire' => false, 'message' => 'Clés VAPID absentes.']];
         }
 
         $endpoint = (string) $abonnement['endpoint'];
         $corps = json_encode($charge, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         if ($corps === false) {
-            return ['ok' => false, 'status' => 0, 'expire' => false, 'message' => 'Charge utile non sérialisable.'];
+            return ['refus' => ['ok' => false, 'status' => 0, 'expire' => false, 'message' => 'Charge utile non sérialisable.']];
         }
 
         try {
             $chiffre = $this->chiffrer($corps, (string) $abonnement['p256dh'], (string) $abonnement['auth']);
             $entetes = $this->entetesVapid($endpoint, $publique, $privee);
         } catch (Throwable $e) {
-            return ['ok' => false, 'status' => 0, 'expire' => false, 'message' => $e->getMessage()];
+            return ['refus' => ['ok' => false, 'status' => 0, 'expire' => false, 'message' => $e->getMessage()]];
         }
 
         $entetes[] = 'Content-Encoding: aes128gcm';
@@ -134,22 +239,33 @@ final class WebPushService implements EnvoiPushInterface
         $entetes[] = 'TTL: ' . max(0, $ttl);
         $entetes[] = 'Urgency: normal';
 
-        $ch = curl_init($endpoint);
+        return ['endpoint' => $endpoint, 'corps' => $chiffre, 'entetes' => $entetes];
+    }
+
+    /**
+     * @param array{endpoint: string, corps: string, entetes: array<int, string>} $requete
+     */
+    private function poignee(array $requete, int $delai = 12, int $connexion = 6): \CurlHandle
+    {
+        $ch = curl_init($requete['endpoint']);
         curl_setopt_array($ch, [
             CURLOPT_POST => true,
-            CURLOPT_POSTFIELDS => $chiffre,
-            CURLOPT_HTTPHEADER => $entetes,
+            CURLOPT_POSTFIELDS => $requete['corps'],
+            CURLOPT_HTTPHEADER => $requete['entetes'],
             CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_TIMEOUT => 12,
-            CURLOPT_CONNECTTIMEOUT => 6,
+            CURLOPT_TIMEOUT => $delai,
+            CURLOPT_CONNECTTIMEOUT => $connexion,
         ]);
 
-        $reponse = curl_exec($ch);
-        $status = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
-        $erreurCurl = curl_error($ch);
-        curl_close($ch);
+        return $ch;
+    }
 
-        if ($reponse === false) {
+    /**
+     * @return array{ok: bool, status: int, expire: bool, message: string}
+     */
+    private static function resultat(bool $repondu, int $status, string $erreurCurl): array
+    {
+        if (!$repondu) {
             return ['ok' => false, 'status' => 0, 'expire' => false, 'message' => $erreurCurl ?: 'Échec réseau.'];
         }
 

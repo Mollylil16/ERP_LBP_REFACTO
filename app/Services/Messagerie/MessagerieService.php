@@ -55,57 +55,75 @@ final class MessagerieService
         ?Closure $horloge = null,
         private ?MessagerieStockage $stockage = null,
         private ?Closure $apresEnvoi = null,
+        private ?Closure $notifier = null,
     ) {
         $this->horloge = $horloge ?? static fn(): DateTimeImmutable => new DateTimeImmutable();
     }
 
     /**
-     * Point d'accroche après l'enregistrement d'un message texte : c'est là
-     * que NOEL, l'assistant interne, se branche pour répondre quand on lui
-     * écrit (app/Services/Noel/NoelMessagerie).
+     * Ce qui suit l'enregistrement d'un message.
+     *
+     * Deux branchements :
+     *  - l'accroche $apresEnvoi, après un message texte seulement : c'est là
+     *    que NOEL, l'assistant interne, se branche pour répondre quand on lui
+     *    écrit (app/Services/Noel/NoelMessagerie) ;
+     *  - $notifier, après tout message (texte, fichier, transfert) : les
+     *    notifications des autres membres (lot 4, NotificationsMessagerie).
      *
      * NOEL interroge un service extérieur et peut mettre plusieurs secondes à
-     * répondre. L'agent ne doit pas les attendre : sur le serveur web, la
-     * réponse HTTP est d'abord rendue et la session libérée (sans quoi le
-     * relevé de l'agent resterait bloqué derrière), puis NOEL travaille et
-     * sa réponse arrive par le relevé, comme le message d'un collègue.
+     * répondre ; prévenir les téléphones en prend une ou deux. L'agent
+     * n'attend ni l'un ni l'autre : sur le serveur web, une seule fonction
+     * d'arrêt (SuitesEnvoi) rend d'abord la réponse HTTP et libère la session,
+     * puis NOEL travaille, puis les notifications partent — y compris pour la
+     * réponse de NOEL, qui arrive ensuite par le relevé comme le message d'un
+     * collègue.
      *
-     * Les tests passent leur propre $apresEnvoi ; en ligne de commande, sans
-     * accroche fournie, rien n'est appelé. Une accroche qui échoue ne casse
-     * jamais un envoi : le message est déjà enregistré.
+     * Les tests passent leurs propres $apresEnvoi et $notifier ; en ligne de
+     * commande, sans aucun des deux, rien n'est appelé. Une accroche qui
+     * échoue ne casse jamais un envoi : le message est déjà enregistré.
+     *
+     * @param string|null $texte le texte d'un message texte, null pour un fichier ou un transfert
      */
-    private function apresEnvoi(int $conversationId, string $texte): void
+    private function apresEnvoi(int $messageId, int $conversationId, ?string $texte): void
     {
         $auteurId = $this->utilisateurId;
         $depot = $this->depot;
 
-        if ($this->apresEnvoi !== null) {
+        if ($this->apresEnvoi === null && $this->notifier === null) {
+            if (PHP_SAPI === 'cli') {
+                return;
+            }
+
+            SuitesEnvoi::planifier(static function () use ($messageId, $conversationId, $auteurId, $texte, $depot): void {
+                SuitesEnvoi::enchainer(
+                    $messageId,
+                    $conversationId,
+                    $auteurId,
+                    $texte,
+                    $depot,
+                    static fn(int $c, int $a, string $t, MessagerieDepotInterface $d): ?int => \App\Services\Noel\NoelMessagerie::surMessage($c, $a, $t, $d),
+                    static fn(int $id): int => NotificationsMessagerie::parDefaut()->surMessage($id),
+                );
+            });
+
+            return;
+        }
+
+        if ($texte !== null && $this->apresEnvoi !== null) {
             try {
                 ($this->apresEnvoi)($conversationId, $auteurId, $texte, $depot);
             } catch (\Throwable $e) {
                 error_log('[Messagerie] accroche après envoi : ' . $e->getMessage());
             }
-
-            return;
         }
 
-        if (PHP_SAPI === 'cli') {
-            return;
+        if ($this->notifier !== null) {
+            try {
+                ($this->notifier)($messageId, $conversationId, $auteurId);
+            } catch (\Throwable $e) {
+                error_log('[Messagerie] notifications après envoi : ' . $e->getMessage());
+            }
         }
-
-        register_shutdown_function(static function () use ($conversationId, $auteurId, $texte, $depot): void {
-            if (session_status() === PHP_SESSION_ACTIVE) {
-                session_write_close();
-            }
-            ignore_user_abort(true);
-            if (function_exists('litespeed_finish_request')) {
-                litespeed_finish_request();
-            } elseif (function_exists('fastcgi_finish_request')) {
-                fastcgi_finish_request();
-            }
-
-            \App\Services\Noel\NoelMessagerie::surMessage($conversationId, $auteurId, $texte, $depot);
-        });
     }
 
     /** Les adresses des pièces et des photos commenceront par $url (sans « / » final). */
@@ -469,7 +487,7 @@ final class MessagerieService
             'created_at' => $this->maintenant(),
         ]);
 
-        $this->apresEnvoi($conversationId, $texte);
+        $this->apresEnvoi($id, $conversationId, $texte);
 
         return $this->messageFormate($id);
     }
@@ -511,6 +529,8 @@ final class MessagerieService
             'legende' => $legende === '' ? null : $legende,
         ]]);
 
+        $this->apresEnvoi($id, $conversationId, null);
+
         return $this->messageFormate($id);
     }
 
@@ -551,6 +571,8 @@ final class MessagerieService
             'transfere_de_id' => $messageId,
             'created_at' => $this->maintenant(),
         ], $pieces);
+
+        $this->apresEnvoi($id, $versConversationId, null);
 
         return $this->messageFormate($id);
     }

@@ -195,30 +195,10 @@ final class MobilePushController extends BaseController
         return false;
     }
 
+    /** La liste des services de push admis est partagée avec la messagerie. */
     private static function endpointAutorise(string $endpoint): bool
     {
-        $hote = parse_url($endpoint, PHP_URL_HOST);
-        $schema = parse_url($endpoint, PHP_URL_SCHEME);
-
-        if ($schema !== 'https' || !is_string($hote)) {
-            return false;
-        }
-
-        $suffixes = [
-            'push.services.mozilla.com',
-            'fcm.googleapis.com',
-            'android.googleapis.com',
-            'web.push.apple.com',
-            'notify.windows.com',
-        ];
-
-        foreach ($suffixes as $suffixe) {
-            if ($hote === $suffixe || str_ends_with($hote, '.' . $suffixe)) {
-                return true;
-            }
-        }
-
-        return false;
+        return WebPushService::endpointAutorise($endpoint);
     }
 
     private function garde(): bool

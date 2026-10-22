@@ -34,21 +34,23 @@ final class NoelMessagerie
      * @param int $conversationId la discussion qui vient de recevoir le message
      * @param int $auteurId       qui l'a ecrit
      * @param string $texte       ce qui a ete ecrit
+     * @return int|null l'identifiant de sa reponse (la messagerie en notifie
+     *                  le destinataire), null s'il se tait
      */
     public static function surMessage(
         int $conversationId,
         int $auteurId,
         string $texte,
         MessagerieDepotInterface $depot
-    ): void {
+    ): ?int {
         try {
             if (!self::doitRepondre($conversationId, $auteurId, $depot)) {
-                return;
+                return null;
             }
 
             $reponse = (new NoelRepondeur())->repondre($texte);
 
-            $depot->ajouterMessage([
+            return $depot->ajouterMessage([
                 'conversation_id' => $conversationId,
                 'auteur_id' => (int) NoelCompte::id(),
                 'texte' => NoelRepondeur::enMessage($reponse),
@@ -63,6 +65,8 @@ final class NoelMessagerie
              * tait.
              */
             error_log('[NOEL messagerie] reponse impossible : ' . $e->getMessage());
+
+            return null;
         }
     }
 
