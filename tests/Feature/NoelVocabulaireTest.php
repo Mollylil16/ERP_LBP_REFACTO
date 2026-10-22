@@ -41,6 +41,15 @@ final class NoelVocabulaireTest extends TestCase
             'salutation d ici' => ['bonjour noel on dit quoi', null, 'salutation'],
             'remerciement nouchi' => ['merci ya fohi', null, 'remerciement'],
             'hors sujet' => ['je veux parler de football', null, 'inconnue'],
+            // Ajouts du 22/10/2026 : le dictionnaire passe de 316 a 723
+            // expressions et de 17 a 23 sujets.
+            'export pdf' => ['je n arrive pas a tirer l etat en pdf', 'impression', 'panne'],
+            'comptabilite' => ['comment lettrer une ecriture', 'comptabilite', 'comment'],
+            'flotte' => ['mon vehicule a besoin de carburant', 'flotte', 'ou'],
+            'douane' => ['le dedouanement du conteneur', 'transit', 'ou'],
+            'bonjour d ici' => ['yako noel c est comment ce matin', null, 'salutation'],
+            'le colis ne bouge pas' => ['le tracking du colis ne bouge pas', 'colis', 'panne'],
+            'demande d acces' => ['donne moi l acces au module colisage', null, 'signalement'],
         ];
     }
 
@@ -61,8 +70,8 @@ final class NoelVocabulaireTest extends TestCase
          * pas. Le seuil n'est pas magique : il empêche qu'on vide la liste
          * sans s'en apercevoir.
          */
-        self::assertGreaterThanOrEqual(250, NoelVocabulaire::tailleDuDictionnaire());
-        self::assertGreaterThanOrEqual(15, count(NoelVocabulaire::concepts()));
+        self::assertGreaterThanOrEqual(700, NoelVocabulaire::tailleDuDictionnaire());
+        self::assertGreaterThanOrEqual(22, count(NoelVocabulaire::concepts()));
     }
 
     public function test_le_parler_d_ici_est_reconnu(): void
@@ -81,6 +90,21 @@ final class NoelVocabulaireTest extends TestCase
         }
 
         self::assertContains('ya fohi', NoelVocabulaire::REMERCIEMENT);
+    }
+
+    public function test_un_bonjour_ne_mange_pas_une_vraie_question(): void
+    {
+        /*
+         * « C'est comment ? » est un bonjour a Abidjan. Mais « bonjour, c'est
+         * comment pour la caisse ? » est une vraie question, et y repondre
+         * « bonjour a vous aussi » serait insupportable. Le bonjour ne
+         * l'emporte donc que si la phrase ne parle de rien d'autre.
+         */
+        self::assertSame('salutation', NoelVocabulaire::comprendre('bonjour c est comment')['intention']);
+
+        $vraie = NoelVocabulaire::comprendre('bonjour c est comment pour fermer ma caisse');
+        self::assertSame('point_caisse', $vraie['concept']);
+        self::assertNotSame('salutation', $vraie['intention']);
     }
 
     public function test_une_panne_passe_avant_un_remerciement(): void

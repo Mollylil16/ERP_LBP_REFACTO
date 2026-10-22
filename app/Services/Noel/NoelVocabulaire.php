@@ -43,10 +43,12 @@ final class NoelVocabulaire
                 'fermer ma caisse', 'fermeture caisse', 'soumettre', 'soumission',
                 'envoyer mon point', 'declarer ma caisse', 'arreter la caisse',
                 'comptage', 'compter la caisse', 'solde de caisse', 'ecart de caisse',
-                'tiroir', 'brouillon', 'consolider',
-                // « ma caisse » tout court : pour un agent de guichet, c'est
-                // toujours de son point qu'il parle, jamais du meuble.
+                'tiroir', 'brouillon', 'consolider', 'consolidation',
                 'caisse', 'ma caisse', 'la caisse', 'sa caisse',
+                'bordereau', 'bordereau de caisse', 'etat journalier', 'journee de caisse',
+                'especes en caisse', 'le physique', 'physique declare', 'theorique',
+                'rouvrir le point', 'reouverture', 'point du jour', 'point non soumis',
+                'cloture du soir', 'faire ma journee', 'boucler la journee',
             ],
         ],
         'facture' => [
@@ -54,28 +56,41 @@ final class NoelVocabulaire
             'ecrans' => ['finance/factures'],
             'mots' => [
                 'facture', 'factures', 'facturer', 'facturation', 'fature', 'factur',
-                'encaisser', 'encaissement', 'reglement', 'regler', 'payer le client',
-                'acompte', 'solde client', 'reste a payer', 'impaye', 'partiellement payee',
-                'recu', 'bon de caisse', 'annuler un reglement', 'doublon',
+                'encaisser', 'encaissement', 'encaissements', 'reglement', 'reglements',
+                'regler', 'payer le client', 'paiement du client', 'paiement client',
+                'acompte', 'solde client', 'reste a payer', 'restant du', 'impaye',
+                'partiellement payee', 'recu', 'recu officiel', 'bon de caisse',
+                'annuler un reglement', 'annuler le reglement', 'doublon', 'double encaissement',
+                'encaisse deux fois', 'reinitialiser la facture', 'modifier la facture',
+                'supprimer une facture', 'numero de facture', 'editer la facture',
+                'imprimer la facture', 'qr code', 'mode de reglement', 'especes ou wave',
             ],
         ],
         'colis' => [
             'libelle' => 'les colis',
             'ecrans' => ['colisage/parcels', 'logistique/colisage', 'colisage/dashboard'],
             'mots' => [
-                'colis', 'coli', 'kolis', 'enregistrer un colis', 'saisir un colis',
-                'saisie colis', 'nouveau colis', 'carton', 'cartons', 'bagage',
-                'marchandise', 'marchandises', 'poids', 'peser', 'pesee', 'tracking',
-                'numero de suivi', 'code colis', 'expediteur', 'destinataire',
+                'colis', 'coli', 'kolis', 'colid', 'enregistrer un colis', 'saisir un colis',
+                'saisie colis', 'saisie de colis', 'nouveau colis', 'creer un colis',
+                'carton', 'cartons', 'bagage', 'bagages', 'valise', 'sac boro', 'boro',
+                'marchandise', 'marchandises', 'contenu', 'nature du contenu',
+                'poids', 'peser', 'pesee', 'poids total', 'kilo', 'kilos', 'kg',
+                'tracking', 'numero de suivi', 'code colis', 'numero de tracking',
+                'expediteur', 'destinataire', 'emballage', 'valeur declaree',
+                'assurance', 'assurer le colis', 'fragile', 'declaration',
             ],
         ],
         'groupage' => [
             'libelle' => 'le groupage et les expeditions',
             'ecrans' => ['colisage/groupage', 'logistique/groupage-codes-non-payes'],
             'mots' => [
-                'groupage', 'groupe', 'expedition', 'depart', 'vol', 'cargo',
-                'lta', 'manifeste', 'codes non payes', 'code non paye', 'impayes groupage',
-                'preparer un depart', 'dossier envoi',
+                'groupage', 'groupe', 'groupe code', 'expedition', 'expeditions',
+                'depart', 'les departs', 'preparer un depart', 'dossier envoi',
+                'dossier d envoi', 'vol', 'les vols', 'cargo', 'avion', 'bateau',
+                'lta', 'numero de lta', 'manifeste', 'liste de colisage',
+                'codes non payes', 'code non paye', 'impayes groupage', 'non paye',
+                'creance', 'creances', 'client qui doit', 'dette client',
+                'trajet', 'les trajets', 'categorie de code', 'lb ci', 'ca ci',
             ],
         ],
         'demande_fonds' => [
@@ -84,7 +99,10 @@ final class NoelVocabulaire
             'mots' => [
                 'demande de fonds', 'demande fonds', 'demander de l argent',
                 'besoin d argent', 'budget', 'depense a valider', 'valider une demande',
-                'rejeter une demande', 'autorisation de depense',
+                'rejeter une demande', 'autorisation de depense', 'fonds',
+                'demande de decaissement', 'faire une demande', 'ma demande de fonds',
+                'validation de la demande', 'motif de la demande', 'imputation',
+                'imputer', 'justificatif de depense', 'reliquat',
             ],
         ],
         'decaissement' => [
@@ -93,6 +111,8 @@ final class NoelVocabulaire
             'mots' => [
                 'decaisser', 'decaissement', 'prise en compte', 'sortir l argent',
                 'remettre l argent', 'payer la demande', 'bon de sortie',
+                'bon de sortie de caisse', 'donner l argent', 'sortie de caisse',
+                'mode de decaissement', 'payer par cheque', 'payer par virement',
             ],
         ],
         'appro' => [
@@ -101,14 +121,17 @@ final class NoelVocabulaire
             'mots' => [
                 'appro', 'approvisionnement', 'approvisionner', 'recharger la caisse',
                 'argent du siege', 'fonds de caisse', 'remise d argent',
+                'alimenter la caisse', 'appro caisse', 'date de remise',
+                'valider l appro', 'provenance', 'recu du siege',
             ],
         ],
         'mouvements_caisse' => [
             'libelle' => 'les mouvements de caisse',
             'ecrans' => ['finance/mouvements-caisse'],
             'mots' => [
-                'mouvement de caisse', 'mouvements', 'entrees et sorties',
-                'journal de caisse', 'ce qui est entre', 'ce qui est sorti',
+                'mouvement de caisse', 'mouvements', 'mouvements de caisse',
+                'entrees et sorties', 'journal de caisse', 'ce qui est entre',
+                'ce qui est sorti', 'historique de la caisse', 'les operations du jour',
             ],
         ],
         'pointage' => [
@@ -116,23 +139,23 @@ final class NoelVocabulaire
             'ecrans' => ['rh/pointage'],
             'mots' => [
                 'pointage', 'pointer', 'presence', 'presences', 'absence', 'absences',
-                'heure d arrivee', 'heures supplementaires', 'heures sup', 'retard',
-                'demi journee', 'repos',
+                'heure d arrivee', 'heure de depart', 'heures supplementaires',
+                'heures sup', 'heure sup', 'retard', 'les retards', 'demi journee',
+                'repos', 'jour de repos', 'liste de presence', 'feuille de presence',
+                'pointer les agents', 'marquer absent', 'marquer present',
             ],
         ],
         'paie' => [
             'libelle' => 'la paie',
-            /*
-             * L'ecran RH d'abord, l'espace employe en repli. Un agent
-             * ordinaire ne peut pas ouvrir la paie : NoelCarte ecartera la
-             * premiere adresse et gardera la seconde, ou chacun lit son propre
-             * bulletin. Sans ce repli, NOEL n'aurait rien a lui repondre.
-             */
             'ecrans' => ['rh/paie', 'espace-employe/dashboard'],
             'mots' => [
                 'paie', 'paye', 'salaire', 'salaires', 'bulletin', 'bulletin de paie',
-                'fiche de paie', 'net a payer', 'cnps', 'igr', 'impot', 'retenue',
-                'prime', 'gratification', 'sursalaire', 'acompte sur salaire',
+                'bulletin de salaire', 'fiche de paie', 'net a payer', 'salaire net',
+                'cnps', 'igr', 'impot', 'impot sur salaire', 'retenue', 'retenues',
+                'prime', 'primes', 'gratification', 'sursalaire', 'salaire categoriel',
+                'acompte sur salaire', 'avance sur salaire', 'parts fiscales',
+                'periode de paie', 'cloturer la paie', 'calculer la paie',
+                'prime d anciennete', 'avantage en nature', 'cotisation',
             ],
         ],
         'conge' => [
@@ -140,7 +163,9 @@ final class NoelVocabulaire
             'ecrans' => ['rh/planning-conges', 'espace-employe/demandes'],
             'mots' => [
                 'conge', 'conges', 'vacances', 'permission', 'repos annuel',
-                'solde de conge', 'jour ferie', 'feries', 'absence autorisee',
+                'solde de conge', 'mes conges', 'demander un conge', 'poser un conge',
+                'jour ferie', 'feries', 'jours feries', 'absence autorisee',
+                'planning des conges', 'reliquat de conge',
             ],
         ],
         'dossier_personnel' => [
@@ -148,40 +173,94 @@ final class NoelVocabulaire
             'ecrans' => ['rh/personnel'],
             'mots' => [
                 'dossier du personnel', 'dossier employe', 'fiche employe',
-                'nouvel employe', 'integrer quelqu un', 'embauche', 'recrutement',
-                'matricule', 'contrat de travail', 'mutation', 'depart', 'demission',
+                'nouvel employe', 'integrer quelqu un', 'embauche', 'embaucher',
+                'recrutement', 'recruter', 'matricule', 'contrat de travail',
+                'mutation', 'muter', 'depart', 'demission', 'licenciement',
+                'sortie du personnel', 'reintegration', 'reintegrer', 'cni', 'piece d identite',
+                'acte de naissance', 'diplome', 'periode d essai', 'fin d essai',
+                'sanction', 'avertissement', 'blame', 'mise a pied', 'discipline',
+                'demande d explication', 'explication',
             ],
         ],
         'espace_employe' => [
             'libelle' => 'votre espace personnel',
             'ecrans' => ['espace-employe/dashboard', 'espace-employe/demandes'],
             'mots' => [
-                'mon dossier', 'mon espace', 'mes documents', 'mon bulletin',
-                'ma demande', 'faire une demande', 'mes conges', 'mon profil',
+                'mon dossier', 'mon espace', 'espace employe', 'mes documents',
+                'mon bulletin', 'ma demande', 'faire une demande', 'mes conges',
+                'mon profil', 'mes informations', 'mes papiers', 'mon contrat',
             ],
         ],
         'client' => [
             'libelle' => 'les clients',
             'ecrans' => ['crm/clients', 'finance/portefeuilles'],
             'mots' => [
-                'client', 'clients', 'fiche client', 'nouveau client', 'contact',
-                'portefeuille client', 'avance client', 'credit client', 'telephone du client',
+                'client', 'clients', 'fiche client', 'nouveau client', 'creer un client',
+                'contact', 'coordonnees du client', 'telephone du client',
+                'portefeuille client', 'portefeuilles', 'avance client', 'credit client',
+                'solde du client', 'compte client', 'crm', 'relance client',
+                'reclamation', 'reclamation client', 'litige client', 'plainte',
             ],
         ],
         'entrepot' => [
             'libelle' => 'les entrepots et le stock',
             'ecrans' => ['entrepots/dashboard'],
             'mots' => [
-                'entrepot', 'magasin', 'stock', 'rayon', 'emplacement', 'gardiennage',
-                'stockage', 'emballage', 'emballages',
+                'entrepot', 'entrepots', 'magasin', 'stock', 'stocks', 'rayon',
+                'emplacement', 'gardiennage', 'frais de gardiennage', 'stockage',
+                'emballage', 'emballages', 'consommable', 'consommables',
+                'inventaire', 'retrait', 'retirer un colis', 'enlevement',
             ],
         ],
         'depense' => [
             'libelle' => 'les depenses',
             'ecrans' => ['finance/depenses'],
             'mots' => [
-                'depense', 'depenses', 'prestataire', 'fournisseur', 'facture fournisseur',
-                'note de frais', 'achat',
+                'depense', 'depenses', 'prestataire', 'prestataires', 'fournisseur',
+                'facture fournisseur', 'note de frais', 'achat', 'achats',
+                'cout d approche', 'couts d approche', 'charge', 'charges',
+            ],
+        ],
+        'transit' => [
+            'libelle' => 'le transit et la douane',
+            'ecrans' => ['transit-douane/dashboard'],
+            'mots' => [
+                'transit', 'douane', 'douanier', 'dedouanement', 'dedouaner',
+                'declaration en douane', 'droits de douane', 'taxe', 'taxes',
+                'connaissement', 'conteneur', 'conteneurs', 'import', 'export',
+                'importation', 'exportation', 'formalite', 'formalites',
+            ],
+        ],
+        'suivi_colis' => [
+            'libelle' => 'le suivi des colis',
+            'ecrans' => ['tracking-colis/dashboard', 'logistique/colisage'],
+            'mots' => [
+                'suivi', 'suivi colisage', 'suivre un colis', 'ou est le colis',
+                'localiser', 'localisation du colis', 'etat du colis', 'statut du colis',
+                'colis en transit', 'colis arrive', 'colis livre', 'etape',
+                'notifier le client', 'avis d arrivee',
+            ],
+        ],
+        'flotte' => [
+            'libelle' => 'la flotte et le transport',
+            'ecrans' => ['flotte-transport/dashboard'],
+            'mots' => [
+                'vehicule', 'vehicules', 'camion', 'camions', 'voiture', 'moto',
+                'chauffeur', 'chauffeurs', 'carburant', 'essence', 'gasoil',
+                'entretien', 'reparation', 'assurance vehicule', 'visite technique',
+                'flotte', 'course', 'livraison', 'tournee',
+            ],
+        ],
+        'comptabilite' => [
+            'libelle' => 'la comptabilite',
+            'ecrans' => ['finance/comptabilite', 'finance/balance-comptes'],
+            'mots' => [
+                'comptabilite', 'compta', 'livre journal', 'grand livre', 'ecriture',
+                'ecritures', 'ecriture comptable', 'plan comptable', 'compte comptable',
+                'balance', 'balance des comptes', 'balance agee', 'lettrage', 'lettrer',
+                'contre passer', 'contrepassation', 'bilan', 'rentabilite', 'resultat',
+                'tresorerie', 'cashflow', 'rapprochement', 'rapprochement bancaire',
+                'rapprochement mobile money',
             ],
         ],
         'compte_acces' => [
@@ -189,8 +268,31 @@ final class NoelVocabulaire
             'ecrans' => ['admin/utilisateurs'],
             'mots' => [
                 'mot de passe', 'mdp', 'connexion', 'me connecter', 'identifiant',
-                'compte bloque', 'acces refuse', 'droit', 'droits', 'habilitation',
-                'role', 'permission', 'je ne vois pas', 'pas autorise',
+                'compte bloque', 'compte desactive', 'acces refuse', 'droit', 'droits',
+                'habilitation', 'habilitations', 'role', 'roles', 'permission',
+                'permissions', 'je ne vois pas', 'pas autorise', 'page introuvable',
+                'erreur 404', 'deconnecte', 'ca me deconnecte', 'session expiree',
+                'jeton', 'creer un compte', 'nouvel utilisateur', 'changer mon mot de passe',
+                'reinitialiser le mot de passe', 'je suis bloque',
+            ],
+        ],
+        'impression' => [
+            'libelle' => 'imprimer et exporter',
+            'ecrans' => ['finance/factures', 'logistique/colisage'],
+            'mots' => [
+                'imprimer', 'impression', 'imprimante', 'pdf', 'editer en pdf',
+                'tirer en pdf', 'tirer l etat', 'exporter', 'export', 'excel',
+                'tableur', 'telecharger', 'sortir la liste', 'sortir le rapport',
+                'etat en pdf', 'rapport pdf',
+            ],
+        ],
+        'agence' => [
+            'libelle' => 'les agences',
+            'ecrans' => ['admin/agences', 'finance/dashboard'],
+            'mots' => [
+                'agence', 'agences', 'site', 'sites', 'dokui', 'abobo dokui',
+                'adjame', 'aeroport', 'port bouet', 'bobigny', 'paris', 'senegal',
+                'dakar', 'changer d agence', 'autre agence', 'mon agence',
             ],
         ],
     ];
@@ -225,7 +327,20 @@ final class NoelVocabulaire
         'c est chaud', 'ca chauffe', 'c est dur',
         'ca bloque dê', 'ca bloque de', 'ca passe pas de',
         'ya rien qui marche', 'ca fait quoi la',
-        'tchei', 'tchai',
+        'tchei', 'tchai', 'ca fait comment', 'ca veut rien savoir',
+        'ca me laisse pas', 'ca me refuse', 'ca dit non', 'ca repond rien',
+        'y a un souci', 'il y a un souci', 'c est bloque', 'je suis bloque',
+        'ca tourne', 'ca tourne en rond', 'ca charge toujours', 'ca rame',
+        'ca plante', 'plante', 'ca saute', 'ca coupe', 'ca se ferme tout seul',
+        'message d erreur', 'page d erreur', 'erreur 500', 'erreur 404',
+        'je trouve pas', 'je ne trouve pas', 'introuvable', 'ca a disparu',
+        'c est parti', 'ca s est efface', 'j ai perdu', 'ou est passe',
+        'ca double', 'c est en double', 'deux fois', 'ca compte deux fois',
+        'faux montant', 'mauvais montant', 'le chiffre est faux', 'ca colle pas',
+        'ca correspond pas', 'y a un ecart', 'il manque', 'il manque de l argent',
+        'bouge pas', 'ne bouge pas', 'est faux', 'c est faux', 'est fausse',
+        'ne s ouvre pas', 'ouvre pas', 'ne se ferme pas', 'je peux pas',
+        'je ne peux pas', 'pas possible', 'ca me laisse pas faire',
     ];
 
     /**
@@ -241,13 +356,19 @@ final class NoelVocabulaire
         'bonjour', 'bonsoir', 'salut', 'bjr', 'bsr', 'slt', 'coucou', 'hello',
         'on dit quoi', 'c est comment', 'cest comment', 'comment ca va', 'ca va',
         'ca dit quoi', 'quoi de neuf', 'bonne arrivee', 'ya quoi', 'y a quoi',
+        'bonne journee', 'bon matin', 'comment tu vas', 'comment allez vous',
+        'ca va noel', 'noel', 'salut noel', 'bonjour noel', 'tu es la',
+        'es tu la', 'tu m entends', 'on est ensemble', 'c est comment ce matin',
+        'comment le travail', 'comment ca se passe', 'yako',
     ];
 
     /** @var array<int, string> */
     public const REMERCIEMENT = [
         'merci', 'mercii', 'merci beaucoup', 'c est bon', 'ok merci', 'parfait',
         'nickel', 'super', 'ya fohi', 'y a fohi', 'ya foi', 'c est gbe', 'gbe',
-        'bien recu', 'd accord merci',
+        'bien recu', 'd accord merci', 'merci noel', 'tres bien', 'ca marche',
+        'c est clair', 'j ai compris', 'compris', 'tu es fort', 'bravo',
+        'je te remercie', 'grand merci', 'ok c est bon', 'parfait merci',
     ];
 
     /**
@@ -260,7 +381,14 @@ final class NoelVocabulaire
         'remonter', 'faire remonter', 'j ai besoin d aide', 'aidez moi', 'aide moi',
         'donne moi le droit', 'donnez moi acces', 'il me faut l acces',
         'je veux proposer', 'suggestion', 'ameliorer', 'changer', 'modifier',
-        'ce serait bien si', 'il faudrait', 'ca serait mieux',
+        'ce serait bien si', 'il faudrait', 'ca serait mieux', 'on devrait',
+        'je propose', 'proposition', 'une idee', 'j ai une idee',
+        'previens l administrateur', 'dis le a brunell', 'informe la direction',
+        'fais remonter', 'transmets', 'signale ca', 'je signale',
+        'j ai un probleme', 'il me faut', 'je voudrais pouvoir',
+        'je n ai pas le droit', 'je n ai pas acces', 'donne moi l acces',
+        'ouvre moi', 'autorise moi', 'debloque moi', 'il faut corriger',
+        'c est a corriger', 'il y a une erreur dans', 'ca devrait etre',
     ];
 
     /**
@@ -353,6 +481,16 @@ final class NoelVocabulaire
 
         if (self::contient($texte, self::PANNE)) {
             return self::INTENTION_PANNE;
+        }
+
+        /*
+         * Le bonjour passe avant la question SEULEMENT si la phrase ne parle
+         * de rien d'autre. « C'est comment ? » est un bonjour a Abidjan, mais
+         * « bonjour, c'est comment pour la caisse ? » est une vraie question —
+         * et y repondre « bonjour a vous aussi » serait insupportable.
+         */
+        if (!$conceptTrouve && self::contient($texte, self::SALUTATION)) {
+            return self::INTENTION_SALUTATION;
         }
 
         if (str_contains($texte, ' comment ') || str_contains($texte, ' pourquoi ')) {
