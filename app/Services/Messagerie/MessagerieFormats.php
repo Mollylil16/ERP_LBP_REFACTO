@@ -105,7 +105,7 @@ final class MessagerieFormats
     /** Extension normalisée (jpeg devient jpg), ou null si le format n'est pas accepté. */
     public static function extension(string $nom): ?string
     {
-        $extension = strtolower(pathinfo($nom, PATHINFO_EXTENSION));
+        $extension = strtolower(self::decouper($nom)[1]);
         if ($extension === 'jpeg' || $extension === 'jpe') {
             $extension = 'jpg';
         }
@@ -141,18 +141,24 @@ final class MessagerieFormats
      */
     public static function nomAffichable(string $nom): string
     {
-        $nom = str_replace('\\', '/', $nom);
-        $nom = basename($nom);
-        $nom = trim((string) preg_replace('/[\x00-\x1F\x7F"]+/u', '', $nom));
+        // D'abord l'encodage : un client ancien envoie le nom en Windows-1252,
+        // et les expressions /u ci-dessous rendraient alors un nom vide.
         if (!mb_check_encoding($nom, 'UTF-8')) {
             $nom = mb_convert_encoding($nom, 'UTF-8', 'Windows-1252');
         }
+        // Sans chemin, et sans basename(), qui dépend de la locale du serveur.
+        $nom = str_replace('\\', '/', $nom);
+        $position = strrpos($nom, '/');
+        if ($position !== false) {
+            $nom = substr($nom, $position + 1);
+        }
+        $nom = trim((string) preg_replace('/[\x00-\x1F\x7F"]+/u', '', $nom));
         if ($nom === '' || $nom === '.') {
             $nom = 'document';
         }
         if (mb_strlen($nom) > 255) {
-            $extension = pathinfo($nom, PATHINFO_EXTENSION);
-            $nom = mb_substr($nom, 0, 250 - mb_strlen($extension)) . ($extension !== '' ? '.' . $extension : '');
+            [$base, $extension] = self::decouper($nom);
+            $nom = mb_substr($base, 0, 250 - mb_strlen($extension)) . ($extension !== '' ? '.' . $extension : '');
         }
 
         return $nom;
@@ -166,9 +172,25 @@ final class MessagerieFormats
             return $nom;
         }
 
-        $base = pathinfo($nom, PATHINFO_FILENAME);
+        $base = self::decouper($nom)[0];
 
         return ($base !== '' ? $base : 'document') . '.' . $extension;
+    }
+
+    /**
+     * « Relevé été.pdf » => ['Relevé été', 'pdf']. À la main plutôt que par
+     * pathinfo(), qui dépend de la locale et coupe mal les noms accentués.
+     *
+     * @return array{0:string, 1:string}
+     */
+    private static function decouper(string $nom): array
+    {
+        $point = strrpos($nom, '.');
+        if ($point === false || $point === 0 || str_contains(substr($nom, $point), '/')) {
+            return [$nom, ''];
+        }
+
+        return [substr($nom, 0, $point), substr($nom, $point + 1)];
     }
 
     private static function estOoxml(string $chemin, string $dossier): bool

@@ -133,6 +133,18 @@ final class MessagerieFichiersTest extends TestCase
         }
     }
 
+    public function test_un_nom_envoye_en_windows_1252_garde_ses_accents(): void
+    {
+        $groupe = $this->en(1)->creerGroupe('Compta', '', [2]);
+
+        // Ce qu'envoie curl sous Windows, ou un navigateur ancien.
+        $message = $this->en(1)->envoyerFichier($groupe, $this->fichier("C:\\Docs\\Relev\xe9 \xe9t\xe9.pdf", self::PDF));
+
+        self::assertSame('Relevé été.pdf', $message['pieces_jointes'][0]['nom']);
+        self::assertSame('rapport.v2.final.pdf', MessagerieFormats::nomAffichable('../../rapport.v2.final.pdf'));
+        self::assertNull(MessagerieFormats::extension('.htaccess'));
+    }
+
     public function test_un_fichier_de_plus_de_25_mo_est_refuse_en_413(): void
     {
         $groupe = $this->en(1)->creerGroupe('Compta', '', [2]);
