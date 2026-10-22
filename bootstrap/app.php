@@ -10,9 +10,7 @@ use App\Models\Database;
 use App\Repositories\Admin\UserRepository;
 use App\Services\Admin\AdminSeederService;
 
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
+require_once __DIR__ . '/session.php';
 
 if (!defined('BASE_PATH')) {
     define('BASE_PATH', dirname(__DIR__));
