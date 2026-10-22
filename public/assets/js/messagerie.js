@@ -1664,6 +1664,7 @@
       var champ = refs["saisie-champ"];
       champ.style.height = "auto";
       champ.style.height = Math.min(champ.scrollHeight, 160) + "px";
+      champ.style.overflowY = champ.scrollHeight > 160 ? "auto" : "hidden";
       refs.envoyer.disabled = champ.value.trim() === "";
     }
 
