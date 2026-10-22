@@ -60,6 +60,31 @@ final class MessagerieController extends BaseController
     }
 
     /**
+     * Le classeur des documents. La page ne porte aucune donnée : le
+     * JavaScript les demande à l'API (/messagerie/api/documents).
+     */
+    public function classeur(): void
+    {
+        AuthMiddleware::check();
+
+        $this->view('messagerie/documents', [
+            'pageTitle' => 'Documents',
+            'moduleName' => 'Messagerie',
+            'moduleCode' => 'MSG',
+            'activeModule' => 'documents',
+            'moduleNavigation' => MessagerieNavigation::items(),
+            'moduleTheme' => [
+                'accent' => '#0f766e',
+                'accent2' => '#134e4a',
+                'gradient' => 'linear-gradient(135deg, #134e4a, #0f766e)',
+                'iconKey' => 'messagerie',
+            ],
+            'additionalStyles' => ['css/finea-ui.css'],
+            'additionalScripts' => ['js/messagerie-documents.js'],
+        ]);
+    }
+
+    /**
      * Toutes les discussions, pour le DG et l'administrateur. Pour les autres,
      * l'adresse n'existe pas : un 404, comme les modules réservés.
      */

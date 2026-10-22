@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\View\Components;
 
+use App\Services\Messagerie\MessagerieFormats;
 use App\View\Components\Messagerie;
 use Tests\TestCase;
 
@@ -89,8 +90,55 @@ final class MessagerieTest extends TestCase
         self::assertStringContainsString('Choisissez une discussion', $html);
         self::assertStringContainsString('Seuls les administrateurs peuvent écrire', $html);
         self::assertStringContainsString('Lecture seule', $html);
-        // Le trombone existe, désactivé : l'envoi de fichiers vient plus tard.
-        self::assertStringContainsString('aria-disabled="true" title="Bientôt', $html);
+        // Lot 3 : le trombone est actif.
+        self::assertStringNotContainsString('aria-disabled="true"', $html);
+        self::assertStringNotContainsString('Bientôt', $html);
+        self::assertStringContainsString('data-msg-action="joindre"', $html);
+    }
+
+    public function test_la_saisie_porte_les_selecteurs_de_fichiers_le_plateau_et_la_zone_de_depot(): void
+    {
+        $html = Messagerie::ecran();
+
+        self::assertStringContainsString('data-msg="fichier-choix" multiple', $html);
+        self::assertStringContainsString('accept="' . Messagerie::ACCEPT_FICHIERS . '"', $html);
+        // Sur un téléphone : l'appareil photo et la galerie.
+        self::assertStringContainsString('data-msg="fichier-photo" hidden tabindex="-1" aria-hidden="true" accept="image/*" capture="environment"', $html);
+        self::assertStringContainsString('data-msg="fichier-galerie" multiple', $html);
+        self::assertStringContainsString('data-msg="plateau" hidden', $html);
+        self::assertStringContainsString('data-msg="depot" hidden', $html);
+        self::assertStringContainsString('10 fichiers au plus, 25 Mo chacun', $html);
+    }
+
+    public function test_le_selecteur_propose_exactement_les_formats_du_serveur(): void
+    {
+        $extensions = [];
+        foreach (explode(',', Messagerie::ACCEPT_FICHIERS) as $entree) {
+            if (str_starts_with($entree, '.')) {
+                $extensions[] = substr($entree, 1);
+            }
+        }
+        sort($extensions);
+
+        $serveur = ['csv', 'doc', 'docx', 'jpeg', 'jpg', 'pdf', 'png', 'ppt', 'pptx', 'txt', 'webp', 'xls', 'xlsx'];
+        self::assertSame($serveur, $extensions);
+        self::assertStringNotContainsString('svg', Messagerie::ACCEPT_FICHIERS);
+        self::assertStringNotContainsString('zip', Messagerie::ACCEPT_FICHIERS);
+
+        // Le JavaScript refuse tôt les mêmes formats, et la même taille.
+        $js = (string) file_get_contents(BASE_PATH . '/public/assets/js/messagerie.js');
+        foreach ($serveur as $extension) {
+            self::assertMatchesRegularExpression('/\b' . $extension . ': "/', $js, $extension);
+        }
+        self::assertStringContainsString('tailleMax: 25 * 1024 * 1024', $js);
+        self::assertSame(25 * 1024 * 1024, MessagerieFormats::TAILLE_MAX);
+    }
+
+    public function test_les_icones_des_fichiers_existent(): void
+    {
+        foreach (['appareil', 'image', 'fichier', 'fichier-texte', 'tableur', 'presentation', 'telecharger', 'etoile', 'ouvrir', 'precedent', 'suivant', 'vignettes', 'liste', 'aller', 'tri', 'dossier', 'filtre'] as $nom) {
+            self::assertContains($nom, Messagerie::nomsIcones(), $nom);
+        }
     }
 
     public function test_la_charpente_n_a_aucun_identifiant_html(): void
@@ -134,7 +182,7 @@ final class MessagerieTest extends TestCase
 
     public function test_le_javascript_n_injecte_jamais_de_html(): void
     {
-        foreach (['messagerie.js', 'messagerie-releve.js'] as $fichier) {
+        foreach (['messagerie.js', 'messagerie-releve.js', 'messagerie-documents.js'] as $fichier) {
             $source = (string) file_get_contents(BASE_PATH . '/public/assets/js/' . $fichier);
 
             self::assertStringNotContainsString('innerHTML', $source, $fichier);
@@ -150,6 +198,9 @@ final class MessagerieTest extends TestCase
 
         self::assertStringNotContainsString('/nouveautes', $interface);
         self::assertStringNotContainsString('setInterval', $interface);
+        $classeur = (string) file_get_contents(BASE_PATH . '/public/assets/js/messagerie-documents.js');
+        self::assertStringNotContainsString('/nouveautes', $classeur);
+        self::assertStringNotContainsString('setInterval', $classeur);
         self::assertStringContainsString('/nouveautes', $releve);
         self::assertStringContainsString('visibilitychange', $releve);
         self::assertStringContainsString('3000', $releve);

@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\View\Navigation;
 
 /**
- * Menu du module Messagerie. Un seul écran au lot 1 ; les suivants
- * (fichiers, favoris, tâches) s'ajouteront ici.
+ * Menu du module Messagerie : les discussions, le classeur des documents
+ * (lot 3) et, pour la Direction seule, toutes les discussions.
  */
 final class MessagerieNavigation
 {
@@ -20,6 +20,14 @@ final class MessagerieNavigation
                 'label' => 'Discussions',
                 'icon' => 'MSG',
                 'url' => 'messagerie',
+                'available' => true,
+            ],
+            [
+                'group' => 'Messagerie',
+                'key' => 'documents',
+                'label' => 'Documents',
+                'icon' => 'DOC',
+                'url' => 'messagerie/documents',
                 'available' => true,
             ],
         ];

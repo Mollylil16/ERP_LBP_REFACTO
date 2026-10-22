@@ -1098,6 +1098,10 @@
         }
       }, { passive: true });
       dialogue.addEventListener("close", function () {
+        // L'événement arrive après coup : la visionneuse a pu être rouverte.
+        if (dialogue.open) {
+          return;
+        }
         vider(r.scene);
         document.documentElement.classList.remove("msg-vis-ouverte");
         if (retour && document.contains(retour)) {
@@ -1382,7 +1386,7 @@
         // pas, l'icône revient.
         vider(a);
         a.classList.add("msg-avatar--photo");
-        var photo = el("img", { src: c.photo, alt: "", loading: "lazy", decoding: "async" });
+        var photo = el("img", { src: c.photo, alt: "", decoding: "async" });
         photo.addEventListener("error", function () {
           var parent = photo.parentNode;
           if (parent) {
@@ -2398,6 +2402,7 @@
         reponseAId = null;
       }
       prets[0].reponseAId = reponseAId;
+      plateauDe(conversationId).refus = [];
       prets.forEach(function (f) {
         f.statut = "attente";
         f.progression = 0;
