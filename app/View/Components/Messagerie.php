@@ -64,7 +64,37 @@ final class Messagerie
         'cadenas' => '<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
         'plus' => '<path d="M12 5v14M5 12h14"/>',
         'filtre-non-lu' => '<circle cx="12" cy="12" r="4"/>',
+        // Lot 3 : fichiers, visionneuse, classeur
+        'appareil' => '<path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/>',
+        'image' => '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/>',
+        'fichier' => '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/>',
+        'fichier-texte' => '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8M16 17H8M10 9H8"/>',
+        'tableur' => '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 12h8v6H8zM12 12v6M8 15h8"/>',
+        'presentation' => '<path d="M2 3h20M4 3v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V3M12 16v5M8 21h8M9 11V9M12 11V7M15 11v-1"/>',
+        'telecharger' => '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5M12 15V3"/>',
+        'televerser' => '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m17 8-5-5-5 5M12 3v12"/>',
+        'etoile' => '<path d="m12 2 3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z"/>',
+        'ouvrir' => '<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14 21 3"/>',
+        'precedent' => '<path d="m15 18-6-6 6-6"/>',
+        'suivant' => '<path d="m9 18 6-6-6-6"/>',
+        'chevron-haut' => '<path d="m18 15-6-6-6 6"/>',
+        'vignettes' => '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
+        'liste' => '<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>',
+        'aller' => '<path d="M5 12h14M12 5l7 7-7 7"/>',
+        'tri' => '<path d="m7 15 5 5 5-5M7 9l5-5 5 5"/>',
+        'dossier' => '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>',
+        'filtre' => '<path d="M22 3H2l8 9.46V19l4 2v-8.54z"/>',
     ];
+
+    /**
+     * Ce que le sélecteur de fichiers propose : les formats que le serveur
+     * accepte (MessagerieFormats), par extension et par type, pour que le
+     * téléphone offre aussi l'appareil photo et la galerie.
+     */
+    public const ACCEPT_FICHIERS = '.pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,'
+        . 'application/pdf,image/jpeg,image/png,image/webp';
+
+    public const ACCEPT_IMAGES = 'image/jpeg,image/png,image/webp';
 
     /**
      * Ce que le JavaScript doit connaître de la page, ou null hors session.
@@ -266,6 +296,11 @@ final class Messagerie
             . '</button>'
             . self::saisie()
             . '</div>'
+            . '<div class="msg-depot" data-msg="depot" hidden>'
+            . '<div class="msg-depot-cadre">' . self::icone('televerser')
+            . '<strong>Déposez vos fichiers pour les joindre</strong>'
+            . '<span>10 fichiers au plus, 25 Mo chacun</span></div>'
+            . '</div>'
             . '</section>';
     }
 
@@ -277,8 +312,12 @@ final class Messagerie
             . '<span class="msg-saisie-contexte-texte"><strong data-msg="saisie-contexte-titre"></strong><span data-msg="saisie-contexte-apercu"></span></span>'
             . self::boutonIcone('fermer', 'Annuler', ['data-msg-action' => 'annuler-contexte'])
             . '</div>'
+            . '<section class="msg-plateau" data-msg="plateau" hidden aria-label="Fichiers à envoyer"></section>'
             . '<form class="msg-saisie" data-msg="saisie" novalidate>'
-            . '<button type="button" class="msg-icone-btn msg-trombone" aria-disabled="true" title="Bientôt : envoi de fichiers" aria-label="Joindre un fichier (bientôt disponible)">' . self::icone('trombone') . '</button>'
+            . '<button type="button" class="msg-icone-btn msg-trombone" data-msg-action="joindre" aria-haspopup="true" title="Joindre des fichiers" aria-label="Joindre des fichiers : 10 au plus, 25 Mo chacun">' . self::icone('trombone') . '</button>'
+            . '<input type="file" class="msg-fichier-champ" data-msg="fichier-choix" multiple hidden tabindex="-1" aria-hidden="true" accept="' . self::ACCEPT_FICHIERS . '">'
+            . '<input type="file" class="msg-fichier-champ" data-msg="fichier-galerie" multiple hidden tabindex="-1" aria-hidden="true" accept="' . self::ACCEPT_IMAGES . '">'
+            . '<input type="file" class="msg-fichier-champ" data-msg="fichier-photo" hidden tabindex="-1" aria-hidden="true" accept="image/*" capture="environment">'
             . '<textarea class="msg-saisie-champ" data-msg="saisie-champ" rows="1" maxlength="4000" placeholder="Écrire un message" aria-label="Écrire un message. Entrée pour envoyer, Maj + Entrée pour aller à la ligne"></textarea>'
             . '<button type="submit" class="msg-envoyer" data-msg="envoyer" aria-label="Envoyer" title="Envoyer (Entrée)">' . self::icone('envoyer') . '</button>'
             . '</form>'

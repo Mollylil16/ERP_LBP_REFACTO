@@ -144,7 +144,85 @@
       return message.libelle || "Message supprimé";
     }
     var texte = String(message.texte || "").replace(/\s+/g, " ").trim();
+    // Un fichier envoyé sans légende : on dit ce que c'est, comme le serveur.
+    if (texte === "" && message.pieces_jointes && message.pieces_jointes.length) {
+      var piece = message.pieces_jointes[0];
+      texte = piece.categorie === "image" ? "Photo" : "Document : " + piece.nom;
+    }
     return texte.length > 120 ? texte.slice(0, 119) + "…" : texte;
+  }
+
+  // ------------------------------------------------------------------
+  // Fichiers : ce que le serveur accepte (MessagerieFormats)
+  // ------------------------------------------------------------------
+
+  var FICHIERS = {
+    max: 10,
+    tailleMax: 25 * 1024 * 1024,
+    categories: {
+      pdf: "pdf", jpg: "image", jpeg: "image", png: "image", webp: "image",
+      doc: "word", docx: "word", xls: "tableur", xlsx: "tableur", csv: "tableur",
+      ppt: "presentation", pptx: "presentation", txt: "texte"
+    },
+    formats: "PDF, images JPG, PNG ou WEBP, Word, Excel, PowerPoint, TXT ou CSV"
+  };
+
+  var CATEGORIES = {
+    pdf: { libelle: "PDF", icone: "fichier-texte" },
+    image: { libelle: "Image", icone: "image" },
+    word: { libelle: "Word", icone: "fichier-texte" },
+    tableur: { libelle: "Tableur", icone: "tableur" },
+    presentation: { libelle: "Présentation", icone: "presentation" },
+    texte: { libelle: "Texte", icone: "fichier-texte" }
+  };
+
+  function extensionDe(nom) {
+    var correspondance = /\.([a-z0-9]{1,8})$/i.exec(String(nom || ""));
+    return correspondance ? correspondance[1].toLowerCase() : "";
+  }
+
+  function categorieDe(nom) {
+    return FICHIERS.categories[extensionDe(nom)] || null;
+  }
+
+  /* 1 234 567 octets => « 1,2 Mo ». */
+  function tailleLisible(octets) {
+    var n = Math.max(0, Number(octets) || 0);
+    if (n < 1024) {
+      return n + " o";
+    }
+    if (n < 1024 * 1024) {
+      return Math.max(1, Math.round(n / 1024)) + " Ko";
+    }
+    var mo = n / (1024 * 1024);
+    return (mo < 10 ? mo.toFixed(1).replace(".", ",") : String(Math.round(mo))) + " Mo";
+  }
+
+  /* La raison pour laquelle on refuse un fichier avant de l'envoyer, ou null. */
+  function raisonRefus(fichier) {
+    if (!categorieDe(fichier.name)) {
+      return "ce format n’est pas accepté (" + FICHIERS.formats + ").";
+    }
+    if (fichier.size === 0) {
+      return "le fichier est vide.";
+    }
+    if (fichier.size > FICHIERS.tailleMax) {
+      return "il pèse " + tailleLisible(fichier.size) + ", au-delà des 25 Mo permis.";
+    }
+    return null;
+  }
+
+  /* Pastille d'un type de fichier : icône et extension, teintée par catégorie. */
+  function vignetteDocument(piece, classe) {
+    var categorie = CATEGORIES[piece.categorie] ? piece.categorie : "texte";
+    return el("span", { class: "msg-type msg-type--" + categorie + (classe ? " " + classe : ""), "aria-hidden": "true" }, [
+      icone(CATEGORIES[categorie].icone),
+      el("span", { class: "msg-type-ext", text: String(piece.extension || extensionDe(piece.nom) || "").toUpperCase().slice(0, 4) })
+    ]);
+  }
+
+  function urlTelechargement(piece) {
+    return piece.url + (piece.url.indexOf("?") === -1 ? "?" : "&") + "telecharger=1";
   }
 
   // ------------------------------------------------------------------
@@ -283,6 +361,52 @@
           return donnees;
         });
       });
+  }
+
+  var MESSAGES_FICHIER = {
+    0: "Connexion interrompue pendant l’envoi. Réessayez.",
+    413: "Fichier trop lourd : 25 Mo au plus.",
+    422: "Ce fichier n’a pas pu être accepté.",
+    429: "Trop d’envois en une minute : patientez un instant puis réessayez."
+  };
+
+  /*
+   * Envoi d'un formulaire multipart (un fichier) par XMLHttpRequest, seul à
+   * dire où en est l'envoi. Rend { promesse, annuler } ; la promesse est
+   * rejetée avec une ErreurApi (statut -1 si l'envoi a été annulé).
+   */
+  function envoyerFormulaire(chemin, donnees, surProgression) {
+    var xhr = new XMLHttpRequest();
+    var promesse = new Promise(function (resoudre, rejeter) {
+      xhr.open("POST", CFG.api + chemin);
+      xhr.setRequestHeader("Accept", "application/json");
+      xhr.setRequestHeader("X-CSRF-TOKEN", CFG.csrf);
+      if (surProgression && xhr.upload) {
+        xhr.upload.addEventListener("progress", function (evenement) {
+          if (evenement.lengthComputable && evenement.total > 0) {
+            surProgression(evenement.loaded / evenement.total);
+          }
+        });
+      }
+      xhr.addEventListener("load", function () {
+        var reponse = null;
+        try { reponse = JSON.parse(xhr.responseText); } catch (e) { reponse = null; }
+        if (xhr.status === 401) {
+          window.LbpReleve.signalerSessionExpiree(reponse && reponse.message);
+        }
+        if (xhr.status >= 200 && xhr.status < 300 && reponse && reponse.ok === true) {
+          resoudre(reponse);
+          return;
+        }
+        var message = reponse && reponse.message ? reponse.message
+          : (MESSAGES_FICHIER[xhr.status] || MESSAGES_PAR_STATUT[xhr.status] || MESSAGES_PAR_STATUT[500]);
+        rejeter(new ErreurApi(message, xhr.status));
+      });
+      xhr.addEventListener("error", function () { rejeter(new ErreurApi(MESSAGES_FICHIER[0], 0)); });
+      xhr.addEventListener("abort", function () { rejeter(new ErreurApi("Envoi annulé.", -1)); });
+      xhr.send(donnees);
+    });
+    return { promesse: promesse, annuler: function () { xhr.abort(); } };
   }
 
   function messageErreur(erreur) {
@@ -821,6 +945,259 @@
   })();
 
   // ==================================================================
+  // Pièces jointes : favori, rendu dans une bulle ou le classeur
+  // ==================================================================
+
+  function majBoutonFavori(bouton, actif) {
+    var libelle = actif ? "Retirer des favoris" : "Ajouter aux favoris";
+    bouton.setAttribute("aria-pressed", actif ? "true" : "false");
+    bouton.setAttribute("title", libelle);
+    bouton.setAttribute("aria-label", libelle + " : " + (bouton.getAttribute("data-nom") || "fichier"));
+  }
+
+  /* Le favori est personnel : il range le fichier dans « Favoris » du classeur. */
+  function boutonFavori(piece, classe) {
+    var bouton = el("button", { type: "button", class: "msg-favori" + (classe ? " " + classe : ""), "data-nom": piece.nom }, icone("etoile"));
+    majBoutonFavori(bouton, !!piece.favori);
+    bouton.addEventListener("click", function (evenement) {
+      evenement.stopPropagation();
+      var actif = !piece.favori;
+      bouton.disabled = true;
+      majBoutonFavori(bouton, actif);
+      appel("POST", "/pieces/" + piece.id + "/favori", { actif: actif }).then(function (r) {
+        piece.favori = !!r.favori;
+        majBoutonFavori(bouton, piece.favori);
+        toast(piece.favori ? "Ajouté à vos favoris, dans Documents." : "Retiré de vos favoris.");
+      }).catch(function (erreur) {
+        majBoutonFavori(bouton, !!piece.favori);
+        toast(messageErreur(erreur), "erreur");
+      }).then(function () {
+        bouton.disabled = false;
+      });
+    });
+    return bouton;
+  }
+
+  function libelleType(piece) {
+    return (CATEGORIES[piece.categorie] || CATEGORIES.texte).libelle;
+  }
+
+  /*
+   * Une photo : la vignette réserve sa place grâce aux dimensions connues,
+   * pour que le fil ne saute pas quand elle arrive.
+   */
+  function pieceImage(piece, surOuvrir) {
+    var l = piece.largeur > 0 ? piece.largeur : 4;
+    var h = piece.hauteur > 0 ? piece.hauteur : 3;
+    var largeur = Math.round(Math.max(150, Math.min(300, 320 * l / h, piece.largeur || 300)));
+    var cadre = el("div", { class: "msg-piece-image" });
+    cadre.style.width = largeur + "px";
+    var bouton = el("button", { type: "button", class: "msg-piece-image-btn", "aria-label": "Voir la photo en grand : " + piece.nom, title: "Voir en grand" });
+    bouton.style.aspectRatio = l + " / " + h;
+    var image = el("img", { src: piece.url_miniature || piece.url, alt: "", loading: "lazy", decoding: "async", width: String(l), height: String(h) });
+    image.addEventListener("error", function () {
+      cadre.classList.add("is-indisponible");
+      vider(bouton);
+      ajouter(bouton, [icone("image"), el("span", { text: "Image indisponible" })]);
+    });
+    bouton.appendChild(image);
+    bouton.addEventListener("click", function () { surOuvrir(piece); });
+    ajouter(cadre, [bouton, boutonFavori(piece, "msg-favori--sur-image")]);
+    return cadre;
+  }
+
+  /* Un document : son type, son nom, sa taille, l'aperçu et le téléchargement. */
+  function pieceDocument(piece, surApercu) {
+    var actions = el("div", { class: "msg-piece-doc-actions" });
+    if (piece.categorie === "pdf") {
+      // Un téléphone n'affiche pas un PDF dans la page : nouvel onglet.
+      if (TACTILE || !surApercu) {
+        actions.appendChild(el("a", { class: "msg-piece-action", href: piece.url, target: "_blank", rel: "noopener", "aria-label": "Ouvrir " + piece.nom + " dans un nouvel onglet" }, [icone("ouvrir"), el("span", { text: "Ouvrir" })]));
+      } else {
+        actions.appendChild(el("button", { type: "button", class: "msg-piece-action", "aria-label": "Aperçu de " + piece.nom, onclick: function () { surApercu(piece); } }, [icone("oeil"), el("span", { text: "Aperçu" })]));
+      }
+    }
+    actions.appendChild(el("a", { class: "msg-piece-action", href: urlTelechargement(piece), download: piece.nom, "aria-label": "Télécharger " + piece.nom + ", " + tailleLisible(piece.taille) }, [icone("telecharger"), el("span", { text: "Télécharger" })]));
+
+    return el("div", { class: "msg-piece-doc" }, [
+      el("div", { class: "msg-piece-doc-tete" }, [
+        vignetteDocument(piece),
+        el("span", { class: "msg-piece-doc-infos" }, [
+          el("strong", { class: "msg-piece-nom", text: piece.nom, title: piece.nom }),
+          el("small", { text: tailleLisible(piece.taille) + " · " + libelleType(piece) })
+        ]),
+        boutonFavori(piece)
+      ]),
+      actions
+    ]);
+  }
+
+  // ==================================================================
+  // Visionneuse plein écran (photos et PDF)
+  // ==================================================================
+
+  var Visionneuse = (function () {
+    var dialogue = null;
+    var r = {};
+    var elements = [];
+    var index = 0;
+    var retour = null;
+    var departX = null;
+
+    function construire() {
+      r.nom = el("strong", { class: "msg-vis-nom" });
+      r.details = el("small", { class: "msg-vis-details" });
+      r.telecharger = el("a", { class: "msg-vis-btn", href: "#" }, [icone("telecharger"), el("span", { class: "msg-vis-btn-libelle", text: "Télécharger" })]);
+      r.onglet = el("a", { class: "msg-vis-btn msg-vis-btn--icone", href: "#", target: "_blank", rel: "noopener", title: "Ouvrir dans un nouvel onglet", "aria-label": "Ouvrir dans un nouvel onglet" }, icone("ouvrir"));
+      r.fermer = el("button", { type: "button", class: "msg-vis-btn msg-vis-btn--icone", title: "Fermer (Échap)", "aria-label": "Fermer la visionneuse" }, icone("fermer"));
+      r.scene = el("div", { class: "msg-vis-scene" });
+      r.precedent = el("button", { type: "button", class: "msg-vis-nav msg-vis-nav--precedent", title: "Précédente (flèche gauche)", "aria-label": "Image précédente" }, icone("precedent"));
+      r.suivant = el("button", { type: "button", class: "msg-vis-nav msg-vis-nav--suivant", title: "Suivante (flèche droite)", "aria-label": "Image suivante" }, icone("suivant"));
+      r.legende = el("p", { class: "msg-vis-legende" });
+      r.annonce = el("p", { class: "msg-sr", "aria-live": "polite" });
+
+      dialogue = el("dialog", { class: "msg-visionneuse", "aria-label": "Visionneuse" }, [
+        el("header", { class: "msg-vis-tete" }, [
+          el("div", { class: "msg-vis-titre" }, [r.nom, r.details]),
+          el("div", { class: "msg-vis-actions" }, [r.telecharger, r.onglet, r.fermer])
+        ]),
+        el("div", { class: "msg-vis-corps" }, [r.precedent, r.scene, r.suivant]),
+        r.legende,
+        r.annonce
+      ]);
+
+      r.fermer.addEventListener("click", fermer);
+      r.precedent.addEventListener("click", function () { aller(-1); });
+      r.suivant.addEventListener("click", function () { aller(1); });
+      r.scene.addEventListener("click", function (evenement) {
+        if (evenement.target === r.scene) {
+          fermer();
+        }
+      });
+      dialogue.addEventListener("keydown", function (evenement) {
+        if (evenement.key === "ArrowLeft") {
+          evenement.preventDefault();
+          aller(-1);
+        } else if (evenement.key === "ArrowRight") {
+          evenement.preventDefault();
+          aller(1);
+        }
+      });
+      // Glisser du doigt pour passer d'une photo à l'autre.
+      r.scene.addEventListener("touchstart", function (evenement) {
+        departX = evenement.touches.length === 1 ? evenement.touches[0].clientX : null;
+      }, { passive: true });
+      r.scene.addEventListener("touchend", function (evenement) {
+        if (departX === null || !evenement.changedTouches.length) {
+          return;
+        }
+        var ecart = evenement.changedTouches[0].clientX - departX;
+        departX = null;
+        if (Math.abs(ecart) > 60) {
+          aller(ecart < 0 ? 1 : -1);
+        }
+      }, { passive: true });
+      dialogue.addEventListener("close", function () {
+        vider(r.scene);
+        document.documentElement.classList.remove("msg-vis-ouverte");
+        if (retour && document.contains(retour)) {
+          retour.focus({ preventScroll: true });
+        }
+      });
+      document.body.appendChild(dialogue);
+    }
+
+    function afficher() {
+      var element = elements[index];
+      var piece = element.piece;
+      vider(r.scene);
+      r.nom.textContent = piece.nom;
+      r.nom.setAttribute("title", piece.nom);
+      var details = [];
+      if (element.auteur) {
+        details.push(element.auteur);
+      }
+      if (element.date) {
+        details.push(libelleDateComplete(element.date));
+      }
+      details.push(tailleLisible(piece.taille));
+      if (elements.length > 1) {
+        details.push((index + 1) + " sur " + elements.length);
+      }
+      r.details.textContent = details.join(" · ");
+      r.telecharger.setAttribute("href", urlTelechargement(piece));
+      r.telecharger.setAttribute("download", piece.nom);
+      r.telecharger.setAttribute("aria-label", "Télécharger " + piece.nom);
+      r.onglet.setAttribute("href", piece.url);
+
+      if (piece.categorie === "image") {
+        r.scene.classList.add("is-chargement");
+        var image = el("img", { class: "msg-vis-image", src: piece.url, alt: element.legende || piece.nom });
+        image.addEventListener("load", function () { r.scene.classList.remove("is-chargement"); });
+        image.addEventListener("error", function () {
+          r.scene.classList.remove("is-chargement");
+          vider(r.scene);
+          r.scene.appendChild(el("p", { class: "msg-vis-erreur" }, [icone("alerte"), el("span", { text: "Cette image n’a pas pu être chargée." })]));
+        });
+        r.scene.appendChild(image);
+        var suivante = elements[(index + 1) % elements.length];
+        if (elements.length > 1 && suivante.piece.categorie === "image") {
+          new Image().src = suivante.piece.url;
+        }
+      } else {
+        r.scene.classList.remove("is-chargement");
+        r.scene.appendChild(el("iframe", { class: "msg-vis-pdf", src: piece.url, title: "Aperçu de " + piece.nom }));
+      }
+
+      r.legende.textContent = element.legende || "";
+      r.legende.hidden = !element.legende;
+      r.precedent.hidden = elements.length < 2;
+      r.suivant.hidden = elements.length < 2;
+      dialogue.classList.toggle("is-pdf", piece.categorie !== "image");
+      r.annonce.textContent = elements.length > 1 ? "Image " + (index + 1) + " sur " + elements.length + " : " + piece.nom : piece.nom;
+    }
+
+    function aller(pas) {
+      if (!dialogue || !dialogue.open || elements.length < 2) {
+        return;
+      }
+      index = (index + pas + elements.length) % elements.length;
+      afficher();
+    }
+
+    function fermer() {
+      if (dialogue && dialogue.open) {
+        dialogue.close();
+      }
+    }
+
+    /* elements : [{ piece, auteur, date, legende }] ; depart : l'index affiché. */
+    function ouvrir(liste, depart) {
+      if (!liste.length) {
+        return;
+      }
+      if (!dialogue) {
+        construire();
+      }
+      elements = liste;
+      index = Math.min(Math.max(0, depart || 0), liste.length - 1);
+      retour = document.activeElement;
+      afficher();
+      if (!dialogue.open) {
+        if (typeof dialogue.showModal === "function") {
+          dialogue.showModal();
+        } else {
+          dialogue.setAttribute("open", "");
+        }
+      }
+      document.documentElement.classList.add("msg-vis-ouverte");
+      r.fermer.focus({ preventScroll: true });
+    }
+
+    return { ouvrir: ouvrir, fermer: fermer };
+  })();
+
+  // ==================================================================
   // Application : une charpente [data-msg-app]
   // ==================================================================
 
@@ -998,7 +1375,23 @@
         }
         return noeud;
       }
-      var a = el("span", { class: "msg-avatar msg-avatar--groupe " + teinte(c.id), "aria-hidden": "true" }, icone(c.type === "annonces" ? "annonces" : "groupe"));
+      var nomIcone = c.type === "annonces" ? "annonces" : "groupe";
+      var a = el("span", { class: "msg-avatar msg-avatar--groupe " + teinte(c.id), "aria-hidden": "true" }, icone(nomIcone));
+      if (c.photo) {
+        // La photo du groupe prend la place de l'icône ; si elle ne se charge
+        // pas, l'icône revient.
+        vider(a);
+        a.classList.add("msg-avatar--photo");
+        var photo = el("img", { src: c.photo, alt: "", loading: "lazy", decoding: "async" });
+        photo.addEventListener("error", function () {
+          var parent = photo.parentNode;
+          if (parent) {
+            parent.classList.remove("msg-avatar--photo");
+            parent.replaceChild(icone(nomIcone), photo);
+          }
+        });
+        a.appendChild(photo);
+      }
       return a;
     }
 
@@ -1143,6 +1536,8 @@
 
       if (change) {
         refs["saisie-champ"].value = etat.brouillons.get(conversationId) || "";
+        refs.depot.hidden = true;
+        rendrePlateau();
         ajusterSaisie();
         vider(refs.messages);
         refs.messages.appendChild(el("div", { class: "msg-messages-etat" }, [el("span", { class: "msg-chargement", "aria-hidden": "true" }), el("span", { text: "Chargement des messages…" })]));
@@ -1294,6 +1689,8 @@
         etat.edition = null;
         afficherContexte();
       }
+      rendrePlateau();
+      ajusterSaisie();
     }
 
     // --------------------------------------------------------------
@@ -1440,11 +1837,26 @@
         citation.addEventListener("click", function () { allerA(m.reponse_a.id); });
         contenu.push(citation);
       }
+      var pieces = m.pieces_jointes || [];
+      var aDuTexte = String(m.texte || "") !== "";
+      var media = false;
       if (m.supprime && m.texte === null) {
         contenu.push(el("p", { class: "msg-texte msg-texte--supprime" }, [icone("supprimer", "msg-i--petit"), el("span", { text: m.libelle || "Message supprimé" })]));
       } else {
-        var texte = el("p", { class: "msg-texte" + (m.supprime ? " msg-texte--supprime-direction" : "") }, linkifier(m.texte || ""));
-        contenu.push(texte);
+        if (pieces.length) {
+          media = pieces.every(function (p) { return p.categorie === "image"; });
+          contenu.push(el("div", { class: "msg-pieces" + (m.supprime ? " is-supprime" : "") }, pieces.map(function (p) {
+            return p.categorie === "image"
+              ? pieceImage(p, function (piece) { ouvrirImage(piece); })
+              : pieceDocument(p, function (piece) { Visionneuse.ouvrir([{ piece: piece, auteur: m.auteur.nom, date: versDate(m.created_at), legende: m.texte }], 0); });
+          })));
+        }
+        // Un fichier envoyé sans légende n'a pas de texte : pas de paragraphe vide.
+        if (aDuTexte) {
+          contenu.push(el("p", { class: "msg-texte" + (pieces.length ? " msg-texte--legende" : "") + (m.supprime ? " msg-texte--supprime-direction" : "") }, linkifier(m.texte)));
+        } else if (!pieces.length) {
+          contenu.push(el("p", { class: "msg-texte msg-texte--supprime" }, [icone("fichier", "msg-i--petit"), el("span", { text: "Pièce jointe indisponible" })]));
+        }
         if (m.supprime) {
           contenu.push(el("span", { class: "msg-mention-supprime" }, [icone("supprimer", "msg-i--petit"), el("span", { text: "Supprimé par son auteur — visible de la Direction seule" })]));
         }
@@ -1457,7 +1869,7 @@
       ]);
       contenu.push(meta);
 
-      var corps = el("div", { class: "msg-bulle" }, contenu);
+      var corps = el("div", { class: "msg-bulle" + (pieces.length ? " msg-bulle--pieces" : "") + (media ? " msg-bulle--media" : "") + (media && !aDuTexte ? " msg-bulle--media-seul" : "") }, contenu);
       var ligne = el("div", {
         class: "msg-ligne " + (moi ? "msg-ligne--moi" : "msg-ligne--autre") + (suite ? " msg-suite" : "") + (m.supprime ? " is-supprime" : "") + (m.erreur ? " is-echec" : ""),
         "data-id": String(m.id)
@@ -1500,6 +1912,27 @@
           window.clearTimeout(minuterie);
         }, { passive: true });
       });
+    }
+
+    /* La visionneuse parcourt toutes les photos déjà chargées de la discussion. */
+    function ouvrirImage(piece) {
+      var liste = [];
+      var depart = 0;
+      Magasin.cache(etat.actifId).messages.forEach(function (m) {
+        (m.pieces_jointes || []).forEach(function (p) {
+          if (p.categorie !== "image") {
+            return;
+          }
+          if (p.id === piece.id) {
+            depart = liste.length;
+          }
+          liste.push({ piece: p, auteur: m.auteur.nom, date: versDate(m.created_at), legende: m.texte || "" });
+        });
+      });
+      if (!liste.length) {
+        liste.push({ piece: piece, auteur: "", date: null, legende: piece.legende || "" });
+      }
+      Visionneuse.ouvrir(liste, depart);
     }
 
     /* Accusé d'un message envoyé : en cours, envoyé, lu par une partie, lu. */
@@ -1681,8 +2114,436 @@
       champ.style.height = "auto";
       champ.style.height = Math.min(champ.scrollHeight, 160) + "px";
       champ.style.overflowY = champ.scrollHeight > 160 ? "auto" : "hidden";
-      refs.envoyer.disabled = champ.value.trim() === "";
+      refs.envoyer.disabled = champ.value.trim() === "" && fichiersPrets().length === 0;
     }
+
+    // --------------------------------------------------------------
+    // Fichiers à envoyer : le plateau au-dessus de la saisie
+    // --------------------------------------------------------------
+
+    var plateaux = new Map();
+    var compteurFichiers = 0;
+
+    function plateauDe(conversationId) {
+      if (!plateaux.has(conversationId)) {
+        plateaux.set(conversationId, { fichiers: [], refus: [], enCours: null });
+      }
+      return plateaux.get(conversationId);
+    }
+
+    function fichiersPrets() {
+      var plateau = etat.actifId ? plateaux.get(etat.actifId) : null;
+      return plateau ? plateau.fichiers.filter(function (f) { return f.statut === "pret"; }) : [];
+    }
+
+    function peutJoindre() {
+      return !!(etat.actifId && etat.detail && etat.detail.peut_ecrire);
+    }
+
+    function deuxChiffres(n) {
+      return (n < 10 ? "0" : "") + n;
+    }
+
+    /* Une capture collée s'appelle « image.png » : on lui donne un nom parlant. */
+    function nomDeCapture(fichier) {
+      var extension = extensionDe(fichier.name) || (fichier.type === "image/jpeg" ? "jpg" : (fichier.type === "image/webp" ? "webp" : "png"));
+      var d = new Date();
+      return "Capture du " + deuxChiffres(d.getDate()) + "-" + deuxChiffres(d.getMonth() + 1) + "-" + d.getFullYear()
+        + " à " + deuxChiffres(d.getHours()) + " h " + deuxChiffres(d.getMinutes()) + "." + extension;
+    }
+
+    function ajouterFichiers(liste, origine) {
+      var fichiers = Array.from(liste || []);
+      if (!fichiers.length) {
+        return;
+      }
+      if (!peutJoindre()) {
+        toast(etat.detail ? "Vous ne pouvez pas envoyer de fichier dans cette discussion." : "Ouvrez d’abord une discussion.", "erreur");
+        return;
+      }
+      if (etat.edition) {
+        annulerContexte();
+      }
+      var conversationId = etat.actifId;
+      var plateau = plateauDe(conversationId);
+      plateau.refus = [];
+      var places = FICHIERS.max - plateau.fichiers.length;
+      var ecartes = 0;
+      fichiers.forEach(function (fichier) {
+        if (origine === "collage" && (!fichier.name || /^image\.(png|jpe?g|webp)$/i.test(fichier.name))) {
+          try { fichier = new File([fichier], nomDeCapture(fichier), { type: fichier.type }); } catch (e) { /* nom gardé */ }
+        }
+        var raison = raisonRefus(fichier);
+        if (raison) {
+          plateau.refus.push("« " + fichier.name + " » n’est pas joint : " + raison);
+          return;
+        }
+        if (places <= 0) {
+          ecartes += 1;
+          return;
+        }
+        places -= 1;
+        compteurFichiers += 1;
+        var categorie = categorieDe(fichier.name);
+        plateau.fichiers.push({
+          cle: "f" + compteurFichiers,
+          conversationId: conversationId,
+          fichier: fichier,
+          nom: fichier.name,
+          taille: fichier.size,
+          categorie: categorie,
+          extension: extensionDe(fichier.name),
+          legende: "",
+          statut: "pret",
+          progression: 0,
+          envoi: null,
+          erreur: null,
+          reponseAId: null,
+          apercu: categorie === "image" && window.URL && URL.createObjectURL ? URL.createObjectURL(fichier) : null
+        });
+      });
+      if (ecartes) {
+        plateau.refus.push(ecartes + (ecartes > 1 ? " fichiers n’ont pas été joints" : " fichier n’a pas été joint") + " : 10 fichiers au plus par envoi.");
+      }
+      rendrePlateau();
+      ajusterSaisie();
+      if (!TACTILE) {
+        refs["saisie-champ"].focus({ preventScroll: true });
+      }
+    }
+
+    function retirerDuPlateau(f) {
+      var plateau = plateauDe(f.conversationId);
+      plateau.fichiers = plateau.fichiers.filter(function (x) { return x !== f; });
+      if (f.apercu) {
+        URL.revokeObjectURL(f.apercu);
+        f.apercu = null;
+      }
+    }
+
+    function majPlateauSiActif(conversationId) {
+      if (conversationId === etat.actifId) {
+        rendrePlateau();
+        ajusterSaisie();
+      }
+    }
+
+    function texteStatut(f) {
+      if (f.statut === "attente") {
+        return "En attente";
+      }
+      return f.progression >= 1 ? "Rangement en cours…" : "Envoi… " + Math.round(f.progression * 100) + " %";
+    }
+
+    function majProgression(f) {
+      if (!f.refsProgression) {
+        return;
+      }
+      var pourcent = Math.round(f.progression * 100);
+      f.refsProgression.barre.style.width = pourcent + "%";
+      f.refsProgression.piste.setAttribute("aria-valuenow", String(pourcent));
+      f.refsProgression.statut.textContent = texteStatut(f);
+    }
+
+    function petitBouton(nomIcone, libelle, action) {
+      return el("button", { type: "button", class: "msg-icone-btn", title: libelle, "aria-label": libelle, onclick: action }, icone(nomIcone));
+    }
+
+    function elementPlateau(f) {
+      var vignette = f.apercu
+        ? el("span", { class: "msg-plateau-vignette" }, el("img", { src: f.apercu, alt: "" }))
+        : vignetteDocument({ categorie: f.categorie, extension: f.extension, nom: f.nom }, "msg-plateau-vignette");
+      var infos = el("div", { class: "msg-plateau-infos" }, [
+        el("strong", { class: "msg-plateau-nom", text: f.nom, title: f.nom }),
+        el("small", { text: tailleLisible(f.taille) + " · " + libelleType(f) })
+      ]);
+      var actions = el("div", { class: "msg-plateau-actions" });
+      f.refsProgression = null;
+
+      if (f.statut === "pret") {
+        var champ = el("input", { type: "text", class: "msg-plateau-legende", maxlength: "4000", placeholder: "Légende (facultative)", "aria-label": "Légende de " + f.nom, "data-cle": f.cle, enterkeyhint: "send", autocomplete: "off" });
+        champ.value = f.legende;
+        champ.addEventListener("input", function () { f.legende = champ.value; });
+        champ.addEventListener("keydown", function (evenement) {
+          if (evenement.key === "Enter" && !evenement.isComposing) {
+            evenement.preventDefault();
+            soumettre();
+          }
+        });
+        infos.appendChild(champ);
+        actions.appendChild(petitBouton("fermer", "Retirer " + f.nom, function () {
+          retirerDuPlateau(f);
+          majPlateauSiActif(f.conversationId);
+        }));
+      } else {
+        if (f.legende.trim()) {
+          infos.appendChild(el("span", { class: "msg-plateau-legende-texte", text: f.legende.trim() }));
+        }
+        if (f.statut === "erreur") {
+          infos.appendChild(el("p", { class: "msg-plateau-erreur" }, [icone("alerte", "msg-i--petit"), el("span", { text: f.erreur })]));
+          actions.appendChild(el("button", { type: "button", class: "msg-lien", text: "Réessayer", "aria-label": "Réessayer l’envoi de " + f.nom, onclick: function () {
+            f.statut = "attente";
+            f.erreur = null;
+            majPlateauSiActif(f.conversationId);
+            suivantFichier(f.conversationId);
+          } }));
+          actions.appendChild(petitBouton("fermer", "Retirer " + f.nom, function () {
+            retirerDuPlateau(f);
+            majPlateauSiActif(f.conversationId);
+          }));
+        } else {
+          var pourcent = Math.round(f.progression * 100);
+          var barre = el("span", { class: "msg-progression-barre" });
+          barre.style.width = pourcent + "%";
+          var piste = el("span", { class: "msg-progression", role: "progressbar", "aria-label": "Envoi de " + f.nom, "aria-valuemin": "0", "aria-valuemax": "100", "aria-valuenow": String(pourcent) }, barre);
+          var statut = el("small", { class: "msg-plateau-statut", text: texteStatut(f) });
+          ajouter(infos, [piste, statut]);
+          f.refsProgression = { piste: piste, barre: barre, statut: statut };
+          actions.appendChild(petitBouton("fermer", "Annuler l’envoi de " + f.nom, function () { annulerFichier(f); }));
+        }
+      }
+      return el("li", { class: "msg-plateau-item is-" + f.statut, "data-cle": f.cle }, [vignette, infos, actions]);
+    }
+
+    function rendrePlateau() {
+      var zone = refs.plateau;
+      var plateau = etat.actifId ? plateaux.get(etat.actifId) : null;
+      var actif = document.activeElement;
+      var cleFocus = actif && zone.contains(actif) && actif.tagName === "INPUT" ? actif.getAttribute("data-cle") : null;
+      var position = cleFocus ? actif.selectionStart : null;
+      vider(zone);
+      if (!plateau || (!plateau.fichiers.length && !plateau.refus.length)) {
+        zone.hidden = true;
+        return;
+      }
+      var enEnvoi = plateau.fichiers.filter(function (f) { return f.statut === "attente" || f.statut === "envoi"; });
+      if (!peutJoindre() && !enEnvoi.length) {
+        zone.hidden = true;
+        return;
+      }
+      zone.hidden = false;
+      var prets = plateau.fichiers.filter(function (f) { return f.statut === "pret"; });
+      var total = plateau.fichiers.reduce(function (somme, f) { return somme + f.taille; }, 0);
+      var n = plateau.fichiers.length;
+      var titre = enEnvoi.length
+        ? "Envoi en cours · " + enEnvoi.length + (enEnvoi.length > 1 ? " fichiers restants" : " fichier restant")
+        : (n ? n + (n > 1 ? " fichiers" : " fichier") + " · " + tailleLisible(total) : "Fichiers non joints");
+      var tete = el("div", { class: "msg-plateau-tete" }, [icone("trombone", "msg-i--petit"), el("strong", { class: "msg-plateau-titre", text: titre })]);
+      if (enEnvoi.length) {
+        tete.appendChild(el("button", { type: "button", class: "msg-lien", text: "Tout annuler", onclick: function () { toutAnnuler(plateau); } }));
+      } else if (n) {
+        tete.appendChild(el("button", { type: "button", class: "msg-lien", text: "Tout retirer", onclick: function () {
+          plateau.fichiers.slice().forEach(retirerDuPlateau);
+          plateau.refus = [];
+          majPlateauSiActif(etat.actifId);
+        } }));
+      } else {
+        tete.appendChild(petitBouton("fermer", "Fermer ce message", function () {
+          plateau.refus = [];
+          majPlateauSiActif(etat.actifId);
+        }));
+      }
+      zone.appendChild(tete);
+      if (plateau.refus.length) {
+        zone.appendChild(el("ul", { class: "msg-plateau-refus", role: "alert" }, plateau.refus.map(function (texte) {
+          return el("li", null, [icone("alerte", "msg-i--petit"), el("span", { text: texte })]);
+        })));
+      }
+      if (n) {
+        zone.appendChild(el("ul", { class: "msg-plateau-liste", "aria-label": "Fichiers joints" }, plateau.fichiers.map(elementPlateau)));
+      }
+      if (prets.length) {
+        zone.appendChild(el("p", { class: "msg-plateau-aide", text: "Le texte écrit en bas devient la légende du premier fichier qui n’en a pas. Puis Envoyer." }));
+      }
+      if (cleFocus) {
+        var champ = zone.querySelector('input[data-cle="' + cleFocus + '"]');
+        if (champ) {
+          champ.focus({ preventScroll: true });
+          try { champ.setSelectionRange(position, position); } catch (e) { /* sans effet */ }
+        }
+      }
+    }
+
+    function annulerFichier(f) {
+      if (f.statut === "envoi" && f.envoi) {
+        f.envoi.annuler();
+        return;
+      }
+      retirerDuPlateau(f);
+      majPlateauSiActif(f.conversationId);
+    }
+
+    function toutAnnuler(plateau) {
+      plateau.fichiers.filter(function (f) { return f.statut === "attente"; }).forEach(retirerDuPlateau);
+      if (plateau.enCours && plateau.enCours.envoi) {
+        plateau.enCours.envoi.annuler();
+      }
+      majPlateauSiActif(etat.actifId);
+    }
+
+    /* Les fichiers partent l'un après l'autre ; une erreur n'arrête pas les suivants. */
+    function envoyerFichiers() {
+      var conversationId = etat.actifId;
+      var prets = fichiersPrets();
+      var champ = refs["saisie-champ"];
+      var texte = champ.value.trim();
+      var reponseAId = etat.reponseA ? etat.reponseA.id : null;
+      var sansLegende = texte ? prets.find(function (f) { return !f.legende.trim(); }) : null;
+      if (sansLegende) {
+        sansLegende.legende = texte;
+        champ.value = "";
+      } else if (texte) {
+        // Chaque fichier a sa légende : le texte part d'abord, seul, avec la réponse.
+        envoyerTexte();
+        reponseAId = null;
+      }
+      prets[0].reponseAId = reponseAId;
+      prets.forEach(function (f) {
+        f.statut = "attente";
+        f.progression = 0;
+      });
+      etat.brouillons.delete(conversationId);
+      annulerContexte();
+      ajusterSaisie();
+      rendrePlateau();
+      suivantFichier(conversationId);
+    }
+
+    function suivantFichier(conversationId) {
+      var plateau = plateauDe(conversationId);
+      if (plateau.enCours) {
+        return;
+      }
+      var f = plateau.fichiers.find(function (x) { return x.statut === "attente"; });
+      if (!f) {
+        majPlateauSiActif(conversationId);
+        return;
+      }
+      plateau.enCours = f;
+      f.statut = "envoi";
+      f.progression = 0;
+      f.erreur = null;
+      majPlateauSiActif(conversationId);
+
+      var donnees = new FormData();
+      donnees.append("fichier", f.fichier, f.nom);
+      if (f.legende.trim()) {
+        donnees.append("legende", f.legende.trim());
+      }
+      if (f.reponseAId) {
+        donnees.append("reponse_a_id", String(f.reponseAId));
+      }
+      f.envoi = envoyerFormulaire("/conversations/" + conversationId + "/fichiers", donnees, function (part) {
+        f.progression = part;
+        majProgression(f);
+      });
+      f.envoi.promesse.then(function (r) {
+        retirerDuPlateau(f);
+        recevoirMessageEnvoye(conversationId, r.message);
+      }, function (erreur) {
+        if (erreur.statut === -1) {
+          retirerDuPlateau(f);
+        } else {
+          f.statut = "erreur";
+          f.erreur = messageErreur(erreur);
+        }
+      }).then(function () {
+        f.envoi = null;
+        plateau.enCours = null;
+        majPlateauSiActif(conversationId);
+        suivantFichier(conversationId);
+      });
+    }
+
+    function recevoirMessageEnvoye(conversationId, message) {
+      var cache = Magasin.cache(conversationId);
+      var nouveau = Magasin.ranger(cache, message);
+      Magasin.mettreAJourDernier(message);
+      Magasin.marquerLuLocalement(conversationId, message.id);
+      if (conversationId === etat.actifId && nouveau && !etat.noeuds.has(message.id)) {
+        var vide = refs.messages.querySelector(".msg-messages-etat");
+        if (vide) {
+          vide.remove();
+        }
+        ajouterNoeud(cache.parId.get(message.id), refs.messages);
+        allerEnBas(true);
+      }
+    }
+
+    function choisirFichiers(bouton) {
+      if (!peutJoindre()) {
+        toast("Vous ne pouvez pas envoyer de fichier dans cette discussion.", "erreur");
+        return;
+      }
+      if (!TACTILE) {
+        refs["fichier-choix"].click();
+        return;
+      }
+      // Sur un téléphone : l'appareil photo, la galerie ou un document.
+      Menu.ouvrir(bouton, [
+        { icone: "appareil", libelle: "Prendre une photo", action: function () { refs["fichier-photo"].click(); } },
+        { icone: "image", libelle: "Photo de la galerie", action: function () { refs["fichier-galerie"].click(); } },
+        { icone: "fichier", libelle: "Document", action: function () { refs["fichier-choix"].click(); } }
+      ], racine.closest("[data-msg-tiroir]") || document.body);
+    }
+
+    ["fichier-choix", "fichier-galerie", "fichier-photo"].forEach(function (cle) {
+      refs[cle].addEventListener("change", function () {
+        ajouterFichiers(refs[cle].files, "choix");
+        refs[cle].value = "";
+      });
+    });
+
+    // Coller une capture d'écran (Ctrl+V). Un copier d'Excel porte aussi une
+    // image du tableau : quand il y a du texte, c'est le texte qu'on colle.
+    refs["saisie-champ"].addEventListener("paste", function (evenement) {
+      var presse = evenement.clipboardData;
+      if (!presse || !presse.files || presse.files.length === 0 || presse.getData("text/plain")) {
+        return;
+      }
+      evenement.preventDefault();
+      ajouterFichiers(presse.files, "collage");
+    });
+
+    // Glisser-déposer sur la conversation.
+    var profondeurDepot = 0;
+    function porteDesFichiers(evenement) {
+      var types = evenement.dataTransfer ? Array.from(evenement.dataTransfer.types || []) : [];
+      return types.indexOf("Files") !== -1;
+    }
+    refs.fil.addEventListener("dragenter", function (evenement) {
+      if (!porteDesFichiers(evenement)) {
+        return;
+      }
+      evenement.preventDefault();
+      profondeurDepot += 1;
+      refs.depot.hidden = !peutJoindre();
+    });
+    refs.fil.addEventListener("dragover", function (evenement) {
+      if (!porteDesFichiers(evenement)) {
+        return;
+      }
+      evenement.preventDefault();
+      evenement.dataTransfer.dropEffect = peutJoindre() ? "copy" : "none";
+    });
+    refs.fil.addEventListener("dragleave", function (evenement) {
+      if (!porteDesFichiers(evenement)) {
+        return;
+      }
+      profondeurDepot = Math.max(0, profondeurDepot - 1);
+      if (profondeurDepot === 0) {
+        refs.depot.hidden = true;
+      }
+    });
+    refs.fil.addEventListener("drop", function (evenement) {
+      if (!porteDesFichiers(evenement)) {
+        return;
+      }
+      evenement.preventDefault();
+      profondeurDepot = 0;
+      refs.depot.hidden = true;
+      ajouterFichiers(evenement.dataTransfer.files, "depot");
+    });
 
     refs["saisie-champ"].addEventListener("input", ajusterSaisie);
     refs["saisie-champ"].addEventListener("keydown", function (evenement) {
@@ -1707,6 +2568,17 @@
     });
 
     function soumettre() {
+      if (!etat.actifId) {
+        return;
+      }
+      if (!etat.edition && fichiersPrets().length) {
+        envoyerFichiers();
+        return;
+      }
+      envoyerTexte();
+    }
+
+    function envoyerTexte() {
       var champ = refs["saisie-champ"];
       var texte = champ.value.replace(/\s+$/, "");
       if (texte.trim() === "" || !etat.actifId) {
@@ -1839,7 +2711,7 @@
       vider(refs["saisie-contexte-icone"]);
       refs["saisie-contexte-icone"].appendChild(icone(etat.edition ? "modifier" : "repondre"));
       refs["saisie-contexte-titre"].textContent = etat.edition
-        ? "Modifier votre message"
+        ? ((etat.edition.pieces_jointes || []).length ? "Modifier la légende" : "Modifier votre message")
         : "Réponse à " + (cible.auteur.id === CFG.moi ? "vous-même" : cible.auteur.nom);
       refs["saisie-contexte-apercu"].textContent = apercuDe(cible);
     }
@@ -1891,6 +2763,15 @@
       if (actuel.texte && navigator.clipboard) {
         elements.push({ icone: "copier", libelle: "Copier le texte", action: function () {
           navigator.clipboard.writeText(actuel.texte).then(function () { toast("Texte copié."); }, function () { toast("La copie a été refusée par le navigateur.", "erreur"); });
+        } });
+      }
+      var piecesDuMessage = actuel.pieces_jointes || [];
+      if (piecesDuMessage.length === 1) {
+        elements.push({ icone: "telecharger", libelle: "Télécharger le fichier", action: function () {
+          var lien = el("a", { href: urlTelechargement(piecesDuMessage[0]), download: piecesDuMessage[0].nom, hidden: true });
+          document.body.appendChild(lien);
+          lien.click();
+          lien.remove();
         } });
       }
       if (actuel.modifiable && d.peut_ecrire) {
@@ -2123,6 +3004,7 @@
         : (d.type === "annonces" ? "Annonces" : "Groupe") + " · " + (d.membres || []).length + " membre" + ((d.membres || []).length > 1 ? "s" : "");
       corps.appendChild(el("section", { class: "msg-infos-identite" }, [
         grandAvatar,
+        groupe && d.peut_administrer ? controlesPhoto(d) : null,
         el("h4", { text: nomAffiche(d, d) }),
         el("p", { class: "msg-infos-type", text: typeLibelle }),
         d.type === "direct" ? el("p", { class: "msg-infos-presence", text: sousTitre(d, d) }) : null,
@@ -2205,6 +3087,76 @@
         membres.appendChild(liste);
         corps.appendChild(membres);
       }
+    }
+
+    /* Photo du groupe : un administrateur la choisit, la change ou la retire. */
+    function controlesPhoto(d) {
+      var champ = el("input", { type: "file", class: "msg-fichier-champ", accept: "image/jpeg,image/png,image/webp", hidden: true, tabindex: "-1", "aria-hidden": "true" });
+      var erreur = el("p", { class: "msg-erreur", role: "alert", hidden: true });
+      var choisir = el("button", { type: "button", class: "msg-btn msg-btn--petit" }, [icone("appareil"), el("span", { text: d.photo ? "Changer la photo" : "Choisir une photo" })]);
+      var zone = el("div", { class: "msg-infos-photo" }, [champ, choisir]);
+
+      function appliquer(photo, message) {
+        d.photo = photo;
+        var resume = Magasin.conversation(d.id);
+        if (resume) {
+          resume.photo = photo;
+        }
+        rendreListe();
+        rendreEntete(Magasin.conversation(d.id), d);
+        rendreInfos();
+        toast(message);
+      }
+
+      function montrerErreur(texte) {
+        erreur.textContent = texte;
+        erreur.hidden = false;
+      }
+
+      choisir.addEventListener("click", function () { champ.click(); });
+      champ.addEventListener("change", function () {
+        var fichier = champ.files && champ.files[0];
+        champ.value = "";
+        if (!fichier) {
+          return;
+        }
+        erreur.hidden = true;
+        if (categorieDe(fichier.name) !== "image") {
+          montrerErreur("Choisissez une image JPG, PNG ou WEBP.");
+          return;
+        }
+        var raison = raisonRefus(fichier);
+        if (raison) {
+          montrerErreur("Cette image n’est pas acceptée : " + raison);
+          return;
+        }
+        var donnees = new FormData();
+        donnees.append("photo", fichier, fichier.name);
+        choisir.disabled = true;
+        choisir.lastChild.textContent = "Envoi de la photo…";
+        envoyerFormulaire("/conversations/" + d.id + "/photo", donnees).promesse.then(function (r) {
+          appliquer(r.photo, "Photo du groupe mise à jour.");
+        }).catch(function (e) {
+          choisir.disabled = false;
+          choisir.lastChild.textContent = d.photo ? "Changer la photo" : "Choisir une photo";
+          montrerErreur(messageErreur(e));
+        });
+      });
+
+      if (d.photo) {
+        zone.appendChild(el("button", { type: "button", class: "msg-btn msg-btn--petit msg-btn--discret-danger", onclick: function () {
+          confirmer("Retirer la photo du groupe « " + d.nom + " » ? L’icône du groupe reviendra.", "Retirer").then(function (ok) {
+            if (!ok) {
+              return;
+            }
+            appel("POST", "/conversations/" + d.id + "/photo/retirer").then(function () {
+              appliquer(null, "Photo du groupe retirée.");
+            }).catch(function (e) { montrerErreur(messageErreur(e)); });
+          });
+        } }, [icone("supprimer"), el("span", { text: "Retirer" })]));
+      }
+      zone.appendChild(erreur);
+      return zone;
     }
 
     function boutonAction(nomIcone, libelle, action, danger) {
@@ -2680,6 +3632,7 @@
       },
       "fermer-recherche-fil": fermerRechercheFil,
       "annuler-contexte": annulerContexte,
+      joindre: choisirFichiers,
       "vers-bas": function () {
         etat.nouveauxEnBas = 0;
         allerEnBas(true);
@@ -2696,7 +3649,7 @@
       var action = actions[cible.getAttribute("data-msg-action")];
       if (action) {
         evenement.preventDefault();
-        action();
+        action(cible);
       }
     });
 
@@ -2850,9 +3803,12 @@
     if (mode === "plein") {
       window.addEventListener("popstate", function () {
         var cible = lireAdresse();
+        var message = lireMessageCible();
         if (cible) {
           if (cible !== etat.actifId) {
-            ouvrir(cible);
+            ouvrir(cible, message);
+          } else if (message) {
+            allerA(message);
           }
         } else if (etat.actifId && uneColonne()) {
           revenirALaListe();
@@ -2862,6 +3818,12 @@
 
     function lireAdresse() {
       var correspondance = /(?:^|[#&?])c=(\d+)/.exec(location.hash + "&" + location.search);
+      return correspondance ? parseInt(correspondance[1], 10) : null;
+    }
+
+    /* « #c=12&m=345 » : le message à montrer, depuis le classeur par exemple. */
+    function lireMessageCible() {
+      var correspondance = /(?:^|[#&?])m=(\d+)/.exec(location.hash + "&" + location.search);
       return correspondance ? parseInt(correspondance[1], 10) : null;
     }
 
@@ -2879,7 +3841,7 @@
         rendreListe();
         var cible = mode === "plein" ? lireAdresse() : null;
         if (cible) {
-          ouvrir(cible);
+          ouvrir(cible, lireMessageCible());
         }
       }).catch(function (erreur) {
         vider(refs["liste-etat"]);
@@ -3008,6 +3970,30 @@
   // ==================================================================
 
   window.LbpReleve.demarrer({ api: CFG.api, connexion: CFG.connexion });
+
+  // Ce que l'écran « Documents » (messagerie-documents.js) réutilise.
+  window.LbpMessagerie = {
+    config: CFG,
+    el: el,
+    ajouter: ajouter,
+    icone: icone,
+    vider: vider,
+    appel: appel,
+    messageErreur: messageErreur,
+    toast: toast,
+    attendre: attendre,
+    versDate: versDate,
+    libelleListe: libelleListe,
+    libelleDateComplete: libelleDateComplete,
+    tailleLisible: tailleLisible,
+    libelleType: libelleType,
+    categories: CATEGORIES,
+    vignetteDocument: vignetteDocument,
+    urlTelechargement: urlTelechargement,
+    boutonFavori: boutonFavori,
+    tactile: TACTILE,
+    Visionneuse: Visionneuse
+  };
 
   document.querySelectorAll(".msg-page [data-msg-app]").forEach(function (racine) {
     creerApplication(racine);
