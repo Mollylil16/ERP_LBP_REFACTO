@@ -6,6 +6,7 @@ use App\Helpers\View;
 use App\Helpers\ModuleIcon;
 use App\View\Components\Ui;
 use App\View\Components\Navigation;
+use App\View\Components\Messagerie;
 
 /** @var \App\Support\ViewBag $viewData */ $viewData ??= \App\Support\ViewBag::from(get_defined_vars());
 $appConfig = require BASE_PATH . '/config/app.php';
@@ -54,6 +55,11 @@ $moduleAccent = $moduleTheme['accent'] ?? '#7c3aed';
 $moduleAccent2 = $moduleTheme['accent2'] ?? '#1d2b57';
 $moduleGradient = $moduleTheme['gradient'] ?? 'linear-gradient(135deg, #1d2b57, #7c3aed)';
 $moduleIconKey = $moduleTheme['iconKey'] ?? strtolower((string) ($moduleCode ?? 'admin'));
+
+// Messagerie interne : bouton d'en-tête et panneau latéral sur toutes les
+// pages des modules. Sur l'écran /messagerie lui-même, pas de panneau.
+$messagerie = Messagerie::contexteCourant();
+$surLaMessagerie = strtoupper((string) ($moduleCode ?? '')) === 'MSG';
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -72,6 +78,9 @@ $moduleIconKey = $moduleTheme['iconKey'] ?? strtolower((string) ($moduleCode ?? 
         <?php $styleUrl = preg_match('#^https?://#i', (string) $style) ? (string) $style : View::asset((string) $style); ?>
         <link href="<?= View::e($styleUrl) ?>" rel="stylesheet">
     <?php endforeach; ?>
+    <?php if ($messagerie !== null): ?>
+        <link href="<?= View::asset('css/messagerie.css') ?>" rel="stylesheet">
+    <?php endif; ?>
 </head>
 <body class="module-body" style="--module-accent: <?= View::e($moduleAccent) ?>; --module-avatar: <?= View::e($moduleAccent) ?>; --module-accent-2: <?= View::e($moduleAccent2) ?>; --module-gradient: <?= View::e($moduleGradient) ?>;">
     <?php if (!Auth::isAdmin() && !Auth::hasAnyRole(['dg', 'assistant_dg', 'assistante_dg', 'responsable_groupage', 'superviseur_general'])): ?>
@@ -121,6 +130,7 @@ $moduleIconKey = $moduleTheme['iconKey'] ?? strtolower((string) ($moduleCode ?? 
                     <span class="module-topbar-kicker"><?= View::e($moduleCode ?? 'ERP') ?></span>
                     <strong><?= View::e($pageTitle ?? $moduleName ?? 'Module') ?></strong>
                 </div>
+                <?= $messagerie !== null ? Messagerie::boutonEntete($messagerie['plein'], $surLaMessagerie) : '' ?>
                 <div class="module-profile">
                     <span class="module-profile-avatar"><?= View::e(strtoupper(substr((string) ($currentUser?->fullName ?? 'A'), 0, 1))) ?></span>
                     <span>
@@ -137,8 +147,16 @@ $moduleIconKey = $moduleTheme['iconKey'] ?? strtolower((string) ($moduleCode ?? 
         </div>
     </div>
 
+    <?php if ($messagerie !== null): ?>
+        <?= Messagerie::socle($messagerie, !$surLaMessagerie) ?>
+    <?php endif; ?>
+
     <script src="<?= View::asset('js/app.js') ?>"></script>
     <script src="<?= View::asset('js/components.js') ?>"></script>
+    <?php if ($messagerie !== null): ?>
+        <script src="<?= View::asset('js/messagerie-releve.js') ?>"></script>
+        <script src="<?= View::asset('js/messagerie.js') ?>"></script>
+    <?php endif; ?>
     <?php foreach ($scripts as $script): ?>
         <?php $scriptUrl = preg_match('#^https?://#i', (string) $script) ? (string) $script : View::asset((string) $script); ?>
         <script src="<?= View::e($scriptUrl) ?>"></script>

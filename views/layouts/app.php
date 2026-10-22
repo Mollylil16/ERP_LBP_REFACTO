@@ -3,6 +3,7 @@
 use App\Helpers\Auth;
 use App\Helpers\Session;
 use App\Helpers\View;
+use App\View\Components\Messagerie;
 
 /** @var \App\Support\ViewBag $viewData */ $viewData ??= \App\Support\ViewBag::from(get_defined_vars());
 $appConfig = require BASE_PATH . '/config/app.php';
@@ -11,6 +12,7 @@ $title = $pageTitle ?? 'Tableau de bord';
 $successMessage = Session::getFlash('success');
 $errorMessage = Session::getFlash('error');
 $user = Auth::user();
+$messagerie = Messagerie::contexteCourant();
 ?>
 
 <!DOCTYPE html>
@@ -31,6 +33,9 @@ $user = Auth::user();
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<?php if ($messagerie !== null): ?>
+    <link href="<?= View::asset('css/messagerie.css') ?>" rel="stylesheet">
+<?php endif; ?>
 </head>
 
 <body class="app-dashboard-body">
@@ -54,6 +59,7 @@ $user = Auth::user();
                     </div>
                 </div>
 
+                <?= $messagerie !== null ? Messagerie::boutonEntete($messagerie['plein']) : '' ?>
                 <div class="app-profile">
                     <div class="app-profile-avatar"><?= strtoupper(substr((string) ($user?->fullName ?? 'A'), 0, 1)) ?></div>
                     <div class="app-profile-info">
@@ -70,8 +76,15 @@ $user = Auth::user();
         </div>
     </div>
 
+<?php if ($messagerie !== null): ?>
+    <?= Messagerie::socle($messagerie) ?>
+<?php endif; ?>
     <script src="<?= View::asset('js/app.js') ?>"></script>
     <script src="<?= View::asset('js/components.js') ?>"></script>
+<?php if ($messagerie !== null): ?>
+    <script src="<?= View::asset('js/messagerie-releve.js') ?>"></script>
+    <script src="<?= View::asset('js/messagerie.js') ?>"></script>
+<?php endif; ?>
 </body>
 
 </html>
