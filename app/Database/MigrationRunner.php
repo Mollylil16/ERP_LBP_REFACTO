@@ -55,6 +55,69 @@ class MigrationRunner
         $this->createComptesAuditTable();
         $this->createMouvementsCaisseTables();
         $this->createMessagerieTables();
+        $this->createNoelTables();
+    }
+
+    /**
+     * Les deux tables de NOEL : ce qu'on mesure, et ce qu'on lui apprend.
+     *
+     * Elles sont separees a dessein, et la separation est le point important.
+     *
+     * lbp_noel_mesures ne contient AUCUN TEXTE : seulement des compteurs par
+     * jour et par sujet. C'est ce qui permet de savoir si NOEL sert, sans
+     * jamais conserver ce que quelqu'un lui a ecrit.
+     *
+     * lbp_noel_apprentissages, lui, garde la question telle qu'elle a ete
+     * tapee — mais uniquement celles que la personne a CHOISI d'envoyer a
+     * l'administrateur, apres que NOEL lui a demande. Une question qu'il n'a
+     * pas comprise peut etre une confidence autant qu'une demande d'aide ; la
+     * stocker sans demander serait exactement la trahison contre laquelle on
+     * a bati la cloison du 22/10/2026.
+     *
+     * run() passe a chaque requete HTTP : uniquement de la structure, aucune
+     * reprise de donnees, et la seconde table sert de temoin pour les deux.
+     */
+    private function createNoelTables(): void
+    {
+        try {
+            if ($this->schema->tableExists('lbp_noel_apprentissages')) {
+                return;
+            }
+
+            $options = 'ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci';
+
+            $this->pdo->exec("
+                CREATE TABLE IF NOT EXISTS lbp_noel_mesures (
+                    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                    jour DATE NOT NULL,
+                    concept VARCHAR(40) NOT NULL DEFAULT '',
+                    intention VARCHAR(20) NOT NULL DEFAULT '',
+                    comprises INT UNSIGNED NOT NULL DEFAULT 0,
+                    incomprises INT UNSIGNED NOT NULL DEFAULT 0,
+                    liens_suivis INT UNSIGNED NOT NULL DEFAULT 0,
+                    UNIQUE KEY uniq_noel_mesure (jour, concept, intention),
+                    KEY idx_noel_mesure_jour (jour)
+                ) {$options}
+            ");
+
+            $this->pdo->exec("
+                CREATE TABLE IF NOT EXISTS lbp_noel_apprentissages (
+                    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                    user_id INT NULL,
+                    question VARCHAR(500) NOT NULL,
+                    concept_devine VARCHAR(40) NULL,
+                    statut ENUM('recue', 'repondue', 'apprise', 'classee') NOT NULL DEFAULT 'recue',
+                    reponse VARCHAR(1000) NULL,
+                    repondu_par INT NULL,
+                    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME NULL,
+                    KEY idx_noel_appr_statut (statut, created_at),
+                    KEY idx_noel_appr_user (user_id)
+                ) {$options}
+            ");
+        } catch (\Throwable $e) {
+            error_log('[MigrationRunner Warning] createNoelTables: ' . $e->getMessage());
+        }
     }
 
     /**
