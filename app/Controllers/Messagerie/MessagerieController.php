@@ -57,6 +57,42 @@ final class MessagerieController extends BaseController
         ]);
     }
 
+    /**
+     * Toutes les discussions, pour le DG et l'administrateur. Pour les autres,
+     * l'adresse n'existe pas : un 404, comme les modules réservés.
+     */
+    public function direction(): void
+    {
+        AuthMiddleware::check();
+
+        if (!MessagerieAcces::estDirection()) {
+            (new \App\Controllers\Error\ErrorController())->notFound('/messagerie/direction');
+
+            return;
+        }
+
+        $recherche = is_string($_GET['q'] ?? null) ? $_GET['q'] : '';
+        $type = is_string($_GET['type'] ?? null) ? $_GET['type'] : '';
+        $service = new MessagerieService(new MessagerieRepository(Database::getConnection()), (int) Auth::id(), true);
+
+        $this->view('messagerie/direction', [
+            'pageTitle' => 'Toutes les discussions',
+            'moduleName' => 'Messagerie',
+            'moduleCode' => 'MSG',
+            'activeModule' => 'direction',
+            'moduleNavigation' => MessagerieNavigation::items(),
+            'moduleTheme' => [
+                'accent' => '#0f766e',
+                'accent2' => '#134e4a',
+                'gradient' => 'linear-gradient(135deg, #134e4a, #0f766e)',
+                'iconKey' => 'messagerie',
+            ],
+            'additionalStyles' => ['css/finea-ui.css'],
+            'vue' => $service->vueDirection($recherche, $type),
+            'filtres' => ['q' => trim($recherche), 'type' => $type],
+        ]);
+    }
+
     // =================================================================
     // Lecture
     // =================================================================

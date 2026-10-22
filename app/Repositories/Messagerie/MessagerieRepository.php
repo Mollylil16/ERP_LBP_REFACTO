@@ -716,6 +716,55 @@ final class MessagerieRepository implements MessagerieDepotInterface
             ->execute(['u' => $userId, 'c' => $conversationId, 'd' => $maintenant]);
     }
 
+    public function toutesConversations(string $recherche, string $type, int $limite): array
+    {
+        // Marques positionnelles : la base refuse un même :nom répété.
+        $conditions = [];
+        $parametres = [];
+        if ($type !== '') {
+            $conditions[] = 'c.type = ?';
+            $parametres[] = $type;
+        }
+        if ($recherche !== '') {
+            $motif = '%' . $recherche . '%';
+            $conditions[] = '(c.nom LIKE ? OR EXISTS (
+                SELECT 1 FROM msg_membres rm JOIN users ru ON ru.id = rm.user_id
+                WHERE rm.conversation_id = c.id AND ru.full_name LIKE ?
+            ))';
+            $parametres[] = $motif;
+            $parametres[] = $motif;
+        }
+
+        $stmt = $this->pdo->prepare('
+            SELECT c.id, c.type, c.nom, c.created_at, c.dernier_message_at,
+                (SELECT COUNT(*) FROM msg_messages m WHERE m.conversation_id = c.id) AS nb_messages,
+                (SELECT GROUP_CONCAT(u.full_name ORDER BY u.full_name SEPARATOR \', \')
+                   FROM msg_membres mb JOIN users u ON u.id = mb.user_id
+                   WHERE mb.conversation_id = c.id AND mb.quitte_at IS NULL) AS participants
+            FROM msg_conversations c
+            ' . ($conditions === [] ? '' : 'WHERE ' . implode(' AND ', $conditions)) . '
+            ORDER BY COALESCE(c.dernier_message_at, c.created_at) DESC, c.id DESC
+            LIMIT ' . max(1, $limite) . '
+        ');
+        $stmt->execute($parametres);
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function accesDirectionRecents(int $limite): array
+    {
+        $stmt = $this->pdo->query('
+            SELECT a.created_at, u.full_name AS lecteur, a.conversation_id, c.type, c.nom
+            FROM msg_acces_direction a
+            LEFT JOIN users u ON u.id = a.user_id
+            LEFT JOIN msg_conversations c ON c.id = a.conversation_id
+            ORDER BY a.id DESC
+            LIMIT ' . max(1, $limite) . '
+        ');
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
     // ------------------------------------------------------------------
 
     private function journal(int $messageId, string $action, string $ancienTexte, int $parId, string $maintenant): void

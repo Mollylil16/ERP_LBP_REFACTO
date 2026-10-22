@@ -240,4 +240,19 @@ interface MessagerieDepotInterface
     public function enregistrerPreferences(int $userId, array $preferences): void;
 
     public function journaliserAccesDirection(int $userId, int $conversationId, string $maintenant): void;
+
+    /**
+     * Toutes les discussions, pour l'écran de la Direction : la plus récemment
+     * active en tête. $recherche porte sur le nom du groupe ou d'un participant.
+     *
+     * @return array<int, array{id:int|string, type:string, nom:?string, created_at:string, dernier_message_at:?string, nb_messages:int|string, participants:?string}>
+     */
+    public function toutesConversations(string $recherche, string $type, int $limite): array;
+
+    /**
+     * Dernières ouvertures de discussions par la Direction.
+     *
+     * @return array<int, array{created_at:string, lecteur:?string, conversation_id:int|string, type:?string, nom:?string}>
+     */
+    public function accesDirectionRecents(int $limite): array;
 }

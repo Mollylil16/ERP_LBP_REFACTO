@@ -726,6 +726,45 @@ final class MessagerieService
      *
      * @return array{0: array<string, mixed>, 1: array<string, mixed>|null}
      */
+    /**
+     * L'écran de la Direction : toutes les discussions et les dernières
+     * ouvertures. Lister ne journalise rien ; c'est ouvrir une discussion qui
+     * laisse une trace, comme partout ailleurs.
+     *
+     * @return array{conversations: array<int, array<string, mixed>>, acces: array<int, array<string, mixed>>, plafond: int}
+     */
+    public function vueDirection(string $recherche = '', string $type = ''): array
+    {
+        if (!$this->direction) {
+            throw MessagerieException::introuvable();
+        }
+
+        $recherche = trim(mb_substr($recherche, 0, 80));
+        if (!in_array($type, ['direct', 'groupe', 'annonces'], true)) {
+            $type = '';
+        }
+
+        $plafond = 200;
+        $conversations = [];
+        foreach ($this->depot->toutesConversations($recherche, $type, $plafond) as $c) {
+            $conversations[] = [
+                'id' => (int) $c['id'],
+                'type' => (string) $c['type'],
+                'nom' => $c['nom'] !== null && $c['nom'] !== '' ? (string) $c['nom'] : null,
+                'participants' => (string) ($c['participants'] ?? ''),
+                'nb_messages' => (int) $c['nb_messages'],
+                'dernier_message_at' => $c['dernier_message_at'] ?? null,
+                'created_at' => (string) $c['created_at'],
+            ];
+        }
+
+        return [
+            'conversations' => $conversations,
+            'acces' => $this->depot->accesDirectionRecents(30),
+            'plafond' => $plafond,
+        ];
+    }
+
     private function lecture(int $conversationId, bool $journaliser): array
     {
         $conversation = $this->depot->conversation($conversationId);

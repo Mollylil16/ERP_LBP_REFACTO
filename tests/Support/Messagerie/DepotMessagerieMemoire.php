@@ -412,6 +412,49 @@ final class DepotMessagerieMemoire implements MessagerieDepotInterface
         $this->accesDirection[] = ['user_id' => $userId, 'conversation_id' => $conversationId, 'created_at' => $maintenant];
     }
 
+    public function toutesConversations(string $recherche, string $type, int $limite): array
+    {
+        $r = [];
+        foreach ($this->conversations as $c) {
+            if ($type !== '' && $c['type'] !== $type) {
+                continue;
+            }
+            $noms = [];
+            foreach ($this->membres as $m) {
+                if ($m['conversation_id'] === $c['id'] && $m['quitte_at'] === null) {
+                    $noms[] = (string) ($this->utilisateurs[$m['user_id']]['nom'] ?? '');
+                }
+            }
+            sort($noms);
+            $participants = implode(', ', $noms);
+            if ($recherche !== '' && stripos((string) $c['nom'] . ' ' . $participants, $recherche) === false) {
+                continue;
+            }
+            $nb = count(array_filter($this->messages, static fn(array $m): bool => $m['conversation_id'] === $c['id']));
+            $r[] = $c + ['nb_messages' => $nb, 'participants' => $participants];
+        }
+        usort($r, static fn(array $a, array $b): int => strcmp((string) ($b['dernier_message_at'] ?? $b['created_at']), (string) ($a['dernier_message_at'] ?? $a['created_at'])));
+
+        return array_slice($r, 0, $limite);
+    }
+
+    public function accesDirectionRecents(int $limite): array
+    {
+        $r = [];
+        foreach (array_reverse($this->accesDirection) as $a) {
+            $c = $this->conversations[$a['conversation_id']] ?? [];
+            $r[] = [
+                'created_at' => $a['created_at'],
+                'lecteur' => $this->utilisateurs[$a['user_id']]['nom'] ?? null,
+                'conversation_id' => $a['conversation_id'],
+                'type' => $c['type'] ?? null,
+                'nom' => $c['nom'] ?? null,
+            ];
+        }
+
+        return array_slice($r, 0, $limite);
+    }
+
     private function maxId(int $conversationId): int
     {
         $max = 0;

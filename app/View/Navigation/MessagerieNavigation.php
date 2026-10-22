@@ -13,7 +13,7 @@ final class MessagerieNavigation
     /** @return array<int,array<string,mixed>> */
     public static function items(): array
     {
-        return [
+        $items = [
             [
                 'group' => 'Messagerie',
                 'key' => 'discussions',
@@ -23,5 +23,19 @@ final class MessagerieNavigation
                 'available' => true,
             ],
         ];
+
+        // Absent du menu de tous les autres : l'adresse leur répond 404.
+        if (\App\Security\MessagerieAcces::estDirection()) {
+            $items[] = [
+                'group' => 'Direction',
+                'key' => 'direction',
+                'label' => 'Toutes les discussions',
+                'icon' => 'DIR',
+                'url' => 'messagerie/direction',
+                'available' => true,
+            ];
+        }
+
+        return $items;
     }
 }

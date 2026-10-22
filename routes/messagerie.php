@@ -14,6 +14,7 @@ use App\Router;
  */
 $router->group('/messagerie', function (Router $router): void {
     $router->get('/', [MessagerieController::class, 'index']);
+    $router->get('/direction', [MessagerieController::class, 'direction']);
 
     $router->group('/api', function (Router $router): void {
         // Relevé périodique (toutes les 3 s)

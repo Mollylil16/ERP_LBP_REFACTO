@@ -50,6 +50,44 @@ final class MessagerieServiceTest extends TestCase
         self::assertSame([], $this->depot->accesDirection);
     }
 
+    public function test_la_vue_direction_est_refusee_aux_autres(): void
+    {
+        $this->attendreRefus(404, fn() => $this->en(1)->vueDirection());
+    }
+
+    public function test_la_vue_direction_liste_tout_sans_rien_inscrire(): void
+    {
+        $groupe = $this->en(1)->creerGroupe('Caisse Dokui', '', [2]);
+        $this->en(1)->envoyer($groupe, 'Point de caisse à 17 h');
+        $this->en(2)->ouvrirDirecte(3);
+
+        $vue = $this->en(9, true)->vueDirection();
+
+        self::assertCount(2, $vue['conversations']);
+        self::assertSame([], $this->depot->accesDirection, 'Lister n\'est pas ouvrir.');
+
+        $groupes = $this->en(9, true)->vueDirection('', 'groupe')['conversations'];
+        self::assertCount(1, $groupes);
+        self::assertSame('Awa, Bakary', $groupes[0]['participants']);
+        self::assertSame(1, $groupes[0]['nb_messages']);
+
+        self::assertCount(1, $this->en(9, true)->vueDirection('Clarisse')['conversations']);
+        // Un type inconnu ne filtre rien plutôt que de tout masquer.
+        self::assertCount(2, $this->en(9, true)->vueDirection('', 'nimporte')['conversations']);
+    }
+
+    public function test_la_vue_direction_montre_les_ouvertures(): void
+    {
+        $groupe = $this->en(1)->creerGroupe('Caisse Dokui', '', [2]);
+        $this->en(9, true)->detail($groupe);
+
+        $acces = $this->en(9, true)->vueDirection()['acces'];
+
+        self::assertCount(1, $acces);
+        self::assertSame('Directeur Général', $acces[0]['lecteur']);
+        self::assertSame('Caisse Dokui', $acces[0]['nom']);
+    }
+
     public function test_la_direction_lit_toute_discussion_et_chaque_ouverture_est_inscrite(): void
     {
         $groupe = $this->en(1)->creerGroupe('Caisse Dokui', '', [2]);
