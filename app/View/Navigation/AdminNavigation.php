@@ -16,6 +16,7 @@ final class AdminNavigation
             ['group' => 'Accès & sécurité', 'key' => 'roles', 'label' => 'Rôles et anomalies', 'icon' => 'RL', 'url' => 'admin/roles', 'available' => true],
             ['group' => 'Accès & sécurité', 'key' => 'journal', 'label' => 'Journal des comptes', 'icon' => 'JRN', 'url' => 'admin/journal', 'available' => true],
             ['group' => 'Qualité', 'key' => 'tests', 'label' => 'Santé & tests', 'icon' => 'TST', 'url' => 'admin/system-tests', 'available' => true],
+            ['group' => 'Qualité', 'key' => 'messagerie-espace', 'label' => 'Espace de la messagerie', 'icon' => 'MSG', 'url' => 'admin/messagerie/espace', 'available' => true],
         ];
     }
 }

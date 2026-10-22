@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Router;
 use App\Controllers\Admin\AdminDashboardController;
 use App\Controllers\Admin\AdminJournalController;
+use App\Controllers\Admin\AdminMessagerieController;
 use App\Controllers\Admin\AdminPermissionController;
 use App\Controllers\Admin\AdminUserController;
 use App\Controllers\Admin\AdminSystemTestController;
@@ -21,6 +22,9 @@ $router->group('/admin', function (Router $router): void {
     $router->get('/journal/pdf', [AdminJournalController::class, 'journalPdf']);
     $router->get('/journal/excel', [AdminJournalController::class, 'journalExcel']);
     $router->get('/roles', [AdminJournalController::class, 'rolesEtAnomalies']);
+
+    // Ce que les fichiers de la messagerie occupent sur le disque.
+    $router->get('/messagerie/espace', [AdminMessagerieController::class, 'espace']);
 
     $router->get('/system-tests', [AdminSystemTestController::class, 'index']);
     $router->get('/system-tests/latest', [AdminSystemTestController::class, 'latest']);
