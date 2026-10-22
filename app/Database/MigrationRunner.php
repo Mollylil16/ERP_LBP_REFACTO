@@ -54,6 +54,189 @@ class MigrationRunner
         $this->createApproCaisseTable();
         $this->createComptesAuditTable();
         $this->createMouvementsCaisseTables();
+        $this->createMessagerieTables();
+    }
+
+    /**
+     * Messagerie interne (lot 1, octobre 2026) : discussions, membres,
+     * messages et leur journal, épinglés, présence, et le registre des
+     * ouvertures de discussions par la Direction.
+     *
+     * Uniquement de la structure. run() passant à chaque requête HTTP — et le
+     * relevé de la messagerie en émet une toutes les 3 secondes par poste —,
+     * une seule lecture d'information_schema suffit les jours ordinaires :
+     * msg_presence est créée en dernier, sa présence dit que tout le reste
+     * l'est déjà.
+     *
+     * Les clés étrangères sont posées une à une après les tables, et non dans
+     * le CREATE TABLE : une contrainte refusée (signe de users.id différent
+     * d'une base à l'autre) ne doit jamais empêcher la table d'exister. La
+     * colonne utilisateur prend donc le type exact de users.id.
+     */
+    private function createMessagerieTables(): void
+    {
+        try {
+            if ($this->schema->tableExists('msg_presence')) {
+                return;
+            }
+
+            $typeUsers = $this->schema->columnType('users', 'id') ?? 'int';
+            $utilisateur = str_contains(strtolower($typeUsers), 'unsigned') ? 'INT UNSIGNED' : 'INT';
+            $options = 'ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci';
+
+            $tables = [
+                /*
+                 * cle_directe vaut « petit-grand » des deux identifiants pour
+                 * une discussion directe, NULL sinon : l'unique garantit une
+                 * seule discussion par paire, même si les deux collègues
+                 * cliquent au même instant.
+                 */
+                'msg_conversations' => "
+                    CREATE TABLE IF NOT EXISTS msg_conversations (
+                        id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                        type ENUM('direct', 'groupe', 'annonces') NOT NULL DEFAULT 'groupe',
+                        nom VARCHAR(120) NULL,
+                        description VARCHAR(500) NULL,
+                        photo VARCHAR(255) NULL,
+                        agence_id INT UNSIGNED NULL,
+                        automatique TINYINT(1) NOT NULL DEFAULT 0,
+                        cle_directe VARCHAR(40) NULL,
+                        createur_id {$utilisateur} NULL,
+                        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        dernier_message_at DATETIME NULL,
+                        maj_at DATETIME NULL,
+                        UNIQUE KEY uniq_msg_conv_directe (cle_directe),
+                        KEY idx_msg_conv_agence (agence_id),
+                        KEY idx_msg_conv_maj (maj_at)
+                    ) {$options}
+                ",
+                'msg_membres' => "
+                    CREATE TABLE IF NOT EXISTS msg_membres (
+                        id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                        conversation_id INT UNSIGNED NOT NULL,
+                        user_id {$utilisateur} NOT NULL,
+                        role ENUM('membre', 'admin') NOT NULL DEFAULT 'membre',
+                        rejoint_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        quitte_at DATETIME NULL,
+                        dernier_message_lu_id INT UNSIGNED NOT NULL DEFAULT 0,
+                        lu_at DATETIME NULL,
+                        sourdine TINYINT(1) NOT NULL DEFAULT 0,
+                        archivee TINYINT(1) NOT NULL DEFAULT 0,
+                        UNIQUE KEY uniq_msg_membre (conversation_id, user_id),
+                        KEY idx_msg_membre_user (user_id, quitte_at),
+                        KEY idx_msg_membre_lecture (conversation_id, lu_at)
+                    ) {$options}
+                ",
+                // maj_at : posé à chaque modification ou suppression, pour
+                // que le relevé retrouve ces changements sans tout relire.
+                'msg_messages' => "
+                    CREATE TABLE IF NOT EXISTS msg_messages (
+                        id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                        conversation_id INT UNSIGNED NOT NULL,
+                        auteur_id {$utilisateur} NOT NULL,
+                        texte TEXT NOT NULL,
+                        reponse_a_id INT UNSIGNED NULL,
+                        transfere_de_id INT UNSIGNED NULL,
+                        modifie_at DATETIME NULL,
+                        supprime_at DATETIME NULL,
+                        supprime_par {$utilisateur} NULL,
+                        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        maj_at DATETIME NULL,
+                        KEY idx_msg_messages_conv (conversation_id, id),
+                        KEY idx_msg_messages_auteur (auteur_id, created_at),
+                        KEY idx_msg_messages_maj (maj_at),
+                        FULLTEXT KEY ft_msg_messages_texte (texte)
+                    ) {$options}
+                ",
+                'msg_messages_journal' => "
+                    CREATE TABLE IF NOT EXISTS msg_messages_journal (
+                        id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                        message_id INT UNSIGNED NOT NULL,
+                        action ENUM('modification', 'suppression') NOT NULL,
+                        ancien_texte TEXT NULL,
+                        auteur_id {$utilisateur} NULL,
+                        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        KEY idx_msg_journal_message (message_id, created_at)
+                    ) {$options}
+                ",
+                'msg_epingles' => "
+                    CREATE TABLE IF NOT EXISTS msg_epingles (
+                        id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                        conversation_id INT UNSIGNED NOT NULL,
+                        message_id INT UNSIGNED NOT NULL,
+                        epingle_par {$utilisateur} NULL,
+                        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        UNIQUE KEY uniq_msg_epingle (conversation_id, message_id)
+                    ) {$options}
+                ",
+                'msg_acces_direction' => "
+                    CREATE TABLE IF NOT EXISTS msg_acces_direction (
+                        id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                        user_id {$utilisateur} NOT NULL,
+                        conversation_id INT UNSIGNED NOT NULL,
+                        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        KEY idx_msg_acces_conv (conversation_id, created_at),
+                        KEY idx_msg_acces_user (user_id, created_at)
+                    ) {$options}
+                ",
+            ];
+
+            foreach ($tables as $sql) {
+                $this->pdo->exec($sql);
+            }
+
+            /*
+             * Rien ne s'efface en cascade côté messages : un compte retiré
+             * de users ne doit pas emporter ce qu'il a écrit. Seules les
+             * lignes qui n'ont de sens que pour lui (adhésion, présence)
+             * le suivent.
+             */
+            $cles = [
+                ['msg_conversations', 'fk_msg_conv_createur', 'createur_id', 'users', 'id', 'SET NULL'],
+                ['msg_membres', 'fk_msg_membre_conv', 'conversation_id', 'msg_conversations', 'id', 'CASCADE'],
+                ['msg_membres', 'fk_msg_membre_user', 'user_id', 'users', 'id', 'CASCADE'],
+                ['msg_messages', 'fk_msg_message_conv', 'conversation_id', 'msg_conversations', 'id', 'RESTRICT'],
+                ['msg_messages', 'fk_msg_message_auteur', 'auteur_id', 'users', 'id', 'RESTRICT'],
+                ['msg_messages', 'fk_msg_message_reponse', 'reponse_a_id', 'msg_messages', 'id', 'SET NULL'],
+                ['msg_messages', 'fk_msg_message_transfert', 'transfere_de_id', 'msg_messages', 'id', 'SET NULL'],
+                ['msg_messages', 'fk_msg_message_supprime_par', 'supprime_par', 'users', 'id', 'SET NULL'],
+                ['msg_messages_journal', 'fk_msg_journal_message', 'message_id', 'msg_messages', 'id', 'RESTRICT'],
+                ['msg_messages_journal', 'fk_msg_journal_auteur', 'auteur_id', 'users', 'id', 'SET NULL'],
+                ['msg_epingles', 'fk_msg_epingle_conv', 'conversation_id', 'msg_conversations', 'id', 'CASCADE'],
+                ['msg_epingles', 'fk_msg_epingle_message', 'message_id', 'msg_messages', 'id', 'CASCADE'],
+                ['msg_epingles', 'fk_msg_epingle_par', 'epingle_par', 'users', 'id', 'SET NULL'],
+                ['msg_acces_direction', 'fk_msg_acces_user', 'user_id', 'users', 'id', 'RESTRICT'],
+                ['msg_acces_direction', 'fk_msg_acces_conv', 'conversation_id', 'msg_conversations', 'id', 'RESTRICT'],
+            ];
+
+            foreach ($cles as [$table, $contrainte, $colonne, $reference, $colonneReference, $suppression]) {
+                try {
+                    $this->addForeignKeyIfMissing($table, $contrainte, $colonne, $reference, $colonneReference, $suppression);
+                } catch (\Throwable $e) {
+                    error_log('[MigrationRunner Warning] messagerie ' . $contrainte . ': ' . $e->getMessage());
+                }
+            }
+
+            // En dernier : sa présence vaut « messagerie entièrement créée ».
+            $this->pdo->exec("
+                CREATE TABLE IF NOT EXISTS msg_presence (
+                    user_id {$utilisateur} NOT NULL PRIMARY KEY,
+                    vu_at DATETIME NULL,
+                    presence_masquee TINYINT(1) NOT NULL DEFAULT 0,
+                    son_actif TINYINT(1) NOT NULL DEFAULT 1,
+                    apercu_masque TINYINT(1) NOT NULL DEFAULT 0,
+                    KEY idx_msg_presence_vu (vu_at)
+                ) {$options}
+            ");
+
+            try {
+                $this->addForeignKeyIfMissing('msg_presence', 'fk_msg_presence_user', 'user_id', 'users', 'id', 'CASCADE');
+            } catch (\Throwable $e) {
+                error_log('[MigrationRunner Warning] messagerie fk_msg_presence_user: ' . $e->getMessage());
+            }
+        } catch (\Throwable $e) {
+            error_log('[MigrationRunner Warning] createMessagerieTables: ' . $e->getMessage());
+        }
     }
 
     /**
