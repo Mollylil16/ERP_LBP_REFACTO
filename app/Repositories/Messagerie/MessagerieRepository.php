@@ -112,13 +112,15 @@ final class MessagerieRepository implements MessagerieDepotInterface
     {
         try {
             $stmt = $this->pdo->prepare('
-                INSERT INTO msg_conversations (type, nom, description, cle_directe, createur_id, created_at, maj_at)
-                VALUES (:type, :nom, :description, :cle, :createur, :cree, :maj)
+                INSERT INTO msg_conversations (type, nom, description, agence_id, automatique, cle_directe, createur_id, created_at, maj_at)
+                VALUES (:type, :nom, :description, :agence, :auto, :cle, :createur, :cree, :maj)
             ');
             $stmt->execute([
                 'type' => $donnees['type'],
                 'nom' => $donnees['nom'],
                 'description' => $donnees['description'],
+                'agence' => $donnees['agence_id'] ?? null,
+                'auto' => !empty($donnees['automatique']) ? 1 : 0,
                 'cle' => $donnees['cle_directe'],
                 'createur' => $donnees['createur_id'],
                 'cree' => $donnees['created_at'],
@@ -127,8 +129,10 @@ final class MessagerieRepository implements MessagerieDepotInterface
 
             return (int) $this->pdo->lastInsertId();
         } catch (PDOException $e) {
-            // Les deux collègues ont ouvert la discussion au même instant :
-            // l'unique sur cle_directe a joué, on reprend celle de l'autre.
+            // Les deux collègues ont ouvert la discussion au même instant (ou
+            // deux synchronisations ont voulu créer le même groupe
+            // automatique) : l'unique sur cle_directe a joué, on reprend
+            // celle de l'autre.
             if ($e->getCode() === '23000' && !empty($donnees['cle_directe'])) {
                 $existante = $this->conversationDirecte((string) $donnees['cle_directe']);
                 if ($existante !== null) {
@@ -1018,6 +1022,75 @@ final class MessagerieRepository implements MessagerieDepotInterface
         ');
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    // ------------------------------------------------------------------
+    // Groupes automatiques
+    // ------------------------------------------------------------------
+
+    public function comptesPourGroupes(?int $userId = null): array
+    {
+        $filtre = '';
+        $parametres = [];
+        if ($userId !== null) {
+            $filtre = 'WHERE u.id = :u';
+            $parametres['u'] = $userId;
+        }
+
+        $stmt = $this->pdo->prepare("
+            SELECT u.id, u.agence_id, u.status, u.is_admin, GROUP_CONCAT(r.role SEPARATOR ',') AS roles
+            FROM users u
+            LEFT JOIN lbp_user_roles r ON r.user_id = u.id
+            {$filtre}
+            GROUP BY u.id, u.agence_id, u.status, u.is_admin
+        ");
+        $stmt->execute($parametres);
+
+        return array_map(static fn(array $l): array => [
+            'id' => (int) $l['id'],
+            'agence_id' => $l['agence_id'] !== null ? (int) $l['agence_id'] : null,
+            'actif' => $l['status'] === 'active',
+            'admin' => (bool) $l['is_admin'],
+            // Des rôles vides traînent dans certaines bases : on les écarte.
+            'roles' => array_values(array_filter(array_map('trim', explode(',', (string) $l['roles'])), static fn(string $r): bool => $r !== '')),
+        ], $stmt->fetchAll(PDO::FETCH_ASSOC));
+    }
+
+    public function agencesPourGroupes(): array
+    {
+        $stmt = $this->pdo->query('SELECT id, name FROM company_sites WHERE is_active = 1 ORDER BY id');
+
+        return array_map(static fn(array $l): array => ['id' => (int) $l['id'], 'nom' => (string) $l['name']], $stmt->fetchAll(PDO::FETCH_ASSOC));
+    }
+
+    public function conversationsAutomatiques(): array
+    {
+        return $this->pdo->query('SELECT * FROM msg_conversations WHERE automatique = 1 ORDER BY id')->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function membresAutomatiques(?int $userId = null): array
+    {
+        $filtre = '';
+        $parametres = [];
+        if ($userId !== null) {
+            $filtre = 'AND mb.user_id = :u';
+            $parametres['u'] = $userId;
+        }
+
+        $stmt = $this->pdo->prepare("
+            SELECT mb.conversation_id, mb.user_id, mb.role
+            FROM msg_membres mb
+            JOIN msg_conversations c ON c.id = mb.conversation_id AND c.automatique = 1
+            WHERE mb.quitte_at IS NULL
+              {$filtre}
+        ");
+        $stmt->execute($parametres);
+
+        return array_map(static fn(array $l): array => [
+            'conversation_id' => (int) $l['conversation_id'],
+            'user_id' => (int) $l['user_id'],
+            'role' => (string) $l['role'],
+        ], $stmt->fetchAll(PDO::FETCH_ASSOC));
     }
 
     // ------------------------------------------------------------------

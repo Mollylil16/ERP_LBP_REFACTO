@@ -14,6 +14,7 @@ use App\Middleware\AuthMiddleware;
 use App\Models\Database;
 use App\Repositories\Messagerie\MessagerieRepository;
 use App\Security\MessagerieAcces;
+use App\Services\Messagerie\GroupesAutomatiques;
 use App\Services\Messagerie\MessagerieException;
 use App\Services\Messagerie\MessagerieService;
 use App\Services\Messagerie\MessagerieStockage;
@@ -35,6 +36,9 @@ use App\View\Navigation\MessagerieNavigation;
  */
 final class MessagerieController extends BaseController
 {
+    /** Clé de session du mémo de GroupesAutomatiques::synchroniserCompteSiBesoin. */
+    private const MEMO_GROUPES = 'messagerie_groupes_auto';
+
     // =================================================================
     // Page
     // =================================================================
@@ -136,6 +140,8 @@ final class MessagerieController extends BaseController
                 new MessagerieRepository(Database::getConnection())
             );
         }
+
+        $this->synchroniserGroupesAutomatiques();
 
         $this->repondre(static fn(): array => ['conversations' => $service->conversations()]);
     }
@@ -480,6 +486,34 @@ final class MessagerieController extends BaseController
 
             return [];
         });
+    }
+
+    /**
+     * Les groupes automatiques de l'utilisateur courant (lot 5) : son agence,
+     * « Tout LBP », « Annonces Direction ». Rien n'est relu tant que son
+     * agence, son statut et ses rôles n'ont pas bougé depuis moins de dix
+     * minutes — le mémo vit dans la session. Un échec ne prive jamais
+     * l'utilisateur de sa liste : la passe de nuit rattrapera.
+     */
+    private function synchroniserGroupesAutomatiques(): void
+    {
+        $user = Auth::user();
+        if ($user === null) {
+            return;
+        }
+
+        try {
+            [, $memo] = GroupesAutomatiques::parDefaut()->synchroniserCompteSiBesoin([
+                'id' => (int) $user->id,
+                'agence_id' => $user->agenceId,
+                'actif' => $user->status === 'active',
+                'admin' => $user->isAdmin,
+                'roles' => $user->roles,
+            ], Session::get(self::MEMO_GROUPES));
+            Session::set(self::MEMO_GROUPES, $memo);
+        } catch (\Throwable $e) {
+            error_log('[Messagerie groupes] utilisateur ' . (int) $user->id . ' : ' . $e->getMessage());
+        }
     }
 
     /**

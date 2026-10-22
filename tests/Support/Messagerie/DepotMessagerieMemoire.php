@@ -35,12 +35,35 @@ final class DepotMessagerieMemoire implements MessagerieDepotInterface
     public array $pieces = [];
     /** @var array<string, array<string, mixed>> clé « user-pièce » */
     public array $favoris = [];
+    /** @var array<int, array{id:int, nom:string, active:bool}> company_sites */
+    public array $agences = [];
 
     private int $prochainId = 1;
 
     public function ajouterUtilisateur(int $id, string $nom, bool $actif = true): void
     {
-        $this->utilisateurs[$id] = ['id' => $id, 'nom' => $nom, 'actif' => $actif, 'agence' => 'Abidjan', 'fonction' => null];
+        $this->utilisateurs[$id] = [
+            'id' => $id, 'nom' => $nom, 'actif' => $actif, 'agence' => 'Abidjan', 'fonction' => null,
+            'agence_id' => null, 'admin' => false, 'roles' => [],
+        ];
+    }
+
+    /**
+     * Un compte tel que la synchronisation des groupes le voit.
+     *
+     * @param array<int, string> $roles
+     */
+    public function ajouterCompte(int $id, string $nom, ?int $agenceId, array $roles = [], bool $admin = false, bool $actif = true): void
+    {
+        $this->ajouterUtilisateur($id, $nom, $actif);
+        $this->utilisateurs[$id]['agence_id'] = $agenceId;
+        $this->utilisateurs[$id]['roles'] = $roles;
+        $this->utilisateurs[$id]['admin'] = $admin;
+    }
+
+    public function ajouterAgence(int $id, string $nom, bool $active = true): void
+    {
+        $this->agences[$id] = ['id' => $id, 'nom' => $nom, 'active' => $active];
     }
 
     public function utilisateur(int $id): ?array
@@ -598,6 +621,48 @@ final class DepotMessagerieMemoire implements MessagerieDepotInterface
         }
 
         return array_slice($r, 0, $limite);
+    }
+
+    public function comptesPourGroupes(?int $userId = null): array
+    {
+        $r = [];
+        foreach ($this->utilisateurs as $u) {
+            if ($userId === null || $u['id'] === $userId) {
+                $r[] = ['id' => $u['id'], 'agence_id' => $u['agence_id'], 'actif' => $u['actif'], 'admin' => $u['admin'], 'roles' => $u['roles']];
+            }
+        }
+
+        return $r;
+    }
+
+    public function agencesPourGroupes(): array
+    {
+        $r = [];
+        foreach ($this->agences as $a) {
+            if ($a['active']) {
+                $r[] = ['id' => $a['id'], 'nom' => $a['nom']];
+            }
+        }
+
+        return $r;
+    }
+
+    public function conversationsAutomatiques(): array
+    {
+        return array_values(array_filter($this->conversations, static fn(array $c): bool => (bool) $c['automatique']));
+    }
+
+    public function membresAutomatiques(?int $userId = null): array
+    {
+        $r = [];
+        foreach ($this->membres as $m) {
+            if ($m['quitte_at'] === null && ($userId === null || $m['user_id'] === $userId)
+                && (bool) $this->conversations[$m['conversation_id']]['automatique']) {
+                $r[] = ['conversation_id' => $m['conversation_id'], 'user_id' => $m['user_id'], 'role' => $m['role']];
+            }
+        }
+
+        return $r;
     }
 
     private function maxId(int $conversationId): int

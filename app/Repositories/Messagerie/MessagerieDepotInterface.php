@@ -55,7 +55,11 @@ interface MessagerieDepotInterface
 
     public function conversationDirecte(string $cle): ?int;
 
-    /** @param array<string, mixed> $donnees */
+    /**
+     * @param array<string, mixed> $donnees type, nom, description, cle_directe,
+     *        createur_id, created_at ; et, pour un groupe automatique,
+     *        agence_id et automatique (absents : NULL et 0)
+     */
     public function creerConversation(array $donnees): int;
 
     /** @param array<string, mixed> $champs nom, description, type, photo */
@@ -320,4 +324,43 @@ interface MessagerieDepotInterface
      * @return array<int, array{created_at:string, lecteur:?string, conversation_id:int|string, type:?string, nom:?string}>
      */
     public function accesDirectionRecents(int $limite): array;
+
+    // ------------------------------------------------------------------
+    // Groupes automatiques (lot 5, GroupesAutomatiques)
+    // ------------------------------------------------------------------
+
+    /**
+     * Les comptes vus par la synchronisation : tous (désactivés compris,
+     * pour pouvoir les retirer), ou le seul $userId.
+     *
+     * Ligne : id, agence_id (?int, NULL pour « toutes agences »), actif
+     * (bool), admin (bool : users.is_admin), roles (liste des rôles de
+     * lbp_user_roles).
+     *
+     * @return array<int, array{id:int, agence_id:?int, actif:bool, admin:bool, roles:array<int, string>}>
+     */
+    public function comptesPourGroupes(?int $userId = null): array;
+
+    /**
+     * Les agences actives de company_sites : id, nom.
+     *
+     * @return array<int, array{id:int, nom:string}>
+     */
+    public function agencesPourGroupes(): array;
+
+    /**
+     * Les discussions automatiques (automatique = 1), lignes complètes de
+     * msg_conversations.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function conversationsAutomatiques(): array;
+
+    /**
+     * Les adhésions actives aux discussions automatiques — de tous, ou du
+     * seul $userId : conversation_id, user_id, role.
+     *
+     * @return array<int, array{conversation_id:int, user_id:int, role:string}>
+     */
+    public function membresAutomatiques(?int $userId = null): array;
 }

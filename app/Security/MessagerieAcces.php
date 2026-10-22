@@ -28,4 +28,16 @@ final class MessagerieAcces
         // dit quand même, pour que la règle se lise sans aller voir Auth.
         return Auth::isAdmin() || Auth::hasAnyRole(self::ROLES_DIRECTION);
     }
+
+    /**
+     * La même règle pour un compte qui n'est pas celui de la session : les
+     * groupes automatiques (lot 5) en tirent les administrateurs du canal
+     * « Annonces Direction » et de « Tout LBP ».
+     *
+     * @param array<int, string> $roles rôles de lbp_user_roles
+     */
+    public static function estDirectionCompte(bool $estAdmin, array $roles): bool
+    {
+        return $estAdmin || array_intersect(self::ROLES_DIRECTION, $roles) !== [];
+    }
 }

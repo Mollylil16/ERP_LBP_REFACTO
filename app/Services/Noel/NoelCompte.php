@@ -57,6 +57,23 @@ final class NoelCompte
         return self::$id = self::creer($pdo);
     }
 
+    /**
+     * L'identifiant de NOEL s'il existe deja, sans jamais creer le compte.
+     *
+     * Pour qui doit seulement le reconnaitre — la synchronisation des
+     * groupes automatiques l'en ecarte — et n'a pas a lui donner naissance.
+     */
+    public static function existant(?PDO $pdo = null): ?int
+    {
+        if (self::$id !== null) {
+            return self::$id;
+        }
+
+        $existant = self::chercher($pdo ?? Database::getConnection());
+
+        return $existant === null ? null : self::$id = $existant;
+    }
+
     private static function chercher(PDO $pdo): ?int
     {
         try {

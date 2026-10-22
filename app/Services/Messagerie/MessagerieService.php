@@ -212,6 +212,8 @@ final class MessagerieService
         [$conversation, $membre] = $this->lecture($conversationId, true);
 
         $membres = $this->depot->membresActifs($conversationId);
+        $automatique = GroupesAutomatiques::estAutomatique($conversation);
+        $gestion = $membre !== null && $membre['role'] === 'admin' && $conversation['type'] !== 'direct' && !$automatique;
         $correspondant = null;
         if ($conversation['type'] === 'direct') {
             foreach ($membres as $m) {
@@ -227,6 +229,14 @@ final class MessagerieService
             'acces_direction' => $membre === null,
             'peut_ecrire' => $this->peutEcrire($conversation, $membre, $membres),
             'peut_administrer' => $membre !== null && $membre['role'] === 'admin' && $conversation['type'] !== 'direct',
+            // Ce que l'écran propose. Un groupe automatique (lot 5) ne se
+            // quitte pas et ne se gère pas à la main : GroupesAutomatiques
+            // en décide les membres, le nom et le type.
+            'peut_quitter' => $membre !== null && $conversation['type'] !== 'direct' && !$automatique,
+            'peut_gerer_membres' => $gestion,
+            'peut_renommer' => $gestion,
+            'peut_changer_type' => $gestion,
+            'peut_epingler' => $this->peutEpingler($conversation, $membre, $membres),
             'sourdine' => $membre !== null && (bool) $membre['sourdine'],
             'archivee' => $membre !== null && (bool) $membre['archivee'],
             'membres' => array_map(static fn(array $m): array => [
@@ -316,7 +326,7 @@ final class MessagerieService
      */
     public function ajouterMembres(int $conversationId, array $userIds): array
     {
-        $this->administration($conversationId);
+        $this->administration($conversationId, 'Les membres de ce groupe sont tenus à jour automatiquement : on n’en ajoute pas à la main.');
         $maintenant = $this->maintenant();
 
         $ajoutes = [];
@@ -338,7 +348,7 @@ final class MessagerieService
 
     public function retirerMembre(int $conversationId, int $userId): void
     {
-        $this->administration($conversationId);
+        $this->administration($conversationId, 'Les membres de ce groupe sont tenus à jour automatiquement : on n’en retire pas à la main.');
 
         if ($userId === $this->utilisateurId) {
             throw MessagerieException::invalide('Pour partir vous-même, quittez la discussion.');
@@ -356,7 +366,7 @@ final class MessagerieService
 
     public function changerRole(int $conversationId, int $userId, string $role): void
     {
-        $this->administration($conversationId);
+        $this->administration($conversationId, 'Les rôles de ce groupe suivent les comptes (chefs d’agence, Direction) : ils ne se changent pas à la main.');
 
         if (!in_array($role, ['membre', 'admin'], true)) {
             throw MessagerieException::invalide('Rôle inconnu : choisissez « membre » ou « admin ».');
@@ -389,6 +399,9 @@ final class MessagerieService
         if ($conversation['type'] === 'direct') {
             throw MessagerieException::invalide('Une discussion directe ne se quitte pas : archivez-la.');
         }
+        if (GroupesAutomatiques::estAutomatique($conversation)) {
+            throw MessagerieException::interdit('Ce groupe est tenu à jour automatiquement : on ne le quitte pas. Mettez-le en sourdine ou archivez-le.');
+        }
 
         $maintenant = $this->maintenant();
 
@@ -413,7 +426,7 @@ final class MessagerieService
 
     public function renommer(int $conversationId, string $nom, ?string $description): void
     {
-        $this->administration($conversationId);
+        $this->administration($conversationId, 'Le nom de ce groupe est tenu à jour automatiquement : il ne se change pas à la main.');
 
         $champs = ['nom' => $this->nomGroupe($nom)];
         if ($description !== null) {
@@ -426,7 +439,7 @@ final class MessagerieService
     /** Passe un groupe en annonces (seuls les admins y écrivent), ou l'inverse. */
     public function passerEnAnnonces(int $conversationId, bool $annonces): void
     {
-        [$conversation] = $this->administration($conversationId);
+        [$conversation] = $this->administration($conversationId, 'Le type de ce groupe automatique est fixé : il ne se change pas.');
 
         $type = $annonces ? 'annonces' : 'groupe';
         if ($conversation['type'] === $type) {
@@ -676,7 +689,7 @@ final class MessagerieService
 
     public function epingler(int $conversationId, int $messageId): void
     {
-        $this->ecriture($conversationId);
+        $this->epinglage($conversationId);
 
         $message = $this->depot->message($messageId);
         if ($message === null || (int) $message['conversation_id'] !== $conversationId) {
@@ -701,7 +714,7 @@ final class MessagerieService
 
     public function desepingler(int $conversationId, int $messageId): void
     {
-        $this->ecriture($conversationId);
+        $this->epinglage($conversationId);
         $this->depot->desepingler($conversationId, $messageId);
     }
 
@@ -1148,19 +1161,55 @@ final class MessagerieService
         return [$conversation, $membre];
     }
 
-    /** @return array{0: array<string, mixed>, 1: array<string, mixed>} */
-    private function administration(int $conversationId): array
+    /**
+     * Administrer un groupe. $refusAutomatique, s'il est donné, est le refus
+     * opposé à tous — administrateurs compris — dans un groupe automatique :
+     * la synchronisation seule y décide de ce que l'action toucherait.
+     *
+     * @return array{0: array<string, mixed>, 1: array<string, mixed>}
+     */
+    private function administration(int $conversationId, ?string $refusAutomatique = null): array
     {
         [$conversation, $membre] = $this->adhesion($conversationId);
 
         if ($conversation['type'] === 'direct') {
             throw MessagerieException::interdit('Une discussion directe n’a pas d’administrateur.');
         }
+        if ($refusAutomatique !== null && GroupesAutomatiques::estAutomatique($conversation)) {
+            throw MessagerieException::interdit($refusAutomatique);
+        }
         if ($membre['role'] !== 'admin') {
             throw MessagerieException::interdit('Réservé aux administrateurs du groupe.');
         }
 
         return [$conversation, $membre];
+    }
+
+    /**
+     * Épingler : qui écrit dans la discussion — et, dans un groupe
+     * automatique, ses seuls administrateurs (chefs d'agence, Direction) :
+     * dans « Tout LBP », chacun pourrait sinon déloger l'épingle d'un autre.
+     */
+    private function epinglage(int $conversationId): void
+    {
+        [$conversation, $membre] = $this->ecriture($conversationId);
+
+        if (GroupesAutomatiques::estAutomatique($conversation) && $membre['role'] !== 'admin') {
+            throw MessagerieException::interdit('Dans un groupe automatique, seuls les administrateurs épinglent.');
+        }
+    }
+
+    /**
+     * @param array<string, mixed> $conversation
+     * @param array<int, array<string, mixed>> $membres
+     */
+    private function peutEpingler(array $conversation, ?array $membre, array $membres): bool
+    {
+        if (!$this->peutEcrire($conversation, $membre, $membres)) {
+            return false;
+        }
+
+        return !GroupesAutomatiques::estAutomatique($conversation) || $membre['role'] === 'admin';
     }
 
     /** @param array<int, array<string, mixed>> $membres */
