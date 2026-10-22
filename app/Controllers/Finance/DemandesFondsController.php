@@ -332,6 +332,23 @@ final class DemandesFondsController extends FinanceBaseController
          * que ce cumul ne se referme jamais sur une demande precise.
          */
         if (DemandesFondsAcces::aDejaValide($demande->validateurId)) {
+            /*
+             * Le refus est journalise, et pas seulement affiche.
+             *
+             * Deux raisons. Une tentative de sortie d argent refusee est un
+             * fait qui merite une trace, au meme titre qu un decaissement
+             * reussi. Et le journal ne garde aujourd hui que ce qui a REUSSI :
+             * sans cette ligne, NOEL ne pourrait jamais expliquer a quelqu un
+             * pourquoi son decaissement vient de coincer.
+             */
+            AuditLogService::log(
+                'refus_decaissement_deux_mains',
+                'lbp_demandes_fonds',
+                $demandeId,
+                ['validateur_id' => $demande->validateurId],
+                null
+            );
+
             Session::flash(
                 'error',
                 "Vous avez vous-même validé cette demande : son décaissement revient à quelqu'un d'autre."
