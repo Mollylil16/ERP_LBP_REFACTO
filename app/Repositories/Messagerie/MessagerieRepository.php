@@ -449,6 +449,10 @@ final class MessagerieRepository implements MessagerieDepotInterface
             $this->journal($id, 'modification', $ancienTexte, $parId, $maintenant);
             $this->pdo->prepare('UPDATE msg_messages SET texte = :t, modifie_at = :m, maj_at = :m2 WHERE id = :id')
                 ->execute(['t' => $nouveauTexte, 'm' => $maintenant, 'm2' => $maintenant, 'id' => $id]);
+            // Le texte d'un message à fichier en est la légende : le classeur
+            // la cherche dans la pièce, qui doit suivre.
+            $this->pdo->prepare('UPDATE msg_pieces_jointes SET legende = :l WHERE message_id = :id')
+                ->execute(['l' => $nouveauTexte === '' ? null : $nouveauTexte, 'id' => $id]);
 
             return $id;
         });

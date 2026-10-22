@@ -255,6 +255,11 @@ final class DepotMessagerieMemoire implements MessagerieDepotInterface
         $this->messages[$id]['texte'] = $nouveauTexte;
         $this->messages[$id]['modifie_at'] = $maintenant;
         $this->messages[$id]['maj_at'] = $maintenant;
+        foreach ($this->pieces as $pieceId => $p) {
+            if ($p['message_id'] === $id) {
+                $this->pieces[$pieceId]['legende'] = $nouveauTexte === '' ? null : $nouveauTexte;
+            }
+        }
     }
 
     public function supprimerMessage(int $id, string $ancienTexte, int $parId, string $maintenant): void

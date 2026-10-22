@@ -472,6 +472,22 @@ final class MessagerieFichiersTest extends TestCase
         self::assertSame('date', $moi->documents(['tri' => 'pj.id; DROP TABLE'])['filtres']['tri']);
     }
 
+    public function test_modifier_le_texte_d_un_message_a_fichier_change_la_legende_de_la_piece(): void
+    {
+        $compta = $this->en(1)->creerGroupe('Compta', '', [2]);
+        $message = $this->en(1)->envoyerFichier($compta, $this->fichier('bilan.pdf', self::PDF), 'Brouillon');
+        $sansLegende = $this->en(1)->envoyerFichier($compta, $this->fichier('releve.csv', "a;b
+"));
+
+        $modifie = $this->en(1)->modifier($message['id'], 'Bilan définitif');
+        $this->en(1)->modifier($sansLegende['id'], 'Relevé de caisse');
+
+        self::assertSame('Bilan définitif', $modifie['pieces_jointes'][0]['legende']);
+        self::assertSame(['bilan.pdf'], $this->noms($this->en(2)->documents(['q' => 'définitif'])), 'Le classeur cherche la nouvelle légende.');
+        self::assertSame([], $this->noms($this->en(2)->documents(['q' => 'Brouillon'])), 'L’ancienne ne répond plus.');
+        self::assertSame(['releve.csv'], $this->noms($this->en(2)->documents(['q' => 'caisse'])), 'Une légende ajoutée après coup compte aussi.');
+    }
+
     public function test_le_classeur_pagine_par_cinquante(): void
     {
         $groupe = $this->en(1)->creerGroupe('Archives', '', [2]);
