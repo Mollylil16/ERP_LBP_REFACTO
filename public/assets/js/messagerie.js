@@ -2285,7 +2285,8 @@
         }
         if (f.statut === "erreur") {
           infos.appendChild(el("p", { class: "msg-plateau-erreur" }, [icone("alerte", "msg-i--petit"), el("span", { text: f.erreur })]));
-          actions.appendChild(el("button", { type: "button", class: "msg-lien", text: "Réessayer", "aria-label": "Réessayer l’envoi de " + f.nom, onclick: function () {
+          // Un fichier refusé (format, taille) le serait encore : pas de « Réessayer ».
+          ajouter(actions, f.codeErreur === 413 || f.codeErreur === 422 ? null : el("button", { type: "button", class: "msg-lien", text: "Réessayer", "aria-label": "Réessayer l’envoi de " + f.nom, onclick: function () {
             f.statut = "attente";
             f.erreur = null;
             majPlateauSiActif(f.conversationId);
@@ -2451,6 +2452,7 @@
         } else {
           f.statut = "erreur";
           f.erreur = messageErreur(erreur);
+          f.codeErreur = erreur.statut;
         }
       }).then(function () {
         f.envoi = null;

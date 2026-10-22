@@ -3661,10 +3661,12 @@ button.msg-docs-carte-haut {
     gap: 10px;
   }
 
+  /* Quatre actions de 44 px ne tiennent pas sur une ligne : deux par deux. */
   .msg-docs-carte .msg-docs-actions {
-    flex-wrap: wrap;
-    justify-content: center;
-    padding: 0 0 2px;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(44px, 1fr));
+    justify-items: center;
+    padding: 0 4px 4px;
   }
 }
 
