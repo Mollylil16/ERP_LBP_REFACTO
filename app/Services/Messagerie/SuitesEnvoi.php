@@ -61,6 +61,11 @@ final class SuitesEnvoi
             fastcgi_finish_request();
         }
 
+        // Là où la réponse n'a pas pu être rendue d'avance (Apache mod_php,
+        // serveur intégré), un avertissement affiché par une suite
+        // s'ajouterait au JSON de l'agent et le rendrait illisible : rien de
+        // ce qu'elles écrivent ne sort.
+        ob_start(static fn(): string => '');
         while (($travail = array_shift(self::$travaux)) !== null) {
             try {
                 $travail();
@@ -68,6 +73,7 @@ final class SuitesEnvoi
                 error_log('[Messagerie] suite d’envoi : ' . $e->getMessage());
             }
         }
+        ob_end_clean();
     }
 
     /**

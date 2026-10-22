@@ -442,6 +442,8 @@ final class NotificationsMessagerieTest extends TestCase
         self::assertLessThan(strpos($source, '$travail();'), strpos($source, 'litespeed_finish_request();'));
         self::assertLessThan(strpos($source, '$travail();'), strpos($source, 'session_write_close();'));
         self::assertStringContainsString('set_time_limit(self::TEMPS_MAX_SECONDES)', $source);
+        // Un avertissement émis par une suite ne s'ajoute jamais au JSON de l'agent.
+        self::assertStringContainsString("ob_start(static fn(): string => '');", $source);
 
         $service = (string) file_get_contents(BASE_PATH . '/app/Services/Messagerie/MessagerieService.php');
         self::assertStringNotContainsString('register_shutdown_function', $service);
