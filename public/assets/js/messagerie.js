@@ -10,7 +10,7 @@
  *     panneau, créé à la première ouverture).
  *
  * Sécurité : tout texte venu du serveur passe par textContent ou par des
- * nœuds texte. Aucun innerHTML ici.
+ * nœuds texte : jamais de HTML construit à partir d’une chaîne.
  */
 (function () {
   "use strict";
@@ -1231,9 +1231,11 @@
       if (!source) {
         return;
       }
-      refs["tete-nom"].textContent = source.nom;
+      refs["tete-nom"].textContent = nomAffiche(source, detail);
       vider(refs["tete-avatar"]);
-      var a = avatarConversation(source);
+      var a = detail && detail.acces_direction && source.type === "direct"
+        ? el("span", { class: "msg-avatar msg-avatar--groupe " + teinte(source.id) }, icone("discussion"))
+        : avatarConversation(source);
       refs["tete-avatar"].className = a.className;
       while (a.firstChild) {
         refs["tete-avatar"].appendChild(a.firstChild);
@@ -1242,7 +1244,21 @@
       refs["tete-direction"].hidden = !(detail && detail.acces_direction);
     }
 
+    /*
+     * La Direction qui ouvre une discussion directe dont elle n'est pas
+     * membre y voit deux collègues : le nom porte les deux.
+     */
+    function nomAffiche(source, detail) {
+      if (detail && detail.acces_direction && source.type === "direct") {
+        return (detail.membres || []).map(function (m) { return m.nom; }).join(" et ") || source.nom;
+      }
+      return source.nom;
+    }
+
     function sousTitre(source, detail) {
+      if (source.type === "direct" && detail && detail.acces_direction) {
+        return "Discussion directe";
+      }
       if (source.type === "direct") {
         var correspondant = source.correspondant;
         if (correspondant && correspondant.actif === false) {
@@ -1405,7 +1421,7 @@
     function bulle(m, suite) {
       var moi = m.auteur.id === CFG.moi;
       var d = etat.detail || {};
-      var groupe = d.type && d.type !== "direct";
+      var groupe = (d.type && d.type !== "direct") || d.acces_direction;
       var date = versDate(m.created_at);
       var enAttenteDEnvoi = typeof m.id !== "number";
 
@@ -1418,7 +1434,7 @@
       }
       if (m.reponse_a) {
         var citation = el("button", { type: "button", class: "msg-citation", title: "Aller au message cité" }, [
-          el("strong", { text: m.reponse_a.auteur_nom }),
+          el("strong", { text: m.reponse_a.auteur_nom === CFG.moiNom ? "Vous" : m.reponse_a.auteur_nom }),
           el("span", { class: m.reponse_a.supprime ? "is-supprime" : "", text: m.reponse_a.apercu })
         ]);
         citation.addEventListener("click", function () { allerA(m.reponse_a.id); });
@@ -2107,7 +2123,7 @@
         : (d.type === "annonces" ? "Annonces" : "Groupe") + " · " + (d.membres || []).length + " membre" + ((d.membres || []).length > 1 ? "s" : "");
       corps.appendChild(el("section", { class: "msg-infos-identite" }, [
         grandAvatar,
-        el("h4", { text: d.nom }),
+        el("h4", { text: nomAffiche(d, d) }),
         el("p", { class: "msg-infos-type", text: typeLibelle }),
         d.type === "direct" ? el("p", { class: "msg-infos-presence", text: sousTitre(d, d) }) : null,
         d.description ? el("p", { class: "msg-infos-description", text: d.description }) : null,
