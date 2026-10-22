@@ -106,6 +106,7 @@
     var controleur = typeof AbortController === "function" ? new AbortController() : null;
     var garde = controleur ? window.setTimeout(function () { controleur.abort(); }, DUREE_MAX_REQUETE) : null;
     var premier = curseur === null;
+    var debut = Date.now();
 
     fetch(adresse(), {
       method: "GET",
@@ -166,9 +167,11 @@
           planifier(0);
           return;
         }
+        // La cadence se compte d'un départ au suivant : un serveur lent
+        // n'allonge pas l'intervalle, et deux relevés ne se chevauchent jamais.
         var delai = echecs > 0
           ? Math.min(DELAI_MAX_ERREUR, delaiNormal() * Math.pow(2, Math.min(echecs, 4)))
-          : delaiNormal();
+          : Math.max(250, delaiNormal() - (Date.now() - debut));
         planifier(delai);
       });
   }
