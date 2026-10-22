@@ -80,6 +80,7 @@ $surLaMessagerie = strtoupper((string) ($moduleCode ?? '')) === 'MSG';
     <?php endforeach; ?>
     <?php if ($messagerie !== null): ?>
         <link href="<?= View::asset('css/messagerie.css') ?>" rel="stylesheet">
+        <?= Messagerie::enTete() ?>
     <?php endif; ?>
 </head>
 <body class="module-body" style="--module-accent: <?= View::e($moduleAccent) ?>; --module-avatar: <?= View::e($moduleAccent) ?>; --module-accent-2: <?= View::e($moduleAccent2) ?>; --module-gradient: <?= View::e($moduleGradient) ?>;">
@@ -156,6 +157,7 @@ $surLaMessagerie = strtoupper((string) ($moduleCode ?? '')) === 'MSG';
     <?php if ($messagerie !== null): ?>
         <script src="<?= View::asset('js/messagerie-releve.js') ?>"></script>
         <script src="<?= View::asset('js/messagerie.js') ?>"></script>
+        <script src="<?= View::asset('js/messagerie-notifications.js') ?>"></script>
     <?php endif; ?>
     <?php foreach ($scripts as $script): ?>
         <?php $scriptUrl = preg_match('#^https?://#i', (string) $script) ? (string) $script : View::asset((string) $script); ?>

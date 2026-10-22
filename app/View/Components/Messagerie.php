@@ -136,6 +136,9 @@ final class Messagerie
             'data-connexion' => $contexte['connexion'],
             'data-plein' => $contexte['plein'],
             'data-direction' => $contexte['direction'] ? '1' : '0',
+            // Lot 4 : le service worker des notifications et sa portée.
+            'data-notif-sw' => View::url('messagerie/sw.js'),
+            'data-notif-portee' => View::url('messagerie/'),
         ]) . '></div>';
 
         $panneau = '';
@@ -155,6 +158,23 @@ final class Messagerie
             . self::sprite()
             . '<div class="msg-toasts" data-msg-toasts role="status" aria-live="polite"></div>'
             . $panneau;
+    }
+
+    /**
+     * Dans le <head> des pages du portail, session ouverte : le manifeste qui
+     * rend le portail installable, et ce qu'il faut à l'iPhone pour l'ouvrir
+     * en plein écran depuis l'écran d'accueil — la condition pour qu'il y
+     * reçoive les notifications (iOS 16.4 et suivants).
+     */
+    public static function enTete(): string
+    {
+        return '<link rel="manifest" href="' . View::e(View::url('messagerie/manifest.webmanifest')) . '">'
+            . '<meta name="theme-color" content="#0f766e">'
+            . '<meta name="mobile-web-app-capable" content="yes">'
+            . '<meta name="apple-mobile-web-app-capable" content="yes">'
+            . '<meta name="apple-mobile-web-app-title" content="LBP Messagerie">'
+            . '<meta name="apple-mobile-web-app-status-bar-style" content="default">'
+            . '<link rel="apple-touch-icon" href="' . View::e(View::asset('images/mobile/icone-apple-180.png')) . '">';
     }
 
     /**
@@ -189,6 +209,7 @@ final class Messagerie
 
         return '<div class="msg-app msg-app--' . $mode . '" data-msg-app data-mode="' . $mode . '" data-vue="liste">'
             . '<div class="msg-alerte" data-msg="alerte" role="alert" hidden></div>'
+            . self::bandeauNotifications()
             . '<div class="msg-cadre">'
             . self::colonneListe()
             . self::colonneFil()
@@ -371,13 +392,87 @@ final class Messagerie
                 '<div class="msg-reglages">'
                 . self::interrupteur('presence_masquee', 'Masquer ma présence', 'Vos collègues ne voient ni « en ligne » ni l’heure de votre dernier passage.')
                 . self::interrupteur('son_actif', 'Son à l’arrivée d’un message', 'Un son discret, sauf pour les discussions en sourdine.')
-                . self::interrupteur('apercu_masque', 'Masquer l’aperçu des messages', 'La liste des discussions n’affiche plus le début des messages, utile sur un écran partagé.')
+                . self::interrupteur('apercu_masque', 'Masquer l’aperçu des messages', 'La liste des discussions et les notifications n’affichent plus le début des messages, utile sur un écran partagé.')
                 . '</div>'
-                . '<p class="msg-erreur" data-msg="reglages-erreur" role="alert" hidden></p>')
+                . '<p class="msg-erreur" data-msg="reglages-erreur" role="alert" hidden></p>'
+                . self::reglagesNotifications())
             . self::dialogue('confirmer', 'Confirmer',
                 '<p data-msg="confirmer-texte"></p>'
                 . '<div class="msg-form-actions"><button type="button" class="msg-btn" data-msg-fermer-dialogue>Annuler</button>'
                 . '<button type="button" class="msg-btn msg-btn--danger" data-msg="confirmer-ok">Confirmer</button></div>');
+    }
+
+    /**
+     * Lot 4 : le bandeau qui propose d'activer les notifications, à la
+     * première ouverture de la messagerie. Masqué ici ; le JavaScript
+     * (messagerie-notifications.js) le montre quand le navigateur sait
+     * notifier et que la question n'a pas encore été posée. Sur un iPhone
+     * hors écran d'accueil, il explique plutôt comment installer le portail.
+     */
+    private static function bandeauNotifications(): string
+    {
+        return '<section class="msg-notif-bandeau" data-msg-notif-bandeau hidden aria-label="Notifications">'
+            . '<span class="msg-notif-bandeau-icone">' . self::icone('cloche') . '</span>'
+            . '<div class="msg-notif-bandeau-texte" data-msg-notif-variante="standard">'
+            . '<strong>Soyez prévenu des nouveaux messages</strong>'
+            . '<span>Une notification sur cet appareil quand un collègue vous écrit, même portail fermé.</span>'
+            . '</div>'
+            . '<div class="msg-notif-bandeau-texte" data-msg-notif-variante="ios" hidden>'
+            . '<strong>Notifications sur iPhone</strong>'
+            . '<span>Touchez Partager, puis « Sur l’écran d’accueil ». Ouvrez ensuite la messagerie depuis cette icône, reconnectez-vous et activez les notifications.</span>'
+            . '</div>'
+            . '<div class="msg-notif-bandeau-texte" data-msg-notif-variante="refuse" hidden>'
+            . '<strong>Notifications bloquées par le navigateur</strong>'
+            . '<span>Vous pourrez les réautoriser à tout moment : la marche à suivre est dans « Mes réglages ».</span>'
+            . '</div>'
+            . '<div class="msg-notif-bandeau-actions">'
+            . '<button type="button" class="msg-btn msg-btn--primaire msg-btn--petit" data-msg-notif-action="activer" data-msg-notif-variante="standard">'
+            . self::icone('cloche') . '<span>Activer les notifications</span></button>'
+            . '<button type="button" class="msg-btn msg-btn--petit msg-notif-plus-tard" data-msg-notif-action="plus-tard" data-msg-notif-variante="standard ios">Plus tard</button>'
+            . '<button type="button" class="msg-btn msg-btn--petit msg-notif-plus-tard" data-msg-notif-action="plus-tard" data-msg-notif-variante="refuse" hidden>Compris</button>'
+            . '</div>'
+            . '</section>';
+    }
+
+    /**
+     * Lot 4 : dans « Mes réglages », les notifications de CET appareil :
+     * l'interrupteur (abonner, désabonner), l'essai, et ce qui empêche de
+     * les recevoir quand c'est le cas. Les messages d'état sont tous rendus
+     * ici, masqués : le JavaScript montre celui qui s'applique.
+     */
+    private static function reglagesNotifications(): string
+    {
+        $etats = [
+            'active' => ['coche', 'Activées sur cet appareil. Une discussion en sourdine ne notifie que si l’on vous mentionne (@votre nom).'],
+            'refuse' => ['alerte', 'Le navigateur bloque les notifications de ce site. Pour les réautoriser : cliquez sur le cadenas à gauche de l’adresse, puis Notifications, Autoriser (sur Android : menu, Paramètres, Paramètres des sites, Notifications), puis rechargez la page.'],
+            'ios' => ['appareil', 'Sur iPhone, les notifications ne fonctionnent que depuis l’icône du portail sur l’écran d’accueil : touchez Partager, puis « Sur l’écran d’accueil », ouvrez la messagerie depuis cette icône et reconnectez-vous.'],
+            'ios-ancien' => ['alerte', 'Mettez votre iPhone à jour (iOS 16.4 ou plus récent) pour recevoir les notifications.'],
+            'non-supporte' => ['alerte', 'Ce navigateur ne sait pas recevoir de notifications. Utilisez Chrome, Edge ou Firefox.'],
+            'non-securise' => ['cadenas', 'Les notifications demandent une connexion sécurisée (adresse en https).'],
+        ];
+
+        $messages = '';
+        foreach ($etats as $cle => [$icone, $texte]) {
+            $messages .= '<p class="msg-notif-message msg-notif-message--' . $cle . '" data-msg-notif-message="' . $cle . '" hidden>'
+                . self::icone($icone) . '<span>' . View::e($texte) . '</span></p>';
+        }
+
+        return '<section class="msg-notif-reglages" data-msg-notif-reglages aria-label="Notifications">'
+            . '<h4 class="msg-notif-titre">Notifications</h4>'
+            . '<label class="msg-interrupteur">'
+            . '<span class="msg-interrupteur-texte"><strong>Notifications sur cet appareil</strong>'
+            . '<small>Une alerte du système quand un message arrive et que la messagerie n’est pas sous vos yeux.</small></span>'
+            . '<input type="checkbox" role="switch" data-msg-notif-interrupteur disabled>'
+            . '<span class="msg-interrupteur-piste" aria-hidden="true"></span>'
+            . '</label>'
+            . '<div class="msg-notif-messages" aria-live="polite">' . $messages . '</div>'
+            . '<p class="msg-erreur" data-msg-notif-erreur role="alert" hidden></p>'
+            . '<p class="msg-notif-retour" data-msg-notif-retour role="status" hidden></p>'
+            . '<div class="msg-notif-actions">'
+            . '<button type="button" class="msg-btn msg-btn--petit" data-msg-notif-action="essai" disabled>'
+            . self::icone('cloche') . '<span>Envoyer une notification d’essai</span></button>'
+            . '</div>'
+            . '</section>';
     }
 
     private static function dialogue(string $nom, string $titre, string $corps): string

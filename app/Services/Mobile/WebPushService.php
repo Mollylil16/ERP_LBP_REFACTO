@@ -116,10 +116,8 @@ final class WebPushService implements EnvoiPushGroupeInterface
 
         $ch = $this->poignee($requete);
         $reponse = curl_exec($ch);
-        $resultat = self::resultat($reponse !== false, (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE), curl_error($ch));
-        curl_close($ch);
-
-        return $resultat;
+        // Pas de curl_close : sans effet depuis PHP 8.0, la poignée se libère seule.
+        return self::resultat($reponse !== false, (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE), curl_error($ch));
     }
 
     /**
@@ -161,7 +159,6 @@ final class WebPushService implements EnvoiPushGroupeInterface
             $code = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
             $resultats[$cle] = self::resultat($code > 0, $code, curl_error($ch));
             curl_multi_remove_handle($multi, $ch);
-            curl_close($ch);
         }
         curl_multi_close($multi);
 

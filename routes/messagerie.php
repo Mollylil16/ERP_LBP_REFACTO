@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Controllers\Messagerie\MessagerieController;
+use App\Controllers\Messagerie\MessagerieNotificationsController;
 use App\Router;
 
 /** @var Router $router */
@@ -16,6 +17,10 @@ $router->group('/messagerie', function (Router $router): void {
     $router->get('/', [MessagerieController::class, 'index']);
     $router->get('/direction', [MessagerieController::class, 'direction']);
     $router->get('/documents', [MessagerieController::class, 'classeur']);
+
+    // Lot 4 : coque des notifications, servie sans session (rien de personnel)
+    $router->get('/sw.js', [MessagerieNotificationsController::class, 'serviceWorker']);
+    $router->get('/manifest.webmanifest', [MessagerieNotificationsController::class, 'manifeste']);
 
     $router->group('/api', function (Router $router): void {
         // Relevé périodique (toutes les 3 s)
@@ -65,5 +70,12 @@ $router->group('/messagerie', function (Router $router): void {
         $router->get('/annuaire', [MessagerieController::class, 'annuaire']);
         $router->get('/preferences', [MessagerieController::class, 'preferences']);
         $router->post('/preferences', [MessagerieController::class, 'enregistrerPreferences']);
+
+        // Notifications (lot 4) : tout utilisateur actif, sur chacun de ses appareils
+        $router->get('/notifications/cle-publique', [MessagerieNotificationsController::class, 'clePublique']);
+        $router->post('/notifications/etat', [MessagerieNotificationsController::class, 'etat']);
+        $router->post('/notifications/abonner', [MessagerieNotificationsController::class, 'abonner']);
+        $router->post('/notifications/desabonner', [MessagerieNotificationsController::class, 'desabonner']);
+        $router->post('/notifications/test', [MessagerieNotificationsController::class, 'test']);
     });
 });

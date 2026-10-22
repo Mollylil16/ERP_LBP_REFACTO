@@ -35,6 +35,7 @@ $messagerie = Messagerie::contexteCourant();
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <?php if ($messagerie !== null): ?>
     <link href="<?= View::asset('css/messagerie.css') ?>" rel="stylesheet">
+    <?= Messagerie::enTete() ?>
 <?php endif; ?>
 </head>
 
@@ -84,6 +85,7 @@ $messagerie = Messagerie::contexteCourant();
 <?php if ($messagerie !== null): ?>
     <script src="<?= View::asset('js/messagerie-releve.js') ?>"></script>
     <script src="<?= View::asset('js/messagerie.js') ?>"></script>
+    <script src="<?= View::asset('js/messagerie-notifications.js') ?>"></script>
 <?php endif; ?>
 </body>
 

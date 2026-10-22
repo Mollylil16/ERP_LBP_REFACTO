@@ -141,7 +141,7 @@ self.addEventListener('push', (e) => {
   let d = { titre: 'LBP Direction', corps: '', url: '{$racine}' };
   try { if (e.data) { d = Object.assign(d, e.data.json()); } } catch (err) {}
 
-  e.waitUntil(self.registration.showNotification(d.titre, {
+  const afficher = () => self.registration.showNotification(d.titre, {
     body: d.corps,
     icon: '{$icone}',
     badge: '{$icone}',
@@ -150,6 +150,17 @@ self.addEventListener('push', (e) => {
     requireInteraction: d.urgent === true,
     vibrate: [90, 50, 90],
     data: { url: d.url || '{$racine}' }
+  });
+
+  // Un message de la messagerie : rien si le portail est déjà sous les yeux
+  // (l'écran et son son s'en chargent). Les alertes de direction, toujours.
+  if (d.type !== 'messagerie') {
+    e.waitUntil(afficher());
+    return;
+  }
+  e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((liste) => {
+    const regarde = liste.some((c) => c.focused && c.visibilityState === 'visible' && c.url.indexOf(self.registration.scope) !== 0);
+    return regarde ? undefined : afficher();
   }));
 });
 
