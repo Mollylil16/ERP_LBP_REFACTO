@@ -58,6 +58,28 @@ final class NoelMotDuMatinTest extends TestCase
         self::assertNotSame($a['salutation'], $b['salutation'], 'Chacun doit être nommé par son prénom.');
     }
 
+    public function test_aucun_message_ne_nomme_un_jour_de_la_semaine(): void
+    {
+        /*
+         * Une première version plaçait « Lundi. Rien n'est encore fait » dans
+         * les encouragements, qui ne sortent que le lundi : c'était vrai, mais
+         * le lien était invisible. Déplacer ce message de catégorie l'aurait
+         * rendu faux sans bruit. L'administrateur a demandé qu'on supprime la
+         * dépendance plutôt que de la surveiller.
+         */
+        $jours = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
+
+        foreach ($this->tousLesMessages() as $message) {
+            foreach ($jours as $jour) {
+                self::assertStringNotContainsString(
+                    $jour,
+                    mb_strtolower($message),
+                    'Ce message dépend du calendrier : ' . $message
+                );
+            }
+        }
+    }
+
     public function test_aucun_message_ne_peut_devenir_faux(): void
     {
         /*
@@ -78,35 +100,6 @@ final class NoelMotDuMatinTest extends TestCase
                     $interdit,
                     mb_strtolower($message),
                     'Ce message vieillira : ' . $message
-                );
-            }
-        }
-    }
-
-    public function test_un_message_qui_nomme_un_jour_tombe_bien_ce_jour_la(): void
-    {
-        /*
-         * « Vendredi est le seul jour où même l'imprimante coopère » est vrai
-         * le vendredi, et faux les six autres matins. On parcourt une année
-         * entière : aucun message ne doit nommer un jour qui n'est pas le sien.
-         */
-        $jours = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
-        $debut = $this->jour('2026-01-01');
-
-        for ($i = 0; $i < 365; $i++) {
-            $date = $debut->modify('+' . $i . ' day');
-            $texte = mb_strtolower(NoelMotDuMatin::duJour($date)['texte']);
-            $sien = $jours[((int) $date->format('N')) - 1];
-
-            foreach ($jours as $jour) {
-                if ($jour === $sien) {
-                    continue;
-                }
-
-                self::assertStringNotContainsString(
-                    $jour,
-                    $texte,
-                    'Le ' . $date->format('D d/m') . ' NOEL parle de ' . $jour . ' : ' . $texte
                 );
             }
         }
@@ -163,12 +156,24 @@ final class NoelMotDuMatinTest extends TestCase
     {
         $repartition = NoelMotDuMatin::repartition();
 
-        self::assertGreaterThanOrEqual(60, NoelMotDuMatin::tailleDeLaBanque());
+        self::assertGreaterThanOrEqual(180, NoelMotDuMatin::tailleDeLaBanque());
 
         foreach ($repartition as $categorie => $nombre) {
-            // Douze messages par catégorie, c'est douze semaines avant de se
-            // répéter sur les catégories vues une fois par semaine.
-            self::assertGreaterThanOrEqual(10, $nombre, 'Catégorie trop pauvre : ' . $categorie);
+            self::assertGreaterThanOrEqual(30, $nombre, 'Catégorie trop pauvre : ' . $categorie);
+        }
+
+        /*
+         * Le chiffre qui compte n'est pas le total mais le délai avant qu'un
+         * message revienne. Une banque de trente proverbes vus deux fois par
+         * semaine s'épuise deux fois plus vite qu'une banque de trente blagues
+         * vues une fois.
+         */
+        foreach (NoelMotDuMatin::semainesAvantRepetition() as $categorie => $semaines) {
+            self::assertGreaterThanOrEqual(
+                20,
+                $semaines,
+                $categorie . ' se répète au bout de ' . $semaines . ' semaines.'
+            );
         }
     }
 
