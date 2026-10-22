@@ -222,6 +222,7 @@ final class MessagerieStockage
         if ($dimensions[0] * $dimensions[1] > self::PIXELS_MAX) {
             throw MessagerieException::invalide('Cette image est trop grande (plus de 60 millions de pixels).');
         }
+        self::assurerMemoire($dimensions[0] * $dimensions[1]);
 
         $image = match ($extension) {
             'jpg' => @imagecreatefromjpeg($chemin),
@@ -238,6 +239,39 @@ final class MessagerieStockage
         }
 
         return $extension === 'jpg' ? self::redresser($image, $chemin) : $image;
+    }
+
+    /**
+     * GD tient 4 octets par pixel, et redresser une photo en fait une copie :
+     * une photo de 12 Mpx demande ~100 Mo. La production accorde 1 Go ; une
+     * configuration plus serrée (128 Mo en ligne de commande) est relevée
+     * pour la durée de la requête plutôt que de laisser PHP mourir en silence.
+     */
+    private static function assurerMemoire(int $pixels): void
+    {
+        $limite = self::octetsIni((string) ini_get('memory_limit'));
+        if ($limite <= 0) {
+            return;
+        }
+
+        $besoin = memory_get_usage(true) + (int) ($pixels * 4 * 2.5) + 32 * 1024 * 1024;
+        if ($besoin > $limite) {
+            @ini_set('memory_limit', (string) (int) ceil($besoin / 1048576) . 'M');
+        }
+    }
+
+    /** Valeur de php.ini en octets : « 64M » => 67108864. */
+    public static function octetsIni(string $valeur): int
+    {
+        $valeur = trim($valeur);
+        $nombre = (int) $valeur;
+
+        return match (strtolower(substr($valeur, -1))) {
+            'g' => $nombre * 1024 * 1024 * 1024,
+            'm' => $nombre * 1024 * 1024,
+            'k' => $nombre * 1024,
+            default => $nombre,
+        };
     }
 
     /** Applique l'orientation EXIF : la photo s'affiche dans le bon sens une fois les métadonnées retirées. */
@@ -335,13 +369,15 @@ final class MessagerieStockage
 
     private static function toile(int $l, int $h, bool $transparente): GdImage
     {
+        // Un rectangle plein et non imagefill : le remplissage par diffusion
+        // réserve une pile proportionnelle à l'image.
         $toile = imagecreatetruecolor($l, $h);
         if ($transparente) {
             imagealphablending($toile, false);
             imagesavealpha($toile, true);
-            imagefill($toile, 0, 0, (int) imagecolorallocatealpha($toile, 0, 0, 0, 127));
+            imagefilledrectangle($toile, 0, 0, $l - 1, $h - 1, (int) imagecolorallocatealpha($toile, 0, 0, 0, 127));
         } else {
-            imagefill($toile, 0, 0, (int) imagecolorallocate($toile, 255, 255, 255));
+            imagefilledrectangle($toile, 0, 0, $l - 1, $h - 1, (int) imagecolorallocate($toile, 255, 255, 255));
         }
 
         return $toile;

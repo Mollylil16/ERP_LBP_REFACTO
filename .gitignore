@@ -33,6 +33,10 @@ wamp64.conf
 # Scratch & temporary artifacts
 scratch/
 
+# Fichiers de la messagerie : jamais dans git, seule la barrière y figure
+/storage/messagerie/*
+!/storage/messagerie/.htaccess
+
 # Uploads futurs
 /public/uploads/*
 !/public/uploads/.gitkeep

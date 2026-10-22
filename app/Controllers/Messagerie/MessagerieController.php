@@ -9,12 +9,14 @@ use App\Helpers\Auth;
 use App\Helpers\Csrf;
 use App\Helpers\Response;
 use App\Helpers\Session;
+use App\Helpers\View;
 use App\Middleware\AuthMiddleware;
 use App\Models\Database;
 use App\Repositories\Messagerie\MessagerieRepository;
 use App\Security\MessagerieAcces;
 use App\Services\Messagerie\MessagerieException;
 use App\Services\Messagerie\MessagerieService;
+use App\Services\Messagerie\MessagerieStockage;
 use App\View\Navigation\MessagerieNavigation;
 
 /**
@@ -332,6 +334,104 @@ final class MessagerieController extends BaseController
     }
 
     // =================================================================
+    // Fichiers (lot 3)
+    // =================================================================
+
+    /**
+     * Un fichier par requête (multipart : fichier, legende?, reponse_a_id?).
+     * Il devient un message de la discussion : 201 { "message": ... }.
+     */
+    public function envoyerFichier(string $id): void
+    {
+        [$service, $d] = $this->ecritureFichier();
+        $conversationId = $this->identifiant($id);
+        $reponseA = isset($d['reponse_a_id']) ? (int) $d['reponse_a_id'] : null;
+        $legende = is_string($d['legende'] ?? null) ? $d['legende'] : '';
+        $fichier = $this->fichierTransmis('fichier');
+
+        $this->repondre(
+            static fn(): array => ['message' => $service->envoyerFichier($conversationId, $fichier, $legende, $reponseA)],
+            201
+        );
+    }
+
+    /** Aperçu (PDF, images) ou téléchargement (?telecharger=1, et tout le reste). */
+    public function piece(string $id): void
+    {
+        $service = $this->service();
+        $pieceId = $this->identifiant($id);
+        $fichier = $this->ouvrir(static fn(): array => $service->fichierAServir($pieceId));
+
+        $enLigne = $fichier['en_ligne'] && empty($_GET['telecharger']);
+        $this->servir($fichier['chemin'], $fichier['mime'], $fichier['nom'], $enLigne, 'private, max-age=0, must-revalidate');
+    }
+
+    public function miniature(string $id): void
+    {
+        $service = $this->service();
+        $pieceId = $this->identifiant($id);
+        $fichier = $this->ouvrir(static fn(): array => $service->fichierAServir($pieceId, true));
+
+        // Le contenu d'une pièce ne change jamais : le navigateur peut garder
+        // la vignette, pour lui seul.
+        $this->servir($fichier['chemin'], $fichier['mime'], $fichier['nom'], true, 'private, max-age=86400');
+    }
+
+    public function favori(string $id): void
+    {
+        [$service, $d] = $this->ecriture();
+        $pieceId = $this->identifiant($id);
+        $actif = filter_var($d['actif'] ?? true, FILTER_VALIDATE_BOOLEAN);
+        $this->repondre(static function () use ($service, $pieceId, $actif): array {
+            $service->marquerFavori($pieceId, $actif);
+
+            return ['favori' => $actif];
+        });
+    }
+
+    public function documents(): void
+    {
+        $service = $this->service();
+        $criteres = [];
+        foreach (['q', 'tri', 'ordre', 'conversation_id', 'expediteur_id', 'categorie', 'du', 'au', 'favoris', 'page'] as $cle) {
+            if (isset($_GET[$cle]) && is_string($_GET[$cle])) {
+                $criteres[$cle] = $_GET[$cle];
+            }
+        }
+        $this->repondre(static fn(): array => $service->documents($criteres));
+    }
+
+    /** Photo du groupe (multipart : photo), par un administrateur du groupe. */
+    public function definirPhoto(string $id): void
+    {
+        [$service] = $this->ecritureFichier();
+        $conversationId = $this->identifiant($id);
+        $fichier = $this->fichierTransmis('photo');
+        $this->repondre(static fn(): array => $service->definirPhoto($conversationId, $fichier));
+    }
+
+    public function retirerPhoto(string $id): void
+    {
+        [$service] = $this->ecriture();
+        $conversationId = $this->identifiant($id);
+        $this->repondre(static function () use ($service, $conversationId): array {
+            $service->retirerPhoto($conversationId);
+
+            return ['photo' => null];
+        });
+    }
+
+    public function photo(string $id): void
+    {
+        $service = $this->service();
+        $conversationId = $this->identifiant($id);
+        $photo = $this->ouvrir(static fn(): array => $service->photo($conversationId));
+
+        // L'adresse porte la version (?v=) : une nouvelle photo en change.
+        $this->servir($photo['chemin'], $photo['mime'], 'photo-groupe.' . pathinfo($photo['chemin'], PATHINFO_EXTENSION), true, 'private, max-age=86400');
+    }
+
+    // =================================================================
     // Outillage
     // =================================================================
 
@@ -362,11 +462,83 @@ final class MessagerieController extends BaseController
             $this->json(['ok' => false, 'message' => 'Votre session a expiré. Reconnectez-vous.'], 401);
         }
 
-        return new MessagerieService(
+        return (new MessagerieService(
             new MessagerieRepository(Database::getConnection()),
             (int) $user->id,
             MessagerieAcces::estDirection(),
-        );
+        ))->avecUrlApi(View::url('messagerie/api'));
+    }
+
+    /**
+     * POST multipart. Quand le corps dépasse post_max_size, PHP vide $_POST
+     * et $_FILES sans rien dire — jeton CSRF compris : on répond donc 413
+     * avant de conclure à une page expirée.
+     *
+     * @return array{0: MessagerieService, 1: array<string, mixed>}
+     */
+    private function ecritureFichier(): array
+    {
+        $this->service();
+
+        $longueur = (int) ($_SERVER['CONTENT_LENGTH'] ?? 0);
+        if ($longueur > 0 && $_POST === [] && $_FILES === [] && $longueur > MessagerieStockage::octetsIni((string) ini_get('post_max_size'))) {
+            $this->json(['ok' => false, 'message' => MessagerieStockage::messageTaille()], 413);
+        }
+
+        return $this->ecriture();
+    }
+
+    /** @return array<string, mixed> l'entrée de $_FILES, ou une entrée « aucun fichier » */
+    private function fichierTransmis(string $champ): array
+    {
+        $fichier = $_FILES[$champ] ?? null;
+
+        return is_array($fichier) ? $fichier : ['error' => UPLOAD_ERR_NO_FILE];
+    }
+
+    /**
+     * Le refus d'accès à un fichier répond en JSON, comme le reste de l'API :
+     * une balise <img> l'ignore, l'écran peut le lire.
+     *
+     * @return array<string, mixed>
+     */
+    private function ouvrir(callable $action): array
+    {
+        try {
+            return $action();
+        } catch (MessagerieException $e) {
+            $this->json(['ok' => false, 'message' => $e->getMessage()], $e->getCode() ?: 404);
+        }
+    }
+
+    /**
+     * Sert un fichier vérifié par le service. Le type est celui reconnu à la
+     * réception, jamais deviné par le navigateur (nosniff) ; le nom d'origine
+     * voyage en RFC 5987 pour garder ses accents, avec un repli ASCII pour
+     * les logiciels anciens.
+     */
+    private function servir(string $chemin, string $mime, string $nom, bool $enLigne, string $cache): never
+    {
+        // Un long téléchargement ne doit pas bloquer le relevé des 3 secondes,
+        // qui attendrait sinon la libération de la session.
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            session_write_close();
+        }
+        while (ob_get_level() > 0) {
+            ob_end_clean();
+        }
+
+        $ascii = (string) preg_replace('/[^A-Za-z0-9._\- ]/', '_', (string) (iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $nom) ?: 'fichier'));
+
+        header('Content-Type: ' . $mime);
+        header('Content-Length: ' . (string) filesize($chemin));
+        header('X-Content-Type-Options: nosniff');
+        header('Content-Disposition: ' . ($enLigne ? 'inline' : 'attachment')
+            . '; filename="' . $ascii . '"; filename*=UTF-8\'\'' . rawurlencode($nom));
+        header('Cache-Control: ' . $cache);
+
+        readfile($chemin);
+        exit;
     }
 
     /**

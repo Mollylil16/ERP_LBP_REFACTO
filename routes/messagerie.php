@@ -49,6 +49,16 @@ $router->group('/messagerie', function (Router $router): void {
         $router->post('/messages/{id}/transferer', [MessagerieController::class, 'transferer']);
         $router->get('/messages/{id}/lu-par', [MessagerieController::class, 'luPar']);
 
+        // Fichiers (lot 3) : un fichier par envoi, téléchargement protégé
+        $router->post('/conversations/{id}/fichiers', [MessagerieController::class, 'envoyerFichier']);
+        $router->get('/pieces/{id}', [MessagerieController::class, 'piece']);
+        $router->get('/pieces/{id}/miniature', [MessagerieController::class, 'miniature']);
+        $router->post('/pieces/{id}/favori', [MessagerieController::class, 'favori']);
+        $router->get('/documents', [MessagerieController::class, 'documents']);
+        $router->get('/conversations/{id}/photo', [MessagerieController::class, 'photo']);
+        $router->post('/conversations/{id}/photo', [MessagerieController::class, 'definirPhoto']);
+        $router->post('/conversations/{id}/photo/retirer', [MessagerieController::class, 'retirerPhoto']);
+
         // Recherche, annuaire, préférences
         $router->get('/recherche', [MessagerieController::class, 'recherche']);
         $router->get('/annuaire', [MessagerieController::class, 'annuaire']);

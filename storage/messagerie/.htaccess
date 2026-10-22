@@ -1,0 +1,9 @@
+# Fichiers de la messagerie : téléchargement uniquement par l'ERP, qui vérifie les droits.
+# Seconde barrière : le .htaccess racine de production interdit déjà storage/.
+<IfModule mod_authz_core.c>
+    Require all denied
+</IfModule>
+<IfModule !mod_authz_core.c>
+    Order allow,deny
+    Deny from all
+</IfModule>
