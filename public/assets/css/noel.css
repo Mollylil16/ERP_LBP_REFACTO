@@ -1,0 +1,251 @@
+/* ==========================================================================
+   NOEL — le visage de l'assistant interne
+   --------------------------------------------------------------------------
+   EN DÉVELOPPEMENT. Cette feuille n'est chargée par aucun écran à ce jour ;
+   elle accompagne app/View/Components/Noel.php, et elle est volontairement
+   tenue hors de app.css, qui est servi à tout le logiciel. Un visage qui
+   n'est encore branché nulle part n'a rien à faire dans la feuille commune.
+
+   Le dessin SVG n'écrit aucune couleur : il ne pose que des classes. Toute la
+   couleur est ici, en variables, pour une raison pratique — le visage apparaît
+   sur une bulle blanche en thème clair et sur du marine en thème sombre, et il
+   doit se détacher des deux sans qu'on régénère le balisage.
+   ========================================================================== */
+
+.noel {
+    /* La taille vient du composant, en ligne, parce qu'un appelant peut
+       demander n'importe quel format entre l'avatar et l'écran d'ouverture.
+       32 px n'est ici qu'un filet de sécurité. */
+    width: var(--noel-taille, 32px);
+    height: var(--noel-taille, 32px);
+
+    /* Dans une bulle de conversation, le visage est posé à côté d'un texte :
+       il s'aligne sur lui, et il ne se laisse ni étirer ni comprimer par le
+       conteneur souple qui l'entoure. */
+    display: inline-block;
+    vertical-align: middle;
+    flex: 0 0 auto;
+
+    /* --- Encre du personnage, thème clair ------------------------------- */
+
+    /* Le disque et l'anneau ne sont pas un fond décoratif : ils garantissent
+       que la silhouette se détache, et ils donnent au polo sa découpe ronde. */
+    --noel-disque: rgba(56, 189, 248, 0.13);
+    --noel-anneau: rgba(56, 189, 248, 0.3);
+
+    /* La peau : un brun chaud. NOEL travaille à Abidjan et parle à des
+       collègues d'Abidjan ; un visage neutre serait un visage de personne. */
+    --noel-peau: #a06c47;
+    --noel-peau-ombre: #86573a;
+    --noel-front-ombre: #946546;
+
+
+    /* La calotte est en marine clair et la visière en marine foncé. L'écart
+       entre les deux est ce qui empêche la casquette de devenir une seule
+       tache noire à 28 px. Premier essai : #1e293b et #0f172a, soit un
+       rapport de 1,2 — autant dire la même couleur, et la visière se perdait
+       dans la calotte. L'écart a été creusé jusqu'à ce qu'on la voie. */
+    --noel-casquette: #27354c;
+    --noel-visiere: #0b1220;
+
+    /* Le jaune LBP, et lui seul, sur le bandeau et le bouton. */
+    --noel-bandeau: #fabd02;
+
+    --noel-trait: #0f172a;
+    --noel-oeil: #0f172a;
+    --noel-eclat: #ffffff;
+
+    /* Le polo est bleu, pas marine. Premier essai : un polo marine sous une
+       casquette marine — à 32 px, les deux masses fusionnaient en un seul
+       bloc sombre et le visage n'était plus qu'une tache brune au milieu.
+       Le bleu ciel assombri allège le bas, met la marque au vêtement, et
+       laisse le marine à la casquette seule. */
+    --noel-polo: #2d6d93;
+    --noel-polo-pli: #255c7d;
+    --noel-col: #0f172a;
+}
+
+/* --------------------------------------------------------------------------
+   Thème sombre
+   --------------------------------------------------------------------------
+   Le logiciel n'a pas encore de bascule de thème : on suit donc le réglage du
+   système.
+
+   Le piège le plus évident est connu — une casquette marine et un polo marine
+   sur un fond marine, et NOEL disparaît. Mais il y en a un second, qui ne se
+   voit qu'à l'écran : en thème sombre, la hiérarchie de la casquette doit
+   s'inverser. En clair, la visière est plus foncée que la calotte pour qu'on
+   les distingue. Reprendre cette répartition en sombre donne une visière qui
+   se noie dans le fond — sa pointe en trois-quarts disparaît, et il ne reste
+   qu'un bandeau gris posé sur un crâne. C'est donc la visière qui devient la
+   partie claire, et la calotte la partie sombre.
+
+   La peau, elle, ne change pas : elle est entourée de vêtements sombres dans
+   les deux thèmes, elle ressort déjà. L'éclaircir aplatissait le visage.
+   -------------------------------------------------------------------------- */
+@media (prefers-color-scheme: dark) {
+    .noel {
+        --noel-disque: rgba(56, 189, 248, 0.16);
+        --noel-anneau: rgba(56, 189, 248, 0.42);
+        --noel-casquette: #33455f;
+        --noel-visiere: #4a6391;
+        --noel-polo: #3a84ad;
+        --noel-polo-pli: #2f6e92;
+        --noel-col: #0b1220;
+    }
+}
+
+/* --------------------------------------------------------------------------
+   Les aplats
+   -------------------------------------------------------------------------- */
+.noel-disque { fill: var(--noel-disque); }
+
+.noel-anneau {
+    fill: none;
+    stroke: var(--noel-anneau);
+    stroke-width: 1.1;
+}
+
+.noel-peau { fill: var(--noel-peau); }
+.noel-ombre { fill: var(--noel-peau-ombre); }
+.noel-front-ombre { fill: var(--noel-front-ombre); }
+
+.noel-casquette { fill: var(--noel-casquette); }
+.noel-visiere { fill: var(--noel-visiere); }
+.noel-bandeau,
+.noel-bouton { fill: var(--noel-bandeau); }
+
+.noel-polo { fill: var(--noel-polo); }
+.noel-col-pli { fill: var(--noel-polo-pli); }
+
+.noel-oeil { fill: var(--noel-oeil); }
+.noel-eclat { fill: var(--noel-eclat); opacity: 0.82; }
+
+/* --------------------------------------------------------------------------
+   Les traits
+   --------------------------------------------------------------------------
+   Sourcils et bouche sont les traits les plus épais du visage, et c'est
+   voulu : ils portent tout l'état, et ce sont les deux seules choses qui
+   survivent à 28 px. Le nez et le col, eux, sont des nuances — on les affine
+   pour qu'ils n'entrent pas en concurrence.
+   -------------------------------------------------------------------------- */
+.noel-trait {
+    fill: none;
+    stroke: var(--noel-trait);
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+/* Les sourcils sont les traits les plus délicats du visage à régler. 2,2 au
+   premier essai : ils touchaient les yeux, et NOEL avait l'air fâché en
+   permanence, au repos comme ailleurs. Trop fins, à l'inverse, ils
+   disparaissent à 28 px et les quatre états redeviennent le même visage. 1,8
+   est le point où ils tiennent encore en petit sans peser en grand.
+   Le nez et le col, eux, ne sont que des nuances : on les affine pour qu'ils
+   n'entrent pas en concurrence avec les traits qui portent l'état. */
+.noel-nez { stroke-width: 1.5; }
+
+/* La bouche est le seul trait qu'on épaissit au-delà des sourcils, et c'est
+   une question d'arithmétique : 1,8 unité sur une grille de 64 ne fait que
+   neuf dixièmes de pixel à 32 px, et la bouche disparaissait purement et
+   simplement dans l'avatar. 2,1 lui rend son pixel plein. Elle peut se le
+   permettre là où les sourcils ne le peuvent pas : elle n'a aucun voisin, eux
+   touchent les yeux dès qu'ils grossissent. */
+.noel-bouche { stroke-width: 2.1; }
+
+.noel-col {
+    fill: none;
+    stroke: var(--noel-col);
+    stroke-width: 1.8;
+    stroke-linecap: round;
+}
+
+/* --------------------------------------------------------------------------
+   Les états
+   --------------------------------------------------------------------------
+   Les sourcils et la bouche changent de tracé dans le SVG lui-même, pas ici :
+   un tracé n'est pas quelque chose que le CSS sait interpoler, et surtout ces
+   formes appartiennent au dessin. Ne restent ici que les trois réglages qui
+   relèvent bien de la mise en scène : le regard qui se plisse, le regard qui
+   part de côté, la tête qui penche.
+   -------------------------------------------------------------------------- */
+
+/* Content : un vrai sourire plisse les yeux. Sans cela, la bouche sourit
+   toute seule et le regard reste froid. */
+.noel--content .noel-regard {
+    transform-box: view-box;
+    transform-origin: 32px 36.8px;
+    transform: scaleY(0.82);
+}
+
+/* Préoccupé : la tête penche de trois degrés et demi. On penche la tête quand
+   on s'inquiète de quelque chose, et ce geste-là se lit encore à 28 px, là où
+   un sourcil de six pixels commence à peine à se deviner. Transformation
+   fixe : rien ne bouge, donc rien à neutraliser pour le mouvement réduit. */
+.noel--preoccupe .noel-tete {
+    transform-box: view-box;
+    transform-origin: 32px 51px;
+    transform: rotate(-3.5deg);
+}
+
+/* --------------------------------------------------------------------------
+   Réfléchit : la seule animation du personnage
+   --------------------------------------------------------------------------
+   Ce visage va passer des dizaines de fois par jour sous les yeux des mêmes
+   personnes. L'animation est donc réduite au strict nécessaire : ce qu'il faut
+   pour qu'on comprenne que NOEL travaille encore, et rien de plus.
+
+   Les amplitudes sont en unités du viewBox de 64 : un degré et demi de
+   bascule, et sept dixièmes d'unité de regard — soit, sur un avatar de 32 px,
+   un déplacement de trois dixièmes de pixel. On ne le voit pas bouger, on voit
+   qu'il est en train de chercher.
+
+   Les deux durées (3,2 s et 2,6 s) ne sont pas multiples l'une de l'autre,
+   exprès : deux cycles synchronisés se lisent comme un mécanisme, deux cycles
+   décalés se lisent comme quelqu'un.
+
+   Et uniquement transform : aucune propriété qui déclenche une mise en page.
+   -------------------------------------------------------------------------- */
+@keyframes noel-balance {
+    0%, 100% { transform: rotate(-1.4deg); }
+    50% { transform: rotate(1.5deg); }
+}
+
+@keyframes noel-regard {
+    0%, 100% { transform: translate(-0.7px, -0.45px); }
+    45% { transform: translate(0.7px, -0.15px); }
+}
+
+.noel--reflechit .noel-tete {
+    transform-box: view-box;
+    transform-origin: 32px 51px;
+    animation: noel-balance 3.2s ease-in-out infinite;
+}
+
+.noel--reflechit .noel-regard {
+    transform-box: view-box;
+    transform-origin: 32px 36.8px;
+    animation: noel-regard 2.6s ease-in-out infinite;
+}
+
+/* --------------------------------------------------------------------------
+   Mouvement réduit
+   --------------------------------------------------------------------------
+   On arrête tout, mais on ne revient pas à la position neutre : on s'arrête
+   sur la pose qui dit encore « il réfléchit ». La tête reste légèrement
+   penchée et le regard reste de côté. L'information est dans la pose, elle
+   n'a jamais été dans le mouvement — c'est précisément la règle de la maison :
+   aucun contenu ne doit dépendre d'une animation pour être compris.
+   -------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+    .noel--reflechit .noel-tete {
+        animation: none;
+        transform: rotate(-1.4deg);
+    }
+
+    .noel--reflechit .noel-regard {
+        animation: none;
+        transform: translate(-0.7px, -0.45px);
+    }
+}
