@@ -1203,7 +1203,7 @@ final class MessagerieService
     private function texte(string $texte): string
     {
         // Caractères de contrôle retirés, retours à la ligne et tabulations gardés.
-        $texte = trim((string) preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/u', '', str_replace("\r\n", "\n", $texte)));
+        $texte = trim((string) preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/u', '', str_replace("\r\n", "\n", self::utf8($texte))));
 
         if ($texte === '') {
             throw MessagerieException::invalide('Le message est vide.');
@@ -1218,9 +1218,19 @@ final class MessagerieService
     /** La légende d'un fichier : mêmes règles que le texte, mais facultative. */
     private function legende(string $legende): string
     {
-        $legende = trim((string) preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/u', '', str_replace("\r\n", "\n", $legende)));
+        $legende = trim((string) preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/u', '', str_replace("\r\n", "\n", self::utf8($legende))));
 
         return $legende === '' ? '' : $this->texte($legende);
+    }
+
+    /**
+     * Un formulaire multipart n'est pas forcément en UTF-8 (curl sous Windows,
+     * vieux navigateurs) : sans conversion, les expressions /u le videraient
+     * sans rien dire et la légende serait perdue.
+     */
+    private static function utf8(string $texte): string
+    {
+        return mb_check_encoding($texte, 'UTF-8') ? $texte : (string) mb_convert_encoding($texte, 'UTF-8', 'Windows-1252');
     }
 
     /**

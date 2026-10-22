@@ -528,7 +528,11 @@ final class MessagerieController extends BaseController
             ob_end_clean();
         }
 
-        $ascii = (string) preg_replace('/[^A-Za-z0-9._\- ]/', '_', (string) (iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $nom) ?: 'fichier'));
+        // Repli ASCII : « Relevé été.pdf » => « Releve ete.pdf ». Selon le
+        // système, la translittération écrit l'accent à part (« e' ») : on
+        // l'enlève avant de remplacer le reste.
+        $translittere = (string) (iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $nom) ?: 'fichier');
+        $ascii = (string) preg_replace('/[^A-Za-z0-9._\- ]/', '_', str_replace(["'", '`', '^', '"', '~'], '', $translittere));
 
         header('Content-Type: ' . $mime);
         header('Content-Length: ' . (string) filesize($chemin));

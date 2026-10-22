@@ -138,9 +138,10 @@ final class MessagerieFichiersTest extends TestCase
         $groupe = $this->en(1)->creerGroupe('Compta', '', [2]);
 
         // Ce qu'envoie curl sous Windows, ou un navigateur ancien.
-        $message = $this->en(1)->envoyerFichier($groupe, $this->fichier("C:\\Docs\\Relev\xe9 \xe9t\xe9.pdf", self::PDF));
+        $message = $this->en(1)->envoyerFichier($groupe, $this->fichier("C:\\Docs\\Relev\xe9 \xe9t\xe9.pdf", self::PDF), "Relev\xe9 de septembre");
 
         self::assertSame('Relevé été.pdf', $message['pieces_jointes'][0]['nom']);
+        self::assertSame('Relevé de septembre', $message['pieces_jointes'][0]['legende'], 'La légende n’est pas perdue.');
         self::assertSame('rapport.v2.final.pdf', MessagerieFormats::nomAffichable('../../rapport.v2.final.pdf'));
         self::assertNull(MessagerieFormats::extension('.htaccess'));
     }
