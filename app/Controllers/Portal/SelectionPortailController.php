@@ -39,6 +39,22 @@ final class SelectionPortailController extends BaseController
             'keywords' => 'rh ressources humaines employés présence contrats congés demandes personnel habilitations',
         ]]);
 
+        // Messagerie interne : ouverte à tout compte actif, la seule porte
+        // est la connexion (AuthMiddleware ci-dessus refuse les comptes
+        // désactivés). Elle n'entre pas dans ModuleDashboardService : elle
+        // n'a pas de tableau de bord générique sous /messagerie/dashboard.
+        $modules[] = [
+            'key' => 'messagerie',
+            'label' => 'Messagerie',
+            'code' => 'MSG',
+            'icon' => 'messagerie',
+            'description' => 'Discussions directes et de groupe entre collègues, annonces internes.',
+            'url' => '/messagerie',
+            'class' => 'module-messagerie',
+            'status' => 'Messagerie interne',
+            'keywords' => 'messagerie messages discussion chat groupe annonces collègues msg',
+        ];
+
         $modules[] = [
             'key' => 'admin',
             'label' => 'Admin',
@@ -64,6 +80,9 @@ final class SelectionPortailController extends BaseController
                  * meme endroit que la porte, dans ModuleReserve.
                  */
                 return ModuleReserve::peutOuvrir('rh');
+            }
+            if ($module['key'] === 'messagerie') {
+                return true;
             }
             if ($module['key'] === 'call-center') {
                 if (Auth::hasAnyRole(['dg', 'assistant_dg']) || Auth::isAdmin()) {

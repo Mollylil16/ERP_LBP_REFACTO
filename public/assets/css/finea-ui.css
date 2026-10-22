@@ -1201,6 +1201,14 @@ textarea.finea-input {
   color: #eab308;
 }
 
+.module-messagerie .finea-module-icon {
+  background: linear-gradient(135deg, #134e4a, #0f766e);
+}
+
+.module-messagerie .finea-module-glow {
+  color: #0f766e;
+}
+
 .finea-kpi-card.is-clickable {
   position: relative;
   color: inherit;

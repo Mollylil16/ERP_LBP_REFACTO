@@ -1084,6 +1084,8 @@ a { text-decoration: none; }
 .module-agents-correspondants .finea-module-glow { color: #6366f1; }
 .module-pilotage-dg .finea-module-icon { background: linear-gradient(135deg, #854d0e, #eab308); }
 .module-pilotage-dg .finea-module-glow { color: #eab308; }
+.module-messagerie .finea-module-icon { background: linear-gradient(135deg, #134e4a, #0f766e); }
+.module-messagerie .finea-module-glow { color: #0f766e; }
 
 /* Pages d'erreur partagées : 404, maintenance et futurs états HTTP. */
 .error-state {
