@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\View\Components;
 
+use App\Helpers\Csrf;
 use App\Helpers\View;
 
 /**
@@ -13,6 +14,9 @@ use App\Helpers\View;
  * après dédoublonnage et après réduction des photos. Au-delà du seuil, la
  * jauge passe au rouge — c'est le moment de regarder par mois et par
  * catégorie ce qui grossit.
+ *
+ * L'écran montre aussi les groupes automatiques (lot 5) et le bouton qui les
+ * resynchronise sans attendre la passe de la nuit.
  */
 final class AdminMessagerieEspace
 {
@@ -25,8 +29,11 @@ final class AdminMessagerieEspace
         'texte' => 'Textes',
     ];
 
-    /** @param array<string, mixed> $etat MessagerieEspace::etat() */
-    public static function page(array $etat): string
+    /**
+     * @param array<string, mixed> $etat MessagerieEspace::etat()
+     * @param array<int, array<string, mixed>> $groupes GroupesAutomatiques::etat()
+     */
+    public static function page(array $etat, array $groupes = []): string
     {
         $alerte = (bool) $etat['alerte'];
 
@@ -65,7 +72,43 @@ final class AdminMessagerieEspace
             . Ui::section('Jauge', self::jauge($etat), $alerte ? 'Seuil dépassé' : 'Sous le seuil')
             . Ui::section('Par mois', self::parMois($etat['par_mois']), 'Mois où les fichiers ont été reçus')
             . Ui::section('Par catégorie', self::parCategorie($etat['par_categorie']))
+            . Ui::section('Groupes automatiques', self::groupes($groupes), 'Agences, « Tout LBP » et « Annonces Direction »')
             . '</div></div>';
+    }
+
+    /**
+     * Les groupes tenus à jour par la synchronisation, et le bouton qui la
+     * relance (POST, jeton CSRF, administrateurs seulement côté serveur).
+     *
+     * @param array<int, array<string, mixed>> $groupes
+     */
+    private static function groupes(array $groupes): string
+    {
+        $rendu = [];
+        foreach ($groupes as $g) {
+            $rendu[] = [
+                View::e((string) $g['nom']),
+                Ui::badge($g['type'] === 'annonces' ? 'Annonces' : ($g['agence_id'] === null ? 'Tous' : 'Agence'), $g['type'] === 'annonces' ? 'warning' : 'info'),
+                View::e(number_format((int) $g['membres'], 0, ',', ' ')),
+                View::e(number_format((int) $g['admins'], 0, ',', ' ')),
+            ];
+        }
+
+        return '<p style="margin:0 0 12px;">'
+            . View::e('Les membres de ces groupes sont tenus à jour automatiquement à partir des comptes et des agences : '
+                . 'chaque utilisateur à l’ouverture de sa messagerie, tout le monde chaque nuit. '
+                . 'Après une série de changements de comptes, la resynchronisation les applique tout de suite.')
+            . '</p>'
+            . ModuleTable::render(
+                [['label' => 'Groupe'], ['label' => 'Type'], ['label' => 'Membres', 'align' => 'right'], ['label' => 'Administrateurs', 'align' => 'right']],
+                $rendu,
+                'Aucun groupe automatique',
+                'Ils seront créés à la première synchronisation.'
+            )
+            . '<form method="post" action="' . View::e(View::url('admin/messagerie/groupes/resynchroniser')) . '" style="margin-top:16px;">'
+            . Csrf::input()
+            . Ui::button('Resynchroniser les groupes automatiques', ['variant' => 'primary', 'type' => 'submit'])
+            . '</form>';
     }
 
     /** @param array<string, mixed> $etat */

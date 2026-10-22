@@ -25,6 +25,8 @@ $router->group('/admin', function (Router $router): void {
 
     // Ce que les fichiers de la messagerie occupent sur le disque.
     $router->get('/messagerie/espace', [AdminMessagerieController::class, 'espace']);
+    // La passe complète des groupes automatiques, sans attendre celle de la nuit.
+    $router->post('/messagerie/groupes/resynchroniser', [AdminMessagerieController::class, 'resynchroniserGroupes']);
 
     $router->get('/system-tests', [AdminSystemTestController::class, 'index']);
     $router->get('/system-tests/latest', [AdminSystemTestController::class, 'latest']);
