@@ -143,7 +143,7 @@ final class MessagerieRepository implements MessagerieDepotInterface
     {
         $sets = ['maj_at = :maj'];
         $parametres = ['maj' => $maintenant, 'id' => $id];
-        foreach (['nom', 'description', 'type'] as $colonne) {
+        foreach (['nom', 'description', 'type', 'photo'] as $colonne) {
             if (array_key_exists($colonne, $champs)) {
                 $sets[] = "{$colonne} = :{$colonne}";
                 $parametres[$colonne] = $champs[$colonne];
@@ -397,9 +397,9 @@ final class MessagerieRepository implements MessagerieDepotInterface
         return (int) $stmt->fetchColumn();
     }
 
-    public function ajouterMessage(array $donnees): int
+    public function ajouterMessage(array $donnees, array $pieces = []): int
     {
-        return $this->transaction(function () use ($donnees): int {
+        return $this->transaction(function () use ($donnees, $pieces): int {
             $stmt = $this->pdo->prepare('
                 INSERT INTO msg_messages (conversation_id, auteur_id, texte, reponse_a_id, transfere_de_id, created_at)
                 VALUES (:c, :a, :t, :r, :tr, :cree)
@@ -413,6 +413,22 @@ final class MessagerieRepository implements MessagerieDepotInterface
                 'cree' => $donnees['created_at'],
             ]);
             $id = (int) $this->pdo->lastInsertId();
+
+            if ($pieces !== []) {
+                $piece = $this->pdo->prepare('
+                    INSERT INTO msg_pieces_jointes (message_id, fichier_id, nom_origine, legende, created_at)
+                    VALUES (:m, :f, :n, :l, :d)
+                ');
+                foreach ($pieces as $p) {
+                    $piece->execute([
+                        'm' => $id,
+                        'f' => $p['fichier_id'],
+                        'n' => $p['nom_origine'],
+                        'l' => $p['legende'],
+                        'd' => $donnees['created_at'],
+                    ]);
+                }
+            }
 
             $this->pdo->prepare('UPDATE msg_conversations SET dernier_message_at = :d WHERE id = :c')
                 ->execute(['d' => $donnees['created_at'], 'c' => $donnees['conversation_id']]);
@@ -558,6 +574,241 @@ final class MessagerieRepository implements MessagerieDepotInterface
     {
         $this->pdo->prepare('DELETE FROM msg_epingles WHERE conversation_id = :c AND message_id = :m')
             ->execute(['c' => $conversationId, 'm' => $messageId]);
+    }
+
+    // ------------------------------------------------------------------
+    // Fichiers et pièces jointes
+    // ------------------------------------------------------------------
+
+    private const COLONNES_PIECE = 'pj.id, pj.message_id, pj.fichier_id, pj.nom_origine, pj.legende, pj.created_at,
+        f.mime, f.categorie, f.extension, f.taille, f.largeur, f.hauteur, f.chemin_miniature';
+
+    /** Tri du classeur => colonnes SQL ; la clé vient d'une liste fermée, jamais de la saisie. */
+    private const TRIS_DOCUMENTS = [
+        'nom' => ['pj.nom_origine'],
+        'date' => ['pj.created_at'],
+        'taille' => ['f.taille'],
+        'expediteur' => ['u.full_name'],
+        'type' => ['f.categorie', 'f.extension'],
+    ];
+
+    public function fichierParEmpreinte(string $empreinte): ?array
+    {
+        $stmt = $this->pdo->prepare('SELECT * FROM msg_fichiers WHERE empreinte = :e LIMIT 1');
+        $stmt->execute(['e' => $empreinte]);
+        $ligne = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        return $ligne ?: null;
+    }
+
+    public function enregistrerFichier(array $donnees): array
+    {
+        try {
+            $this->pdo->prepare('
+                INSERT INTO msg_fichiers (empreinte, chemin, chemin_miniature, mime, categorie, extension,
+                    taille, taille_miniature, largeur, hauteur, created_at)
+                VALUES (:e, :c, :cm, :mime, :cat, :ext, :t, :tm, :l, :h, :d)
+            ')->execute([
+                'e' => $donnees['empreinte'],
+                'c' => $donnees['chemin'],
+                'cm' => $donnees['chemin_miniature'],
+                'mime' => $donnees['mime'],
+                'cat' => $donnees['categorie'],
+                'ext' => $donnees['extension'],
+                't' => $donnees['taille'],
+                'tm' => $donnees['taille_miniature'],
+                'l' => $donnees['largeur'],
+                'h' => $donnees['hauteur'],
+                'd' => $donnees['created_at'],
+            ]);
+        } catch (PDOException $e) {
+            // Le même contenu envoyé au même instant par deux postes :
+            // l'unique sur l'empreinte a joué, c'est l'autre copie qui reste.
+            if ($e->getCode() !== '23000') {
+                throw $e;
+            }
+        }
+
+        $ligne = $this->fichierParEmpreinte((string) $donnees['empreinte']);
+        if ($ligne === null) {
+            throw new \RuntimeException('Fichier de messagerie introuvable après enregistrement.');
+        }
+
+        return $ligne;
+    }
+
+    public function piecesDesMessages(array $messageIds, int $userId): array
+    {
+        if ($messageIds === []) {
+            return [];
+        }
+
+        [$marques, $parametres] = $this->liste($messageIds, 'm');
+        $parametres['u'] = $userId;
+        $stmt = $this->pdo->prepare('
+            SELECT ' . self::COLONNES_PIECE . ', (fav.id IS NOT NULL) AS favori
+            FROM msg_pieces_jointes pj
+            JOIN msg_fichiers f ON f.id = pj.fichier_id
+            LEFT JOIN msg_favoris fav ON fav.piece_id = pj.id AND fav.user_id = :u
+            WHERE pj.message_id IN (' . $marques . ')
+            ORDER BY pj.id
+        ');
+        $stmt->execute($parametres);
+
+        $resultat = [];
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $ligne) {
+            $ligne['favori'] = (bool) $ligne['favori'];
+            $resultat[(int) $ligne['message_id']][] = $ligne;
+        }
+
+        return $resultat;
+    }
+
+    public function piece(int $id): ?array
+    {
+        $stmt = $this->pdo->prepare('
+            SELECT ' . self::COLONNES_PIECE . ', f.chemin, m.conversation_id, m.supprime_at
+            FROM msg_pieces_jointes pj
+            JOIN msg_fichiers f ON f.id = pj.fichier_id
+            JOIN msg_messages m ON m.id = pj.message_id
+            WHERE pj.id = :id
+            LIMIT 1
+        ');
+        $stmt->execute(['id' => $id]);
+        $ligne = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        return $ligne ?: null;
+    }
+
+    public function marquerFavori(int $userId, int $pieceId, bool $actif, string $maintenant): void
+    {
+        if ($actif) {
+            $this->pdo->prepare('INSERT IGNORE INTO msg_favoris (user_id, piece_id, created_at) VALUES (:u, :p, :d)')
+                ->execute(['u' => $userId, 'p' => $pieceId, 'd' => $maintenant]);
+
+            return;
+        }
+
+        $this->pdo->prepare('DELETE FROM msg_favoris WHERE user_id = :u AND piece_id = :p')
+            ->execute(['u' => $userId, 'p' => $pieceId]);
+    }
+
+    public function documents(int $userId, array $filtres, int $limite, int $decalage): array
+    {
+        // Marques positionnelles, l'utilisateur figurant deux fois : d'abord
+        // dans la jointure du favori, puis dans la condition d'adhésion.
+        $parametres = [$userId, $userId];
+        $conditions = ['mb.user_id = ?', 'mb.quitte_at IS NULL', 'm.supprime_at IS NULL'];
+
+        if (!empty($filtres['conversation_id'])) {
+            $conditions[] = 'm.conversation_id = ?';
+            $parametres[] = (int) $filtres['conversation_id'];
+        }
+        if (!empty($filtres['expediteur_id'])) {
+            $conditions[] = 'm.auteur_id = ?';
+            $parametres[] = (int) $filtres['expediteur_id'];
+        }
+        if (!empty($filtres['categorie'])) {
+            $conditions[] = 'f.categorie = ?';
+            $parametres[] = (string) $filtres['categorie'];
+        }
+        if (!empty($filtres['du'])) {
+            $conditions[] = 'pj.created_at >= ?';
+            $parametres[] = (string) $filtres['du'];
+        }
+        if (!empty($filtres['avant'])) {
+            $conditions[] = 'pj.created_at < ?';
+            $parametres[] = (string) $filtres['avant'];
+        }
+        if (!empty($filtres['favoris'])) {
+            $conditions[] = 'fav.id IS NOT NULL';
+        }
+        if (($filtres['q'] ?? '') !== '') {
+            $motif = '%' . addcslashes((string) $filtres['q'], '%_\\') . '%';
+            $conditions[] = '(pj.nom_origine LIKE ? OR pj.legende LIKE ?)';
+            $parametres[] = $motif;
+            $parametres[] = $motif;
+        }
+
+        $depuis = '
+            FROM msg_membres mb
+            JOIN msg_messages m ON m.conversation_id = mb.conversation_id
+            JOIN msg_pieces_jointes pj ON pj.message_id = m.id
+            JOIN msg_fichiers f ON f.id = pj.fichier_id
+            JOIN msg_conversations c ON c.id = m.conversation_id
+            LEFT JOIN users u ON u.id = m.auteur_id
+            LEFT JOIN msg_favoris fav ON fav.piece_id = pj.id AND fav.user_id = ?
+            WHERE ' . implode(' AND ', $conditions);
+
+        $total = $this->pdo->prepare('SELECT COUNT(*) ' . $depuis);
+        $total->execute($parametres);
+
+        $sens = ($filtres['ordre'] ?? 'desc') === 'asc' ? 'ASC' : 'DESC';
+        $ordre = [];
+        foreach (self::TRIS_DOCUMENTS[$filtres['tri'] ?? 'date'] ?? self::TRIS_DOCUMENTS['date'] as $colonne) {
+            $ordre[] = $colonne . ' ' . $sens;
+        }
+        $ordre[] = 'pj.id ' . $sens;
+
+        $stmt = $this->pdo->prepare('
+            SELECT ' . self::COLONNES_PIECE . ', (fav.id IS NOT NULL) AS favori,
+                   m.conversation_id, c.type AS conversation_type, c.nom AS conversation_nom,
+                   m.auteur_id, u.full_name AS auteur_nom
+            ' . $depuis . '
+            ORDER BY ' . implode(', ', $ordre) . '
+            LIMIT ' . max(1, $limite) . ' OFFSET ' . max(0, $decalage)
+        );
+        $stmt->execute($parametres);
+
+        return [
+            'lignes' => array_map(static function (array $l): array {
+                $l['favori'] = (bool) $l['favori'];
+
+                return $l;
+            }, $stmt->fetchAll(PDO::FETCH_ASSOC)),
+            'total' => (int) $total->fetchColumn(),
+        ];
+    }
+
+    public function espaceFichiers(): array
+    {
+        $total = $this->pdo->query('
+            SELECT COALESCE(SUM(taille + taille_miniature), 0) AS octets, COUNT(*) AS fichiers FROM msg_fichiers
+        ')->fetch(PDO::FETCH_ASSOC) ?: ['octets' => 0, 'fichiers' => 0];
+
+        $pieces = $this->pdo->query('
+            SELECT COUNT(*) AS pieces, COALESCE(SUM(f.taille + f.taille_miniature), 0) AS octets
+            FROM msg_pieces_jointes pj JOIN msg_fichiers f ON f.id = pj.fichier_id
+        ')->fetch(PDO::FETCH_ASSOC) ?: ['pieces' => 0, 'octets' => 0];
+
+        $parMois = $this->pdo->query("
+            SELECT DATE_FORMAT(created_at, '%Y-%m') AS mois, SUM(taille + taille_miniature) AS octets, COUNT(*) AS fichiers
+            FROM msg_fichiers
+            GROUP BY DATE_FORMAT(created_at, '%Y-%m')
+            ORDER BY mois DESC
+        ")->fetchAll(PDO::FETCH_ASSOC);
+
+        $parCategorie = $this->pdo->query('
+            SELECT categorie, SUM(taille + taille_miniature) AS octets, COUNT(*) AS fichiers
+            FROM msg_fichiers
+            GROUP BY categorie
+            ORDER BY octets DESC
+        ')->fetchAll(PDO::FETCH_ASSOC);
+
+        $entiers = static fn(array $lignes, string $cle): array => array_map(static fn(array $l): array => [
+            $cle => (string) $l[$cle],
+            'octets' => (int) $l['octets'],
+            'fichiers' => (int) $l['fichiers'],
+        ], $lignes);
+
+        return [
+            'octets' => (int) $total['octets'],
+            'fichiers' => (int) $total['fichiers'],
+            'pieces' => (int) $pieces['pieces'],
+            'octets_sans_dedoublonnage' => (int) $pieces['octets'],
+            'par_mois' => $entiers($parMois, 'mois'),
+            'par_categorie' => $entiers($parCategorie, 'categorie'),
+        ];
     }
 
     // ------------------------------------------------------------------

@@ -11,8 +11,9 @@ use RuntimeException;
  *
  * Le code porte le statut HTTP que le contrôleur renverra : 404 pour une
  * discussion qu'on ne peut pas lire (on ne confirme pas qu'elle existe),
- * 403 pour une action interdite, 422 pour une saisie invalide, 429 pour
- * l'anti-abus.
+ * 403 pour une action interdite, 422 pour une saisie invalide, 413 pour un
+ * fichier trop lourd, 429 pour l'anti-abus, 500 quand le serveur n'a pas pu
+ * ranger un fichier.
  */
 final class MessagerieException extends RuntimeException
 {
@@ -34,5 +35,17 @@ final class MessagerieException extends RuntimeException
     public static function tropDEnvois(string $message): self
     {
         return new self($message, 429);
+    }
+
+    /** Fichier au-delà de la taille permise (25 Mo). */
+    public static function tropLourd(string $message): self
+    {
+        return new self($message, 413);
+    }
+
+    /** Le serveur n'a pas pu faire sa part (dossier, disque, extension PHP). */
+    public static function serveur(string $message): self
+    {
+        return new self($message, 500);
     }
 }

@@ -58,7 +58,7 @@ interface MessagerieDepotInterface
     /** @param array<string, mixed> $donnees */
     public function creerConversation(array $donnees): int;
 
-    /** @param array<string, mixed> $champs nom, description, type */
+    /** @param array<string, mixed> $champs nom, description, type, photo */
     public function modifierConversation(int $id, array $champs, string $maintenant): void;
 
     /** Adhésion, active ou passée. @return array<string, mixed>|null */
@@ -141,12 +141,13 @@ interface MessagerieDepotInterface
     public function compterEnvoisDepuis(int $userId, string $depuis): int;
 
     /**
-     * Enregistre le message, avance dernier_message_at de la discussion et
-     * le dernier lu de l'auteur.
+     * Enregistre le message et ses pièces jointes en une transaction, avance
+     * dernier_message_at de la discussion et le dernier lu de l'auteur.
      *
      * @param array<string, mixed> $donnees
+     * @param array<int, array{fichier_id:int, nom_origine:string, legende:?string}> $pieces
      */
-    public function ajouterMessage(array $donnees): int;
+    public function ajouterMessage(array $donnees, array $pieces = []): int;
 
     /** Nouveau texte + ancien au journal, en une transaction. */
     public function modifierMessage(int $id, string $nouveauTexte, string $ancienTexte, int $parId, string $maintenant): void;
@@ -184,6 +185,70 @@ interface MessagerieDepotInterface
     public function epingler(int $conversationId, int $messageId, int $parId, string $maintenant): void;
 
     public function desepingler(int $conversationId, int $messageId): void;
+
+    // ------------------------------------------------------------------
+    // Fichiers et pièces jointes
+    // ------------------------------------------------------------------
+
+    /** Le fichier déjà stocké pour ce contenu. @return array<string, mixed>|null */
+    public function fichierParEmpreinte(string $empreinte): ?array;
+
+    /**
+     * Inscrit un fichier rangé et rend la ligne qui fait foi : si un envoi
+     * concurrent du même contenu l'a précédé (unique sur l'empreinte), c'est
+     * la sienne — à l'appelant d'effacer alors sa propre copie.
+     *
+     * @param array<string, mixed> $donnees
+     * @return array<string, mixed>
+     */
+    public function enregistrerFichier(array $donnees): array;
+
+    /**
+     * Pièces de ces messages en une requête, avec le fichier et le favori de
+     * l'utilisateur, indexées par message.
+     *
+     * Ligne : id, message_id, fichier_id, nom_origine, legende, created_at,
+     * mime, categorie, extension, taille, largeur, hauteur, chemin_miniature,
+     * favori (bool).
+     *
+     * @param array<int, int> $messageIds
+     * @return array<int, array<int, array<string, mixed>>>
+     */
+    public function piecesDesMessages(array $messageIds, int $userId): array;
+
+    /**
+     * Une pièce, son fichier et son message (conversation_id, supprime_at).
+     *
+     * @return array<string, mixed>|null
+     */
+    public function piece(int $id): ?array;
+
+    public function marquerFavori(int $userId, int $pieceId, bool $actif, string $maintenant): void;
+
+    /**
+     * Le classeur : pièces des discussions dont l'utilisateur est membre
+     * actif, messages supprimés exclus. Les filtres arrivent validés :
+     * q, tri (nom|date|taille|expediteur|type), ordre (asc|desc),
+     * conversation_id, expediteur_id, categorie, du et avant (bornes de
+     * created_at, « Y-m-d H:i:s », la seconde exclue), favoris (bool).
+     *
+     * Ligne : celle de piecesDesMessages, plus conversation_id,
+     * conversation_type, conversation_nom, auteur_id, auteur_nom.
+     *
+     * @param array<string, mixed> $filtres
+     * @return array{lignes: array<int, array<string, mixed>>, total: int}
+     */
+    public function documents(int $userId, array $filtres, int $limite, int $decalage): array;
+
+    /**
+     * Ce que les fichiers occupent sur le disque, en tout, par mois et par
+     * catégorie, et ce qu'ils occuperaient sans dédoublonnage.
+     *
+     * @return array{octets:int, fichiers:int, pieces:int, octets_sans_dedoublonnage:int,
+     *     par_mois: array<int, array{mois:string, octets:int, fichiers:int}>,
+     *     par_categorie: array<int, array{categorie:string, octets:int, fichiers:int}>}
+     */
+    public function espaceFichiers(): array;
 
     // ------------------------------------------------------------------
     // Relevé

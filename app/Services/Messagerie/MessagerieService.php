@@ -36,6 +36,7 @@ final class MessagerieService
     public const NOM_GROUPE_MAX = 120;
     public const DESCRIPTION_MAX = 500;
     public const RECHERCHE_MAX = 50;
+    public const DOCUMENTS_PAR_PAGE = 50;
 
     /** Libellé rendu à la place d'un message supprimé. */
     public const LIBELLE_SUPPRIME = 'Message supprimé';
@@ -44,13 +45,25 @@ final class MessagerieService
 
     private Closure $horloge;
 
+    /** Préfixe des adresses rendues à l'écran (pièces, photos) : celui de l'API. */
+    private string $urlApi = '';
+
     public function __construct(
         private MessagerieDepotInterface $depot,
         private int $utilisateurId,
         private bool $direction = false,
         ?Closure $horloge = null,
+        private ?MessagerieStockage $stockage = null,
     ) {
         $this->horloge = $horloge ?? static fn(): DateTimeImmutable => new DateTimeImmutable();
+    }
+
+    /** Les adresses des pièces et des photos commenceront par $url (sans « / » final). */
+    public function avecUrlApi(string $url): self
+    {
+        $this->urlApi = rtrim($url, '/');
+
+        return $this;
     }
 
     // ==================================================================
@@ -61,7 +74,8 @@ final class MessagerieService
      * Les discussions de l'utilisateur, la plus récemment active en tête.
      *
      * Quatre requêtes quel que soit leur nombre : discussions, derniers
-     * messages, correspondants des directes, non-lus.
+     * messages, correspondants des directes, non-lus — et une cinquième
+     * quand un dernier message est un fichier sans légende.
      *
      * @return array<int, array<string, mixed>>
      */
@@ -76,6 +90,16 @@ final class MessagerieService
         $derniers = $this->depot->derniersMessages($ids);
         $correspondants = $this->depot->correspondantsDirects($ids, $this->utilisateurId);
         $nonLus = $this->depot->nonLus($this->utilisateurId);
+
+        // Un dernier message sans texte est un fichier sans légende : une
+        // requête de plus, et seulement dans ce cas, pour dire lequel.
+        $sansTexte = [];
+        foreach ($derniers as $dernier) {
+            if (trim((string) $dernier['texte']) === '') {
+                $sansTexte[] = (int) $dernier['id'];
+            }
+        }
+        $piecesDerniers = $sansTexte === [] ? [] : $this->depot->piecesDesMessages($sansTexte, $this->utilisateurId);
 
         $resultat = [];
         foreach ($lignes as $ligne) {
@@ -93,7 +117,7 @@ final class MessagerieService
                     'id' => (int) $dernier['id'],
                     'auteur_id' => (int) $dernier['auteur_id'],
                     'auteur_nom' => (string) ($dernier['auteur_nom'] ?? ''),
-                    'apercu' => $this->apercu($dernier),
+                    'apercu' => $this->apercu($dernier, $piecesDerniers[(int) $dernier['id']] ?? []),
                     'supprime' => $dernier['supprime_at'] !== null,
                     'created_at' => (string) $dernier['created_at'],
                 ],
@@ -384,15 +408,7 @@ final class MessagerieService
         $texte = $this->texte($texte);
         $this->ecriture($conversationId);
         $this->antiAbus();
-
-        if ($reponseA !== null && $reponseA > 0) {
-            $cible = $this->depot->message($reponseA);
-            if ($cible === null || (int) $cible['conversation_id'] !== $conversationId) {
-                throw MessagerieException::invalide('On ne répond qu’à un message de la même discussion.');
-            }
-        } else {
-            $reponseA = null;
-        }
+        $reponseA = $this->reponseValide($conversationId, $reponseA);
 
         $id = $this->depot->ajouterMessage([
             'conversation_id' => $conversationId,
@@ -402,6 +418,46 @@ final class MessagerieService
             'transfere_de_id' => null,
             'created_at' => $this->maintenant(),
         ]);
+
+        return $this->messageFormate($id);
+    }
+
+    /**
+     * Un fichier par envoi, qui devient un message : sa légende facultative
+     * en est le texte, comme sur un téléphone. L'écran envoie plusieurs
+     * fichiers l'un après l'autre ; chacun compte dans les 30 envois par
+     * minute.
+     *
+     * Le contenu déjà connu (même empreinte SHA-256, calculée sur le fichier
+     * reçu, avant tout traitement) n'est pas rangé une seconde fois : seule
+     * une nouvelle pièce jointe le désigne.
+     *
+     * @param array<string, mixed> $fichier entrée de $_FILES
+     * @return array<string, mixed> le message enregistré
+     */
+    public function envoyerFichier(int $conversationId, array $fichier, string $legende = '', ?int $reponseA = null): array
+    {
+        $legende = $this->legende($legende);
+        $this->ecriture($conversationId);
+        $this->antiAbus();
+        $reponseA = $this->reponseValide($conversationId, $reponseA);
+
+        $recu = $this->stockage()->recevoir($fichier);
+        $format = MessagerieFormats::reconnaitre($recu['temporaire'], $recu['nom']);
+        $stocke = $this->fichierStocke($recu, $format);
+
+        $id = $this->depot->ajouterMessage([
+            'conversation_id' => $conversationId,
+            'auteur_id' => $this->utilisateurId,
+            'texte' => $legende,
+            'reponse_a_id' => $reponseA,
+            'transfere_de_id' => null,
+            'created_at' => $this->maintenant(),
+        ], [[
+            'fichier_id' => (int) $stocke['id'],
+            'nom_origine' => $recu['nom'],
+            'legende' => $legende === '' ? null : $legende,
+        ]]);
 
         return $this->messageFormate($id);
     }
@@ -427,6 +483,14 @@ final class MessagerieService
         $this->ecriture($versConversationId);
         $this->antiAbus();
 
+        // Les pièces suivent le message : de nouvelles pièces jointes qui
+        // désignent les mêmes fichiers, sans rien recopier sur le disque.
+        $pieces = array_map(static fn(array $p): array => [
+            'fichier_id' => (int) $p['fichier_id'],
+            'nom_origine' => (string) $p['nom_origine'],
+            'legende' => $p['legende'] ?? null,
+        ], $this->depot->piecesDesMessages([$messageId], $this->utilisateurId)[$messageId] ?? []);
+
         $id = $this->depot->ajouterMessage([
             'conversation_id' => $versConversationId,
             'auteur_id' => $this->utilisateurId,
@@ -434,7 +498,7 @@ final class MessagerieService
             'reponse_a_id' => null,
             'transfere_de_id' => $messageId,
             'created_at' => $this->maintenant(),
-        ]);
+        ], $pieces);
 
         return $this->messageFormate($id);
     }
@@ -565,6 +629,190 @@ final class MessagerieService
     {
         $this->ecriture($conversationId);
         $this->depot->desepingler($conversationId, $messageId);
+    }
+
+    // ==================================================================
+    // Fichiers, classeur, photo de groupe
+    // ==================================================================
+
+    /**
+     * Le fichier d'une pièce, pour l'aperçu ou le téléchargement.
+     *
+     * Même règle que la lecture de la discussion : membre actif, ou
+     * Direction. Ouvrir le fichier lui-même hors membres est inscrit une fois
+     * au registre, comme l'ouverture d'une discussion ; les miniatures
+     * accompagnent l'affichage du fil, dont l'ouverture est déjà inscrite, et
+     * ne laissent pas de ligne de plus.
+     *
+     * Une pièce d'un message supprimé ne se télécharge plus, sauf pour la
+     * Direction, qui en garde l'information comme du texte.
+     *
+     * @return array{chemin:string, mime:string, nom:string, en_ligne:bool}
+     */
+    public function fichierAServir(int $pieceId, bool $miniature = false): array
+    {
+        $piece = $this->depot->piece($pieceId);
+        if ($piece === null) {
+            throw MessagerieException::introuvable('Fichier introuvable.');
+        }
+
+        $this->lecture((int) $piece['conversation_id'], !$miniature);
+
+        if ($piece['supprime_at'] !== null && !$this->direction) {
+            throw MessagerieException::introuvable('Fichier introuvable.');
+        }
+
+        $stocke = $miniature ? ($piece['chemin_miniature'] ?? null) : (string) $piece['chemin'];
+        if ($stocke === null) {
+            throw MessagerieException::introuvable('Ce fichier n’a pas d’aperçu.');
+        }
+
+        $chemin = $this->stockage()->cheminAbsolu($stocke);
+        if ($chemin === null) {
+            error_log('[Messagerie] fichier absent du disque : pièce ' . $pieceId . ', ' . $stocke);
+            throw MessagerieException::introuvable('Ce fichier n’est plus disponible sur le serveur.');
+        }
+
+        return [
+            'chemin' => $chemin,
+            'mime' => (string) $piece['mime'],
+            'nom' => MessagerieFormats::nomAvecExtension((string) $piece['nom_origine'], (string) $piece['extension']),
+            'en_ligne' => in_array((string) $piece['mime'], MessagerieFormats::MIMES_EN_LIGNE, true),
+        ];
+    }
+
+    /** Ajoute ou retire une pièce de ses favoris (membre actif de la discussion). */
+    public function marquerFavori(int $pieceId, bool $actif): void
+    {
+        $piece = $this->depot->piece($pieceId);
+        if ($piece === null || ($actif && $piece['supprime_at'] !== null)) {
+            throw MessagerieException::introuvable('Fichier introuvable.');
+        }
+
+        $this->adhesion((int) $piece['conversation_id']);
+        $this->depot->marquerFavori($this->utilisateurId, $pieceId, $actif, $this->maintenant());
+    }
+
+    /**
+     * Le classeur de documents : les fichiers des discussions dont
+     * l'utilisateur est membre actif, et seulement celles-là. La Direction
+     * n'y a pas de vue élargie : lire une discussion d'autrui est un acte
+     * journalisé, pas un classement.
+     *
+     * @param array<string, mixed> $criteres q, tri, ordre, conversation_id, expediteur_id, categorie, du, au, favoris, page
+     * @return array<string, mixed>
+     */
+    public function documents(array $criteres): array
+    {
+        $filtres = self::filtresDocuments($criteres);
+        $page = max(1, (int) ($criteres['page'] ?? 1));
+
+        $resultat = $this->depot->documents(
+            $this->utilisateurId,
+            $filtres,
+            self::DOCUMENTS_PAR_PAGE,
+            ($page - 1) * self::DOCUMENTS_PAR_PAGE
+        );
+
+        $directes = [];
+        foreach ($resultat['lignes'] as $l) {
+            if ($l['conversation_type'] === 'direct') {
+                $directes[(int) $l['conversation_id']] = (int) $l['conversation_id'];
+            }
+        }
+        $correspondants = $directes === [] ? [] : $this->depot->correspondantsDirects(array_values($directes), $this->utilisateurId);
+
+        $documents = [];
+        foreach ($resultat['lignes'] as $l) {
+            $conversationId = (int) $l['conversation_id'];
+            $documents[] = $this->formaterPiece($l) + [
+                'message_id' => (int) $l['message_id'],
+                'envoye_at' => (string) $l['created_at'],
+                'expediteur' => ['id' => (int) $l['auteur_id'], 'nom' => (string) ($l['auteur_nom'] ?? '')],
+                'conversation' => [
+                    'id' => $conversationId,
+                    'type' => (string) $l['conversation_type'],
+                    'nom' => $l['conversation_type'] === 'direct'
+                        ? (string) ($correspondants[$conversationId]['nom'] ?? 'Discussion')
+                        : (string) $l['conversation_nom'],
+                ],
+            ];
+        }
+
+        $total = (int) $resultat['total'];
+
+        return [
+            'documents' => $documents,
+            'total' => $total,
+            'page' => $page,
+            'pages' => max(1, (int) ceil($total / self::DOCUMENTS_PAR_PAGE)),
+            'par_page' => self::DOCUMENTS_PAR_PAGE,
+            'filtres' => [
+                'q' => $filtres['q'],
+                'tri' => $filtres['tri'],
+                'ordre' => $filtres['ordre'],
+                'conversation_id' => $filtres['conversation_id'],
+                'expediteur_id' => $filtres['expediteur_id'],
+                'categorie' => $filtres['categorie'],
+                'du' => $filtres['du'] === null ? null : substr($filtres['du'], 0, 10),
+                'au' => $filtres['au'],
+                'favoris' => $filtres['favoris'],
+            ],
+        ];
+    }
+
+    /**
+     * Photo d'un groupe, par l'un de ses administrateurs : une image
+     * seulement, recadrée en carré de 256 px et sans métadonnées.
+     *
+     * @param array<string, mixed> $fichier entrée de $_FILES
+     * @return array{photo: string}
+     */
+    public function definirPhoto(int $conversationId, array $fichier): array
+    {
+        [$conversation] = $this->administration($conversationId);
+
+        $recu = $this->stockage()->recevoir($fichier);
+        $format = MessagerieFormats::reconnaitre($recu['temporaire'], $recu['nom']);
+        if ($format['categorie'] !== 'image') {
+            throw MessagerieException::invalide('La photo du groupe doit être une image JPG, PNG ou WEBP.');
+        }
+
+        $chemin = $this->stockage()->rangerPhotoGroupe($recu['temporaire'], $format['extension']);
+        $this->depot->modifierConversation($conversationId, ['photo' => $chemin], $this->maintenant());
+
+        // L'ancienne photo n'appartient qu'à ce groupe : elle ne sert plus.
+        $this->stockage()->effacer($conversation['photo'] ?? null);
+
+        return ['photo' => (string) $this->urlPhoto($conversationId, $chemin)];
+    }
+
+    public function retirerPhoto(int $conversationId): void
+    {
+        [$conversation] = $this->administration($conversationId);
+        if (($conversation['photo'] ?? null) === null) {
+            return;
+        }
+
+        $this->depot->modifierConversation($conversationId, ['photo' => null], $this->maintenant());
+        $this->stockage()->effacer($conversation['photo']);
+    }
+
+    /**
+     * La photo d'un groupe, avec la protection de la discussion.
+     *
+     * @return array{chemin:string, mime:string}
+     */
+    public function photo(int $conversationId): array
+    {
+        [$conversation] = $this->lecture($conversationId, false);
+
+        $chemin = $this->stockage()->cheminAbsolu($conversation['photo'] ?? null);
+        if ($chemin === null) {
+            throw MessagerieException::introuvable('Ce groupe n’a pas de photo.');
+        }
+
+        return ['chemin' => $chemin, 'mime' => MessagerieFormats::mimeDe(strtolower(pathinfo($chemin, PATHINFO_EXTENSION)))];
     }
 
     // ==================================================================
@@ -877,6 +1125,56 @@ final class MessagerieService
         return $message;
     }
 
+    private function reponseValide(int $conversationId, ?int $reponseA): ?int
+    {
+        if ($reponseA === null || $reponseA <= 0) {
+            return null;
+        }
+
+        $cible = $this->depot->message($reponseA);
+        if ($cible === null || (int) $cible['conversation_id'] !== $conversationId) {
+            throw MessagerieException::invalide('On ne répond qu’à un message de la même discussion.');
+        }
+
+        return $reponseA;
+    }
+
+    /**
+     * Le fichier sur le disque pour ce contenu : celui qui existe déjà, ou
+     * celui qu'on range maintenant.
+     *
+     * @param array{temporaire:string, nom:string, taille:int, empreinte:string} $recu
+     * @param array{extension:string, mime:string, categorie:string} $format
+     * @return array<string, mixed>
+     */
+    private function fichierStocke(array $recu, array $format): array
+    {
+        $existant = $this->depot->fichierParEmpreinte($recu['empreinte']);
+        if ($existant !== null) {
+            return $existant;
+        }
+
+        $range = $this->stockage()->ranger($recu['temporaire'], $format, $this->maintenant());
+        $ligne = $this->depot->enregistrerFichier($range + [
+            'empreinte' => $recu['empreinte'],
+            'categorie' => $format['categorie'],
+            'created_at' => $this->maintenant(),
+        ]);
+
+        // Un envoi concurrent du même contenu a gagné : sa copie fait foi.
+        if ((string) $ligne['chemin'] !== $range['chemin']) {
+            $this->stockage()->effacer($range['chemin']);
+            $this->stockage()->effacer($range['chemin_miniature']);
+        }
+
+        return $ligne;
+    }
+
+    private function stockage(): MessagerieStockage
+    {
+        return $this->stockage ??= MessagerieStockage::creer();
+    }
+
     private function antiAbus(): void
     {
         $depuis = ($this->horloge)()->modify('-60 seconds')->format(self::FORMAT_DATE);
@@ -915,6 +1213,77 @@ final class MessagerieService
         }
 
         return $texte;
+    }
+
+    /** La légende d'un fichier : mêmes règles que le texte, mais facultative. */
+    private function legende(string $legende): string
+    {
+        $legende = trim((string) preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/u', '', str_replace("\r\n", "\n", $legende)));
+
+        return $legende === '' ? '' : $this->texte($legende);
+    }
+
+    /**
+     * Critères du classeur, validés : tout ce qui n'est pas reconnu est
+     * ignoré, sauf une date mal écrite, qu'on signale plutôt que de rendre
+     * une liste qui ne dirait pas ce qu'on croit.
+     *
+     * @param array<string, mixed> $criteres
+     * @return array{q:string, tri:string, ordre:string, conversation_id:?int, expediteur_id:?int, categorie:?string, du:?string, au:?string, avant:?string, favoris:bool}
+     */
+    public static function filtresDocuments(array $criteres): array
+    {
+        $tri = (string) ($criteres['tri'] ?? 'date');
+        if (!in_array($tri, ['nom', 'date', 'taille', 'expediteur', 'type'], true)) {
+            $tri = 'date';
+        }
+
+        // Sans ordre demandé : les noms de A à Z, les dates et tailles du plus récent ou du plus gros.
+        $ordre = strtolower((string) ($criteres['ordre'] ?? ''));
+        if (!in_array($ordre, ['asc', 'desc'], true)) {
+            $ordre = in_array($tri, ['date', 'taille'], true) ? 'desc' : 'asc';
+        }
+
+        $entier = static function (mixed $valeur): ?int {
+            $n = is_numeric($valeur) ? (int) $valeur : 0;
+
+            return $n > 0 ? $n : null;
+        };
+
+        $jour = static function (mixed $valeur): ?DateTimeImmutable {
+            $valeur = trim((string) ($valeur ?? ''));
+            if ($valeur === '') {
+                return null;
+            }
+            $d = DateTimeImmutable::createFromFormat('!Y-m-d', $valeur);
+            if ($d === false || $d->format('Y-m-d') !== $valeur) {
+                throw MessagerieException::invalide('Date invalide : utilisez le format AAAA-MM-JJ.');
+            }
+
+            return $d;
+        };
+
+        $du = $jour($criteres['du'] ?? null);
+        $au = $jour($criteres['au'] ?? null);
+        if ($du !== null && $au !== null && $du > $au) {
+            throw MessagerieException::invalide('La date de début est après la date de fin.');
+        }
+
+        $categorie = (string) ($criteres['categorie'] ?? '');
+
+        return [
+            'q' => trim(mb_substr(trim((string) ($criteres['q'] ?? '')), 0, 100)),
+            'tri' => $tri,
+            'ordre' => $ordre,
+            'conversation_id' => $entier($criteres['conversation_id'] ?? null),
+            'expediteur_id' => $entier($criteres['expediteur_id'] ?? null),
+            'categorie' => in_array($categorie, MessagerieFormats::CATEGORIES, true) ? $categorie : null,
+            'du' => $du?->format(self::FORMAT_DATE),
+            'au' => $au?->format('Y-m-d'),
+            // « au » est inclus : la borne exclue est le lendemain à minuit.
+            'avant' => $au?->modify('+1 day')->format(self::FORMAT_DATE),
+            'favoris' => filter_var($criteres['favoris'] ?? false, FILTER_VALIDATE_BOOLEAN),
+        ];
     }
 
     private function nomGroupe(string $nom): string
@@ -998,7 +1367,8 @@ final class MessagerieService
             'type' => (string) $conversation['type'],
             'nom' => $direct ? (string) ($correspondant['nom'] ?? 'Discussion') : (string) $conversation['nom'],
             'description' => $conversation['description'] ?? null,
-            'photo' => $conversation['photo'] ?? null,
+            // L'adresse protégée, jamais le chemin sur le disque.
+            'photo' => $this->urlPhoto((int) $conversation['id'], $conversation['photo'] ?? null),
             'agence_id' => isset($conversation['agence_id']) ? (int) $conversation['agence_id'] : null,
             'automatique' => (bool) ($conversation['automatique'] ?? false),
             'created_at' => (string) $conversation['created_at'],
@@ -1038,10 +1408,21 @@ final class MessagerieService
         }
         $cites = $citesIds === [] ? [] : $this->depot->messagesParIds(array_values(array_unique($citesIds)));
 
+        // Les pièces de toute la page en une requête ; aucune pour un message
+        // supprimé, sauf pour la Direction.
+        $avecPieces = [];
+        foreach ($lignes as $l) {
+            if ($l['supprime_at'] === null || $this->direction) {
+                $avecPieces[] = (int) $l['id'];
+            }
+        }
+        $pieces = $avecPieces === [] ? [] : $this->depot->piecesDesMessages($avecPieces, $this->utilisateurId);
+
         $resultat = [];
         foreach ($lignes as $l) {
             $supprime = $l['supprime_at'] !== null;
             $cite = !empty($l['reponse_a_id']) ? ($cites[(int) $l['reponse_a_id']] ?? null) : null;
+            $piecesDuMessage = $supprime && !$this->direction ? [] : ($pieces[(int) $l['id']] ?? []);
 
             $resultat[] = [
                 'id' => (int) $l['id'],
@@ -1064,20 +1445,74 @@ final class MessagerieService
                 'created_at' => (string) $l['created_at'],
                 'modifie_at' => $l['modifie_at'] ?? null,
                 'supprime_at' => $l['supprime_at'] ?? null,
+                'pieces_jointes' => array_map(fn(array $p): array => $this->formaterPiece($p), $piecesDuMessage),
             ];
         }
 
         return $resultat;
     }
 
-    /** @param array<string, mixed> $message */
-    private function apercu(array $message): string
+    /**
+     * Une pièce telle que l'écran la reçoit. « nom » porte l'extension du
+     * fichier servi : une capture PNG devenue JPEG se télécharge en .jpg.
+     *
+     * @param array<string, mixed> $p
+     * @return array<string, mixed>
+     */
+    private function formaterPiece(array $p): array
+    {
+        $id = (int) $p['id'];
+        $url = $this->urlApi . '/pieces/' . $id;
+
+        return [
+            'id' => $id,
+            'nom' => MessagerieFormats::nomAvecExtension((string) $p['nom_origine'], (string) $p['extension']),
+            'legende' => isset($p['legende']) && $p['legende'] !== '' ? (string) $p['legende'] : null,
+            'taille' => (int) $p['taille'],
+            'mime' => (string) $p['mime'],
+            'categorie' => (string) $p['categorie'],
+            'extension' => (string) $p['extension'],
+            'largeur' => isset($p['largeur']) ? (int) $p['largeur'] : null,
+            'hauteur' => isset($p['hauteur']) ? (int) $p['hauteur'] : null,
+            'url' => $url,
+            'url_miniature' => empty($p['chemin_miniature']) ? null : $url . '/miniature',
+            'favori' => (bool) ($p['favori'] ?? false),
+        ];
+    }
+
+    private function urlPhoto(int $conversationId, ?string $chemin): ?string
+    {
+        if ($chemin === null || $chemin === '') {
+            return null;
+        }
+
+        // La version suit le fichier : une nouvelle photo change l'adresse,
+        // et le navigateur ne garde pas l'ancienne en cache.
+        return $this->urlApi . '/conversations/' . $conversationId . '/photo?v=' . substr(sha1($chemin), 0, 10);
+    }
+
+    /**
+     * @param array<string, mixed> $message
+     * @param array<int, array<string, mixed>> $pieces celles du message, si on les a
+     */
+    private function apercu(array $message, array $pieces = []): string
     {
         if ($message['supprime_at'] !== null && !$this->direction) {
             return self::LIBELLE_SUPPRIME;
         }
 
         $texte = trim((string) preg_replace('/\s+/u', ' ', (string) $message['texte']));
+
+        // Un fichier envoyé sans légende : on dit ce que c'est.
+        if ($texte === '') {
+            if ($pieces === []) {
+                return 'Pièce jointe';
+            }
+            $piece = $pieces[0];
+            $texte = $piece['categorie'] === 'image'
+                ? 'Photo'
+                : 'Document : ' . MessagerieFormats::nomAvecExtension((string) $piece['nom_origine'], (string) $piece['extension']);
+        }
 
         return mb_strlen($texte) > 120 ? mb_substr($texte, 0, 119) . '…' : $texte;
     }

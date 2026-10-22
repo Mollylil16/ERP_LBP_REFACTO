@@ -55,6 +55,7 @@ class MigrationRunner
         $this->createComptesAuditTable();
         $this->createMouvementsCaisseTables();
         $this->createMessagerieTables();
+        $this->createMessagerieFichiersTables();
         $this->createNoelTables();
     }
 
@@ -299,6 +300,108 @@ class MigrationRunner
             }
         } catch (\Throwable $e) {
             error_log('[MigrationRunner Warning] createMessagerieTables: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Messagerie interne (lot 3, octobre 2026) : fichiers, pièces jointes et
+     * favoris.
+     *
+     * msg_fichiers est ce qui occupe le disque : une ligne par contenu
+     * distinct, reconnu à son empreinte SHA-256 (unique). msg_pieces_jointes
+     * est ce que les messages montrent : le même PDF envoyé dans trois
+     * groupes fait trois pièces et un seul fichier.
+     *
+     * Même discipline qu'au lot 1 : de la structure seulement, msg_favoris
+     * créée en dernier sert de témoin, et les clés étrangères sont posées une
+     * à une. Rien ne s'efface en cascade côté messages et fichiers ; seul le
+     * favori, qui n'a de sens que pour son utilisateur, suit le compte.
+     *
+     * msg_conversations.photo (VARCHAR(255)) reçoit le chemin de la photo du
+     * groupe sous storage/ : son type convient tel quel.
+     */
+    private function createMessagerieFichiersTables(): void
+    {
+        try {
+            if ($this->schema->tableExists('msg_favoris') || !$this->schema->tableExists('msg_messages')) {
+                return;
+            }
+
+            $typeUsers = $this->schema->columnType('users', 'id') ?? 'int';
+            $utilisateur = str_contains(strtolower($typeUsers), 'unsigned') ? 'INT UNSIGNED' : 'INT';
+            $options = 'ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci';
+
+            // taille et taille_miniature : octets réellement écrits sur le
+            // disque, après réduction des photos — c'est ce que la jauge somme.
+            $this->pdo->exec("
+                CREATE TABLE IF NOT EXISTS msg_fichiers (
+                    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                    empreinte CHAR(64) NOT NULL,
+                    chemin VARCHAR(255) NOT NULL,
+                    chemin_miniature VARCHAR(255) NULL,
+                    mime VARCHAR(120) NOT NULL,
+                    categorie ENUM('pdf', 'image', 'word', 'tableur', 'presentation', 'texte') NOT NULL,
+                    extension VARCHAR(10) NOT NULL,
+                    taille BIGINT UNSIGNED NOT NULL DEFAULT 0,
+                    taille_miniature INT UNSIGNED NOT NULL DEFAULT 0,
+                    largeur INT UNSIGNED NULL,
+                    hauteur INT UNSIGNED NULL,
+                    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE KEY uniq_msg_fichier_empreinte (empreinte),
+                    KEY idx_msg_fichier_cree (created_at),
+                    KEY idx_msg_fichier_categorie (categorie)
+                ) {$options}
+            ");
+
+            $this->pdo->exec("
+                CREATE TABLE IF NOT EXISTS msg_pieces_jointes (
+                    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                    message_id INT UNSIGNED NOT NULL,
+                    fichier_id INT UNSIGNED NOT NULL,
+                    nom_origine VARCHAR(255) NOT NULL,
+                    legende TEXT NULL,
+                    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    KEY idx_msg_piece_message (message_id),
+                    KEY idx_msg_piece_fichier (fichier_id),
+                    KEY idx_msg_piece_cree (created_at)
+                ) {$options}
+            ");
+
+            foreach ([
+                ['msg_pieces_jointes', 'fk_msg_piece_message', 'message_id', 'msg_messages', 'id', 'RESTRICT'],
+                ['msg_pieces_jointes', 'fk_msg_piece_fichier', 'fichier_id', 'msg_fichiers', 'id', 'RESTRICT'],
+            ] as [$table, $contrainte, $colonne, $reference, $colonneReference, $suppression]) {
+                try {
+                    $this->addForeignKeyIfMissing($table, $contrainte, $colonne, $reference, $colonneReference, $suppression);
+                } catch (\Throwable $e) {
+                    error_log('[MigrationRunner Warning] messagerie ' . $contrainte . ': ' . $e->getMessage());
+                }
+            }
+
+            // En dernier : sa présence vaut « fichiers de la messagerie créés ».
+            $this->pdo->exec("
+                CREATE TABLE IF NOT EXISTS msg_favoris (
+                    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                    user_id {$utilisateur} NOT NULL,
+                    piece_id INT UNSIGNED NOT NULL,
+                    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE KEY uniq_msg_favori (user_id, piece_id),
+                    KEY idx_msg_favori_piece (piece_id)
+                ) {$options}
+            ");
+
+            foreach ([
+                ['msg_favoris', 'fk_msg_favori_user', 'user_id', 'users', 'id', 'CASCADE'],
+                ['msg_favoris', 'fk_msg_favori_piece', 'piece_id', 'msg_pieces_jointes', 'id', 'RESTRICT'],
+            ] as [$table, $contrainte, $colonne, $reference, $colonneReference, $suppression]) {
+                try {
+                    $this->addForeignKeyIfMissing($table, $contrainte, $colonne, $reference, $colonneReference, $suppression);
+                } catch (\Throwable $e) {
+                    error_log('[MigrationRunner Warning] messagerie ' . $contrainte . ': ' . $e->getMessage());
+                }
+            }
+        } catch (\Throwable $e) {
+            error_log('[MigrationRunner Warning] createMessagerieFichiersTables: ' . $e->getMessage());
         }
     }
 

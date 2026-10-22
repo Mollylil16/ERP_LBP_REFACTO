@@ -29,6 +29,12 @@ final class DepotMessagerieMemoire implements MessagerieDepotInterface
     public array $presence = [];
     /** @var array<int, array<string, mixed>> */
     public array $accesDirection = [];
+    /** @var array<int, array<string, mixed>> */
+    public array $fichiers = [];
+    /** @var array<int, array<string, mixed>> */
+    public array $pieces = [];
+    /** @var array<string, array<string, mixed>> clé « user-pièce » */
+    public array $favoris = [];
 
     private int $prochainId = 1;
 
@@ -85,7 +91,7 @@ final class DepotMessagerieMemoire implements MessagerieDepotInterface
 
     public function modifierConversation(int $id, array $champs, string $maintenant): void
     {
-        foreach (['nom', 'description', 'type'] as $c) {
+        foreach (['nom', 'description', 'type', 'photo'] as $c) {
             if (array_key_exists($c, $champs)) {
                 $this->conversations[$id][$c] = $champs[$c];
             }
@@ -225,11 +231,15 @@ final class DepotMessagerieMemoire implements MessagerieDepotInterface
         return count(array_filter($this->messages, static fn(array $m): bool => $m['auteur_id'] === $userId && $m['created_at'] >= $depuis));
     }
 
-    public function ajouterMessage(array $donnees): int
+    public function ajouterMessage(array $donnees, array $pieces = []): int
     {
         $id = $this->prochainId++;
         $this->messages[$id] = $donnees + ['id' => $id, 'modifie_at' => null, 'supprime_at' => null, 'supprime_par' => null, 'maj_at' => null];
         $this->messages[$id]['id'] = $id;
+        foreach ($pieces as $p) {
+            $pieceId = $this->prochainId++;
+            $this->pieces[$pieceId] = $p + ['id' => $pieceId, 'message_id' => $id, 'created_at' => $donnees['created_at']];
+        }
         $this->conversations[$donnees['conversation_id']]['dernier_message_at'] = $donnees['created_at'];
         $cle = $donnees['conversation_id'] . '-' . $donnees['auteur_id'];
         if (isset($this->membres[$cle])) {
@@ -316,6 +326,136 @@ final class DepotMessagerieMemoire implements MessagerieDepotInterface
             $this->epingles,
             static fn(array $e): bool => !($e['conversation_id'] === $conversationId && $e['message_id'] === $messageId)
         ));
+    }
+
+    public function fichierParEmpreinte(string $empreinte): ?array
+    {
+        foreach ($this->fichiers as $f) {
+            if ($f['empreinte'] === $empreinte) {
+                return $f;
+            }
+        }
+
+        return null;
+    }
+
+    public function enregistrerFichier(array $donnees): array
+    {
+        $existant = $this->fichierParEmpreinte((string) $donnees['empreinte']);
+        if ($existant !== null) {
+            return $existant;
+        }
+
+        $id = $this->prochainId++;
+        $this->fichiers[$id] = ['id' => $id] + $donnees;
+
+        return $this->fichiers[$id];
+    }
+
+    public function piecesDesMessages(array $messageIds, int $userId): array
+    {
+        $r = [];
+        foreach ($this->pieces as $p) {
+            if (in_array($p['message_id'], $messageIds, true)) {
+                $r[$p['message_id']][] = $this->pieceComplete($p, $userId);
+            }
+        }
+
+        return $r;
+    }
+
+    public function piece(int $id): ?array
+    {
+        if (!isset($this->pieces[$id])) {
+            return null;
+        }
+        $p = $this->pieces[$id];
+        $m = $this->messages[$p['message_id']];
+
+        return $this->pieceComplete($p, 0) + [
+            'chemin' => $this->fichiers[$p['fichier_id']]['chemin'],
+            'conversation_id' => $m['conversation_id'],
+            'supprime_at' => $m['supprime_at'],
+        ];
+    }
+
+    public function marquerFavori(int $userId, int $pieceId, bool $actif, string $maintenant): void
+    {
+        if ($actif) {
+            $this->favoris["$userId-$pieceId"] = ['user_id' => $userId, 'piece_id' => $pieceId, 'created_at' => $maintenant];
+        } else {
+            unset($this->favoris["$userId-$pieceId"]);
+        }
+    }
+
+    public function documents(int $userId, array $filtres, int $limite, int $decalage): array
+    {
+        $mes = array_map(static fn(array $c): int => $c['id'], $this->conversationsDe($userId));
+        $r = [];
+        foreach ($this->pieces as $p) {
+            $m = $this->messages[$p['message_id']];
+            $l = $this->pieceComplete($p, $userId) + [
+                'conversation_id' => $m['conversation_id'],
+                'conversation_type' => $this->conversations[$m['conversation_id']]['type'],
+                'conversation_nom' => $this->conversations[$m['conversation_id']]['nom'],
+                'auteur_id' => $m['auteur_id'],
+                'auteur_nom' => $this->utilisateurs[$m['auteur_id']]['nom'] ?? '',
+            ];
+            $q = (string) ($filtres['q'] ?? '');
+            $garde = in_array($m['conversation_id'], $mes, true)
+                && $m['supprime_at'] === null
+                && (empty($filtres['conversation_id']) || $m['conversation_id'] === $filtres['conversation_id'])
+                && (empty($filtres['expediteur_id']) || $m['auteur_id'] === $filtres['expediteur_id'])
+                && (empty($filtres['categorie']) || $l['categorie'] === $filtres['categorie'])
+                && (empty($filtres['du']) || $l['created_at'] >= $filtres['du'])
+                && (empty($filtres['avant']) || $l['created_at'] < $filtres['avant'])
+                && (empty($filtres['favoris']) || $l['favori'])
+                && ($q === '' || mb_stripos($l['nom_origine'] . "\n" . ($l['legende'] ?? ''), $q) !== false);
+            if ($garde) {
+                $r[] = $l;
+            }
+        }
+
+        $cle = match ($filtres['tri'] ?? 'date') {
+            'nom' => static fn(array $l): array => [mb_strtolower($l['nom_origine'])],
+            'taille' => static fn(array $l): array => [$l['taille']],
+            'expediteur' => static fn(array $l): array => [$l['auteur_nom']],
+            'type' => static fn(array $l): array => [$l['categorie'], $l['extension']],
+            default => static fn(array $l): array => [$l['created_at']],
+        };
+        $sens = ($filtres['ordre'] ?? 'desc') === 'asc' ? 1 : -1;
+        usort($r, static fn(array $a, array $b): int => $sens * ([...$cle($a), $a['id']] <=> [...$cle($b), $b['id']]));
+
+        return ['lignes' => array_slice($r, $decalage, $limite), 'total' => count($r)];
+    }
+
+    public function espaceFichiers(): array
+    {
+        $octets = 0;
+        $parMois = [];
+        $parCategorie = [];
+        foreach ($this->fichiers as $f) {
+            $poids = $f['taille'] + $f['taille_miniature'];
+            $octets += $poids;
+            $mois = substr($f['created_at'], 0, 7);
+            $parMois[$mois] = ['mois' => $mois, 'octets' => ($parMois[$mois]['octets'] ?? 0) + $poids, 'fichiers' => ($parMois[$mois]['fichiers'] ?? 0) + 1];
+            $c = $f['categorie'];
+            $parCategorie[$c] = ['categorie' => $c, 'octets' => ($parCategorie[$c]['octets'] ?? 0) + $poids, 'fichiers' => ($parCategorie[$c]['fichiers'] ?? 0) + 1];
+        }
+        $sansDedoublonnage = 0;
+        foreach ($this->pieces as $p) {
+            $sansDedoublonnage += $this->fichiers[$p['fichier_id']]['taille'] + $this->fichiers[$p['fichier_id']]['taille_miniature'];
+        }
+        krsort($parMois);
+
+        return [
+            'octets' => $octets,
+            'fichiers' => count($this->fichiers),
+            'pieces' => count($this->pieces),
+            'octets_sans_dedoublonnage' => $sansDedoublonnage,
+            'par_mois' => array_values($parMois),
+            'par_categorie' => array_values($parCategorie),
+        ];
     }
 
     public function curseurMessages(int $userId): int
@@ -465,6 +605,22 @@ final class DepotMessagerieMemoire implements MessagerieDepotInterface
         }
 
         return $max;
+    }
+
+    /**
+     * @param array<string, mixed> $p
+     * @return array<string, mixed>
+     */
+    private function pieceComplete(array $p, int $userId): array
+    {
+        $f = $this->fichiers[$p['fichier_id']];
+
+        return $p + [
+            'mime' => $f['mime'], 'categorie' => $f['categorie'], 'extension' => $f['extension'],
+            'taille' => $f['taille'], 'largeur' => $f['largeur'], 'hauteur' => $f['hauteur'],
+            'chemin_miniature' => $f['chemin_miniature'],
+            'favori' => isset($this->favoris["$userId-{$p['id']}"]),
+        ];
     }
 
     /** @param array<string, mixed> $m */
