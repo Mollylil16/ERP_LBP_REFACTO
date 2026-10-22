@@ -54,8 +54,58 @@ final class MessagerieService
         private bool $direction = false,
         ?Closure $horloge = null,
         private ?MessagerieStockage $stockage = null,
+        private ?Closure $apresEnvoi = null,
     ) {
         $this->horloge = $horloge ?? static fn(): DateTimeImmutable => new DateTimeImmutable();
+    }
+
+    /**
+     * Point d'accroche après l'enregistrement d'un message texte : c'est là
+     * que NOEL, l'assistant interne, se branche pour répondre quand on lui
+     * écrit (app/Services/Noel/NoelMessagerie).
+     *
+     * NOEL interroge un service extérieur et peut mettre plusieurs secondes à
+     * répondre. L'agent ne doit pas les attendre : sur le serveur web, la
+     * réponse HTTP est d'abord rendue et la session libérée (sans quoi le
+     * relevé de l'agent resterait bloqué derrière), puis NOEL travaille et
+     * sa réponse arrive par le relevé, comme le message d'un collègue.
+     *
+     * Les tests passent leur propre $apresEnvoi ; en ligne de commande, sans
+     * accroche fournie, rien n'est appelé. Une accroche qui échoue ne casse
+     * jamais un envoi : le message est déjà enregistré.
+     */
+    private function apresEnvoi(int $conversationId, string $texte): void
+    {
+        $auteurId = $this->utilisateurId;
+        $depot = $this->depot;
+
+        if ($this->apresEnvoi !== null) {
+            try {
+                ($this->apresEnvoi)($conversationId, $auteurId, $texte, $depot);
+            } catch (\Throwable $e) {
+                error_log('[Messagerie] accroche après envoi : ' . $e->getMessage());
+            }
+
+            return;
+        }
+
+        if (PHP_SAPI === 'cli') {
+            return;
+        }
+
+        register_shutdown_function(static function () use ($conversationId, $auteurId, $texte, $depot): void {
+            if (session_status() === PHP_SESSION_ACTIVE) {
+                session_write_close();
+            }
+            ignore_user_abort(true);
+            if (function_exists('litespeed_finish_request')) {
+                litespeed_finish_request();
+            } elseif (function_exists('fastcgi_finish_request')) {
+                fastcgi_finish_request();
+            }
+
+            \App\Services\Noel\NoelMessagerie::surMessage($conversationId, $auteurId, $texte, $depot);
+        });
     }
 
     /** Les adresses des pièces et des photos commenceront par $url (sans « / » final). */
@@ -418,6 +468,8 @@ final class MessagerieService
             'transfere_de_id' => null,
             'created_at' => $this->maintenant(),
         ]);
+
+        $this->apresEnvoi($conversationId, $texte);
 
         return $this->messageFormate($id);
     }

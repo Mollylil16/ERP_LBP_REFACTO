@@ -127,6 +127,16 @@ final class MessagerieController extends BaseController
     public function conversations(): void
     {
         $service = $this->service();
+
+        // NOEL, l'assistant interne, est un contact comme un autre : sa
+        // discussion existe d'office pour chacun, sauf s'il est éteint.
+        if (\App\Security\NoelAcces::estAllume()) {
+            \App\Services\Noel\NoelMessagerie::conversationAvec(
+                (int) Auth::id(),
+                new MessagerieRepository(Database::getConnection())
+            );
+        }
+
         $this->repondre(static fn(): array => ['conversations' => $service->conversations()]);
     }
 

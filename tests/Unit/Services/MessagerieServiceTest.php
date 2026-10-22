@@ -542,6 +542,43 @@ final class MessagerieServiceTest extends TestCase
 
     // ------------------------------------------------------------------
 
+    // ------------------------------------------------------------------
+    // Accroche après envoi (NOEL)
+    // ------------------------------------------------------------------
+
+    public function test_l_accroche_recoit_le_message_qui_vient_d_etre_enregistre(): void
+    {
+        $directe = $this->en(1)->ouvrirDirecte(2);
+        $recus = [];
+        $service = new MessagerieService(
+            $this->depot, 1, false, fn(): DateTimeImmutable => $this->heure, null,
+            function (int $conversationId, int $auteurId, string $texte, $depot) use (&$recus): void {
+                // Le message est déjà en base quand l'accroche est appelée.
+                $recus[] = [$conversationId, $auteurId, $texte, count($depot->messages)];
+            }
+        );
+
+        $service->envoyer($directe, '  Bonjour NOEL  ');
+
+        self::assertSame([[$directe, 1, 'Bonjour NOEL', 1]], $recus);
+    }
+
+    public function test_une_accroche_en_panne_ne_casse_pas_l_envoi(): void
+    {
+        $directe = $this->en(1)->ouvrirDirecte(2);
+        $service = new MessagerieService(
+            $this->depot, 1, false, fn(): DateTimeImmutable => $this->heure, null,
+            static function (): void {
+                throw new \RuntimeException('assistant indisponible');
+            }
+        );
+
+        $message = $service->envoyer($directe, 'Toujours parti');
+
+        self::assertSame('Toujours parti', $message['texte']);
+        self::assertCount(1, $this->depot->messages);
+    }
+
     private function en(int $userId, bool $direction = false): MessagerieService
     {
         return new MessagerieService($this->depot, $userId, $direction, fn(): DateTimeImmutable => $this->heure);
