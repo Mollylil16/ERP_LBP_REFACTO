@@ -100,7 +100,47 @@ final class NoelVeilleTest extends TestCase
         $source = $this->source();
 
         self::assertSame(16, NoelVeille::HEURE_RAPPEL_POINT);
-        self::assertStringContainsString('$heure < self::HEURE_RAPPEL_POINT', $source);
+        self::assertStringContainsString('$heure < $habitude', $source);
+    }
+
+    public function test_chaque_agence_est_rappelee_a_son_heure(): void
+    {
+        /*
+         * Relevé en production le 22/10/2026 sur soixante jours : Dokui soumet
+         * vers 13 h, Adjamé vers 16 h. Un rappel commun aurait dérangé l'une
+         * et serait arrivé trop tard pour l'autre.
+         */
+        $source = $this->source();
+
+        self::assertStringContainsString('AVG(HOUR(date_soumission))', $source);
+        self::assertStringContainsString('habitudeDeSoumission', $source);
+        self::assertStringContainsString('max(self::HEURE_RAPPEL_POINT', $source);
+    }
+
+    public function test_une_agence_sans_habitude_n_est_jamais_rappelee(): void
+    {
+        /*
+         * Paris n'a soumis qu'une fois en soixante jours, le Sénégal jamais.
+         * Leur crier dessus chaque soir ferait de NOEL un bruit de fond, et le
+         * jour où il aurait raison ailleurs, personne ne l'écouterait plus.
+         */
+        $source = $this->source();
+
+        self::assertSame(5, NoelVeille::POINTS_POUR_UNE_HABITUDE);
+        self::assertStringContainsString('if ($habitude === null)', $source);
+        self::assertStringContainsString("< self::POINTS_POUR_UNE_HABITUDE", $source);
+    }
+
+    public function test_un_rattrapage_de_nuit_ne_compte_pas_comme_une_habitude(): void
+    {
+        /*
+         * Trois agences portent un point daté du 02/09/2026 à 03:42:19, à la
+         * seconde près : c'est un rattrapage passé en base, pas quelqu'un qui
+         * a compté sa caisse avant l'aube. Les compter fausserait l'heure.
+         */
+        $source = $this->source();
+
+        self::assertStringContainsString('HOUR(date_soumission) >= :plancher', $source);
     }
 
     public function test_dans_le_doute_le_gardien_se_tait(): void

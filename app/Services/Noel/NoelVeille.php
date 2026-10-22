@@ -32,8 +32,35 @@ use Throwable;
  */
 final class NoelVeille
 {
-    /** L'heure a partir de laquelle un point non soumis devient un oubli. */
+    /**
+     * L'heure de repli, quand une agence n'a pas encore d'habitude lisible.
+     *
+     * Ce n'est qu'un repli : chaque agence est rappelee a SON heure, mesuree
+     * sur ses propres soumissions. Releve le 22/10/2026 sur soixante jours,
+     * Dokui soumet vers 13 h et Adjame vers 16 h — un rappel commun aurait
+     * dérangé l'une et serait arrive trop tard pour l'autre.
+     */
     public const HEURE_RAPPEL_POINT = 16;
+
+    /**
+     * En deca de ce nombre de points sur trente jours, l'agence n'a pas
+     * d'habitude : NOEL se tait.
+     *
+     * Releve le 22/10/2026 : sur soixante jours, Dokui a soumis 55 points,
+     * Adjame 36, l'Aeroport 33 — mais Paris une seule fois, et le Senegal
+     * jamais. Alerter ces deux-la chaque soir ferait crier NOEL dans le vide
+     * tous les jours, et on apprendrait a l'ignorer partout ailleurs.
+     */
+    public const POINTS_POUR_UNE_HABITUDE = 5;
+
+    /**
+     * Avant six heures du matin, ce n'est pas une soumission.
+     *
+     * Trois agences portent un point date du 02/09/2026 a 03:42:19, a la
+     * seconde pres : c'est un rattrapage passe en base, pas quelqu'un qui a
+     * compte sa caisse avant l'aube. Les compter fausserait l'heure habituelle.
+     */
+    private const HEURE_PLANCHER_REELLE = 6;
 
     /** Au-dela, une demande n'attend plus : elle dort. */
     public const JOURS_AVANT_SOUFFRANCE = 2;
@@ -105,15 +132,27 @@ final class NoelVeille
         }
 
         /*
-         * Avant seize heures on ne dit rien : la journee n'est pas finie, et
-         * un rappel toutes les heures depuis le matin ferait de NOEL une
-         * nuisance qu'on apprend a ignorer — y compris le soir ou il a raison.
+         * Une agence qui ne soumet jamais ne se fait pas rappeler. Paris n'a
+         * soumis qu'une fois en soixante jours et le Senegal jamais : leur
+         * crier dessus chaque soir ferait de NOEL un bruit de fond, et le jour
+         * ou il aurait raison ailleurs, personne ne l'ecouterait plus.
          */
-        if ($heure < self::HEURE_RAPPEL_POINT) {
+        $habitude = $this->habitudeDeSoumission($agence);
+
+        if ($habitude === null) {
             return [];
         }
 
-        $urgent = $heure >= 18;
+        /*
+         * On rappelle a l'heure de CETTE agence, pas a une heure choisie
+         * depuis un bureau. Avant, rien : la journee n'est pas finie, et un
+         * rappel depuis le matin ferait de NOEL une nuisance.
+         */
+        if ($heure < $habitude) {
+            return [];
+        }
+
+        $urgent = $heure >= $habitude + 2;
 
         return [[
             'cle' => 'point-caisse-' . $agence . '-' . $jour,
@@ -228,6 +267,43 @@ final class NoelVeille
             'url' => 'finance/appro-caisse',
             'ton' => self::TON_ATTENTION,
         ]];
+    }
+
+    /**
+     * A quelle heure cette agence soumet-elle d'habitude ?
+     *
+     * Renvoie null quand elle n'a pas d'habitude du tout — c'est le signal
+     * qu'il ne faut pas la rappeler. Sinon, l'heure moyenne de ses propres
+     * soumissions, bornee a l'heure de repli au plus tot : une agence qui
+     * soumet a midi n'a pas besoin qu'on la presse des midi, la journee n'est
+     * pas finie pour autant.
+     */
+    private function habitudeDeSoumission(int $agence): ?int
+    {
+        try {
+            $stmt = $this->pdo->prepare("
+                SELECT COUNT(*) AS points,
+                       AVG(HOUR(date_soumission)) AS heure
+                  FROM lbp_etats_journaliers
+                 WHERE agence_id = :agence
+                   AND statut IN ('soumis', 'consolide')
+                   AND date_soumission IS NOT NULL
+                   AND HOUR(date_soumission) >= :plancher
+                   AND date_jour >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+            ");
+            $stmt->execute(['agence' => $agence, 'plancher' => self::HEURE_PLANCHER_REELLE]);
+            $ligne = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+        } catch (Throwable $e) {
+            error_log('[NOEL] habitude illisible : ' . $e->getMessage());
+
+            return null;
+        }
+
+        if ((int) ($ligne['points'] ?? 0) < self::POINTS_POUR_UNE_HABITUDE) {
+            return null;
+        }
+
+        return max(self::HEURE_RAPPEL_POINT, (int) round((float) $ligne['heure']));
     }
 
     /**
