@@ -34,6 +34,11 @@ spl_autoload_register(function (string $class): void {
     }
 });
 
+// 2 heures sans activité réelle, 12 heures au plus : voir DureeSession.
+if (PHP_SAPI !== 'cli') {
+    \App\Security\DureeSession::controler((string) parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH));
+}
+
 try {
     $pdo = Database::getConnection();
 

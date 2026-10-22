@@ -42,6 +42,7 @@ class AuthController extends BaseController
             $this->back();
         }
 
+        \App\Security\DureeSession::ouvrir();
         Session::set('auth_user_id', $result['user']->id);
 
         /*

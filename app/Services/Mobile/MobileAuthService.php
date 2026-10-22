@@ -246,6 +246,7 @@ final class MobileAuthService
         }
 
         Session::set('auth_user_id', $userId);
+        \App\Security\DureeSession::ouvrir(false);
         Session::set(self::CLE_SESSION_APPAREIL, $deviceId);
         Session::set(self::CLE_SESSION_ACTIVITE, time());
     }

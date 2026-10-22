@@ -18,6 +18,9 @@ if (session_status() === PHP_SESSION_NONE) {
     ini_set('session.cookie_httponly', '1');
     ini_set('session.cookie_samesite', 'Lax');
     ini_set('session.use_strict_mode', '1');
+    // Les fichiers de session doivent survivre aux 12 heures permises par
+    // DureeSession ; c'est elle, et non le ménage de PHP, qui ferme la porte.
+    ini_set('session.gc_maxlifetime', '43200');
     if ($https) {
         ini_set('session.cookie_secure', '1');
     }
