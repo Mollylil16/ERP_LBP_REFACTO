@@ -295,7 +295,7 @@ final class Messagerie
             . self::boutonIcone('retour', 'Retour aux discussions', ['data-msg-action' => 'retour', 'class' => 'msg-retour'])
             . '<button type="button" class="msg-fil-identite" data-msg-action="infos" aria-label="Voir les informations de la discussion">'
             . '<span class="msg-avatar" data-msg="tete-avatar" aria-hidden="true"></span>'
-            . '<span class="msg-fil-noms"><strong data-msg="tete-nom"></strong><small data-msg="tete-sous-titre"></small></span>'
+            . '<span class="msg-fil-noms"><span class="msg-fil-nom-ligne"><strong data-msg="tete-nom"></strong><span class="msg-etiquettes" data-msg="tete-etiquettes"></span></span><small data-msg="tete-sous-titre"></small></span>'
             . '</button>'
             . '<span class="msg-lecture-seule" data-msg="tete-direction" hidden title="Vous consultez cette discussion au titre de la Direction, sans en être membre. L’ouverture est inscrite au journal.">'
             . self::icone('oeil') . '<span>Lecture seule</span></span>'

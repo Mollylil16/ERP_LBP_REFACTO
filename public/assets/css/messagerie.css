@@ -861,6 +861,43 @@ body:has(.msg-page) .module-content {
   font-size: 0.8rem;
 }
 
+/* Nom et pastilles « Annonces » / « Automatique » (lot 5) sur une ligne. */
+.msg-fil-nom-ligne {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.msg-etiquettes {
+  display: inline-flex;
+  flex: 0 0 auto;
+  gap: 4px;
+}
+
+.msg-etiquettes:empty {
+  display: none;
+}
+
+.msg-etiquette {
+  flex: 0 0 auto;
+  padding: 1px 7px;
+  border: 1px solid var(--msg-ligne);
+  border-radius: 999px;
+  color: var(--msg-texte-2);
+  background: var(--msg-fond-2);
+  font-size: 0.66rem;
+  font-weight: 700;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+.msg-etiquette--annonces {
+  border-color: transparent;
+  color: var(--msg-accent-fort);
+  background: var(--msg-accent-doux);
+}
+
 .msg-fil-actions {
   display: flex;
   flex: 0 0 auto;
@@ -1423,6 +1460,21 @@ body:has(.msg-page) .module-content {
   margin-top: 8px !important;
   color: var(--msg-texte) !important;
   white-space: pre-wrap;
+}
+
+.msg-infos-automatique {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 10px !important;
+  font-size: 0.82rem;
+  text-align: left;
+}
+
+.msg-infos-automatique svg {
+  flex: 0 0 auto;
+  margin-top: 2px;
 }
 
 .msg-infos-identite .msg-lecture-seule {

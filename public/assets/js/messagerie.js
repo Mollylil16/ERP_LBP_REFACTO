@@ -1353,7 +1353,7 @@
             el("span", { class: "msg-conv-nom" }, [
               c.type === "annonces" ? icone("annonces", "msg-i--petit") : null,
               el("span", { text: c.nom })
-            ]),
+            ].concat(etiquettes(c))),
             date ? el("time", { class: "msg-conv-heure", datetime: date.toISOString(), text: libelleListe(date) }) : null
           ]),
           el("span", { class: "msg-conv-ligne" }, [
@@ -1367,6 +1367,21 @@
       ]);
       bouton.addEventListener("click", function () { ouvrir(c.id); });
       return el("li", null, bouton);
+    }
+
+    /*
+     * Pastilles « Annonces » et « Automatique » (lot 5) : un groupe tenu à
+     * jour à partir des comptes et des agences ne se gère pas à la main.
+     */
+    function etiquettes(c) {
+      var liste = [];
+      if (c.type === "annonces") {
+        liste.push(el("span", { class: "msg-etiquette msg-etiquette--annonces", text: "Annonces" }));
+      }
+      if (c.automatique) {
+        liste.push(el("span", { class: "msg-etiquette", title: "Membres tenus à jour automatiquement", text: "Automatique" }));
+      }
+      return liste;
     }
 
     function avatarConversation(c) {
@@ -1631,6 +1646,8 @@
         return;
       }
       refs["tete-nom"].textContent = nomAffiche(source, detail);
+      vider(refs["tete-etiquettes"]);
+      etiquettes(source).forEach(function (e) { refs["tete-etiquettes"].appendChild(e); });
       vider(refs["tete-avatar"]);
       var a = detail && detail.acces_direction && source.type === "direct"
         ? el("span", { class: "msg-avatar msg-avatar--groupe " + teinte(source.id) }, icone("discussion"))
@@ -2787,7 +2804,7 @@
       if (membre && !actuel.supprime) {
         elements.push({ icone: "transferer", libelle: "Transférer", action: function () { ouvrirTransfert(actuel); } });
       }
-      if (d.peut_ecrire && !actuel.supprime) {
+      if (d.peut_epingler && !actuel.supprime) {
         var epingle = (d.epingles || []).some(function (e) { return e.id === actuel.id; });
         elements.push({ icone: "epingle", libelle: epingle ? "Retirer l’épingle" : "Épingler", action: function () { basculerEpingle(actuel, !epingle); } });
       }
@@ -2895,7 +2912,7 @@
         }
       });
       zone.appendChild(bouton);
-      if (etat.detail.peut_ecrire) {
+      if (etat.detail.peut_epingler) {
         var retirer = el("button", { type: "button", class: "msg-icone-btn", title: "Retirer cette épingle", "aria-label": "Retirer cette épingle" }, icone("fermer"));
         retirer.addEventListener("click", function () { basculerEpingle(m, false); });
         zone.appendChild(retirer);
@@ -3016,6 +3033,7 @@
         el("p", { class: "msg-infos-type", text: typeLibelle }),
         d.type === "direct" ? el("p", { class: "msg-infos-presence", text: sousTitre(d, d) }) : null,
         d.description ? el("p", { class: "msg-infos-description", text: d.description }) : null,
+        d.automatique ? el("p", { class: "msg-infos-automatique" }, [icone("groupe", "msg-i--petit"), el("span", { text: "Les membres de ce groupe sont tenus à jour automatiquement à partir des comptes et des agences." })]) : null,
         d.acces_direction ? el("p", { class: "msg-lecture-seule" }, [icone("oeil"), el("span", { text: "Lecture seule — accès Direction" })]) : null
       ]));
 
@@ -3034,7 +3052,7 @@
             toast(messageErreur(erreur), "erreur");
           });
         }));
-        if (d.peut_administrer) {
+        if (d.peut_changer_type) {
           reglages.appendChild(interrupteur("Discussion d’annonces", "Seuls les administrateurs y écrivent.", d.type === "annonces", function (valeur, entree) {
             appel("POST", "/conversations/" + d.id + "/annonces", { actif: valeur }).then(function () {
               Magasin.rafraichir();
@@ -3048,8 +3066,10 @@
         corps.appendChild(reglages);
 
         var actions = el("section", { class: "msg-infos-section msg-infos-actions" });
-        if (d.peut_administrer) {
+        if (d.peut_renommer) {
           actions.appendChild(boutonAction("modifier", "Modifier le nom et la description", ouvrirRenommer));
+        }
+        if (d.peut_gerer_membres) {
           actions.appendChild(boutonAction("ajout-membre", "Ajouter des membres", ouvrirAjoutMembres));
         }
         actions.appendChild(boutonAction("archive", d.archivee ? "Désarchiver la discussion" : "Archiver la discussion", function () {
@@ -3065,8 +3085,9 @@
             rendreInfos();
           }).catch(function (erreur) { toast(messageErreur(erreur), "erreur"); });
         }));
-        // Une discussion à deux ne se quitte pas : elle s'archive.
-        if (groupe) {
+        // Une discussion à deux ne se quitte pas : elle s'archive. Un groupe
+        // automatique non plus : la synchronisation en décide.
+        if (d.peut_quitter) {
           actions.appendChild(boutonAction("quitter", "Quitter le groupe", function () {
             var seulAdmin = d.mon_role === "admin" && (d.membres || []).filter(function (m) { return m.role === "admin"; }).length <= 1 && (d.membres || []).length > 1;
             var texte = "Quitter « " + d.nom + " » ? Vous ne recevrez plus ses messages."
@@ -3190,7 +3211,7 @@
         if (m.actif && !d.acces_direction) {
           elements.push({ icone: "discussion", libelle: "Envoyer un message", action: function () { ouvrirDirecte(m.id); } });
         }
-        if (d.peut_administrer) {
+        if (d.peut_gerer_membres) {
           elements.push(m.role === "admin"
             ? { icone: "bouclier", libelle: "Retirer le rôle d’admin", action: function () { changerRole(d, m, "membre"); } }
             : { icone: "bouclier", libelle: "Nommer administrateur", action: function () { changerRole(d, m, "admin"); } });
