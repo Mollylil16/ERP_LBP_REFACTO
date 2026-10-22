@@ -174,6 +174,8 @@ final class NoelVocabulaire
             'mots' => [
                 'dossier du personnel', 'dossier employe', 'fiche employe',
                 'nouvel employe', 'integrer quelqu un', 'embauche', 'embaucher',
+                'integrer un collaborateur', 'integrer un agent', 'collaborateur',
+                'nouveau collaborateur', 'nouvelle recrue', 'onboarding',
                 'recrutement', 'recruter', 'matricule', 'contrat de travail',
                 'mutation', 'muter', 'depart', 'demission', 'licenciement',
                 'sortie du personnel', 'reintegration', 'reintegrer', 'cni', 'piece d identite',
@@ -298,6 +300,73 @@ final class NoelVocabulaire
     ];
 
     /**
+     * Les noms que le personnel donne aux modules.
+     *
+     * « Parle-moi du module finance » restait sans reponse : le dictionnaire
+     * traduisait des gestes — encaisser, pointer, decaisser — mais pas les
+     * grands ensembles ou ces gestes se rangent. Quelqu'un qui decouvre le
+     * logiciel commence pourtant par la : « c'est quoi la logistique ? ».
+     *
+     * Les cles sont les slugs du catalogue de ModuleDashboardService, pour que
+     * NoelCarte retrouve le module sans table de correspondance.
+     *
+     * @var array<string, array<int, string>>
+     */
+    public const MODULES = [
+        'finance' => ['finance', 'financier', 'module finance', 'la finance', 'tresorerie', 'comptable'],
+        'colisage' => ['colisage', 'facturation', 'guichet', 'module colisage', 'saisie des colis'],
+        'logistique' => ['logistique', 'module logistique', 'exploitation'],
+        'rh' => ['rh', 'ressources humaines', 'module rh', 'personnel', 'le social'],
+        'crm' => ['crm', 'relation client', 'module crm', 'clientele'],
+        'entrepots' => ['entrepot', 'entrepots', 'magasin', 'module entrepot', 'stock'],
+        'transit-douane' => ['transit', 'douane', 'transit douane', 'module transit'],
+        'tracking-colis' => ['tracking', 'suivi des colis', 'module tracking'],
+        'flotte-transport' => ['flotte', 'transport', 'module flotte', 'vehicules'],
+        'portefeuille-clients' => ['portefeuille', 'portefeuilles', 'module portefeuille'],
+        'agents-correspondants' => ['correspondants', 'agents correspondants', 'partenaires'],
+        'pilotage-dg' => ['pilotage', 'direction', 'module pilotage', 'centre de pilotage'],
+        'call-center' => ['call center', 'centre d appel', 'standard'],
+        'employee' => ['espace employe', 'mon espace', 'espace personnel'],
+        'admin' => ['administration', 'module admin', 'parametrage general'],
+        'tickets' => ['tickets', 'module tickets', 'incidents'],
+    ];
+
+    /**
+     * Les facons de demander une presentation.
+     *
+     * A distinguer d'une recherche d'ecran : « ou je facture » attend une
+     * adresse, « c'est quoi la facturation » attend une explication. Repondre
+     * un lien a la seconde question serait aussi inutile que repondre un cours
+     * a la premiere.
+     *
+     * @var array<int, string>
+     */
+    public const PRESENTATION = [
+        'parle moi', 'parle moi de', 'parles moi', 'presente moi', 'presentation',
+        'c est quoi', 'qu est ce que', 'qu est ce qu', 'a quoi sert', 'a quoi ca sert',
+        'explique moi', 'explique', 'expliquer', 'montre moi', 'montres moi',
+        'comment fonctionne', 'comment ca fonctionne', 'comment ca marche',
+        'je connais pas', 'je ne connais pas', 'je decouvre', 'initie moi',
+        'apprends moi', 'fais moi decouvrir', 'en quoi consiste', 'definis',
+        'dis moi tout sur', 'resume moi', 'a quoi ca ressemble',
+    ];
+
+    /**
+     * Les facons de demander une marche a suivre.
+     *
+     * « Comment je fais pour integrer un collaborateur » n'attend ni une
+     * adresse ni une definition, mais les gestes dans l'ordre.
+     *
+     * @var array<int, string>
+     */
+    public const PROCEDURE = [
+        'comment je fais', 'comment faire', 'comment on fait', 'comment je dois',
+        'quelles sont les etapes', 'les etapes', 'la marche a suivre', 'la procedure',
+        'par ou je commence', 'je commence par quoi', 'dans quel ordre',
+        'apprends moi a', 'montre moi comment', 'guide moi',
+    ];
+
+    /**
      * Les facons de dire « ca ne marche pas ».
      *
      * Le francais d'ici et le nouchi d'Abidjan y sont, parce que c'est ce
@@ -403,6 +472,8 @@ final class NoelVocabulaire
     public const INTENTION_SIGNALEMENT = 'signalement';
     public const INTENTION_SALUTATION = 'salutation';
     public const INTENTION_REMERCIEMENT = 'remerciement';
+    public const INTENTION_PRESENTATION = 'presentation';
+    public const INTENTION_PROCEDURE = 'procedure';
     public const INTENTION_INCONNUE = 'inconnue';
 
     /**
@@ -417,14 +488,41 @@ final class NoelVocabulaire
         $texte = (string) preg_replace('/\s+/', ' ', $texte);
 
         $concept = self::meilleurConcept($texte);
+        $module = self::moduleNomme($texte);
 
         return [
             'concept' => $concept['cle'],
             'libelle' => $concept['cle'] !== null ? self::CONCEPTS[$concept['cle']]['libelle'] : null,
             'ecrans' => $concept['cle'] !== null ? self::CONCEPTS[$concept['cle']]['ecrans'] : [],
-            'intention' => self::intention($texte, $concept['cle'] !== null),
+            'module' => $module,
+            'intention' => self::intention($texte, $concept['cle'] !== null, $module !== null),
             'score' => $concept['score'],
         ];
+    }
+
+    /**
+     * Le module nomme dans la phrase, s'il y en a un.
+     *
+     * L'expression la plus longue gagne : « transit douane » doit l'emporter
+     * sur « transit » seul, sans quoi on presenterait le mauvais module.
+     */
+    private static function moduleNomme(string $texte): ?string
+    {
+        $trouve = null;
+        $longueur = 0;
+
+        foreach (self::MODULES as $slug => $noms) {
+            foreach ($noms as $nom) {
+                $nom = NoelCarte::sansAccent($nom);
+
+                if (mb_strlen($nom) > $longueur && str_contains($texte, ' ' . $nom . ' ')) {
+                    $trouve = $slug;
+                    $longueur = mb_strlen($nom);
+                }
+            }
+        }
+
+        return $trouve;
     }
 
     /**
@@ -471,8 +569,27 @@ final class NoelVocabulaire
         return $meilleur;
     }
 
-    private static function intention(string $texte, bool $conceptTrouve): string
+    private static function intention(string $texte, bool $conceptTrouve, bool $moduleNomme = false): string
     {
+        /*
+         * Une demande de marche a suivre passe avant tout le reste : « comment
+         * je fais pour integrer un collaborateur » contient « comment », mais
+         * n'attend ni une definition ni une adresse — elle attend des gestes
+         * dans l'ordre.
+         */
+        if (self::contient($texte, self::PROCEDURE)) {
+            return self::INTENTION_PROCEDURE;
+        }
+
+        /*
+         * « C'est quoi la finance » attend une explication, « ou je facture »
+         * attend une adresse. Repondre un lien a la premiere serait aussi
+         * inutile que repondre un cours a la seconde.
+         */
+        if ($moduleNomme && self::contient($texte, self::PRESENTATION)) {
+            return self::INTENTION_PRESENTATION;
+        }
+
         // L'ordre compte. Une phrase peut contenir « merci » et une panne ; ce
         // qui attend une action passe devant ce qui n'en attend pas.
         if (self::contient($texte, self::SIGNALEMENT)) {
@@ -511,7 +628,12 @@ final class NoelVocabulaire
 
         // Un concept reconnu sans verbe : « le point de caisse ». La personne
         // veut y aller — c'est la lecture la plus utile, et la moins risquee.
-        return $conceptTrouve ? self::INTENTION_OU : self::INTENTION_INCONNUE;
+        if ($conceptTrouve) {
+            return self::INTENTION_OU;
+        }
+
+        // Un module nomme et rien d'autre : « la logistique ». On presente.
+        return $moduleNomme ? self::INTENTION_PRESENTATION : self::INTENTION_INCONNUE;
     }
 
     /** @param array<int, string> $expressions */

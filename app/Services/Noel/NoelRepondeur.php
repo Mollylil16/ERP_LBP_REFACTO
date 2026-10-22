@@ -60,6 +60,8 @@ final class NoelRepondeur
             NoelVocabulaire::INTENTION_REMERCIEMENT => $this->deRien(),
             NoelVocabulaire::INTENTION_SIGNALEMENT => $this->signalement($message, $lu),
             NoelVocabulaire::INTENTION_PANNE => $this->panne($message, $lu),
+            NoelVocabulaire::INTENTION_PRESENTATION => $this->presenter($lu),
+            NoelVocabulaire::INTENTION_PROCEDURE => $this->marcheASuivre($message, $lu),
             NoelVocabulaire::INTENTION_INCONNUE => $this->jeNeSaisPas($message, $lu),
             default => $this->orienter($lu),
         };
@@ -219,6 +221,198 @@ final class NoelRepondeur
         $texte = count($liens) === 1
             ? "C'est ici."
             : "Cela se trouve a l'un de ces endroits.";
+
+        return self::reponse($texte, $liens);
+    }
+
+    /**
+     * Presenter un module : a quoi il sert, et ce qu'on y trouve.
+     *
+     * « Parle-moi du module finance » n'attend pas un lien mais une
+     * explication. NOEL a deja toute la matiere — le catalogue porte la
+     * description de chaque module et la liste de ses ecrans, groupe par
+     * groupe. Il ne lui manquait que de s'en servir pour raconter.
+     *
+     * Et il ne raconte que ce que la personne peut ouvrir : presenter en
+     * detail un module auquel elle n'a pas acces serait lui decrire une piece
+     * fermee a clef.
+     *
+     * @param array<string, mixed> $lu
+     *
+     * @return array{texte: string, liens: array<int, array<string, string>>, attente: ?string}
+     */
+    private function presenter(array $lu): array
+    {
+        $slug = (string) ($lu['module'] ?? '');
+        $modules = $this->carte->modulesVisibles();
+
+        if ($slug === '' || !isset($modules[$slug])) {
+            /*
+             * Le module existe peut-etre, mais pas pour cette personne. On ne
+             * le nomme pas : apprendre a quelqu'un qu'il y a une porte est
+             * exactement ce qu'on evite partout ailleurs.
+             */
+            return self::reponse(
+                "Je ne vois pas de module de ce nom parmi ceux que vous pouvez ouvrir. "
+                    . "Dites-moi plutot ce que vous cherchez a faire, je vous montrerai ou c'est.",
+                [],
+                'transmission'
+            );
+        }
+
+        $module = $modules[$slug];
+        $ecrans = $module['ecrans'];
+
+        $texte = $module['label'] . ".";
+
+        if (trim((string) $module['description']) !== '') {
+            $texte .= ' ' . rtrim((string) $module['description'], '.') . '.';
+        }
+
+        $texte .= "
+
+Vous y avez acces a " . count($ecrans) . ' ecran'
+            . (count($ecrans) > 1 ? 's' : '') . self::parGroupes($ecrans) . '.';
+
+        $texte .= "
+
+Dites-moi ce que vous voulez y faire — par exemple « comment je fais pour "
+            . self::exempleDeGeste($slug) . " » — et je vous donne les etapes.";
+
+        return self::reponse($texte, self::premiersEcrans($ecrans));
+    }
+
+    /**
+     * « rangés en 6 groupes : Pilotage, Gestion des fonds, … »
+     *
+     * @param array<int, array<string, string>> $ecrans
+     */
+    private static function parGroupes(array $ecrans): string
+    {
+        $groupes = [];
+
+        foreach ($ecrans as $ecran) {
+            $groupe = trim((string) ($ecran['groupe'] ?? ''));
+
+            if ($groupe !== '') {
+                $groupes[$groupe] = $groupe;
+            }
+        }
+
+        if ($groupes === []) {
+            return '';
+        }
+
+        return ', ranges en ' . count($groupes) . ' groupe' . (count($groupes) > 1 ? 's' : '')
+            . ' : ' . implode(', ', array_values($groupes));
+    }
+
+    /**
+     * Les premiers ecrans, pour entrer quelque part plutot que de lire une liste.
+     *
+     * @param array<int, array<string, string>> $ecrans
+     *
+     * @return array<int, array{label: string, url: string}>
+     */
+    private static function premiersEcrans(array $ecrans): array
+    {
+        $liens = [];
+
+        foreach (array_slice($ecrans, 0, 4) as $ecran) {
+            $liens[] = [
+                'label' => (string) $ecran['label'],
+                'url' => View::url((string) $ecran['url']),
+            ];
+        }
+
+        return $liens;
+    }
+
+    /**
+     * Un exemple de geste propre au module, pour amorcer la question suivante.
+     *
+     * Terminer une presentation par « dites-moi ce que vous voulez faire »
+     * laisse la personne devant une page blanche. Un exemple concret lui donne
+     * le ton et le vocabulaire.
+     */
+    private static function exempleDeGeste(string $slug): string
+    {
+        return match ($slug) {
+            'finance' => 'soumettre mon point de caisse',
+            'colisage' => 'enregistrer un colis',
+            'logistique' => 'preparer un depart',
+            'rh' => 'integrer un collaborateur',
+            'crm' => 'creer une fiche client',
+            'entrepots' => 'retirer un colis du magasin',
+            'transit-douane' => 'suivre un dossier de dedouanement',
+            'flotte-transport' => 'suivre un vehicule',
+            'employee' => 'consulter mon bulletin',
+            default => 'faire une recherche',
+        };
+    }
+
+    /**
+     * La marche a suivre : les gestes dans l'ordre.
+     *
+     * @param array<string, mixed> $lu
+     *
+     * @return array{texte: string, liens: array<int, array<string, string>>, attente: ?string}
+     */
+    private function marcheASuivre(string $message, array $lu): array
+    {
+        $etapes = NoelProcedure::pour($lu['concept'] ?? null, $lu['module'] ?? null);
+
+        if ($etapes === null) {
+            // Mieux vaut orienter que d'inventer une procedure : quelqu'un la
+            // suivrait, et elle serait fausse.
+            $liens = $this->liens($lu);
+
+            if ($liens !== []) {
+                return self::reponse(
+                    "Je n'ai pas de marche a suivre ecrite pour cela, mais l'ecran est ici. "
+                        . "Si vous voulez que je l'apprenne, dites-le-moi.",
+                    $liens,
+                    'transmission'
+                );
+            }
+
+            return $this->jeNeSaisPas($message, $lu);
+        }
+
+        /*
+         * Une marche a suivre se refuse comme un ecran se refuse.
+         *
+         * Raconter comment integrer un collaborateur a quelqu'un qui n'a pas
+         * acces aux Ressources humaines reviendrait a lui decrire une piece
+         * fermee a clef — et a lui apprendre que cette piece existe, ce que le
+         * module RH interdit precisement. Les etapes suivent les droits des
+         * ecrans qu'elles decrivent.
+         */
+        $liens = $this->liens(['ecrans' => $etapes['ecrans']]);
+
+        if ($liens === []) {
+            return self::reponse(
+                "Cette operation se fait dans une partie du logiciel que vous ne pouvez pas ouvrir. "
+                    . "Dites-moi ce que vous cherchez a faire et je vous orienterai autrement, "
+                    . "ou je transmets votre demande a l'administrateur.",
+                [],
+                'transmission'
+            );
+        }
+
+        $texte = $etapes['titre'] . "
+";
+
+        foreach ($etapes['etapes'] as $rang => $etape) {
+            $texte .= "
+" . ($rang + 1) . '. ' . $etape;
+        }
+
+        if ($etapes['attention'] !== null) {
+            $texte .= "
+
+A retenir : " . $etapes['attention'];
+        }
 
         return self::reponse($texte, $liens);
     }

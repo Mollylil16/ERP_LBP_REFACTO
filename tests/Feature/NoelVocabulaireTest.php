@@ -34,7 +34,11 @@ final class NoelVocabulaireTest extends TestCase
             'nouchi : ya dra' => ['ya dra avec ma caisse', 'point_caisse', 'panne'],
             'nouchi : ça gâte' => ['c est gate je peux pas pointer', 'pointage', 'panne'],
             'faute de frappe' => ['la fature du client ne sort pas', 'facture', 'panne'],
-            'faute sur colis' => ['comment je fais pour enregistrer un coli', 'colis', 'comment'],
+            // « comment je fais pour » n'attend ni une definition ni une
+            // adresse : elle attend des gestes dans l'ordre. L'intention
+            // « procedure » est plus precise que « comment », qui sert aux
+            // questions d'explication.
+            'faute sur colis' => ['comment je fais pour enregistrer un coli', 'colis', 'procedure'],
             'demande de fonds' => ['je n arrive pas a valider une demande de fonds', 'demande_fonds', 'panne'],
             'proposition' => ['il faudrait ameliorer l ecran des colis', 'colis', 'signalement'],
             'demande de droit' => ['donne moi le droit de facturer', 'facture', 'signalement'],
