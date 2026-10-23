@@ -66,11 +66,6 @@ $sortir = static function (bool $ok, string $message, array $donnees = []) use (
     exit($ok ? 0 : 1);
 };
 
-$jour = (string) ($options['date'] ?? date('Y-m-d'));
-if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $jour) !== 1 || strtotime($jour) === false) {
-    $sortir(false, 'Date invalide : ' . $jour . ' (attendu AAAA-MM-JJ).');
-}
-
 $url = rtrim((string) ($options['url'] ?? getenv('LBP_URL') ?: ($_ENV['APP_URL'] ?? getenv('APP_URL') ?: '')), '/');
 if (!$essai && preg_match('#^https?://[^/\s]+#', $url) !== 1) {
     $sortir(false, "Adresse de l'ERP manquante : relancez avec --url=https://votre-domaine (ou LBP_URL).");
@@ -83,6 +78,19 @@ try {
     $repo = new PointageColisRepository($pdo);
     $pointage = new PointageColisService($pdo, $repo);
     $depot = new MessagerieRepository($pdo);
+
+    // Le jour et la fenêtre se lisent à l'horloge de la base, celle qui a
+    // daté les pointages. Elle doit être à l'heure d'Abidjan (UTC+0) : sinon
+    // toutes les heures affichées à Paris seraient fausses d'autant.
+    $maintenantBase = $pointage->maintenant();
+    $jour = (string) ($options['date'] ?? $maintenantBase->format('Y-m-d'));
+    if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $jour) !== 1 || strtotime($jour) === false) {
+        $sortir(false, 'Date invalide : ' . $jour . ' (attendu AAAA-MM-JJ).');
+    }
+    $ecartUtc = (int) $pdo->query('SELECT TIMESTAMPDIFF(MINUTE, UTC_TIMESTAMP(), NOW())')->fetchColumn();
+    if ($ecartUtc !== 0 && !$enJson) {
+        fwrite(STDERR, '[LBP-RESUME-RECEPTION] ATTENTION : la base n’est pas à l’heure d’Abidjan (écart de ' . $ecartUtc . ' min avec UTC).' . PHP_EOL);
+    }
 
     $publier = static function (): ?array {
         throw new LogicException('Un essai ne publie rien.');

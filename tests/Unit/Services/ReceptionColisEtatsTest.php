@@ -263,5 +263,7 @@ final class ReceptionColisEtatsTest extends TestCase
         self::assertSame(str_repeat('a', 500), Regles::commentaire(str_repeat('a', 600)));
         self::assertSame('deux mots', Regles::commentaire("  deux\n\tmots "));
         self::assertNull(Regles::commentaire(''));
+        // Trouvé en vrai le 23/10/2026 : un « é » en Windows-1252 effaçait tout le commentaire.
+        self::assertSame('Carton écrasé', Regles::commentaire("Carton \xE9cras\xE9"));
     }
 }

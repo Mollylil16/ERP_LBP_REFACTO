@@ -84,7 +84,15 @@ final class ReceptionColisRegles
     /** Le commentaire tel qu'il sera enregistré : nettoyé, borné, null s'il est vide. */
     public static function commentaire(mixed $texte): ?string
     {
-        $texte = trim((string) preg_replace('/\s+/u', ' ', (string) preg_replace('/[\x00-\x1F\x7F]/u', ' ', (string) ($texte ?? ''))));
+        $texte = (string) ($texte ?? '');
+        // Un texte qui n'est pas de l'UTF-8 (copié d'un vieux logiciel, envoyé
+        // par un outil Windows) ferait échouer les expressions /u et
+        // disparaître le commentaire en silence : il est d'abord converti.
+        if (!mb_check_encoding($texte, 'UTF-8')) {
+            $texte = mb_convert_encoding($texte, 'UTF-8', 'Windows-1252');
+        }
+
+        $texte = trim((string) preg_replace('/\s+/u', ' ', (string) preg_replace('/[\x00-\x1F\x7F]/u', ' ', $texte)));
 
         if ($texte === '') {
             return null;

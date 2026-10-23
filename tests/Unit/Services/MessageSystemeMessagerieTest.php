@@ -76,7 +76,7 @@ final class MessageSystemeMessagerieTest extends TestCase
 
     public function test_les_regles_d_un_utilisateur_ne_s_appliquent_pas_mais_le_texte_reste_controle(): void
     {
-        $service = new MessagerieService($this->depot, self::NOEL, false, fn (): DateTimeImmutable => $this->heure, null, null, static fn (): null => null);
+        $service = new MessagerieService($this->depot, self::NOEL, false, fn (): DateTimeImmutable => $this->heure, null, null, static fn (): ?int => null);
 
         // Écrire comme un membre lui serait refusé : il n'en est pas un.
         try {
@@ -94,7 +94,7 @@ final class MessageSystemeMessagerieTest extends TestCase
     public function test_jamais_dans_une_discussion_directe(): void
     {
         $directe = (new MessagerieService($this->depot, 1, false, fn (): DateTimeImmutable => $this->heure))->ouvrirDirecte(2);
-        $service = new MessagerieService($this->depot, self::NOEL, false, fn (): DateTimeImmutable => $this->heure, null, null, static fn (): null => null);
+        $service = new MessagerieService($this->depot, self::NOEL, false, fn (): DateTimeImmutable => $this->heure, null, null, static fn (): ?int => null);
 
         $this->expectException(MessagerieException::class);
         $service->publierMessageSysteme($directe, 'Résumé');
