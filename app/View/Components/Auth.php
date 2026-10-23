@@ -307,10 +307,10 @@ final class Auth
      */
     public static function changementMotDePasse(string $nomComplet, bool $obligatoire): string
     {
-        $titre = $obligatoire ? 'Choisissez votre mot de passe' : 'Changer votre mot de passe';
+        $titre = $obligatoire ? 'Mot de passe temporaire terminé' : 'Changer votre mot de passe';
         $intro = $obligatoire
-            ? 'Bonjour ' . $nomComplet . '. Vous vous êtes connecté avec un mot de passe provisoire. '
-                . 'Choisissez maintenant le vôtre : vous seul le connaîtrez.'
+            ? 'Bonjour ' . $nomComplet . '. Votre mot de passe temporaire n’est plus valable. '
+                . 'Renseignez votre ancien mot de passe, puis choisissez le vôtre : vous seul le connaîtrez.'
             : 'Choisissez un nouveau mot de passe, que vous seul connaîtrez.';
 
         return '<section class="auth-page">'
@@ -325,7 +325,7 @@ final class Auth
             . '<form method="POST" action="' . View::url('compte/mot-de-passe') . '" class="auth-form">'
             . \App\Helpers\Csrf::input()
             . Form::input('actuel', [
-                'label' => $obligatoire ? 'Mot de passe provisoire' : 'Mot de passe actuel',
+                'label' => 'Ancien mot de passe',
                 'type' => 'password', 'required' => true, 'autocomplete' => 'current-password',
             ])
             . Form::input('nouveau', [
@@ -335,7 +335,7 @@ final class Auth
                 'hint' => 'Au moins ' . \App\Security\MotDePasseProvisoire::LONGUEUR_MIN . ' caractères. Une phrase courte que vous retenez facilement fait un bon mot de passe.',
             ])
             . Form::input('confirmation', [
-                'label' => 'Confirmez le nouveau mot de passe',
+                'label' => 'Confirmez votre nouveau mot de passe',
                 'type' => 'password', 'required' => true, 'autocomplete' => 'new-password',
             ])
             . Ui::button('Enregistrer mon mot de passe', ['variant' => 'primary', 'type' => 'submit', 'class' => 'btn btn-primary btn-login'])

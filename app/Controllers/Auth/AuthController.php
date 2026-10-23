@@ -66,9 +66,10 @@ class AuthController extends BaseController
         \App\Services\Shared\AuditLogService::log('login', 'users', $utilisateurId, null, null);
 
         // Mot de passe provisoire : l'agent choisit le sien avant d'aller plus loin.
-        if (self::doitChangerMotDePasse($utilisateurId)) {
+        if (self::doitChangerMotDePasse($utilisateurId)
+            || \App\Security\MotDePasseProvisoire::estTropConnu((string) ($_POST['password'] ?? ''))) {
             \App\Security\MotDePasseProvisoire::exiger(true);
-            Session::flash('success', 'Bienvenue. Choisissez maintenant votre propre mot de passe.');
+            Session::flash('error', 'Votre mot de passe temporaire est terminé. Choisissez maintenant votre propre mot de passe.');
             $this->redirect('/compte/mot-de-passe');
         }
 

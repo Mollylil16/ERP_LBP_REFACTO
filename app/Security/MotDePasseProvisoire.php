@@ -63,7 +63,7 @@ final class MotDePasseProvisoire
             return 'Choisissez un mot de passe d’au moins ' . self::LONGUEUR_MIN . ' caractères.';
         }
         if ($nouveau === $actuel) {
-            return 'Le nouveau mot de passe doit être différent du mot de passe provisoire.';
+            return 'Le nouveau mot de passe doit être différent de l’ancien.';
         }
         $minuscule = mb_strtolower($nouveau);
         if (in_array($minuscule, self::INTERDITS, true)) {
@@ -75,6 +75,18 @@ final class MotDePasseProvisoire
         }
 
         return null;
+    }
+
+    /**
+     * Le mot de passe saisi à la connexion est-il connu de tous ? lbp2026 a été
+     * le mot de passe de départ de chaque compte, et il a circulé dans un
+     * document public : qui se connecte avec lui doit en choisir un autre. Les
+     * sessions déjà ouvertes ne sont pas coupées ; la règle joue à la
+     * connexion suivante.
+     */
+    public static function estTropConnu(string $motDePasse): bool
+    {
+        return in_array(mb_strtolower($motDePasse), self::INTERDITS, true);
     }
 
     public static function estExige(): bool

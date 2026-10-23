@@ -47,9 +47,7 @@ final class MotDePasseController extends BaseController
         $confirmation = (string) ($_POST['confirmation'] ?? '');
 
         if ($user === null || !password_verify($actuel, $user->passwordHash)) {
-            Session::flash('error', MotDePasseProvisoire::estExige()
-                ? 'Le mot de passe provisoire saisi est incorrect.'
-                : 'Le mot de passe actuel saisi est incorrect.');
+            Session::flash('error', 'L’ancien mot de passe saisi est incorrect.');
             $this->redirect('/compte/mot-de-passe');
         }
 

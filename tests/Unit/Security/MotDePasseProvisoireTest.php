@@ -59,6 +59,13 @@ final class MotDePasseProvisoireTest extends TestCase
         self::assertStringContainsString($attendu, $refus);
     }
 
+    public function testSeConnecterAvecLeMotDePasseDeDepartEnFaitChoisirUnAutre(): void
+    {
+        self::assertTrue(MotDePasseProvisoire::estTropConnu('lbp2026'));
+        self::assertTrue(MotDePasseProvisoire::estTropConnu('LBP2026'));
+        self::assertFalse(MotDePasseProvisoire::estTropConnu('fret du lundi matin'));
+    }
+
     public function testLExigenceNeVautQuePourUnUtilisateurConnecte(): void
     {
         MotDePasseProvisoire::exiger(true);
