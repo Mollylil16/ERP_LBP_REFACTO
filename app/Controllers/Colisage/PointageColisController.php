@@ -13,6 +13,7 @@ use App\Security\DossierEnvoiAcces;
 use App\Security\ModuleAccess;
 use App\Services\Colisage\DossierEnvoiService;
 use App\Services\Colisage\PointageColisService;
+use App\Support\HeureAgence;
 use Throwable;
 
 /**
@@ -59,12 +60,17 @@ final class PointageColisController extends ColisageBaseController
             $this->json(['ok' => false, 'message' => 'Session expirée : rechargez la page avant de continuer.']);
         }
 
+        // « etat » : RECU, ENDOMMAGE, NON_RECU ou EN_ATTENTE. L'ancien
+        // « recu=1/0 » de la case à cocher reste compris.
+        $etat = isset($_POST['etat']) ? (string) $_POST['etat'] : (string) ($_POST['recu'] ?? '') === '1';
+
         try {
             $this->json($this->service->pointer(
                 (int) ($_POST['colis_id'] ?? 0),
-                (string) ($_POST['recu'] ?? '') === '1',
+                $etat,
                 ModuleAccess::agenceVisible(),
-                Auth::id()
+                Auth::id(),
+                (string) ($_POST['commentaire'] ?? '')
             ));
         } catch (Throwable $e) {
             error_log('[Pointage colis] pointer : ' . $e->getMessage());
@@ -175,6 +181,92 @@ final class PointageColisController extends ColisageBaseController
         $this->colisageView('colisage/pointage/detail', 'Départ ' . $detail['depart']['reference'], 'pointage_suivi', [
             'pointage' => $detail,
         ]);
+    }
+
+    // ------------------------------------------------------------------
+    // Rapport de réception
+    // ------------------------------------------------------------------
+
+    public function rapport(): void
+    {
+        $rapport = $this->donneesRapport(false);
+
+        $this->colisageView('colisage/pointage/rapport', 'Rapport de réception', 'pointage_rapport', [
+            'rapport' => $rapport,
+        ]);
+    }
+
+    public function rapportPdf(): void
+    {
+        $rapport = $this->donneesRapport(true);
+
+        require BASE_PATH . '/views/colisage/pointage/rapport_pdf.php';
+    }
+
+    public function rapportExcel(): void
+    {
+        $rapport = $this->donneesRapport(true);
+
+        header('Content-Type: application/vnd.ms-excel; charset=utf-8');
+        header('Content-Disposition: attachment; filename="' . $rapport['nom_fichier'] . '.xls"');
+        header('Cache-Control: max-age=0');
+
+        echo "\xEF\xBB\xBF";
+        require BASE_PATH . '/views/colisage/pointage/rapport_excel.php';
+    }
+
+    /**
+     * Mêmes droits que le suivi : une agence ne voit que les départs qu'elle
+     * a envoyés ou reçus ; la Direction (portée réseau) voit tout et filtre.
+     * Le détail des colis vient toujours dans les exports ; à l'écran, quand
+     * un départ est choisi.
+     *
+     * @return array<string, mixed>
+     */
+    private function donneesRapport(bool $exporter): array
+    {
+        AuthMiddleware::check();
+
+        $perimetre = ModuleAccess::agenceVisible();
+        $agence = $perimetre !== null ? $this->service->agence($perimetre) : null;
+        $aujourdhui = (new \DateTimeImmutable('now', new \DateTimeZone(HeureAgence::fuseau($agence['fuseau'] ?? null))))->format('Y-m-d');
+        $filtres = PointageColisService::filtresRapport($_GET, $aujourdhui);
+
+        $agences = $this->service->agences();
+        $noms = array_column($agences, 'name', 'id');
+        $libelles = [];
+        if ($agence !== null) {
+            $libelles[] = 'Agence : ' . $agence['name'];
+        }
+        if ($filtres['agence_envoi'] !== null) {
+            $libelles[] = "Agence d'envoi : " . ($noms[$filtres['agence_envoi']] ?? '#' . $filtres['agence_envoi']);
+        }
+        if ($filtres['agence_arrivee'] !== null) {
+            $libelles[] = "Agence d'arrivée : " . ($noms[$filtres['agence_arrivee']] ?? '#' . $filtres['agence_arrivee']);
+        }
+
+        $commun = [
+            'agences' => $agences,
+            'peut_choisir' => $perimetre === null,
+            'libelles_filtres' => $libelles,
+            'edite_par' => (string) (Auth::user()?->fullName ?? ''),
+        ];
+
+        if ($perimetre === 0) {
+            return $commun + [
+                'sans_agence' => true, 'filtres' => $filtres, 'fuseau' => HeureAgence::SERVEUR, 'departs' => [], 'options_departs' => [],
+                'totaux' => PointageColisService::totauxRapport([]), 'edite_le' => date('Y-m-d H:i:s'),
+                'nom_fichier' => PointageColisService::nomFichierRapport('', $filtres['du'], $filtres['au']),
+            ];
+        }
+
+        $rapport = $this->service->rapport($filtres, $perimetre, $exporter || $filtres['depart'] !== null);
+        if ($filtres['depart'] !== null && $rapport['departs'] === []) {
+            $libelles[] = 'Départ introuvable, ou sans rapport avec votre agence.';
+            $commun['libelles_filtres'] = $libelles;
+        }
+
+        return $commun + $rapport;
     }
 
     // ------------------------------------------------------------------

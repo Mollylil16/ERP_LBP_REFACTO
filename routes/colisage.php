@@ -50,6 +50,9 @@ $router->group('/colisage', function (Router $router): void {
     $router->post('/reception/{id}/tout-pointer', [\App\Controllers\Colisage\PointageColisController::class, 'toutPointer']);
     $router->post('/reception/{id}/prevenir-clients', [\App\Controllers\Colisage\PointageColisController::class, 'prevenirClients']);
     $router->get('/suivi-departs', [\App\Controllers\Colisage\PointageColisController::class, 'suivi']);
+    $router->get('/rapport-reception', [\App\Controllers\Colisage\PointageColisController::class, 'rapport']);
+    $router->get('/rapport-reception/pdf', [\App\Controllers\Colisage\PointageColisController::class, 'rapportPdf']);
+    $router->get('/rapport-reception/excel', [\App\Controllers\Colisage\PointageColisController::class, 'rapportExcel']);
 
     // Départs préparés par l'agent export : fiche, pièces, contrôle et validation
     // du Directeur général, historique. Les chemins fixes précèdent /envois/{id},

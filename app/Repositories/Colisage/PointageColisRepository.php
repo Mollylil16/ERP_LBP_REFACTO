@@ -641,7 +641,8 @@ final class PointageColisRepository
     {
         $sql = "
             SELECT p.created_at, c.numero_tracking, u.full_name AS par,
-                   r.name AS agence_reception, d.name AS agence_depart, a.name AS agence_prevue
+                   r.name AS agence_reception, d.name AS agence_depart, a.name AS agence_prevue,
+                   COALESCE(r.fuseau_horaire, 'Africa/Abidjan') AS fuseau_reception
             FROM lbp_colis_pointages p
             JOIN lbp_colis c ON c.id = p.colis_id
             LEFT JOIN users u ON u.id = p.user_id

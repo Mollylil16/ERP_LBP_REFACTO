@@ -41,9 +41,18 @@ final class ColisagePointageRenduTest extends TestCase
             ])],
         ]);
 
-        self::assertMatchesRegularExpression('/data-colis-id="1"[^>]*checked/', $html);
-        self::assertDoesNotMatchRegularExpression('/data-colis-id="2"[^>]*checked/', $html);
-        self::assertMatchesRegularExpression('/data-colis-id="3"[^>]*disabled/', $html);
+        // Trois choix par colis ; celui qui est posé est enfoncé.
+        self::assertMatchesRegularExpression('/data-colis-id="1" data-etat="RECU"/', $html);
+        self::assertMatchesRegularExpression('/data-colis-id="2" data-etat="EN_ATTENTE"/', $html);
+        self::assertMatchesRegularExpression('/data-colis-id="3" data-etat="RETIRE"/', $html);
+        self::assertSame(2, substr_count($html, 'data-etat="RECU" aria-pressed'), 'Deux colis à pointer, un bouton « Reçu » chacun.');
+        self::assertSame(1, substr_count($html, 'data-etat="RECU" aria-pressed="true"'));
+        self::assertSame(0, substr_count($html, 'aria-pressed="true"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2"'), 'Rien n’est dit endommagé.');
+        self::assertStringContainsString('Pointé le 15/09/2026 11 h 00 à Paris (09 h 00 à Abidjan) par Agent Paris', html_entity_decode($html, ENT_QUOTES));
+        foreach (['Tous', 'En attente', 'Reçus', 'Endommagés', 'Non reçus'] as $filtre) {
+            self::assertStringContainsString('>' . $filtre . ' <span class="lbp-rc-nb"', html_entity_decode($html, ENT_QUOTES));
+        }
+        self::assertStringContainsString('lbp-rc-cherche', $html, 'On cherche un colis par son numéro.');
         self::assertStringContainsString('data-url-pointer=', $html);
         self::assertStringContainsString('data-url-scanner=', $html);
         self::assertStringContainsString('data-agence="3400"', $html, 'La douchette connaît son agence.');
@@ -104,7 +113,7 @@ final class ColisagePointageRenduTest extends TestCase
             'historique' => [['created_at' => '2026-09-15 09:00:00', 'action' => 'RECU', 'source' => 'DOUCHETTE', 'numero_tracking' => 'LB-FR-001', 'agence' => 'Paris Bobigny', 'par' => 'Agent Paris']],
         ]);
 
-        self::assertStringContainsString('Coché reçu', $html);
+        self::assertStringContainsString('Pointé reçu', $html);
         self::assertStringContainsString('douchette', $html);
         self::assertStringContainsString('Manquant', $html);
         self::assertStringContainsString('/manifeste', $html);
@@ -136,7 +145,7 @@ final class ColisagePointageRenduTest extends TestCase
         foreach (glob(BASE_PATH . '/views/colisage/pointage/*.php') ?: [] as $vue) {
             $source = (string) file_get_contents($vue);
             self::assertDoesNotMatchRegularExpression('/<(div|table|form|section|p|span)\b/i', $source, basename($vue) . ' contient du HTML brut.');
-            self::assertStringContainsString('ColisagePointage::', $source);
+            self::assertMatchesRegularExpression('/Colisage(Pointage|ReceptionRapport)::/', $source);
         }
     }
 
@@ -163,6 +172,7 @@ final class ColisagePointageRenduTest extends TestCase
             'id' => 7, 'reference' => 'DEP-20260914-1620-AB12', 'type_transport' => 'AÉRIEN', 'statut' => 'ARRIVE', 'est_reprise' => 0,
             'agence_depart_id' => 3403, 'agence_arrivee_id' => 3400, 'date_depart' => '2026-09-14 16:20:00',
             'date_premiere_reception' => '2026-09-15 08:00:00', 'agence_depart' => 'Agence Abobo Dokui', 'agence_arrivee' => 'Paris Bobigny',
+            'fuseau_depart' => 'Africa/Abidjan', 'fuseau_arrivee' => 'Europe/Paris',
             'envoyes' => 150, 'recus' => 120, 'restants' => 30, 'manquants' => 0, 'echeance' => '2026-09-16 08:00:00',
             'etat' => PointageColisService::ETAT_EN_COURS, 'colis' => [],
         ];
