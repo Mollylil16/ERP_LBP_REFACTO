@@ -226,7 +226,11 @@
   }
 
   // ------------------------------------------------------------------
-  // Dates — le serveur parle en heure d'Abidjan, qui est GMT toute l'année.
+  // Dates — le serveur parle en heure d'Abidjan, qui est UTC+0 toute
+  // l'année : une date « 2026-10-23 12:05:00 » de l'API est donc une heure
+  // UTC (versDate). L'affichage, lui, est dans l'heure du navigateur : un
+  // agent de Paris lit 14 h 05 en été, 13 h 05 en hiver ; un agent d'Abidjan,
+  // 12 h 05. « Aujourd'hui » et « Hier » suivent aussi son calendrier.
   // ------------------------------------------------------------------
 
   var MOIS = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"];
@@ -240,19 +244,26 @@
     return isNaN(date.getTime()) ? null : date;
   }
 
-  function cleJour(date) {
-    return date.toISOString().slice(0, 10);
+  function deuxChiffresDate(n) {
+    return (n < 10 ? "0" : "") + n;
   }
 
+  // Le jour local du navigateur, pour les séparateurs « Aujourd'hui » du fil.
+  function cleJour(date) {
+    return date.getFullYear() + "-" + deuxChiffresDate(date.getMonth() + 1) + "-" + deuxChiffresDate(date.getDate());
+  }
+
+  // En jours de calendrier local ; Date.UTC neutralise le changement d'heure
+  // (un jour de 23 ou 25 heures reste un jour).
   function ecartJours(date) {
-    var aujourdHui = Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), new Date().getUTCDate());
-    var jour = Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
+    var maintenant = new Date();
+    var aujourdHui = Date.UTC(maintenant.getFullYear(), maintenant.getMonth(), maintenant.getDate());
+    var jour = Date.UTC(date.getFullYear(), date.getMonth(), date.getDate());
     return Math.round((aujourdHui - jour) / 86400000);
   }
 
   function heure(date) {
-    var m = date.getUTCMinutes();
-    return date.getUTCHours() + " h " + (m < 10 ? "0" : "") + m;
+    return date.getHours() + " h " + deuxChiffresDate(date.getMinutes());
   }
 
   function libelleJour(date) {
@@ -264,12 +275,12 @@
       return "Hier";
     }
     if (ecart > 1 && ecart < 7) {
-      var jour = JOURS[date.getUTCDay()];
+      var jour = JOURS[date.getDay()];
       return jour.charAt(0).toUpperCase() + jour.slice(1);
     }
-    var texte = date.getUTCDate() + " " + MOIS[date.getUTCMonth()];
-    if (date.getUTCFullYear() !== new Date().getUTCFullYear()) {
-      texte += " " + date.getUTCFullYear();
+    var texte = date.getDate() + " " + MOIS[date.getMonth()];
+    if (date.getFullYear() !== new Date().getFullYear()) {
+      texte += " " + date.getFullYear();
     }
     return texte;
   }
@@ -283,11 +294,9 @@
       return "Hier";
     }
     if (ecart > 1 && ecart < 7) {
-      return JOURS[date.getUTCDay()];
+      return JOURS[date.getDay()];
     }
-    var j = date.getUTCDate();
-    var m = date.getUTCMonth() + 1;
-    return (j < 10 ? "0" : "") + j + "/" + (m < 10 ? "0" : "") + m + "/" + String(date.getUTCFullYear()).slice(2);
+    return deuxChiffresDate(date.getDate()) + "/" + deuxChiffresDate(date.getMonth() + 1) + "/" + String(date.getFullYear()).slice(2);
   }
 
   function libelleDateComplete(date) {
@@ -312,9 +321,7 @@
     if (ecart === 1) {
       return "vu hier à " + heure(vu);
     }
-    var j = vu.getUTCDate();
-    var m = vu.getUTCMonth() + 1;
-    return "vu le " + (j < 10 ? "0" : "") + j + "/" + (m < 10 ? "0" : "") + m + " à " + heure(vu);
+    return "vu le " + deuxChiffresDate(vu.getDate()) + "/" + deuxChiffresDate(vu.getMonth() + 1) + " à " + heure(vu);
   }
 
   // ==================================================================
