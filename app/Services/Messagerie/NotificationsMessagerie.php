@@ -63,8 +63,14 @@ final class NotificationsMessagerie
         $this->horloge = $horloge ?? static fn(): DateTimeImmutable => new DateTimeImmutable();
     }
 
-    /** Branché sur la base et le service de push réels. */
-    public static function parDefaut(): self
+    /**
+     * Branché sur la base et le service de push réels.
+     *
+     * $urlMessagerie : l'adresse de la messagerie, pour une commande de
+     * console qui n'a pas de requête d'où la déduire (« https://…/messagerie ») ;
+     * sur le serveur web, celle de la requête.
+     */
+    public static function parDefaut(?string $urlMessagerie = null): self
     {
         $pdo = Database::getConnection();
 
@@ -79,7 +85,7 @@ final class NotificationsMessagerie
             new NotificationsMessagerieRepository($pdo),
             NotificationsPush::creer($pdo),
             $noel,
-            View::url('messagerie'),
+            $urlMessagerie ?? View::url('messagerie'),
         );
     }
 

@@ -506,6 +506,61 @@ final class MessagerieService
     }
 
     /**
+     * Un message du système dans un groupe : le résumé du soir de la
+     * réception des colis, par exemple. Celui qui agit ($utilisateurId) en est
+     * l'auteur — le compte de NOEL — sans être membre du groupe, ni le
+     * devenir : la synchronisation l'en écarterait aussitôt, et un membre
+     * technique fausserait les listes de membres et les accusés de lecture.
+     *
+     * Les règles d'écriture d'un utilisateur ne s'appliquent donc pas
+     * (adhésion, annonces, cadence de 30 envois par minute) : cette méthode
+     * n'est appelée par aucune route HTTP, seulement par du code serveur qui a
+     * décidé lui-même de publier. Restent : le texte valide, et un groupe —
+     * jamais une discussion directe, où personne n'attend un tiers.
+     *
+     * Les notifications partent comme pour tout message (lot 4) : à la fin de
+     * la requête sur le serveur web, tout de suite en ligne de commande (la
+     * commande du soir n'a pas de réponse à rendre d'abord).
+     *
+     * @return int l'identifiant du message
+     */
+    public function publierMessageSysteme(int $conversationId, string $texte): int
+    {
+        $texte = $this->texte($texte);
+        $conversation = $this->depot->conversation($conversationId);
+
+        if ($conversation === null || $conversation['type'] === 'direct') {
+            throw MessagerieException::introuvable('Groupe introuvable.');
+        }
+
+        $id = $this->depot->ajouterMessage([
+            'conversation_id' => $conversationId,
+            'auteur_id' => $this->utilisateurId,
+            'texte' => $texte,
+            'reponse_a_id' => null,
+            'transfere_de_id' => null,
+            'created_at' => $this->maintenant(),
+        ]);
+
+        // NOEL ne se répond pas à lui-même : seules les notifications suivent.
+        if ($this->notifier !== null) {
+            try {
+                ($this->notifier)($id, $conversationId, $this->utilisateurId);
+            } catch (\Throwable $e) {
+                error_log('[Messagerie] notifications du message système : ' . $e->getMessage());
+            }
+        } elseif (PHP_SAPI === 'cli') {
+            NotificationsMessagerie::parDefaut()->surMessage($id);
+        } else {
+            SuitesEnvoi::planifier(static function () use ($id): void {
+                NotificationsMessagerie::parDefaut()->surMessage($id);
+            });
+        }
+
+        return $id;
+    }
+
+    /**
      * Un fichier par envoi, qui devient un message : sa légende facultative
      * en est le texte, comme sur un téléphone. L'écran envoie plusieurs
      * fichiers l'un après l'autre ; chacun compte dans les 30 envois par

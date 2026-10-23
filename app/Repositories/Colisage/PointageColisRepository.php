@@ -55,16 +55,33 @@ final class PointageColisRepository
     // Agences
     // ------------------------------------------------------------------
 
-    /** @return array<int, array{id:int, name:string}> */
+    /** @return array<int, array{id:int, name:string, fuseau:string}> */
     public function agencesActives(): array
     {
-        $lignes = $this->pdo->query('SELECT id, name FROM company_sites WHERE is_active = 1 ORDER BY name')
+        $lignes = $this->pdo->query("SELECT id, name, COALESCE(fuseau_horaire, 'Africa/Abidjan') AS fuseau FROM company_sites WHERE is_active = 1 ORDER BY name")
             ->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
         return array_map(
-            static fn (array $l): array => ['id' => (int) $l['id'], 'name' => (string) $l['name']],
+            static fn (array $l): array => ['id' => (int) $l['id'], 'name' => (string) $l['name'], 'fuseau' => (string) $l['fuseau']],
             $lignes
         );
+    }
+
+    /** @return array{id:int, name:string, fuseau:string}|null */
+    public function agence(int $id): ?array
+    {
+        $stmt = $this->pdo->prepare("SELECT id, name, COALESCE(fuseau_horaire, 'Africa/Abidjan') AS fuseau FROM company_sites WHERE id = :id LIMIT 1");
+        $stmt->execute(['id' => $id]);
+        $ligne = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        return $ligne ? ['id' => (int) $ligne['id'], 'name' => (string) $ligne['name'], 'fuseau' => (string) $ligne['fuseau']] : null;
+    }
+
+    /** Le fuseau d'une agence : posé une fois par app/Console/DefinirFuseauAgence.php. */
+    public function definirFuseau(int $agenceId, string $fuseau): void
+    {
+        $this->pdo->prepare('UPDATE company_sites SET fuseau_horaire = :fuseau, updated_at = NOW() WHERE id = :id')
+            ->execute(['fuseau' => $fuseau, 'id' => $agenceId]);
     }
 
     // ------------------------------------------------------------------
@@ -170,14 +187,43 @@ final class PointageColisRepository
         return $stmt->rowCount();
     }
 
+    /**
+     * Un geste au journal. L'état avant et après, et le commentaire, ne
+     * concernent que la réception : le départ et la reprise les laissent vides.
+     */
     public function journaliser(
         int $colisId,
         ?int $expeditionId,
         ?int $agenceId,
         string $action,
         string $source,
-        ?int $userId
+        ?int $userId,
+        ?string $etatAvant = null,
+        ?string $etatApres = null,
+        ?string $commentaire = null
     ): void {
+        if ($etatAvant !== null || $etatApres !== null || $commentaire !== null) {
+            $this->pdo->prepare('
+                INSERT INTO lbp_colis_pointages
+                    (colis_id, expedition_id, agence_id, action, source, user_id, etat_avant, etat_apres, commentaire, created_at)
+                VALUES (:colis, :expedition, :agence, :action, :source, :user, :avant, :apres, :commentaire, NOW())
+            ')->execute([
+                'colis' => $colisId,
+                'expedition' => $expeditionId,
+                'agence' => $agenceId,
+                'action' => $action,
+                'source' => $source,
+                'user' => $userId,
+                'avant' => $etatAvant,
+                'apres' => $etatApres,
+                'commentaire' => $commentaire,
+            ]);
+
+            return;
+        }
+
+        // Forme d'avant les trois choix : le script de reprise l'emploie sur
+        // une base dont le journal n'a peut-être que ses colonnes de septembre.
         $this->pdo->prepare('
             INSERT INTO lbp_colis_pointages (colis_id, expedition_id, agence_id, action, source, user_id, created_at)
             VALUES (:colis, :expedition, :agence, :action, :source, :user, NOW())
@@ -203,9 +249,16 @@ final class PointageColisRepository
                    COALESCE(e.date_depart_effective, e.created_at) AS date_depart,
                    e.date_premiere_reception,
                    d.name AS agence_depart, a.name AS agence_arrivee,
+                   COALESCE(d.fuseau_horaire, 'Africa/Abidjan') AS fuseau_depart,
+                   COALESCE(a.fuseau_horaire, 'Africa/Abidjan') AS fuseau_arrivee,
                    COUNT(c.id) AS envoyes,
                    COALESCE(SUM(CASE WHEN c.date_reception IS NOT NULL OR c.statut IN ('retire', 'livre')
-                                     THEN 1 ELSE 0 END), 0) AS recus
+                                     THEN 1 ELSE 0 END), 0) AS recus,
+                   COALESCE(SUM(CASE WHEN c.date_reception IS NOT NULL AND c.etat_reception = 'ENDOMMAGE'
+                                     THEN 1 ELSE 0 END), 0) AS endommages,
+                   COALESCE(SUM(CASE WHEN c.date_reception IS NULL AND c.etat_reception = 'NON_RECU'
+                                      AND c.statut NOT IN ('retire', 'livre')
+                                     THEN 1 ELSE 0 END), 0) AS non_recus
             FROM lbp_expeditions e
             LEFT JOIN company_sites d ON d.id = e.agence_depart_id
             LEFT JOIN company_sites a ON a.id = e.agence_arrivee_id
@@ -213,7 +266,7 @@ final class PointageColisRepository
             WHERE {$conditions}
             GROUP BY e.id, e.reference, e.type_transport, e.statut, e.est_reprise,
                      e.agence_depart_id, e.agence_arrivee_id, e.date_depart_effective, e.created_at,
-                     e.date_premiere_reception, d.name, a.name
+                     e.date_premiere_reception, d.name, a.name, d.fuseau_horaire, a.fuseau_horaire
         ";
     }
 
@@ -297,13 +350,15 @@ final class PointageColisRepository
         $stmt = $this->pdo->prepare("
             SELECT c.id, c.numero_tracking, c.nombre_colis, c.poids_total, c.statut,
                    c.date_reception, c.reception_hors_liste,
+                   c.etat_reception, c.commentaire_reception, c.pointe_le,
                    exp.name AS expediteur, dest.name AS destinataire,
                    dest.phone AS destinataire_phone,
-                   u.full_name AS recu_par
+                   u.full_name AS recu_par, pp.full_name AS pointe_par
             FROM lbp_colis c
             LEFT JOIN lbp_clients exp ON exp.id = c.expediteur_id
             LEFT JOIN lbp_clients dest ON dest.id = c.destinataire_id
             LEFT JOIN users u ON u.id = c.recu_par_id
+            LEFT JOIN users pp ON pp.id = c.pointe_par_id
             WHERE c.expedition_id = :id AND c.statut <> 'annule'
             ORDER BY c.numero_tracking ASC
         ");
@@ -312,13 +367,20 @@ final class PointageColisRepository
         return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
     }
 
-    /** @return array<int, int> */
-    public function colisNonRecusDuDepart(int $expeditionId): array
+    /**
+     * Les colis jamais pointés d'un départ : ceux que « Tout cocher » marque
+     * reçus. Un colis qu'un agent a dit « non reçu » n'en fait pas partie :
+     * un geste collectif n'efface pas une déclaration explicite.
+     *
+     * @return array<int, int>
+     */
+    public function colisEnAttenteDuDepart(int $expeditionId): array
     {
         $stmt = $this->pdo->prepare("
             SELECT id FROM lbp_colis
             WHERE expedition_id = :id
               AND date_reception IS NULL
+              AND etat_reception IS NULL
               AND statut NOT IN ('retire', 'livre', 'annule')
         ");
         $stmt->execute(['id' => $expeditionId]);
@@ -332,6 +394,7 @@ final class PointageColisRepository
 
     private const SELECT_COLIS = '
         SELECT c.id, c.numero_tracking, c.statut, c.expedition_id, c.date_reception,
+               c.etat_reception, c.commentaire_reception, c.reception_hors_liste,
                c.agence_depart_id, c.agence_arrivee_id,
                e.agence_arrivee_id AS depart_agence_arrivee_id,
                e.agence_depart_id AS depart_agence_depart_id
@@ -359,34 +422,55 @@ final class PointageColisRepository
         return $ligne ?: null;
     }
 
-    public function marquerRecu(int $colisId, ?int $userId, bool $horsListe): bool
-    {
-        $stmt = $this->pdo->prepare("
-            UPDATE lbp_colis
-            SET statut = 'arrive',
-                date_reception = NOW(),
-                recu_par_id = :user,
-                reception_hors_liste = :hors_liste,
-                date_arrivee_agence = COALESCE(date_arrivee_agence, NOW()),
-                updated_at = NOW()
-            WHERE id = :id
-              AND date_reception IS NULL
-              AND statut NOT IN ('retire', 'livre', 'annule')
-        ");
-        $stmt->execute(['user' => $userId, 'hors_liste' => $horsListe ? 1 : 0, 'id' => $colisId]);
-
-        return $stmt->rowCount() === 1;
-    }
-
     /**
-     * Défait un pointage de réception.
+     * Donne à un colis son nouvel état de réception — si personne ne l'a
+     * changé entre-temps : la condition porte sur l'état lu juste avant
+     * ($avant). Deux agents qui pointent le même colis au même instant ne
+     * s'écrasent pas en silence ; le second est prévenu.
      *
-     * L'ordre des affectations compte : MySQL et MariaDB les évaluent de gauche à
-     * droite, avec les valeurs déjà modifiées. date_arrivee_agence doit donc être
-     * comparée à date_reception avant que celle-ci ne soit vidée.
+     * RECU ou ENDOMMAGE : le colis est en main (statut « arrive ») et garde
+     * l'heure et l'auteur de sa première réception. NON_RECU, ou EN_ATTENTE
+     * (pointage défait) : il redevient en transit. pointe_le et pointe_par_id
+     * disent qui a donné le dernier état, et quand.
+     *
+     * L'ordre des affectations compte : MySQL et MariaDB les évaluent de gauche
+     * à droite, avec les valeurs déjà modifiées. Tout ce qui lit
+     * date_reception est donc réglé avant elle.
      */
-    public function annulerReception(int $colisId): bool
+    public function appliquerEtat(int $colisId, string $avant, string $apres, ?string $commentaire, ?int $userId, bool $horsListe = false): bool
     {
+        $garde = "COALESCE(etat_reception, CASE WHEN date_reception IS NOT NULL THEN 'RECU' ELSE 'EN_ATTENTE' END) = :avant
+              AND statut NOT IN ('retire', 'livre', 'annule')";
+
+        if ($apres === 'RECU' || $apres === 'ENDOMMAGE') {
+            $stmt = $this->pdo->prepare("
+                UPDATE lbp_colis
+                SET recu_par_id = CASE WHEN date_reception IS NULL THEN :user ELSE recu_par_id END,
+                    reception_hors_liste = CASE WHEN date_reception IS NULL THEN :hors_liste ELSE reception_hors_liste END,
+                    date_arrivee_agence = COALESCE(date_arrivee_agence, NOW()),
+                    date_reception = COALESCE(date_reception, NOW()),
+                    statut = 'arrive',
+                    etat_reception = :etat,
+                    commentaire_reception = :commentaire,
+                    pointe_le = NOW(),
+                    pointe_par_id = :pointe_par,
+                    updated_at = NOW()
+                WHERE id = :id AND {$garde}
+            ");
+            $stmt->execute([
+                'user' => $userId,
+                'hors_liste' => $horsListe ? 1 : 0,
+                'etat' => $apres,
+                'commentaire' => $commentaire,
+                'pointe_par' => $userId,
+                'id' => $colisId,
+                'avant' => $avant,
+            ]);
+
+            return $stmt->rowCount() === 1;
+        }
+
+        $nonRecu = $apres === 'NON_RECU';
         $stmt = $this->pdo->prepare("
             UPDATE lbp_colis
             SET date_arrivee_agence = CASE WHEN date_arrivee_agence = date_reception THEN NULL ELSE date_arrivee_agence END,
@@ -394,12 +478,20 @@ final class PointageColisRepository
                 date_reception = NULL,
                 recu_par_id = NULL,
                 reception_hors_liste = 0,
+                etat_reception = :etat,
+                commentaire_reception = :commentaire,
+                pointe_le = " . ($nonRecu ? 'NOW()' : 'NULL') . ",
+                pointe_par_id = :pointe_par,
                 updated_at = NOW()
-            WHERE id = :id
-              AND date_reception IS NOT NULL
-              AND statut NOT IN ('retire', 'livre', 'annule')
+            WHERE id = :id AND {$garde}
         ");
-        $stmt->execute(['id' => $colisId]);
+        $stmt->execute([
+            'etat' => $nonRecu ? 'NON_RECU' : null,
+            'commentaire' => $nonRecu ? $commentaire : null,
+            'pointe_par' => $nonRecu ? $userId : null,
+            'id' => $colisId,
+            'avant' => $avant,
+        ]);
 
         return $stmt->rowCount() === 1;
     }
@@ -407,13 +499,18 @@ final class PointageColisRepository
     /**
      * Aligne le statut du départ sur ses compteurs.
      *
-     * Le premier colis coché déclenche le délai des manquants. Si tous les
-     * pointages sont défaits, l'horloge repart de zéro : un premier coup de
-     * douchette par erreur ne doit pas faire courir le délai.
+     * Le premier colis pointé — reçu, endommagé ou déclaré non reçu : dans les
+     * trois cas le départ est arrivé et l'agent a la liste sous les yeux —
+     * déclenche le délai des manquants. Si tous les pointages sont défaits,
+     * l'horloge repart de zéro : un premier coup de douchette par erreur ne
+     * doit pas faire courir le délai. Le départ n'est clos que lorsque tous ses
+     * colis sont en main.
      */
-    public function actualiserDepart(int $expeditionId, int $envoyes, int $recus): void
+    public function actualiserDepart(int $expeditionId, int $envoyes, int $recus, ?int $pointes = null): void
     {
-        if ($recus === 0) {
+        $pointes ??= $recus;
+
+        if ($pointes === 0) {
             $sql = "UPDATE lbp_expeditions SET statut = 'EN_TRANSIT', date_premiere_reception = NULL, updated_at = NOW() WHERE id = :id";
         } elseif ($recus >= $envoyes) {
             $sql = "UPDATE lbp_expeditions SET statut = 'CLOTURE', date_premiere_reception = COALESCE(date_premiere_reception, NOW()), updated_at = NOW() WHERE id = :id";
@@ -422,6 +519,117 @@ final class PointageColisRepository
         }
 
         $this->pdo->prepare($sql)->execute(['id' => $expeditionId]);
+    }
+
+    // ------------------------------------------------------------------
+    // Rapport de réception et résumé du soir
+    // ------------------------------------------------------------------
+
+    /**
+     * Départs d'un rapport de réception : partis dans la période, ou dont un
+     * colis a été pointé à l'arrivée dans la période. Les bornes sont en heure
+     * du serveur, la seconde exclue.
+     *
+     * $perimetre borne à une agence (d'envoi ou d'arrivée) ; null pour la
+     * Direction, qui choisit ses filtres.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function departsDuRapport(string $du, string $au, ?int $perimetre, ?int $agenceEnvoi, ?int $agenceArrivee): array
+    {
+        $conditions = "e.statut IN ('EN_TRANSIT', 'ARRIVE', 'CLOTURE')
+            AND (
+                (COALESCE(e.date_depart_effective, e.created_at) >= :du AND COALESCE(e.date_depart_effective, e.created_at) < :au)
+                OR EXISTS (
+                    SELECT 1 FROM lbp_colis_pointages p
+                    WHERE p.expedition_id = e.id AND p.action <> 'DEPART'
+                      AND p.created_at >= :pointe_du AND p.created_at < :pointe_au
+                )
+            )";
+        $params = ['du' => $du, 'au' => $au, 'pointe_du' => $du, 'pointe_au' => $au];
+
+        if ($perimetre !== null) {
+            $conditions .= ' AND (e.agence_depart_id = :perimetre_depart OR e.agence_arrivee_id = :perimetre_arrivee)';
+            $params['perimetre_depart'] = $perimetre;
+            $params['perimetre_arrivee'] = $perimetre;
+        }
+        if ($agenceEnvoi !== null) {
+            $conditions .= ' AND e.agence_depart_id = :agence_envoi';
+            $params['agence_envoi'] = $agenceEnvoi;
+        }
+        if ($agenceArrivee !== null) {
+            $conditions .= ' AND e.agence_arrivee_id = :agence_arrivee';
+            $params['agence_arrivee'] = $agenceArrivee;
+        }
+
+        $stmt = $this->pdo->prepare($this->selectDeparts($conditions) . ' ORDER BY date_depart DESC, e.id DESC');
+        $stmt->execute($params);
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    }
+
+    /**
+     * Départs à résumer le soir : un colis pointé à l'arrivée dans la fenêtre
+     * [$du, $au[, ou une première réception dans [$premiereDu, $premiereAu[ —
+     * c'est-à-dire un délai des manquants échu dans la fenêtre.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function departsAResumer(string $du, string $au, string $premiereDu, string $premiereAu): array
+    {
+        $stmt = $this->pdo->prepare($this->selectDeparts("e.statut IN ('EN_TRANSIT', 'ARRIVE', 'CLOTURE')
+            AND (
+                EXISTS (
+                    SELECT 1 FROM lbp_colis_pointages p
+                    WHERE p.expedition_id = e.id AND p.action <> 'DEPART'
+                      AND p.created_at >= :du AND p.created_at < :au
+                )
+                OR (e.date_premiere_reception >= :premiere_du AND e.date_premiere_reception < :premiere_au)
+            )") . ' ORDER BY e.id ASC');
+        $stmt->execute(['du' => $du, 'au' => $au, 'premiere_du' => $premiereDu, 'premiere_au' => $premiereAu]);
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    }
+
+    /**
+     * Réserve le résumé d'un départ pour un jour. Null s'il est déjà fait (ou
+     * en cours) : l'unique (expedition_id, jour) tranche, même entre deux
+     * lancements simultanés.
+     */
+    public function reserverResume(int $expeditionId, string $jour): ?int
+    {
+        try {
+            $this->pdo->prepare('INSERT INTO lbp_colis_resumes_reception (expedition_id, jour, created_at) VALUES (:expedition, :jour, NOW())')
+                ->execute(['expedition' => $expeditionId, 'jour' => $jour]);
+        } catch (\PDOException $e) {
+            if ((string) $e->getCode() === '23000') {
+                return null;
+            }
+            throw $e;
+        }
+
+        return (int) $this->pdo->lastInsertId();
+    }
+
+    public function resumeExiste(int $expeditionId, string $jour): bool
+    {
+        $stmt = $this->pdo->prepare('SELECT COUNT(*) FROM lbp_colis_resumes_reception WHERE expedition_id = :expedition AND jour = :jour');
+        $stmt->execute(['expedition' => $expeditionId, 'jour' => $jour]);
+
+        return (int) $stmt->fetchColumn() > 0;
+    }
+
+    public function confirmerResume(int $id, int $conversationId, int $messageId): void
+    {
+        $this->pdo->prepare('UPDATE lbp_colis_resumes_reception SET conversation_id = :conversation, message_id = :message WHERE id = :id')
+            ->execute(['conversation' => $conversationId, 'message' => $messageId, 'id' => $id]);
+    }
+
+    /** Le message n'a pas pu partir : la place est rendue, le prochain lancement réessaiera. */
+    public function libererResume(int $id): void
+    {
+        $this->pdo->prepare('DELETE FROM lbp_colis_resumes_reception WHERE id = :id AND message_id IS NULL')
+            ->execute(['id' => $id]);
     }
 
     // ------------------------------------------------------------------
@@ -466,7 +674,9 @@ final class PointageColisRepository
     {
         $stmt = $this->pdo->prepare('
             SELECT p.created_at, p.action, p.source, c.numero_tracking,
-                   u.full_name AS par, s.name AS agence
+                   p.etat_avant, p.etat_apres, p.commentaire,
+                   u.full_name AS par, s.name AS agence,
+                   COALESCE(s.fuseau_horaire, \'Africa/Abidjan\') AS fuseau
             FROM lbp_colis_pointages p
             JOIN lbp_colis c ON c.id = p.colis_id
             LEFT JOIN users u ON u.id = p.user_id

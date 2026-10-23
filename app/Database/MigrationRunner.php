@@ -58,6 +58,75 @@ class MigrationRunner
         $this->createMessagerieFichiersTables();
         $this->createMessagerieNotificationsColonne();
         $this->createNoelTables();
+        $this->createReceptionColisEtatsTables();
+    }
+
+    /**
+     * Réception des colis en trois choix (octobre 2026) : « Reçu », « Reçu
+     * endommagé », « Non reçu », un commentaire, et l'auteur du dernier
+     * pointage ; dans le journal, l'état avant et après chaque geste. Le
+     * fuseau horaire de chaque agence (Paris n'est pas à l'heure d'Abidjan),
+     * et la table qui empêche d'envoyer deux fois le résumé du soir d'un même
+     * départ dans la messagerie.
+     *
+     * Uniquement de la structure : run() passe à chaque requête HTTP. Le
+     * fuseau de Paris n'est PAS posé ici — une écriture de données dans run()
+     * a déjà coûté trois incidents en production — mais par
+     * app/Console/DefinirFuseauAgence.php, lancé une fois à la main. La
+     * colonne naît avec « Africa/Abidjan », qui est l'heure de toutes les
+     * agences sauf celle de Paris.
+     *
+     * lbp_colis_resumes_reception est créée en dernier : sa présence dit que
+     * tout le reste l'est déjà, et les jours ordinaires ne coûtent qu'une
+     * lecture d'information_schema.
+     */
+    private function createReceptionColisEtatsTables(): void
+    {
+        try {
+            if ($this->schema->tableExists('lbp_colis_resumes_reception')) {
+                return;
+            }
+
+            if ($this->schema->tableExists('lbp_colis')) {
+                // NULL : jamais pointé. RECU, ENDOMMAGE ou NON_RECU sinon ; un
+                // colis pointé avant ces trois choix a date_reception et un
+                // état NULL, et compte comme RECU.
+                $this->addColumnIfMissing('lbp_colis', 'etat_reception', 'VARCHAR(20) NULL');
+                $this->addColumnIfMissing('lbp_colis', 'commentaire_reception', 'VARCHAR(500) NULL');
+                $this->addColumnIfMissing('lbp_colis', 'pointe_le', 'DATETIME NULL');
+                $this->addColumnIfMissing('lbp_colis', 'pointe_par_id', 'INT NULL');
+            }
+
+            if ($this->schema->tableExists('lbp_colis_pointages')) {
+                $this->addColumnIfMissing('lbp_colis_pointages', 'etat_avant', 'VARCHAR(20) NULL');
+                $this->addColumnIfMissing('lbp_colis_pointages', 'etat_apres', 'VARCHAR(20) NULL');
+                $this->addColumnIfMissing('lbp_colis_pointages', 'commentaire', 'VARCHAR(500) NULL');
+                if (!$this->schema->indexExists('lbp_colis_pointages', 'idx_pointage_expedition_date')) {
+                    $this->pdo->exec('ALTER TABLE lbp_colis_pointages ADD KEY idx_pointage_expedition_date (expedition_id, created_at)');
+                }
+            }
+
+            if ($this->schema->tableExists('company_sites')) {
+                $this->addColumnIfMissing('company_sites', 'fuseau_horaire', "VARCHAR(64) NOT NULL DEFAULT 'Africa/Abidjan'");
+            }
+
+            // Un résumé par départ et par jour : l'unique est la garantie,
+            // même si deux lancements de la commande se croisent.
+            $this->pdo->exec("
+                CREATE TABLE IF NOT EXISTS lbp_colis_resumes_reception (
+                    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                    expedition_id INT UNSIGNED NOT NULL,
+                    jour DATE NOT NULL,
+                    conversation_id INT UNSIGNED NULL,
+                    message_id INT UNSIGNED NULL,
+                    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE KEY uniq_resume_reception (expedition_id, jour),
+                    KEY idx_resume_reception_jour (jour)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            ");
+        } catch (\Throwable $e) {
+            error_log('[MigrationRunner Warning] createReceptionColisEtatsTables: ' . $e->getMessage());
+        }
     }
 
     /**
