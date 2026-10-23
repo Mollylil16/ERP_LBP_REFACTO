@@ -23,8 +23,8 @@ final class ColisageRapportReceptionRenduTest extends TestCase
         $html = ColisageReceptionRapport::page($this->rapport([]));
 
         self::assertStringContainsString('Aucun départ sur la période', $html);
-        self::assertStringContainsString('rapport-reception/pdf?periode=jour&amp;date=2026-10-23', $html);
-        self::assertStringContainsString('rapport-reception/excel?periode=jour&amp;date=2026-10-23', $html);
+        self::assertStringContainsString('rapport-reception/pdf?periode=jour&date=2026-10-23', $html);
+        self::assertStringContainsString('rapport-reception/excel?periode=jour&date=2026-10-23', $html);
     }
 
     public function test_un_compte_sans_agence_est_prevenu(): void
