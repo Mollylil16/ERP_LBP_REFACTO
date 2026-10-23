@@ -49,13 +49,42 @@ final class NoelRepondeur
      *
      * @return array{texte: string, liens: array<int, array{label: string, url: string}>, attente: ?string}
      */
-    public function repondre(string $message): array
+    public function repondre(string $message, int $conversationId = 0): array
     {
+        /*
+         * D'abord : est-ce la reponse a ma derniere question ?
+         *
+         * NOEL pose des questions fermees — « voulez-vous que je
+         * transmette ? », « qui suis-je ? ». Les lire comme des questions
+         * neuves lui ferait repondre « je n'ai pas compris » a un « oui »
+         * parfaitement clair, et c'est pire que de ne rien proposer.
+         */
+        $fil = NoelFil::dernier($conversationId);
+        $suite = $this->suiteDuFil($message, $fil, $conversationId);
+
+        if ($suite !== null) {
+            return $suite;
+        }
+
         $lu = NoelVocabulaire::comprendre($message);
+
+        /*
+         * « Et comment je fais ? » ne nomme rien : c'est le fil qui porte le
+         * sujet. Sans cela, NOEL repondrait « je n'ai pas compris » a une
+         * question limpide pour qui a lu les deux lignes precedentes.
+         */
+        if ($lu['concept'] === null && $lu['module'] === null && NoelVocabulaire::estUneRelance($message)) {
+            $lu['concept'] = $fil['concept'];
+            $lu['module'] = $fil['module'];
+
+            if ($lu['concept'] !== null || $lu['module'] !== null) {
+                $lu['intention'] = NoelVocabulaire::INTENTION_PROCEDURE;
+            }
+        }
 
         $this->mesurer($lu);
 
-        return match ($lu['intention']) {
+        $reponse = match ($lu['intention']) {
             NoelVocabulaire::INTENTION_SALUTATION => $this->bonjour(),
             NoelVocabulaire::INTENTION_REMERCIEMENT => $this->deRien(),
             NoelVocabulaire::INTENTION_SIGNALEMENT => $this->signalement($message, $lu),
@@ -65,6 +94,141 @@ final class NoelRepondeur
             NoelVocabulaire::INTENTION_INCONNUE => $this->jeNeSaisPas($message, $lu),
             default => $this->orienter($lu),
         };
+
+        NoelFil::retenir($conversationId, [
+            'concept' => $lu['concept'] ?? $fil['concept'],
+            'module' => $lu['module'] ?? $fil['module'],
+            'attente' => $reponse['attente'],
+            'question' => $reponse['attente'] === 'transmission' ? $message : null,
+            'essais' => 0,
+        ]);
+
+        return $reponse;
+    }
+
+    /**
+     * La reponse a la derniere question de NOEL, s'il en attendait une.
+     *
+     * @param array{concept: ?string, module: ?string, attente: ?string, question: ?string, essais: int} $fil
+     *
+     * @return array{texte: string, liens: array<int, array<string, string>>, attente: ?string}|null
+     */
+    private function suiteDuFil(string $message, array $fil, int $conversationId): ?array
+    {
+        if ($fil['attente'] === 'transmission') {
+            if (NoelVocabulaire::estOui($message)) {
+                return $this->transmettre($fil, $conversationId);
+            }
+
+            if (NoelVocabulaire::estNon($message)) {
+                NoelFil::oublierAttente($conversationId);
+
+                return self::reponse("Tres bien, je ne transmets rien. Dites-moi si vous changez d'avis.");
+            }
+
+            // Autre chose : la personne est passee a une nouvelle question.
+            // On laisse tomber l'attente plutot que de la harceler.
+            NoelFil::oublierAttente($conversationId);
+
+            return null;
+        }
+
+        if ($fil['attente'] === 'enigme') {
+            return $this->enigme($message, $fil, $conversationId);
+        }
+
+        return null;
+    }
+
+    /**
+     * La personne accepte : la question part chez l'administrateur.
+     *
+     * @param array{question: ?string, concept: ?string} $fil
+     *
+     * @return array{texte: string, liens: array<int, array<string, string>>, attente: ?string}
+     */
+    private function transmettre(array $fil, int $conversationId): array
+    {
+        NoelFil::oublierAttente($conversationId);
+
+        $question = (string) ($fil['question'] ?? '');
+
+        if (trim($question) === '') {
+            return self::reponse("Je n'ai plus votre question sous la main. Reformulez-la et je la transmets.");
+        }
+
+        if (self::enTest()) {
+            return self::reponse("C'est transmis a l'administrateur. Je vous previens des que c'est regle.");
+        }
+
+        $id = (new NoelApprentissage())->transmettre($question, $fil['concept'] ?? null);
+
+        if ($id === null) {
+            return self::reponse(
+                "Je n'ai pas reussi a transmettre votre question. Dites-la de vive voix a l'administrateur, "
+                    . "c'est plus sur que d'attendre."
+            );
+        }
+
+        return self::reponse(
+            "C'est transmis a l'administrateur. Je vous previens ici des que c'est regle, "
+                . "et j'apprendrai au passage."
+        );
+    }
+
+    /**
+     * L'enigme du matin : trois essais, puis la solution et le pourquoi.
+     *
+     * @param array{essais: int} $fil
+     *
+     * @return array{texte: string, liens: array<int, array<string, string>>, attente: ?string}|null
+     */
+    private function enigme(string $message, array $fil, int $conversationId): ?array
+    {
+        $enigme = NoelMotDuMatin::enigmeDuJour();
+
+        if ($enigme === null) {
+            NoelFil::oublierAttente($conversationId);
+
+            return null;
+        }
+
+        /*
+         * Une vraie question posee pendant l'enigme n'est pas une tentative.
+         * On ne compte un essai que pour une phrase courte qui ne parle de
+         * rien d'autre — sinon demander « ou est ma caisse » couterait une
+         * chance a quelqu'un qui ne jouait pas.
+         */
+        $juste = NoelEnigme::correspond($message, $enigme);
+        $lu = NoelVocabulaire::comprendre($message);
+        $uneTentative = $juste
+            || (mb_strlen(trim($message)) <= 40 && $lu['concept'] === null && $lu['module'] === null);
+
+        if (!$uneTentative) {
+            return null;
+        }
+
+        $verdict = NoelEnigme::juger($message, $enigme, (int) $fil['essais']);
+
+        if ($verdict['verdict'] === NoelEnigme::ENCORE) {
+            NoelFil::retenir($conversationId, array_merge($fil, [
+                'attente' => 'enigme',
+                'essais' => $verdict['essais'],
+            ]));
+
+            return self::reponse($verdict['message']);
+        }
+
+        NoelFil::oublierAttente($conversationId);
+
+        $texte = $verdict['message'];
+
+        if ($verdict['pourquoi'] !== null) {
+            $texte .= "
+" . $verdict['pourquoi'];
+        }
+
+        return self::reponse($texte);
     }
 
     // ------------------------------------------------------------------

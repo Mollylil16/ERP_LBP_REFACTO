@@ -48,7 +48,7 @@ final class NoelMessagerie
                 return null;
             }
 
-            $reponse = (new NoelRepondeur())->repondre($texte);
+            $reponse = (new NoelRepondeur())->repondre($texte, $conversationId);
 
             return $depot->ajouterMessage([
                 'conversation_id' => $conversationId,

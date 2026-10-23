@@ -332,6 +332,47 @@ final class NoelVocabulaire
     ];
 
     /**
+     * Dire oui, et dire non.
+     *
+     * NOEL pose des questions fermees — « voulez-vous que je transmette ? ».
+     * Sans ces deux listes, il ne saurait pas lire la reponse, et il
+     * demanderait pour rien.
+     *
+     * @var array<int, string>
+     */
+    public const OUI = [
+        'oui', 'ouii', 'oui stp', 'oui merci', 'ok', 'okay', 'daccord', 'd accord',
+        'vas y', 'vas-y', 'allez y', 'envoie', 'envoyez', 'transmets', 'transmettez',
+        'je veux bien', 'volontiers', 'bien sur', 'certainement', 'exact', 'voila',
+        'c est ca', 'affirmatif', 'yes', 'ouais', 'hmm oui', 'si', 'fais le', 'faites le',
+    ];
+
+    /** @var array<int, string> */
+    public const NON = [
+        'non', 'nonn', 'non merci', 'pas la peine', 'laisse tomber', 'laissez tomber',
+        'ce n est pas la peine', 'pas besoin', 'annule', 'annuler', 'stop', 'arrete',
+        'negatif', 'no', 'nan', 'c est bon', 'ca ira', 'plus tard',
+    ];
+
+    /**
+     * Les tournures qui renvoient a ce dont on vient de parler.
+     *
+     * « Et comment je fais ? » apres une presentation du module finance ne
+     * nomme rien : c'est le fil qui porte le sujet. Sans cela, NOEL repondrait
+     * « je n'ai pas compris » a une question parfaitement claire pour un
+     * humain qui a lu les deux lignes precedentes.
+     *
+     * @var array<int, string>
+     */
+    public const RELANCE = [
+        'et comment', 'et ou', 'et apres', 'et ensuite', 'et pour', 'et ca',
+        'comment ca marche', 'comment je fais', 'comment on fait', 'montre moi',
+        'dis m en plus', 'dis moi en plus', 'continue', 'et alors', 'precise',
+        'je ne comprends pas', 'je comprends pas', 'explique mieux', 'c est a dire',
+        'par exemple', 'un exemple', 'encore', 'developpe',
+    ];
+
+    /**
      * Les facons de demander une presentation.
      *
      * A distinguer d'une recherche d'ecran : « ou je facture » attend une
@@ -641,6 +682,59 @@ final class NoelVocabulaire
     {
         foreach ($expressions as $expression) {
             if (str_contains($texte, ' ' . NoelCarte::sansAccent($expression) . ' ')) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /** La phrase vaut-elle un oui ? */
+    public static function estOui(string $phrase): bool
+    {
+        return self::repondOui($phrase, self::OUI);
+    }
+
+    /** La phrase vaut-elle un non ? */
+    public static function estNon(string $phrase): bool
+    {
+        return self::repondOui($phrase, self::NON);
+    }
+
+    /**
+     * Une reponse fermee est courte. « Oui » compte ; « oui mais au fait, ou
+     * est la caisse » est une nouvelle question, pas un acquiescement.
+     *
+     * @param array<int, string> $mots
+     */
+    private static function repondOui(string $phrase, array $mots): bool
+    {
+        $texte = trim(NoelCarte::sansAccent($phrase));
+        $texte = trim((string) preg_replace('/[^a-z0-9 ]+/', ' ', $texte));
+        $texte = (string) preg_replace('/\s+/', ' ', $texte);
+
+        if ($texte === '' || mb_strlen($texte) > 24) {
+            return false;
+        }
+
+        foreach ($mots as $mot) {
+            if ($texte === NoelCarte::sansAccent($mot)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /** La phrase renvoie-t-elle a ce dont on vient de parler ? */
+    public static function estUneRelance(string $phrase): bool
+    {
+        $texte = ' ' . NoelCarte::sansAccent($phrase) . ' ';
+        $texte = (string) preg_replace('/[^a-z0-9 ]+/', ' ', $texte);
+        $texte = (string) preg_replace('/\s+/', ' ', $texte);
+
+        foreach (self::RELANCE as $tournure) {
+            if (str_contains($texte, ' ' . NoelCarte::sansAccent($tournure) . ' ')) {
                 return true;
             }
         }
