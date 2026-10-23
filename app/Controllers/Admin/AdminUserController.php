@@ -153,8 +153,11 @@ final class AdminUserController extends AdminBaseController
     {
         $this->guardWrite();
         try {
-            $this->service->resetPassword((int) $id);
-            Session::flash('success', 'Le mot de passe a été réinitialisé à "lbp2026" avec succès.');
+            $provisoire = $this->service->resetPassword((int) $id);
+            // Affiché cette seule fois : il n'est conservé nulle part.
+            Session::flash('success', 'Mot de passe provisoire : ' . $provisoire
+                . ' — notez-le et transmettez-le en privé à la personne. Il ne sera plus affiché.'
+                . ' Elle devra choisir son propre mot de passe à sa prochaine connexion.');
         } catch (RuntimeException $e) {
             Session::flash('error', $e->getMessage());
         }

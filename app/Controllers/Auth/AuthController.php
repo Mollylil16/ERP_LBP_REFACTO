@@ -65,8 +65,29 @@ class AuthController extends BaseController
 
         \App\Services\Shared\AuditLogService::log('login', 'users', $utilisateurId, null, null);
 
+        // Mot de passe provisoire : l'agent choisit le sien avant d'aller plus loin.
+        if (self::doitChangerMotDePasse($utilisateurId)) {
+            \App\Security\MotDePasseProvisoire::exiger(true);
+            Session::flash('success', 'Bienvenue. Choisissez maintenant votre propre mot de passe.');
+            $this->redirect('/compte/mot-de-passe');
+        }
+
         Session::flash('success', 'Connexion réussie.');
         $this->redirect('/selection_portail');
+    }
+
+    private static function doitChangerMotDePasse(int $utilisateurId): bool
+    {
+        try {
+            $stmt = \App\Models\Database::getConnection()
+                ->prepare('SELECT doit_changer_mdp FROM users WHERE id = :id');
+            $stmt->execute(['id' => $utilisateurId]);
+
+            return (int) $stmt->fetchColumn() === 1;
+        } catch (\Throwable $e) {
+            // Colonne pas encore créée : rien n'est exigé.
+            return false;
+        }
     }
 
     /**

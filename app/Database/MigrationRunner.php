@@ -1121,6 +1121,8 @@ class MigrationRunner
         $this->addColumnIfMissing('users', 'rh_employee_id', "INT UNSIGNED NULL");
         $this->addColumnIfMissing('users', 'created_at', "DATETIME DEFAULT CURRENT_TIMESTAMP");
         $this->addColumnIfMissing('users', 'updated_at', "DATETIME NULL");
+        // Mot de passe provisoire à changer à la première connexion (MotDePasseProvisoire).
+        $this->addColumnIfMissing('users', 'doit_changer_mdp', "TINYINT(1) NOT NULL DEFAULT 0");
 
         $this->addUniqueIndexIfMissing('users', 'uniq_users_email', 'email');
     }
@@ -4436,53 +4438,40 @@ class MigrationRunner
             if ($userRow && !empty($userRow['id'])) {
                 $userId = (int) $userRow['id'];
 
-                // 1. Mettre à jour l'utilisateur : mot de passe lbp2026, agence_id Aéroport Fret et statut actif
+                /*
+                 * Cette méthode passe à CHAQUE requête (MigrationRunner::run).
+                 * Jusqu'au 23/10/2026 elle réécrivait ici, à chaque page servie,
+                 * le mot de passe du compte (lbp2026, connu de tous), son
+                 * statut, son e-mail, son agence, sa fiche RH et ses
+                 * permissions : il ne pouvait garder ni son propre mot de passe,
+                 * ni un réglage fait depuis l'Administration. Comme pour
+                 * assignStaffRolesAndAgencies (30/09), elle n'amorce plus que le
+                 * vide et ne touche jamais au mot de passe.
+                 */
+
+                // 1. L'agence, seulement si le compte n'en a aucune.
                 try {
-                    $userCols = $this->pdo->query("SHOW COLUMNS FROM users")->fetchAll(PDO::FETCH_COLUMN) ?: [];
-                    $hasPassword = in_array('password', $userCols, true);
-                    $hasPasswordHash = in_array('password_hash', $userCols, true);
-                    $hasUpdatedAt = in_array('updated_at', $userCols, true);
-
-                    $hash = password_hash('lbp2026', PASSWORD_BCRYPT);
-                    $updates = ['agence_id = :agence_id', "status = 'active'", "email = 'sylvestre.kichi@labelleporte.ci'"];
-                    $params = ['agence_id' => $fretAgId, 'id' => $userId];
-
-                    if ($hasPassword) {
-                        $updates[] = 'password = :pwd';
-                        $params['pwd'] = $hash;
-                    }
-                    if ($hasPasswordHash) {
-                        $updates[] = 'password_hash = :pwd_hash';
-                        $params['pwd_hash'] = $hash;
-                    }
-                    if ($hasUpdatedAt) {
-                        $updates[] = 'updated_at = NOW()';
-                    }
-
-                    $sql = "UPDATE users SET " . implode(', ', $updates) . " WHERE id = :id";
-                    $stmtUpUser = $this->pdo->prepare($sql);
-                    $stmtUpUser->execute($params);
+                    $stmtAg = $this->pdo->prepare('UPDATE users SET agence_id = :agence_id WHERE id = :id AND agence_id IS NULL');
+                    $stmtAg->execute(['agence_id' => $fretAgId, 'id' => $userId]);
                 } catch (\Throwable $e) {}
 
-                // 2. Mettre à jour l'employé RH correspondant si existant
-                try {
-                    $stmtEmp = $this->pdo->prepare("UPDATE rh_employees SET site_id = :site_id, email = 'sylvestre.kichi@labelleporte.ci', updated_at = NOW() WHERE email LIKE '%sylvestre%' OR id = 1013");
-                    $stmtEmp->execute(['site_id' => $fretAgId]);
-                } catch (\Throwable $e) {}
+                // 2. Les rôles, seulement si le compte n'en a aucun.
+                $stmtNb = $this->pdo->prepare('SELECT COUNT(*) FROM lbp_user_roles WHERE user_id = :user_id');
+                $stmtNb->execute(['user_id' => $userId]);
+                if ((int) $stmtNb->fetchColumn() === 0) {
+                    $stmtRole = $this->pdo->prepare("INSERT IGNORE INTO lbp_user_roles (user_id, role) VALUES (:user_id, :role)");
+                    $stmtRole->execute(['user_id' => $userId, 'role' => 'suivi_recouvrement']);
+                    $stmtRole->execute(['user_id' => $userId, 'role' => 'agent_groupage']);
+                }
 
-                // 3. Attribuer le rôle 'suivi_recouvrement' et 'agent_groupage'
-                $stmtRole = $this->pdo->prepare("INSERT IGNORE INTO lbp_user_roles (user_id, role) VALUES (:user_id, :role)");
-                $stmtRole->execute(['user_id' => $userId, 'role' => 'suivi_recouvrement']);
-                $stmtRole->execute(['user_id' => $userId, 'role' => 'agent_groupage']);
-
-                // 4. Attribuer les permissions fonctionnelles dans user_permissions
+                // 3. Les permissions absentes seulement : un réglage fait depuis
+                //    l'Administration n'est plus écrasé (INSERT IGNORE).
                 try {
                     $permEntities = $this->pdo->query("SELECT id, code FROM permission_entities WHERE is_active = 1")->fetchAll(PDO::FETCH_ASSOC) ?: [];
                     if (!empty($permEntities)) {
                         $stmtPerm = $this->pdo->prepare("
-                            INSERT INTO user_permissions (user_id, entity_id, can_view, can_create, can_update, can_delete)
+                            INSERT IGNORE INTO user_permissions (user_id, entity_id, can_view, can_create, can_update, can_delete)
                             VALUES (:user_id, :entity_id, :can_view, :can_create, :can_update, :can_delete)
-                            ON DUPLICATE KEY UPDATE can_view = VALUES(can_view), can_create = VALUES(can_create), can_update = VALUES(can_update), can_delete = VALUES(can_delete)
                         ");
 
                         $targetCodes = [

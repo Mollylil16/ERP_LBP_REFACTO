@@ -92,7 +92,7 @@ ob_start();
                     'autocomplete' => 'new-password',
                     'hint' => $page->isEdit
                         ? 'Laisser vide pour conserver le mot de passe actuel.'
-                        : '7 caractères minimum (ex: lbp2026).',
+                        : '10 caractères minimum. La personne devra le changer à sa première connexion.',
                 ]) ?>
                 <?= Form::select('agence_id', $agenceOpts, (string) ($page->user?->agenceId ?? ''), ['label' => 'Agence de rattachement LBP']) ?>
                 <div class="admin-switch admin-switch-card">

@@ -324,12 +324,12 @@ final class Admin
     public static function passwordResetCard(UserShowPage $page): string
     {
         return '<section class="finea-section-card admin-reset-password"><div>'
-            . '<h2 class="finea-section-title">Réinitialisation d’urgence du mot de passe</h2>'
-            . '<p>Réinitialise le mot de passe de cet utilisateur à la valeur par défaut : <code>lbp2026</code></p>'
+            . '<h2 class="finea-section-title">Mot de passe provisoire</h2>'
+            . '<p>Donne à cet utilisateur un mot de passe provisoire tiré au hasard, affiché une seule fois. Il devra choisir le sien à sa prochaine connexion.</p>'
             . '</div><form method="post" action="' . View::url('admin/users/' . (int) $page->user->id . '/reset-password')
-            . '" onsubmit="return confirm(\'Êtes-vous sûr de vouloir réinitialiser le mot de passe de cet utilisateur à lbp2026 ?\');">'
+            . '" onsubmit="return confirm(\'Donner un nouveau mot de passe provisoire à cet utilisateur ? Son mot de passe actuel ne fonctionnera plus.\');">'
             . Csrf::input()
-            . Ui::button('Réinitialiser (lbp2026)', ['variant' => 'secondary', 'type' => 'submit'])
+            . Ui::button('Donner un mot de passe provisoire', ['variant' => 'secondary', 'type' => 'submit'])
             . '</form></section>';
     }
 

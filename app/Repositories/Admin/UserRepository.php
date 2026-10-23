@@ -285,6 +285,13 @@ class UserRepository
         $stmt->execute(['hash' => $newPasswordHash, 'id' => $userId]);
     }
 
+    /** Voir App\Security\MotDePasseProvisoire. */
+    public function exigerChangementMotDePasse(int $userId, bool $exige): void
+    {
+        $stmt = $this->pdo->prepare('UPDATE users SET doit_changer_mdp = :exige, updated_at = NOW() WHERE id = :id');
+        $stmt->execute(['exige' => $exige ? 1 : 0, 'id' => $userId]);
+    }
+
     public function setStatus(int $id, string $status): void
     {
         $stmt = $this->pdo->prepare('UPDATE users SET status = :status, updated_at = NOW() WHERE id = :id');

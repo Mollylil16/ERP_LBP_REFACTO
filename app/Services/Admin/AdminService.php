@@ -177,6 +177,10 @@ class AdminService
                 $this->replacePermissions($id, $input);
             }
 
+            // Le mot de passe choisi par l'administrateur est connu de lui :
+            // la personne choisit le sien à sa première connexion.
+            $this->users->exigerChangementMotDePasse($id, true);
+
             // Save functional roles
             $this->users->setRoles($id, $this->rolesApresFormulaire($input, []));
 
@@ -201,15 +205,25 @@ class AdminService
         }
     }
 
-    public function resetPassword(int $userId): void
+    /**
+     * Donne au compte un mot de passe provisoire tiré au hasard, qu'il devra
+     * changer à sa prochaine connexion. Le mot de passe est rendu une seule
+     * fois, pour être transmis en privé ; il n'est conservé nulle part.
+     * (Jusqu'au 23/10/2026, tout compte repartait sur lbp2026, mot de passe
+     * connu de tous.)
+     */
+    public function resetPassword(int $userId): string
     {
         $this->requireUser($userId);
-        $defaultHash = password_hash('lbp2026', PASSWORD_DEFAULT);
-        $this->users->updatePassword($userId, $defaultHash);
+        $provisoire = \App\Security\MotDePasseProvisoire::generer();
+        $this->users->updatePassword($userId, password_hash($provisoire, PASSWORD_DEFAULT));
+        $this->users->exigerChangementMotDePasse($userId, true);
 
         // Le mot de passe n est jamais inscrit, seulement le geste : un
         // journal qui porterait le secret serait une porte de plus.
         AuditLogService::log('reset_password', 'users', $userId, null, ['par' => 'reinitialisation administrateur']);
+
+        return $provisoire;
     }
 
     public function bulkSetStatus(array $userIds, bool $active, int $actorId): void

@@ -300,4 +300,47 @@ final class Auth
             . $convoyeur . $accueil . $colis
             . '</svg>';
     }
+
+    /**
+     * Écran « Choisir votre mot de passe », seul écran ouvert tant que le
+     * mot de passe provisoire n'est pas remplacé (App\Security\MotDePasseProvisoire).
+     */
+    public static function changementMotDePasse(string $nomComplet, bool $obligatoire): string
+    {
+        $titre = $obligatoire ? 'Choisissez votre mot de passe' : 'Changer votre mot de passe';
+        $intro = $obligatoire
+            ? 'Bonjour ' . $nomComplet . '. Vous vous êtes connecté avec un mot de passe provisoire. '
+                . 'Choisissez maintenant le vôtre : vous seul le connaîtrez.'
+            : 'Choisissez un nouveau mot de passe, que vous seul connaîtrez.';
+
+        return '<section class="auth-page">'
+            . self::panneauVisuel()
+            . '<div class="auth-card">'
+            . '<div class="auth-card-logo"><img src="' . View::asset('images/logo-lbp.png') . '" alt="LBP" class="auth-card-logo-img"></div>'
+            . '<div class="auth-header">'
+            . '<span class="auth-kicker">Sécurité du compte</span>'
+            . '<h2>' . View::e($titre) . '</h2>'
+            . '<p>' . View::e($intro) . '</p>'
+            . '</div>'
+            . '<form method="POST" action="' . View::url('compte/mot-de-passe') . '" class="auth-form">'
+            . \App\Helpers\Csrf::input()
+            . Form::input('actuel', [
+                'label' => $obligatoire ? 'Mot de passe provisoire' : 'Mot de passe actuel',
+                'type' => 'password', 'required' => true, 'autocomplete' => 'current-password',
+            ])
+            . Form::input('nouveau', [
+                'label' => 'Nouveau mot de passe',
+                'type' => 'password', 'required' => true, 'autocomplete' => 'new-password',
+                'minlength' => \App\Security\MotDePasseProvisoire::LONGUEUR_MIN,
+                'hint' => 'Au moins ' . \App\Security\MotDePasseProvisoire::LONGUEUR_MIN . ' caractères. Une phrase courte que vous retenez facilement fait un bon mot de passe.',
+            ])
+            . Form::input('confirmation', [
+                'label' => 'Confirmez le nouveau mot de passe',
+                'type' => 'password', 'required' => true, 'autocomplete' => 'new-password',
+            ])
+            . Ui::button('Enregistrer mon mot de passe', ['variant' => 'primary', 'type' => 'submit', 'class' => 'btn btn-primary btn-login'])
+            . '</form>'
+            . '<div class="auth-footer"><a href="' . View::url('logout') . '">Se déconnecter</a></div>'
+            . '</div></section>';
+    }
 }
