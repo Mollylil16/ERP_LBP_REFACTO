@@ -37,6 +37,20 @@ class Database
                 ]
             );
 
+            /*
+             * L'ERP vit à l'heure d'Abidjan, UTC+0 toute l'année (bootstrap :
+             * date_default_timezone_set('Africa/Abidjan')). Le serveur MariaDB
+             * de l'hébergeur, lui, suit l'heure d'été britannique : constaté le
+             * 23/10/2026, NOW() avait une heure d'avance sur date() — et tout
+             * ce que la base date elle-même (NOW(), CURRENT_TIMESTAMP) était
+             * décalé de ce que PHP datait. La connexion est donc mise à UTC.
+             */
+            try {
+                self::$connection->exec("SET time_zone = '+00:00'");
+            } catch (PDOException $e) {
+                error_log('[Database] fuseau de la connexion : ' . $e->getMessage());
+            }
+
             return self::$connection;
         } catch (PDOException $e) {
             die('Erreur de connexion à la base de données.');
