@@ -23,7 +23,7 @@ final class MotDePasseProvisoire
 {
     public const COLONNE = 'doit_changer_mdp';
     public const CLE_SESSION = 'doit_changer_mdp';
-    public const LONGUEUR_MIN = 10;
+    public const LONGUEUR_MIN = 8;
 
     /** Mots de passe connus de trop de monde pour être acceptés. */
     private const INTERDITS = ['lbp2026', 'admin', 'password', 'motdepasse', 'azerty123', '1234567890'];

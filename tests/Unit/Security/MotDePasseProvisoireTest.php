@@ -41,9 +41,9 @@ final class MotDePasseProvisoireTest extends TestCase
     {
         return [
             'confirmation différente' => ['fret du lundi matin', 'fret du lundi soir', 'identiques'],
-            'trop court' => ['court', 'court', 'au moins 10'],
+            'trop court' => ['court', 'court', 'au moins 8'],
             'le provisoire lui-même' => ['Kx7m-Qp4r-Tz9w', 'Kx7m-Qp4r-Tz9w', 'différent'],
-            'mot de passe public' => ['LBP2026', 'LBP2026', 'au moins 10'],
+            'mot de passe public' => ['LBP2026', 'LBP2026', 'au moins 8'],
             'mot de passe connu' => ['1234567890', '1234567890', 'trop connu'],
             'reprend l’e-mail' => ['prince.kadjo2026', 'prince.kadjo2026', 'adresse e-mail'],
         ];
