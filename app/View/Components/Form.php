@@ -36,13 +36,23 @@ final class Form
         $fieldAttrs = self::extractFieldAttrs($attrs);
         $id = (string) ($attrs['id'] ?? self::id($name));
 
-        $inputAttrs = array_merge([
+        $defauts = [
             'class' => Html::classes(['finea-input', (string) ($attrs['class'] ?? '')]),
             'type' => $type,
             'name' => $name,
             'id' => $id,
             'value' => (string) $value,
-        ], $attrs);
+        ];
+
+        $clavier = self::clavier($name, $type);
+
+        if ($clavier !== null) {
+            $defauts['inputmode'] = $clavier;
+        }
+
+        // Ce que l'appel precise lui-meme l'emporte : la devinette ne sert
+        // que par defaut.
+        $inputAttrs = array_merge($defauts, $attrs);
 
         $fieldAttrs['for'] = $id;
 
@@ -182,13 +192,103 @@ final class Form
     /** @param array<string,mixed> $attrs */
     public static function inputControl(string $name, array $attrs = []): string
     {
-        $attrs = array_merge([
+        $type = (string) ($attrs['type'] ?? 'text');
+
+        $defauts = [
             'class' => Html::classes(['finea-input', (string) ($attrs['class'] ?? '')]),
-            'type' => (string) ($attrs['type'] ?? 'text'),
+            'type' => $type,
             'name' => $name,
-        ], $attrs);
+        ];
+
+        $clavier = self::clavier($name, $type);
+
+        if ($clavier !== null) {
+            $defauts['inputmode'] = $clavier;
+        }
+
+        $attrs = array_merge($defauts, $attrs);
 
         return '<input' . Html::attrs($attrs) . '>';
+    }
+
+    /**
+     * Les noms de champ qui appellent le clavier d'un telephone.
+     *
+     * @var array<int, string>
+     */
+    private const CHAMPS_TELEPHONE = ['telephone', 'phone', 'mobile', 'whatsapp', 'portable'];
+
+    /**
+     * Ceux qui appellent un pave numerique.
+     *
+     * La liste reste courte et sans ambiguite : « numero » et « code » n y
+     * sont pas, parce qu une reference comme FA-3403-2026-000302 se saisit
+     * avec des lettres et des tirets.
+     *
+     * @var array<int, string>
+     */
+    private const CHAMPS_NOMBRE = [
+        'montant', 'amount', 'prix', 'price', 'total', 'solde', 'somme',
+        'quantite', 'qte', 'nombre', 'nbre', 'poids', 'frais', 'cout',
+        'tarif', 'avance', 'acompte', 'salaire', 'remise',
+    ];
+
+    /**
+     * Le clavier qu'un telephone doit ouvrir sur ce champ.
+     *
+     * Un agent qui saisit un montant debout, sur le terrain, ne doit pas aller
+     * chercher les chiffres derriere la touche « 123 » : le pave numerique
+     * s ouvre directement. Le nom du champ suffit a le dire, et c est la seule
+     * facon de corriger les centaines de formulaires du logiciel sans les
+     * rouvrir un par un.
+     *
+     * « decimal » plutot que « numeric » : la virgule y est, et un montant en
+     * euros en a besoin. Le pave n offre pas d espace, mais la saisie des
+     * milliers s en passe tres bien — le service lit « 250000 » comme
+     * « 250 000 ».
+     */
+    private static function clavier(string $name, string $type): ?string
+    {
+        // Les types que le navigateur equipe deja de son propre clavier.
+        $equipes = [
+            'date', 'time', 'datetime-local', 'month', 'week',
+            'email', 'url', 'password', 'file', 'checkbox', 'radio',
+            'color', 'hidden', 'range',
+        ];
+
+        if (in_array($type, $equipes, true)) {
+            return null;
+        }
+
+        $nom = strtolower($name);
+
+        /*
+         * « date_echeance_solde » contient « solde » sans etre un nombre. Le
+         * mot qui dit la nature d un champ ouvre son nom ; celui qu on trouve
+         * au milieu ne fait que le qualifier. Une date reste une date, meme
+         * quand elle parle d un solde.
+         */
+        if (str_contains($nom, 'date') || str_contains($nom, 'heure')) {
+            return null;
+        }
+
+        foreach (self::CHAMPS_TELEPHONE as $mot) {
+            if (str_contains($nom, $mot)) {
+                return 'tel';
+            }
+        }
+
+        if ($type === 'number') {
+            return 'decimal';
+        }
+
+        foreach (self::CHAMPS_NOMBRE as $mot) {
+            if (str_contains($nom, $mot)) {
+                return 'decimal';
+            }
+        }
+
+        return null;
     }
 
     /**

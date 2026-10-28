@@ -359,6 +359,17 @@
     tableaux.forEach((table) => {
       if (table.dataset.cartesPretes === "1") return;
 
+      /*
+       * Un tableau peut refuser la mise en cartes. Une matrice de droits se
+       * lit par colonnes — un role, vingt permissions cote a cote —, et
+       * l empiler en vingt lignes la rendrait illisible. Elle declare alors
+       * data-mobile="defilement" et garde son defilement lateral.
+       */
+      if (table.dataset.mobile) {
+        table.dataset.cartesPretes = "1";
+        return;
+      }
+
       const lignesEntete = table.querySelectorAll("thead tr");
       const entetes = lignesEntete.length
         ? [...lignesEntete[lignesEntete.length - 1].querySelectorAll("th")].map((th) =>

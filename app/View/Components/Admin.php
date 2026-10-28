@@ -385,7 +385,11 @@ final class Admin
 
         return '<div class="admin-matrix-legend"><span><b>L</b> Lire</span><span><b>C</b> Créer</span>'
             . '<span><b>M</b> Modifier</span><span><b>S</b> Supprimer</span></div>'
-            . '<div class="finea-table-wrap"><table class="finea-table admin-matrix-table">'
+            // La matrice se lit par colonnes : un role, ses permissions cote a
+            // cote. En cartes, chaque role deviendrait vingt lignes empilees et
+            // la comparaison entre roles — tout l objet de cet ecran —
+            // disparaitrait. Elle defile donc, meme sur un telephone.
+            . '<div class="finea-table-wrap"><table class="finea-table admin-matrix-table" data-mobile="defilement">'
             . '<thead><tr>' . $head . '</tr></thead><tbody>' . $body . '</tbody></table></div>';
     }
 
