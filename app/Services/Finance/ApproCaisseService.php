@@ -133,9 +133,11 @@ final class ApproCaisseService
         }
 
         $stmt = $this->pdo->prepare('
-            SELECT a.*, s.name AS agence, d.full_name AS demandeur, v.full_name AS validateur
+            SELECT a.*, s.name AS agence, src.name AS agence_source,
+                   d.full_name AS demandeur, v.full_name AS validateur
             FROM lbp_appros_caisse a
             LEFT JOIN company_sites s ON s.id = a.agence_id
+            LEFT JOIN company_sites src ON src.id = a.source_agence_id
             LEFT JOIN users d ON d.id = a.demandeur_id
             LEFT JOIN users v ON v.id = a.validateur_id
             WHERE ' . implode(' AND ', $conditions) . '
@@ -151,9 +153,10 @@ final class ApproCaisseService
     public function trouver(int $id): ?array
     {
         $stmt = $this->pdo->prepare('
-            SELECT a.*, s.name AS agence
+            SELECT a.*, s.name AS agence, src.name AS agence_source
             FROM lbp_appros_caisse a
             LEFT JOIN company_sites s ON s.id = a.agence_id
+            LEFT JOIN company_sites src ON src.id = a.source_agence_id
             WHERE a.id = :id LIMIT 1
         ');
         $stmt->execute(['id' => $id]);
@@ -193,6 +196,18 @@ final class ApproCaisseService
             $erreurs[] = "Dites à quoi sert cet approvisionnement : l'agence le lira le soir, au comptage.";
         }
 
+        $source = isset(self::SOURCES[$source]) ? $source : 'AUTRE';
+
+        [$sourceAgence, $sourceAutre, $erreursProvenance] = self::preciserProvenance(
+            $source,
+            (int) ($saisie['source_agence_id'] ?? 0),
+            (string) ($saisie['source_autre'] ?? ''),
+            $agence,
+            $this->agences()
+        );
+
+        $erreurs = array_merge($erreurs, $erreursProvenance);
+
         if ($erreurs !== []) {
             return ['', $erreurs];
         }
@@ -201,22 +216,110 @@ final class ApproCaisseService
 
         $stmt = $this->pdo->prepare("
             INSERT INTO lbp_appros_caisse
-                (numero, agence_id, montant, devise, source, motif, date_effet, demandeur_id, statut, created_at)
+                (numero, agence_id, montant, devise, source, source_agence_id, source_autre,
+                 motif, date_effet, demandeur_id, statut, created_at)
             VALUES
-                (:numero, :agence, :montant, :devise, :source, :motif, :date_effet, :demandeur, 'en_attente', NOW())
+                (:numero, :agence, :montant, :devise, :source, :source_agence, :source_autre,
+                 :motif, :date_effet, :demandeur, 'en_attente', NOW())
         ");
         $stmt->execute([
             'numero' => $this->prochainNumero(),
             'agence' => $agence,
             'montant' => $montant,
             'devise' => isset(self::DEVISES[$devise]) ? $devise : 'XOF',
-            'source' => isset(self::SOURCES[$source]) ? $source : 'AUTRE',
+            'source' => $source,
+            'source_agence' => $sourceAgence,
+            'source_autre' => $sourceAutre,
             'motif' => $motif,
             'date_effet' => $dateEffet,
             'demandeur' => (int) Auth::id(),
         ]);
 
         return ['Approvisionnement enregistré. Il attend la validation du comptable.', []];
+    }
+
+    /**
+     * Ce que la provenance exige en plus, et ce qu'elle interdit.
+     *
+     * « Autre agence » doit dire laquelle, « Autre » doit dire quoi : sans
+     * cela l'agence lit le soir une ligne qui ne lui apprend rien et doit
+     * téléphoner pour savoir d'où vient l'argent qu'on lui réclame.
+     *
+     * Les autres provenances repartent à vide, même si le formulaire a posté
+     * une valeur restée d'un choix précédent : un appro du siège ne doit pas
+     * garder le nom d'une agence que personne n'a voulu nommer.
+     *
+     * @param array<int, array<string, mixed>> $agences les agences ouvertes
+     * @return array{0: ?int, 1: ?string, 2: array<int, string>} agence d'origine, précision, erreurs
+     */
+    public static function preciserProvenance(
+        string $source,
+        int $sourceAgence,
+        string $sourceAutre,
+        int $agenceRecue,
+        array $agences
+    ): array {
+        if ($source === 'AUTRE_AGENCE') {
+            if ($sourceAgence <= 0) {
+                return [null, null, ["Dites quelle agence a remis l'argent."]];
+            }
+
+            // Une agence qui s'approvisionne elle-même ferait entrer dans son
+            // tiroir un argent qui n'en est jamais sorti.
+            if ($sourceAgence === $agenceRecue) {
+                return [null, null, ["Une agence ne s'approvisionne pas elle-même : choisissez celle qui a remis l'argent."]];
+            }
+
+            foreach ($agences as $agence) {
+                if ((int) ($agence['id'] ?? 0) === $sourceAgence) {
+                    return [$sourceAgence, null, []];
+                }
+            }
+
+            return [null, null, ["Cette agence d'origine n'existe pas ou a été fermée."]];
+        }
+
+        if ($source === 'AUTRE') {
+            $precision = trim($sourceAutre);
+
+            return $precision === ''
+                ? [null, null, ["Dites d'où vient cet argent : « Autre » sans précision ne renseigne personne."]]
+                : [null, mb_substr($precision, 0, 180), []];
+        }
+
+        return [null, null, []];
+    }
+
+    /**
+     * La provenance d'un appro, telle qu'on la lit.
+     *
+     * Elle porte sa précision quand il y en a une — l'agence qui a remis
+     * l'argent, ou ce qu'on a saisi sous « Autre ». Les appros d'avant le
+     * 28/10/2026 n'en ont pas : ils gardent leur libellé seul.
+     *
+     * @param array<string, mixed> $ligne
+     */
+    public static function provenance(array $ligne): string
+    {
+        $code = (string) ($ligne['source'] ?? '');
+
+        // Un code inconnu retombe sur « Autre » et non sur « Siège » : affirmer
+        // que l'argent vient du siège quand on ne sait pas serait un mensonge.
+        $libelle = self::SOURCES[$code] ?? self::SOURCES['AUTRE'];
+
+        if ($code === 'AUTRE_AGENCE') {
+            $agence = trim((string) ($ligne['agence_source'] ?? ''));
+
+            return $agence === '' ? $libelle : $libelle . ' — ' . $agence;
+        }
+
+        if ($code === 'AUTRE') {
+            $precision = trim((string) ($ligne['source_autre'] ?? ''));
+
+            return $precision === '' ? $libelle : $libelle . ' : ' . $precision;
+        }
+
+        return $libelle;
     }
 
     /**

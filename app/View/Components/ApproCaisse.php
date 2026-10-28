@@ -188,12 +188,76 @@ final class ApproCaisse
             . Form::select('devise', $devises, 'XOF', ['label' => 'Monnaie', 'id' => 'appro-f-devise'])
             . Form::input('date_effet', ['label' => 'Date de remise', 'type' => 'date', 'value' => date('Y-m-d'), 'id' => 'appro-f-date'])
             . Form::select('source', $sources, 'SIEGE', ['label' => 'Provenance', 'id' => 'appro-f-source'])
+            /*
+             * « Autre agence » doit dire laquelle, « Autre » doit dire quoi.
+             * Les deux champs ne s'affichent que pour leur provenance : posés
+             * en permanence, ils auraient fait poser deux questions sans objet
+             * à chaque appro du siège, qui est le cas courant.
+             */
+            . self::precision(
+                'AUTRE_AGENCE',
+                Form::select(
+                    'source_agence_id',
+                    self::optionsAgences($p, 'Choisir l\'agence d\'origine'),
+                    '',
+                    ['label' => 'Agence d\'origine', 'id' => 'appro-f-source-agence']
+                )
+            )
+            . self::precision(
+                'AUTRE',
+                Form::input('source_autre', [
+                    'label' => 'Préciser la provenance',
+                    'value' => '',
+                    'id' => 'appro-f-source-autre',
+                    'placeholder' => 'Remboursement du transporteur',
+                ])
+            )
             . '</div>'
             . Form::input('motif', ['label' => 'Motif — ce que l\'agence lira au comptage', 'value' => '', 'id' => 'appro-f-motif', 'placeholder' => 'Fonds de caisse pour la semaine'])
             . '<div class="lbp-appro-actions">'
             . '<span class="lbp-appro-note">L\'appro n\'entre dans la caisse qu\'après validation du comptable.</span>'
             . '<button type="submit" class="rh-filter-btn rh-filter-btn--primary">' . self::icone('ajouter') . 'Enregistrer l\'approvisionnement</button>'
-            . '</div></form>';
+            . '</div></form>'
+            . self::scriptPrecision();
+    }
+
+    /**
+     * Un champ qui n'existe que pour une provenance.
+     *
+     * Il part fermé : le formulaire s'ouvre sur « Siège », qui est le cas
+     * courant, et le script l'ouvre si la caissière change de provenance.
+     */
+    private static function precision(string $source, string $champ): string
+    {
+        return '<div class="lbp-appro-precision" data-source="' . View::e($source) . '" hidden>'
+            . $champ . '</div>';
+    }
+
+    /**
+     * Ouvre le champ de la provenance choisie, et vide les autres.
+     *
+     * Le vidage compte autant que l'affichage : sans lui, une caissière qui
+     * choisit « Autre agence », désigne Adjamé, puis revient sur « Siège »
+     * posterait quand même l'identifiant d'Adjamé. Le service le remet à vide
+     * de son côté — mais une règle qui ne tient que d'un seul côté finit
+     * toujours par ne plus tenir du tout.
+     */
+    private static function scriptPrecision(): string
+    {
+        return '<script>(function(){'
+            . 'var source=document.getElementById("appro-f-source");'
+            . 'if(!source){return;}'
+            . 'var blocs=document.querySelectorAll(".lbp-appro-precision");'
+            . 'var appliquer=function(){'
+            . 'Array.prototype.forEach.call(blocs,function(bloc){'
+            . 'var montre=bloc.getAttribute("data-source")===source.value;'
+            . 'bloc.hidden=!montre;'
+            . 'if(!montre){Array.prototype.forEach.call('
+            . 'bloc.querySelectorAll("input,select"),function(champ){champ.value="";});}'
+            . '});};'
+            . 'source.addEventListener("change",appliquer);'
+            . 'appliquer();'
+            . '})();</script>';
     }
 
     /** @param array<string, mixed> $p */
@@ -240,7 +304,7 @@ final class ApproCaisse
             . '<td>' . View::e((string) ($l['agence'] ?? '—')) . '</td>'
             . '<td class="lbp-appro-droite lbp-appro-mono"><strong>' . View::e(self::montant((float) $l['montant'])) . '</strong>'
             . self::sous(Service::DEVISES[(string) ($l['devise'] ?? 'XOF')] ?? (string) $l['devise']) . '</td>'
-            . '<td>' . View::e(Service::SOURCES[(string) $l['source']] ?? (string) $l['source']) . '</td>'
+            . '<td>' . View::e(Service::provenance($l)) . '</td>'
             . '<td><span class="lbp-appro-motif">' . View::e($motif) . '</span>'
             . ($rejet !== '' ? self::sous('Rejet : ' . $rejet) : '') . '</td>'
             . '<td>' . Ui::badge(Service::STATUTS[$statut] ?? $statut, self::TONS[$statut] ?? 'neutral') . '</td>'
@@ -340,6 +404,9 @@ final class ApproCaisse
             . '.lbp-appro-kpi.is-sombre strong{color:#fff}'
             . '.lbp-appro-kpi.is-sombre .lbp-appro-kpi-libelle,.lbp-appro-kpi.is-sombre .lbp-appro-kpi-detail{color:#94a3b8}'
             . '.lbp-appro-grille{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}'
+            // Sans cette regle, une div [hidden] posee dans une grille garde
+            // sa colonne : le formulaire s ouvrait avec deux trous.
+            . '.lbp-appro-precision[hidden]{display:none}'
             . '.lbp-appro-actions{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:12px;flex-wrap:wrap}'
             . '.lbp-appro-note{font-size:12px;color:#5b6472}'
             // Le bandeau qui dit a qui revient la saisie : lu avant les

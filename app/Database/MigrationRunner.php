@@ -634,6 +634,20 @@ class MigrationRunner
             ");
 
             /*
+             * D ou vient l argent, quand « Provenance » ne suffit pas.
+             *
+             * « Autre agence » sans dire laquelle, et « Autre » sans dire quoi,
+             * ne renseignaient personne : l agence lisait « Autre agence » le
+             * soir dans son tiroir attendu et devait telephoner pour savoir qui
+             * l avait approvisionnee. Demande de la direction le 28/10/2026.
+             *
+             * Les deux colonnes sont nulles partout ailleurs : un appro du
+             * siege ou d un retrait bancaire n a rien a preciser.
+             */
+            $this->addColumnIfMissing('lbp_appros_caisse', 'source_agence_id', 'INT UNSIGNED NULL');
+            $this->addColumnIfMissing('lbp_appros_caisse', 'source_autre', 'VARCHAR(180) NULL');
+
+            /*
              * Demande de fournitures : deux validations, décidées le 30/09/2026.
              * Le superviseur régional approuve, le comptable confirme — et c'est
              * seulement alors que la fourniture peut être livrée.

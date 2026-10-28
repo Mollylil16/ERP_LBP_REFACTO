@@ -515,7 +515,6 @@ final class MouvementsCaisseService
      */
     private function ligneDAppro(array $ligne, array $pivots): array
     {
-        $source = (string) ($ligne['source'] ?? '');
         $motif = trim((string) ($ligne['motif'] ?? ''));
 
         return [
@@ -530,7 +529,13 @@ final class MouvementsCaisseService
             'reference' => ((string) ($ligne['numero'] ?? '')) ?: null,
             'montant' => (float) $ligne['montant'],
             'devise' => $this->deviseLue((string) ($ligne['devise'] ?? '')),
-            'tiers' => ApproCaisseService::SOURCES[$source] ?? 'Siège',
+            /*
+             * Le deposant porte la provenance entiere : « Autre agence —
+             * Adjame » et non « Autre agence ». L agence lit cette ligne le
+             * soir dans son tiroir attendu, et un libelle muet l obligeait a
+             * telephoner pour savoir d ou venait l argent qu on lui reclame.
+             */
+            'tiers' => ApproCaisseService::provenance($ligne),
             'caisse' => $this->nomDeCaisse($ligne, $pivots),
             'caissier' => (string) ($ligne['caissier'] ?? ''),
         ];

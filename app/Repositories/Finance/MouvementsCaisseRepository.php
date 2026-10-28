@@ -175,16 +175,21 @@ class MouvementsCaisseRepository
 
         $recherche = (string) ($portee['q'] ?? '');
         if ($recherche !== '') {
-            $conditions[] = '(a.numero LIKE :q1 OR a.motif LIKE :q2)';
+            // La provenance libre est cherchee comme le motif : c est du texte
+            // saisi, et c est souvent par la qu on retrouve un appro.
+            $conditions[] = '(a.numero LIKE :q1 OR a.motif LIKE :q2 OR a.source_autre LIKE :q3)';
             $parametres['q1'] = '%' . $recherche . '%';
             $parametres['q2'] = '%' . $recherche . '%';
+            $parametres['q3'] = '%' . $recherche . '%';
         }
 
         return $this->lignes('
             SELECT a.id, a.numero, a.montant, a.devise, a.motif, a.source,
+                   a.source_autre, src.name AS agence_source,
                    a.date_effet, a.agence_id, s.name AS agence, u.full_name AS caissier
             FROM lbp_appros_caisse a
             LEFT JOIN company_sites s ON s.id = a.agence_id
+            LEFT JOIN company_sites src ON src.id = a.source_agence_id
             LEFT JOIN users u ON u.id = a.validateur_id
             WHERE ' . implode(' AND ', $conditions) . '
             ORDER BY a.id ASC

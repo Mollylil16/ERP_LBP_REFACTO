@@ -251,6 +251,257 @@ final class ApproCaisseTest extends TestCase
      * À ne pas confondre avec l'appro de caisse, où il valide toujours ce que
      * la caissière principale a saisi : ce sont deux circuits distincts.
      */
+    // ------------------------------------------------------------------
+    // D'où vient l'argent : « Autre agence » dit laquelle, « Autre » dit quoi
+    // ------------------------------------------------------------------
+
+    /** @return array<int, array<string, mixed>> */
+    private function agencesOuvertes(): array
+    {
+        return [
+            ['id' => 3400, 'name' => 'Abobo Dokui'],
+            ['id' => 3401, 'name' => 'Adjamé'],
+            ['id' => 3402, 'name' => 'Aéroport'],
+        ];
+    }
+
+    /**
+     * « Autre agence » sans dire laquelle ne renseigne personne.
+     *
+     * L'agence lit sa ligne le soir dans son tiroir attendu. « Autre agence »
+     * seul l'oblige à téléphoner pour savoir d'où vient l'argent qu'on lui
+     * réclame — exactement l'écart inexpliqué que cet écran évite.
+     */
+    public function test_autre_agence_doit_dire_laquelle(): void
+    {
+        [$origine, $precision, $erreurs] = ApproCaisseService::preciserProvenance(
+            'AUTRE_AGENCE',
+            0,
+            '',
+            3400,
+            $this->agencesOuvertes()
+        );
+
+        self::assertNull($origine);
+        self::assertNull($precision);
+        self::assertSame(["Dites quelle agence a remis l'argent."], $erreurs);
+    }
+
+    public function test_autre_agence_retient_l_agence_choisie(): void
+    {
+        [$origine, $precision, $erreurs] = ApproCaisseService::preciserProvenance(
+            'AUTRE_AGENCE',
+            3401,
+            '',
+            3400,
+            $this->agencesOuvertes()
+        );
+
+        self::assertSame(3401, $origine);
+        self::assertNull($precision, 'La précision libre ne sert pas à cette provenance.');
+        self::assertSame([], $erreurs);
+    }
+
+    /**
+     * Une agence ne s'approvisionne pas elle-même : ce serait faire entrer
+     * dans son tiroir un argent qui n'en est jamais sorti.
+     */
+    public function test_une_agence_ne_s_approvisionne_pas_elle_meme(): void
+    {
+        [, , $erreurs] = ApproCaisseService::preciserProvenance(
+            'AUTRE_AGENCE',
+            3400,
+            '',
+            3400,
+            $this->agencesOuvertes()
+        );
+
+        self::assertCount(1, $erreurs);
+        self::assertStringContainsString('ne s\'approvisionne pas elle-même', $erreurs[0]);
+    }
+
+    /** Une agence fermée n'est plus dans la liste : elle n'a rien pu remettre. */
+    public function test_une_agence_fermee_ne_peut_pas_etre_l_origine(): void
+    {
+        [$origine, , $erreurs] = ApproCaisseService::preciserProvenance(
+            'AUTRE_AGENCE',
+            9999,
+            '',
+            3400,
+            $this->agencesOuvertes()
+        );
+
+        self::assertNull($origine);
+        self::assertCount(1, $erreurs);
+        self::assertStringContainsString('fermée', $erreurs[0]);
+    }
+
+    public function test_autre_doit_dire_quoi(): void
+    {
+        [, , $erreurs] = ApproCaisseService::preciserProvenance('AUTRE', 0, '   ', 3400, $this->agencesOuvertes());
+
+        self::assertCount(1, $erreurs);
+        self::assertStringContainsString('sans précision ne renseigne personne', $erreurs[0]);
+    }
+
+    public function test_autre_retient_la_phrase_saisie(): void
+    {
+        [$origine, $precision, $erreurs] = ApproCaisseService::preciserProvenance(
+            'AUTRE',
+            0,
+            '  Remboursement du transporteur  ',
+            3400,
+            $this->agencesOuvertes()
+        );
+
+        self::assertNull($origine);
+        self::assertSame('Remboursement du transporteur', $precision);
+        self::assertSame([], $erreurs);
+    }
+
+    /**
+     * Le siège et la banque n'ont rien à préciser, et surtout rien à garder.
+     *
+     * Une caissière qui choisit « Autre agence », désigne Adjamé, puis revient
+     * sur « Siège » poste encore l'identifiant d'Adjamé si son navigateur n'a
+     * pas vidé le champ. L'appro garderait le nom d'une agence que personne
+     * n'a voulu nommer.
+     */
+    public function test_le_siege_ne_garde_aucune_precision(): void
+    {
+        foreach (['SIEGE', 'BANQUE'] as $source) {
+            [$origine, $precision, $erreurs] = ApproCaisseService::preciserProvenance(
+                $source,
+                3401,
+                'Reste d\'une saisie précédente',
+                3400,
+                $this->agencesOuvertes()
+            );
+
+            self::assertNull($origine, $source);
+            self::assertNull($precision, $source);
+            self::assertSame([], $erreurs, $source);
+        }
+    }
+
+    /** Une phrase trop longue est coupée, pas refusée : la colonne tient 180. */
+    public function test_une_precision_trop_longue_est_coupee(): void
+    {
+        [, $precision] = ApproCaisseService::preciserProvenance(
+            'AUTRE',
+            0,
+            str_repeat('a', 300),
+            3400,
+            $this->agencesOuvertes()
+        );
+
+        self::assertSame(180, mb_strlen((string) $precision));
+    }
+
+    // ------------------------------------------------------------------
+    // Ce que la provenance donne à lire
+    // ------------------------------------------------------------------
+
+    public function test_la_provenance_lue_porte_sa_precision(): void
+    {
+        self::assertSame(
+            'Autre agence — Adjamé',
+            ApproCaisseService::provenance(['source' => 'AUTRE_AGENCE', 'agence_source' => 'Adjamé'])
+        );
+
+        self::assertSame(
+            'Autre : Remboursement du transporteur',
+            ApproCaisseService::provenance(['source' => 'AUTRE', 'source_autre' => 'Remboursement du transporteur'])
+        );
+
+        self::assertSame('Siège', ApproCaisseService::provenance(['source' => 'SIEGE']));
+        self::assertSame('Retrait bancaire', ApproCaisseService::provenance(['source' => 'BANQUE']));
+    }
+
+    /**
+     * Les appros d'avant le 28/10/2026 n'ont pas de précision : ils gardent
+     * leur libellé seul, sans tiret ni deux-points orphelins.
+     */
+    public function test_un_ancien_appro_garde_son_libelle_seul(): void
+    {
+        self::assertSame('Autre agence', ApproCaisseService::provenance(['source' => 'AUTRE_AGENCE']));
+        self::assertSame('Autre', ApproCaisseService::provenance(['source' => 'AUTRE', 'source_autre' => null]));
+    }
+
+    /**
+     * Un code inconnu retombe sur « Autre » et non sur « Siège » : affirmer
+     * que l'argent vient du siège quand on ne sait pas serait un mensonge, et
+     * c'est le siège qu'on irait interroger.
+     */
+    public function test_une_provenance_inconnue_ne_devient_pas_le_siege(): void
+    {
+        self::assertSame('Autre', ApproCaisseService::provenance(['source' => 'N_IMPORTE_QUOI']));
+        self::assertSame('Autre', ApproCaisseService::provenance([]));
+    }
+
+    // ------------------------------------------------------------------
+    // L'écran
+    // ------------------------------------------------------------------
+
+    /**
+     * Les deux champs existent, fermés, et chacun sait à quelle provenance il
+     * appartient. Le formulaire s'ouvre sur « Siège », qui est le cas courant.
+     */
+    public function test_le_formulaire_porte_les_deux_champs_de_precision(): void
+    {
+        $html = ApproCaisse::page($this->donnees());
+
+        self::assertStringContainsString('data-source="AUTRE_AGENCE" hidden', $html);
+        self::assertStringContainsString('data-source="AUTRE" hidden', $html);
+        self::assertStringContainsString('name="source_agence_id"', $html);
+        self::assertStringContainsString('name="source_autre"', $html);
+
+        // La liste d'origine propose les agences, comme celle de destination.
+        // L'apostrophe arrive echappee : c'est du HTML, pas du texte brut.
+        self::assertStringContainsString('Choisir l&#039;agence d&#039;origine', $html);
+    }
+
+    /**
+     * Le script vide le champ qu'il referme.
+     *
+     * Le service le remet à vide de son côté, mais une règle qui ne tient que
+     * d'un seul côté finit toujours par ne plus tenir du tout.
+     */
+    public function test_le_champ_referme_est_vide(): void
+    {
+        $html = ApproCaisse::page($this->donnees());
+
+        self::assertStringContainsString('appro-f-source', $html);
+        self::assertStringContainsString('champ.value=""', $html);
+        self::assertStringContainsString('.lbp-appro-precision[hidden]{display:none}', $html);
+    }
+
+    /** Le tableau montre la précision, pas seulement « Autre agence ». */
+    public function test_le_tableau_montre_la_provenance_entiere(): void
+    {
+        $donnees = $this->donnees();
+        $donnees['lignes'][1]['source'] = 'AUTRE_AGENCE';
+        $donnees['lignes'][1]['agence_source'] = 'Adjamé';
+
+        $html = ApproCaisse::page($donnees);
+
+        self::assertStringContainsString('Autre agence — Adjamé', $html);
+    }
+
+    /** La migration ajoute les deux colonnes sans rien détruire. */
+    public function test_les_deux_colonnes_sont_ajoutees_sans_rien_detruire(): void
+    {
+        $migration = (string) file_get_contents(BASE_PATH . '/app/Database/MigrationRunner.php');
+        $bloc = substr($migration, (int) strpos($migration, 'private function createApproCaisseTable'), 2600);
+
+        self::assertStringContainsString("addColumnIfMissing('lbp_appros_caisse', 'source_agence_id'", $bloc);
+        self::assertStringContainsString("addColumnIfMissing('lbp_appros_caisse', 'source_autre'", $bloc);
+
+        // MigrationRunner tourne à chaque requête : aucune reprise de données.
+        self::assertStringNotContainsString('UPDATE lbp_appros_caisse', $bloc);
+        self::assertStringNotContainsString('DROP COLUMN', $bloc);
+    }
+
     public function test_le_comptable_decaisse_les_demandes_de_fonds(): void
     {
         $source = (string) file_get_contents(BASE_PATH . '/app/Controllers/Finance/DemandesFondsController.php');
