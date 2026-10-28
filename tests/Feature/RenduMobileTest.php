@@ -288,6 +288,29 @@ final class RenduMobileTest extends TestCase
         self::assertStringContainsString('admin-matrix-table" data-mobile="defilement"', $admin);
     }
 
+    /**
+     * L'étiquette d'une valeur longue doit pouvoir revenir à la ligne.
+     *
+     * « white-space: nowrap » posé sur la cellule d'un nombre s'applique
+     * aussi à son étiquette, qui en est un pseudo-élément. Sans contre-ordre,
+     * « MONTANT TOTAL » débordait de sa boîte et venait se coller au montant :
+     * « MONTANT TOTAL1 275 400,00 XOF ». Vu le 28/10/2026.
+     */
+    public function test_l_etiquette_peut_revenir_a_la_ligne(): void
+    {
+        $socle = $this->socle();
+        $depart = (int) strpos($socle, 'td[data-etiquette]::before');
+        $regle = substr($socle, $depart, (int) strpos($socle, '}', $depart) - $depart);
+
+        self::assertStringContainsString('white-space: normal', $regle);
+
+        // Et le nombre, lui, garde son nowrap : un montant ne se coupe pas.
+        self::assertMatchesRegularExpression(
+            '/td\[data-nombre\] \{[^}]*white-space: nowrap;/s',
+            $socle
+        );
+    }
+
     public function test_une_cellule_vide_disparait_de_la_carte(): void
     {
         $bloc = substr($this->scriptCommun(), (int) strpos($this->scriptCommun(), 'const tableauxEnCartes'));

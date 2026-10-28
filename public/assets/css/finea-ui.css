@@ -880,23 +880,32 @@ textarea.finea-input {
     overflow-wrap: anywhere;
   }
 
-  /*
-   * Au-dela de trois colonnes, la ligne devient une carte.
+  /* ================================================================
+   * LA LIGNE DE DONNEES DEVIENT UNE CARTE
+   * ================================================================
+   * Remplace le bloc « table[data-mobile=cartes] » existant.
    *
-   * Comprimer sept colonnes dans 390 px laissait moins de soixante pixels a
-   * chacune : les mots se coupaient en plein milieu et lire une ligne
-   * demandait un effort que personne ne fournit debout, sur le terrain. En
-   * carte, chaque valeur retrouve sa largeur et garde le nom de sa colonne a
-   * cote d elle.
+   * Trois zones, et pas six lignes identiques :
    *
-   * C est components.js qui pose « data-mobile » et les etiquettes, depuis
-   * l en-tete que le tableau porte deja. Sans lui, rien de tout ceci ne
-   * s applique et le tableau reste un tableau.
-   */
+   *   1. L EN-TETE (fond tres legerement teinte, clos par la teinte
+   *      elle-meme) : ce qu EST la ligne. Le titre, son sous-texte, le
+   *      badge d etat en haut a droite, la date en legende.
+   *   2. LE CORPS (fond blanc, sans filets) : etiquette a gauche en
+   *      petites capitales, valeur a droite. Les chiffres sont en
+   *      chiffres tabulaires, donc alignes a la virgule d une ligne a
+   *      l autre.
+   *   3. UNE SEULE VALEUR EN VEDETTE par carte, marquee d un filet a la
+   *      couleur du module : ce qu on vient chercher sur cet ecran.
+   *
+   * C est components.js qui pose « data-mobile », les etiquettes et les
+   * marques decrites plus bas. Sans lui, aucune de ces regles ne
+   * s applique et le tableau reste un tableau qui defile.
+   * ================================================================ */
+
+  /* L enveloppe ne defile plus : son cadre et son ombre de bord n ont
+     plus d objet, et doublaient celui de chaque carte. */
   .finea-table-wrap[data-mobile="cartes"],
   .finea-table-wrapper[data-mobile="cartes"] {
-    /* L enveloppe ne defile plus : son cadre et son ombre de bord n ont plus
-       d objet, et doublaient celui de chaque carte. */
     overflow-x: visible;
     border: 0;
     border-radius: 0;
@@ -907,11 +916,13 @@ textarea.finea-input {
   table[data-mobile="cartes"] {
     display: block;
     min-width: 0;
-    font-size: 0.9rem;
+    /* 15 px pour les valeurs. Le tableau de bureau descend a 0,82rem
+       (13 px) : lisible assis, pas debout au soleil. */
+    font-size: 0.94rem;
   }
 
-  /* L en-tete a fini dans les cellules : le garder a l ecran le repeterait.
-     Il reste lisible par les lecteurs d ecran. */
+  /* L en-tete a fini dans les cellules : le garder a l ecran le
+     repeterait. Il reste lisible par les lecteurs d ecran. */
   table[data-mobile="cartes"] thead {
     position: absolute;
     width: 1px;
@@ -926,59 +937,335 @@ textarea.finea-input {
     display: block;
   }
 
+  /* ---------------------------------------------------------------
+   * LA CARTE
+   * ---------------------------------------------------------------
+   * Deux colonnes : tout ce qui n est pas le badge d etat occupe la
+   * largeur entiere ; le badge occupe la deuxieme colonne de la
+   * premiere rangee, donc le coin haut droit.
+   *
+   * « overflow: hidden » n est pas decoratif : c est lui qui fait
+   * suivre au fond teinte de l en-tete les angles arrondis de la
+   * carte, sans avoir a arrondir chaque cellule au cas par cas.
+   * --------------------------------------------------------------- */
   table[data-mobile="cartes"] tr {
-    display: block;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-content: start;
     margin: 0 0 10px;
-    padding: 2px 0;
+    /* Le bas de la carte se gagne ici, sur la grille, et non sur la
+       derniere cellule : une carte peut finir sur un montant, sur une
+       rangee de boutons ou sur un badge, et aucun selecteur ne sait
+       lequel sans « :has() ». */
+    padding: 0 0 9px;
+    overflow: hidden;
     border: 1px solid var(--finea-border);
-    border-radius: 10px;
+    border-radius: 12px;
     background: #fff;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
   }
 
+  table[data-mobile="cartes"] tbody tr:last-child,
+  table[data-mobile="cartes"] tfoot tr:last-child {
+    margin-bottom: 0;
+  }
+
+  /* La rangee de totaux est une carte, mais pas une carte comme les
+     autres : fond teinte et cadre plus marque. */
+  table[data-mobile="cartes"] tfoot tr {
+    border-color: #c3cfe2;
+    background: #f8fafc;
+  }
+
+  /* ---------------------------------------------------------------
+   * LE CORPS : etiquette a gauche, valeur a droite
+   * ---------------------------------------------------------------
+   * Plus aucun filet entre les lignes. Six filets dans une carte de
+   * 390 px, c est un tableau miniature, et c est precisement ce qu on
+   * cherche a quitter : ce sont les tailles et les gris qui separent.
+   * --------------------------------------------------------------- */
   table[data-mobile="cartes"] td {
     display: flex;
-    gap: 14px;
+    gap: 12px;
     align-items: baseline;
     justify-content: space-between;
-    padding: 9px 13px;
+    grid-column: 1 / -1;
+    padding: 6px 14px;
     border: 0;
-    border-bottom: 1px solid #f1f5f9;
+    color: var(--finea-text);
     text-align: right;
-  }
-
-  table[data-mobile="cartes"] tr td:last-child {
-    border-bottom: 0;
   }
 
   table[data-mobile="cartes"] td[data-etiquette]::before {
     content: attr(data-etiquette);
-    flex: 0 0 40%;
-    color: #64748b;
+    flex: 0 1 38%;
+    min-width: 84px;
+    color: var(--finea-muted);
     font-size: 0.7rem;
-    font-weight: 750;
-    letter-spacing: 0.04em;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    line-height: 1.35;
     text-align: left;
     text-transform: uppercase;
+    /*
+     * Le « nowrap » que porte la cellule d un nombre s applique aussi a son
+     * etiquette, qui est un pseudo-element de cette cellule. Sans cette
+     * ligne, « MONTANT TOTAL » ne peut pas revenir a la ligne : quand la
+     * valeur est longue, l etiquette deborde de sa boite et vient se coller
+     * au montant. Constate le 28/10/2026 sur « 1 275 400,00 XOF ».
+     */
+    white-space: normal;
   }
 
-  /* Un total, un « aucune ligne » : rien a etiqueter, toute la largeur. */
-  table[data-mobile="cartes"] td[data-pleine-largeur] {
+  /* ---------------------------------------------------------------
+   * ZONE 1 : L EN-TETE
+   * --------------------------------------------------------------- */
+
+  /* Le titre : la premiere valeur qui identifie la ligne. Pas
+     d etiquette — « N° FACTURE : FA-3403-… » n apprend rien que le
+     format du numero ne dise deja. */
+  table[data-mobile="cartes"] td[data-titre] {
+    display: block;
+    grid-row: 1;
+    grid-column: 1;
+    padding: 11px 14px 10px;
+    background: #f8fafc;
+    color: var(--finea-navy);
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    line-height: 1.3;
+    text-align: left;
+    /* Un numero de facture ou un nom d agence tres long se coupe
+       plutot que de pousser le badge hors de la carte. */
+    overflow-wrap: anywhere;
+  }
+
+  table[data-mobile="cartes"] td[data-titre]::before {
+    content: none;
+  }
+
+  /* Le gras que le composant a mis dans le titre n ajoute rien : la
+     cellule entiere est deja le titre. */
+  table[data-mobile="cartes"] td[data-titre] > strong,
+  table[data-mobile="cartes"] td[data-titre] > b {
+    font-weight: inherit;
+  }
+
+  /* Beaucoup de tableaux font du premier champ un lien. Il reste le
+     titre : meme taille, meme navy, et un chevron — dessine au trait,
+     pas en icone — qui dit qu il s ouvre. Le lien passe en bloc pour
+     offrir au doigt la largeur entiere de l en-tete. */
+  table[data-mobile="cartes"] td[data-titre] > a,
+  table[data-mobile="cartes"] td[data-titre] > strong > a,
+  table[data-mobile="cartes"] td[data-titre] > b > a {
+    display: block;
+    min-height: 28px;
+    padding: 2px 0;
+    color: inherit;
+    text-decoration: none;
+  }
+
+  table[data-mobile="cartes"] td[data-titre] a::after {
+    content: "";
+    display: inline-block;
+    width: 0.4em;
+    height: 0.4em;
+    margin-left: 0.4em;
+    border-top: 2px solid currentColor;
+    border-right: 2px solid currentColor;
+    opacity: 0.4;
+    transform: translateY(-0.1em) rotate(45deg);
+  }
+
+  table[data-mobile="cartes"] td[data-titre] > a:focus-visible,
+  table[data-mobile="cartes"] td[data-titre] > strong > a:focus-visible {
+    outline: 2px solid var(--finea-navy);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  /* Le sous-texte du titre — « 531 saisie(s) ». Sa couleur d origine
+     (#8b94a1) donne 2,9:1 sur blanc : illisible au soleil, et sous la
+     norme. On la remonte a 4,8:1. */
+  table[data-mobile="cartes"] td[data-titre] [data-sous] {
+    display: block;
+    margin-top: 2px;
+    color: var(--finea-muted) !important;
+    font-size: 0.74rem;
+    font-weight: 500;
+    letter-spacing: 0;
+  }
+
+  /* Le badge d etat, en haut a droite. « display: flex » suffit a le
+     pousser a droite malgre le « text-align: center » que plusieurs
+     composants ecrivent en style en ligne. */
+  table[data-mobile="cartes"] td[data-badge-chapeau] {
+    display: flex;
+    align-items: flex-start;
+    justify-content: flex-end;
+    grid-row: 1;
+    grid-column: 2;
+    /* Un etat long — « PARTIELLEMENT PAYEE » — ne prend jamais plus de
+       la moitie de la carte : au-dela, il ne reste plus rien au titre. */
+    max-width: 48vw;
+    padding: 10px 12px 10px 0;
+    background: #f8fafc;
+  }
+
+  table[data-mobile="cartes"] td[data-badge-chapeau]::before {
+    content: none;
+  }
+
+  table[data-mobile="cartes"] td[data-badge-chapeau] .finea-badge {
+    padding: 4px 9px;
+    font-size: 0.66rem;
+    letter-spacing: 0.04em;
+    line-height: 1.3;
+    text-align: center;
+    /* Deux mots valent mieux qu un badge qui deborde. */
+    white-space: normal;
+  }
+
+  /* La date, en legende sous le titre. La marge negative la ramene
+     contre lui : c est une precision sur le titre, pas une ligne de
+     donnees de plus. */
+  table[data-mobile="cartes"] td[data-date-chapeau] {
+    display: block;
+    grid-row: 2;
+    grid-column: 1 / -1;
+    margin-top: -6px;
+    padding: 0 14px 11px;
+    background: #f8fafc;
+    color: var(--finea-muted);
+    font-size: 0.76rem;
+    font-weight: 500;
+    text-align: left;
+  }
+
+  table[data-mobile="cartes"] td[data-date-chapeau]::before {
+    content: none;
+  }
+
+  /* ---------------------------------------------------------------
+   * ZONE 2 : LES CHIFFRES
+   * ---------------------------------------------------------------
+   * Chiffres tabulaires : tous les chiffres ont la meme largeur, donc
+   * « 1 699 » et « 11 088,2 » s alignent sur leurs unites d une ligne
+   * a l autre. C est ce qui rend une colonne de montants lisible d un
+   * coup d oeil plutot qu une a une.
+   * --------------------------------------------------------------- */
+  table[data-mobile="cartes"] td[data-nombre] {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  /* Zero n est pas une information a crier. « 0 F » restant du veut
+     dire « rien a faire » : il passe en gris.
+     « !important » parce que plusieurs composants ecrivent la couleur
+     du montant restant en style en ligne (color:#ea580c) — un orange
+     qui a du sens pour une colonne de tableau, pas pour un zero isole
+     dans une carte. */
+  table[data-mobile="cartes"] td[data-zero] {
+    color: var(--finea-muted) !important;
+    font-weight: 500;
+  }
+
+  /* ---------------------------------------------------------------
+   * ZONE 3 : LA VALEUR EN VEDETTE — une seule par carte
+   * ---------------------------------------------------------------
+   * Le filet a la couleur du module, et une taille au-dessus du
+   * reste. Le poids est « !important » parce que les composants
+   * ecrivent font-weight:600 en style en ligne sur ces cellules.
+   * --------------------------------------------------------------- */
+  table[data-mobile="cartes"] td[data-vedette] {
+    align-items: center;
+    padding-top: 7px;
+    padding-bottom: 7px;
+    padding-left: 11px;
+    border-left: 3px solid var(--module-accent, var(--finea-navy));
+    color: var(--finea-navy) !important;
+    font-size: 1.12rem;
+    font-weight: 700 !important;
+    letter-spacing: -0.015em;
+  }
+
+  table[data-mobile="cartes"] td[data-vedette]::before {
+    color: var(--finea-navy);
+    font-size: 0.68rem;
+  }
+
+  /* ---------------------------------------------------------------
+   * LES CAS PARTICULIERS
+   * --------------------------------------------------------------- */
+
+  /* Un texte long — une adresse, un libelle d ecriture — ne tient pas
+     dans les 62 % qui restent a droite de l etiquette. Il passe sous
+     elle, sur toute la largeur. */
+  table[data-mobile="cartes"] td[data-long] {
     display: block;
     text-align: left;
   }
 
-  /* Une case vide ne se voyait pas dans un tableau ; en carte elle aurait
-     montre une etiquette suivie de rien. */
+  table[data-mobile="cartes"] td[data-long]::before {
+    display: block;
+    margin-bottom: 2px;
+  }
+
+  /* Un total, un « aucune ligne » : rien a etiqueter, toute la
+     largeur. */
+  table[data-mobile="cartes"] td[data-pleine-largeur] {
+    display: block;
+    padding: 10px 14px;
+    text-align: left;
+  }
+
+  /* Une case vide ne se voyait pas dans un tableau ; en carte elle
+     aurait montre une etiquette suivie de rien. */
   table[data-mobile="cartes"] td[data-vide] {
     display: none;
   }
 
-  /* Les boutons d une colonne « Actions » prennent la ligne entiere : a deux
-     par case, ils tombaient a trente pixels de large. */
+  /* Les boutons d une colonne « Actions » prennent la ligne entiere :
+     a deux par case, ils tombaient a trente pixels de large. Le filet
+     du haut les detache du corps de la carte. */
+  table[data-mobile="cartes"] td[data-interactif] {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: stretch;
+    margin-top: 5px;
+    padding: 10px 14px 2px;
+    border-top: 1px solid #eef2f7;
+  }
+
+  table[data-mobile="cartes"] td[data-interactif]::before {
+    flex: 1 0 100%;
+    margin-bottom: 2px;
+  }
+
+  /* Les deux dernieres lignes de ce selecteur sont un filet de
+     securite : si « data-interactif » n est pas encore pose par le JS,
+     les blocs d actions gardent au moins leur largeur. */
+  table[data-mobile="cartes"] td[data-interactif] > form,
+  table[data-mobile="cartes"] td[data-interactif] > .lbp-appro-decision,
+  table[data-mobile="cartes"] td[data-interactif] > .finea-table-actions,
   table[data-mobile="cartes"] td[data-etiquette] > form,
-  table[data-mobile="cartes"] td[data-etiquette] > .lbp-appro-decision,
   table[data-mobile="cartes"] td[data-etiquette] > .finea-table-actions {
     flex: 1 1 auto;
+  }
+
+  /* Cibles tactiles : 44 px au doigt, meme pour un lien de tableau. */
+  table[data-mobile="cartes"] td[data-interactif] .finea-button,
+  table[data-mobile="cartes"] td[data-interactif] .finea-action-btn,
+  table[data-mobile="cartes"] td[data-interactif] button,
+  table[data-mobile="cartes"] td[data-interactif] > a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
   }
 
   /*

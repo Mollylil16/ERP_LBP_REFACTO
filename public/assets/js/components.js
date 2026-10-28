@@ -327,6 +327,187 @@
     });
   };
 
+  /*
+   * Ce qui permet de reconnaitre le contenu d une cellule sans rien savoir
+   * de la colonne. Vingt-deux composants fabriquent leurs tableaux a la
+   * main et aucun ne declare ce qu il y met : on ne dispose que du texte.
+   */
+
+  // Les unites qu on retire avant de se demander si c est un nombre.
+  const UNITES = /\s*(?:F|FCFA|XOF|EUR|\u20AC|\$|USD|kg|g|t|%|m3|m\u00B3|h|j)\.?$/i;
+
+  /*
+   * Les separateurs de milliers qu on croise dans les montants formates :
+   * espace ordinaire, insecable, insecable fine, fine, separateur de
+   * chiffres, et l apostrophe. Ecrits en echappements : a l oeil nu, dans
+   * un fichier, rien ne distingue une insecable d une espace ordinaire.
+   */
+  const SEPARATEURS = /[ \u00A0\u202F\u2009\u2007']/g;
+
+  // jj/mm/aaaa, avec ou sans heure.
+  const DATE_FR = /^\d{1,2}\/\d{1,2}\/\d{4}(?:\s+(?:\u00E0\s+)?\d{1,2}[:h]\d{2})?$/;
+
+  const GRAS = /^(?:STRONG|B)$/;
+
+  /**
+   * Les marques que porte une ligne devenue carte.
+   *
+   * La passe precedente a pose le nom de chaque colonne. Celle-ci regarde ce
+   * que la cellule CONTIENT, pour que la carte ait une hierarchie plutot que
+   * six lignes qui se valent : un titre, un badge d etat au coin, une date en
+   * legende, et une seule valeur en vedette.
+   *
+   * Aucune de ces regles ne connait le sens d une colonne. C est voulu : la
+   * meme passe sert les vingt-deux composants, et celui qui en ecrira un
+   * vingt-troisieme n aura rien a declarer.
+   */
+  const marquerLaCarte = (ligne) => {
+    const cellules = [...ligne.children].filter(
+      (c) => !c.dataset.vide && !c.dataset.pleineLargeur,
+    );
+
+    cellules.forEach((cellule, rang) => {
+      const texte = cellule.textContent.trim();
+      const enfants = [...cellule.children];
+
+      /*
+       * Le composant a lui-meme mis toute la valeur en gras : c est sa facon
+       * de dire « c est celle-la qui compte ». On s en sert pour choisir la
+       * vedette, plus bas.
+       */
+      if (
+        enfants.length === 1 &&
+        GRAS.test(enfants[0].tagName) &&
+        enfants[0].textContent.trim() === texte
+      ) {
+        cellule.dataset.fort = "1";
+      }
+
+      /*
+       * Tout ce qui se touche. Jamais deplace dans la carte : deplacer une
+       * cible, c est casser l ordre du clavier.
+       *
+       * Une exception : la premiere cellule quand elle ne contient qu un lien
+       * portant tout son texte. Un numero de facture cliquable reste le titre
+       * de la carte — et il ne bouge pas non plus, il est deja en tete.
+       */
+      const champs = cellule.querySelector(
+        "button, input, select, textarea, form, [role='button']",
+      );
+      const liens = cellule.querySelectorAll("a");
+      const lienTitre =
+        !champs &&
+        liens.length === 1 &&
+        rang === 0 &&
+        liens[0].textContent.trim() === texte;
+
+      if (champs || (liens.length > 0 && !lienTitre)) {
+        cellule.dataset.interactif = "1";
+        return;
+      }
+
+      // Un etat : la cellule ne porte qu un badge, et ce badge est tout son
+      // texte.
+      const badges = cellule.querySelectorAll("[class*='badge']");
+      if (badges.length === 1 && texte !== "" && badges[0].textContent.trim() === texte) {
+        cellule.dataset.badge = "1";
+        return;
+      }
+
+      /*
+       * Un nombre : on retire l unite, puis les separateurs de milliers, et
+       * ce qui reste doit etre un nombre et rien d autre.
+       *
+       *   « 163 035 333 F » oui      « 11 088,2 kg » oui
+       *   « 1 699 »         oui      « 0 F »         oui, et nul
+       *   « FA-3403-2026-000366 » non — des lettres et des tirets
+       *   « 28/10/2026 »          non — des barres obliques
+       */
+      const corps = texte.replace(UNITES, "").trim().replace(SEPARATEURS, "");
+      if (corps !== "" && /^[+-]?\d+(?:[.,]\d+)?$/.test(corps)) {
+        cellule.dataset.nombre = "1";
+
+        // Zero n est pas une information a crier : « 0 F » restant du veut
+        // dire « rien a faire ».
+        if (parseFloat(corps.replace(",", ".")) === 0) {
+          cellule.dataset.zero = "1";
+        }
+
+        return;
+      }
+
+      if (DATE_FR.test(texte)) {
+        cellule.dataset.date = "1";
+        return;
+      }
+
+      // Au-dela de vingt-deux caracteres, la valeur ne tient pas dans ce qui
+      // reste a droite de l etiquette : elle passe dessous, pleine largeur.
+      if (texte.length > 22) {
+        cellule.dataset.long = "1";
+      }
+    });
+
+    /*
+     * Le titre : la premiere cellule qui dit ce qu EST la ligne. Ni un
+     * nombre, ni une date, ni un badge, ni un champ de formulaire.
+     */
+    const titre = cellules.find(
+      (c) =>
+        !c.dataset.interactif &&
+        !c.dataset.badge &&
+        !c.dataset.nombre &&
+        !c.dataset.date &&
+        c.textContent.trim() !== "",
+    );
+
+    if (titre) {
+      titre.dataset.titre = "1";
+      // Le titre n a pas d etiquette : rien a passer au-dessus de lui.
+      delete titre.dataset.long;
+
+      // « 531 saisie(s) » derriere le gras du nom d agence : tout ce qui suit
+      // le gras d ouverture est un sous-texte du titre.
+      const parties = [...titre.children];
+      if (parties.length > 1 && GRAS.test(parties[0].tagName)) {
+        parties.slice(1).forEach((partie) => {
+          partie.dataset.sous = "1";
+        });
+      }
+
+      /*
+       * Le badge et la date ne montent en en-tete que s il y a un titre sous
+       * lequel les ranger : sinon la carte s ouvrirait sur une rangee a
+       * moitie vide. Un seul de chaque — un deuxieme badge reste une ligne de
+       * donnees ordinaire, avec son etiquette.
+       */
+      const badge = cellules.find((c) => c.dataset.badge);
+      if (badge) badge.dataset.badgeChapeau = "1";
+
+      const date = cellules.find((c) => c.dataset.date);
+      if (date) date.dataset.dateChapeau = "1";
+    }
+
+    /*
+     * Une seule valeur en vedette par carte : celle qu on vient chercher sur
+     * cet ecran.
+     *
+     *   1. le nombre non nul que le composant a lui-meme mis en gras ;
+     *   2. sinon le premier nombre non nul ;
+     *   3. sinon le premier nombre — une carte tout a zero garde un point
+     *      d appui.
+     */
+    const nombres = cellules.filter((c) => c.dataset.nombre);
+    const vedette =
+      nombres.find((c) => c.dataset.fort && !c.dataset.zero) ||
+      nombres.find((c) => !c.dataset.zero) ||
+      nombres[0];
+
+    if (vedette) {
+      vedette.dataset.vedette = "1";
+    }
+  };
+
   /**
    * Les tableaux, lisibles au telephone.
    *
@@ -431,6 +612,8 @@
 
           colonne += portee;
         });
+
+        marquerLaCarte(ligne);
       });
     });
   };
