@@ -224,6 +224,27 @@ final class MouvementsCaisseService
          * solde de chacune se lit dans la sienne — comme le point de caisse
          * tient déjà solde_caisse_agence_xof et _eur côte à côte.
          */
+        /*
+         * L'ouverture : tout ce qui precede la journee, cumule.
+         *
+         * C'est ce que l'ancien logiciel de la caissiere appelle « Solde de la
+         * Veille », et ce qui manquait ici : l'ecran ne montrait que le net du
+         * jour, et une caisse de fonctionnement ne repart pas de zero chaque
+         * matin. Sans ce report, le solde affiche le soir ne correspond a rien
+         * de ce qu'il y a dans le tiroir.
+         */
+        /*
+         * Encore faut-il que la journee affichee soit la journee ENTIERE de la
+         * caisse. Une recherche dans les historiques, ou une caisse choisie
+         * qui n'est pas celle du guichet, retire des lignes du jour sans rien
+         * retirer du cumul d'ouverture : le solde de cloture additionnerait
+         * alors un report complet et un jour partiel, et tomberait a cote de
+         * ce qu'il y a dans le tiroir. On ne reporte alors rien, plutot que de
+         * reporter faux.
+         */
+        $reporte = $portee['q'] === '' && $portee['auto'] && !$portee['bloquee'];
+        $ouverture = $reporte ? $this->cumuls($portee, $jour) : null;
+
         $solde = $entrees['total'] - $sorties['total'];
         $soldeVeille = $entreesVeille['total'] - $sortiesVeille['total'];
         $soldeEur = $entrees['total_eur'] - $sorties['total_eur'];
@@ -245,6 +266,18 @@ final class MouvementsCaisseService
                     'veille_eur' => $soldeVeilleEur,
                     'variation_eur' => self::variation($soldeEur, $soldeVeilleEur),
                 ],
+            ],
+            /*
+             * La caisse lue en continu : ce qu'il y avait la veille au soir,
+             * ce qui a bouge aujourd'hui, ce qu'il doit rester ce soir.
+             */
+            'continu' => $ouverture === null ? [] : [
+                'ouverture' => (float) $ouverture['solde'],
+                'mouvement' => $solde,
+                'cloture' => (float) $ouverture['solde'] + $solde,
+                'ouverture_eur' => (float) $ouverture['solde_eur'],
+                'mouvement_eur' => $soldeEur,
+                'cloture_eur' => (float) $ouverture['solde_eur'] + $soldeEur,
             ],
             /*
              * Le cumul depuis l origine, et non celui de la journee.
@@ -874,7 +907,7 @@ final class MouvementsCaisseService
      * @param array<string, mixed> $portee
      * @return array<string, float>
      */
-    private function cumuls(array $portee): array
+    private function cumuls(array $portee, ?string $avant = null): array
     {
         if (!empty($portee['bloquee'])) {
             return [
@@ -883,7 +916,7 @@ final class MouvementsCaisseService
             ];
         }
 
-        $brut = $this->repo->cumuls($portee);
+        $brut = $this->repo->cumuls($portee, $avant);
 
         return [
             'versements' => (float) ($brut['versements'] ?? 0),

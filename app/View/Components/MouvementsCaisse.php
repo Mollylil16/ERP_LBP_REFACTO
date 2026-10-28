@@ -190,6 +190,88 @@ final class MouvementsCaisse
             . self::carte('Entrées caisse', 'entree', 'entrees', $entrees, self::ventilation($entrees))
             . self::carte('Sorties caisse', 'sortie', 'sorties', $sorties, self::ventilation($sorties))
             . self::carte('Solde caisse', 'solde', 'solde', $solde, $termesSolde, true)
+            . '</div>'
+            . self::banderoleContinue($p);
+    }
+
+    /**
+     * La caisse lue en continu : hier soir, aujourd'hui, ce soir.
+     *
+     * Les trois cartes au-dessus ne disent que le net de la journee. Une
+     * caisse de fonctionnement, elle, ne repart pas de zero chaque matin :
+     * elle garde ce qu'il restait la veille. Sans ce report, le solde affiche
+     * le soir ne correspond a rien de ce qu'il y a dans le tiroir — et c'est
+     * precisement ce que l'ancien logiciel de la caissiere montrait en tete de
+     * son journal, sous le nom de « Solde de la Veille ».
+     *
+     * @param array<string, mixed> $p
+     */
+    private static function banderoleContinue(array $p): string
+    {
+        $c = is_array($p['continu'] ?? null) ? $p['continu'] : [];
+
+        return '<div class="lbp-mvt-continu-bloc">'
+            . ($c === [] ? self::reportTu() : self::reportAffiche($c))
+            /*
+             * Le journal part d'ici et non du pied d'un historique : c'est la
+             * bande du report qu'il met en page, et c'est le document qu'on
+             * oppose au comptage du soir.
+             */
+            . '<div class="lbp-mvt-continu-actions">'
+            . Ui::button(self::icone('imprimer') . 'Imprimer le journal de caisse', [
+                'href' => 'finance/mouvements-caisse/journal/pdf' . self::requete($p),
+                'variant' => 'secondary', 'target' => '_blank',
+            ])
+            . '</div></div>';
+    }
+
+    /**
+     * Le report, quand il a un sens.
+     *
+     * @param array<string, mixed> $c
+     */
+    private static function reportAffiche(array $c): string
+    {
+        $ouverture = (float) ($c['ouverture'] ?? 0);
+        $mouvement = (float) ($c['mouvement'] ?? 0);
+        $cloture = (float) ($c['cloture'] ?? 0);
+
+        $signe = $mouvement >= 0 ? '+' : '-';
+        $ton = $cloture < 0 ? ' est-negatif' : '';
+
+        return '<div class="lbp-mvt-continu' . $ton . '">'
+            . self::etape('Solde de la veille', $ouverture, "Ce qu'il restait hier au soir")
+            . '<span class="lbp-mvt-continu-op">' . $signe . '</span>'
+            . self::etape('Mouvement du jour', abs($mouvement), 'Entrées moins sorties')
+            . '<span class="lbp-mvt-continu-op">=</span>'
+            . self::etape('Solde de clôture', $cloture, 'Ce qui doit rester ce soir', true)
+            . '</div>';
+    }
+
+    /**
+     * Pourquoi le report se tait.
+     *
+     * Une recherche, ou une caisse qui n'est pas celle du guichet, ne montre
+     * qu'une partie de la journée. Le report, lui, serait complet : leur
+     * somme ne dirait plus ce qu'il y a dans le tiroir. Mieux vaut l'écrire
+     * que de laisser la bande disparaître sans explication — et le bouton
+     * du journal, lui, reste à portée.
+     */
+    private static function reportTu(): string
+    {
+        return '<div class="lbp-mvt-continu-tu">'
+            . View::e('Le solde de la veille n\'est pas reporté sur une sélection filtrée :'
+                . ' la journée affichée n\'est pas celle de la caisse entière. Videz la recherche,'
+                . ' ou choisissez la caisse du guichet, pour retrouver le solde de clôture.')
+            . '</div>';
+    }
+
+    private static function etape(string $libelle, float $montant, string $note, bool $fort = false): string
+    {
+        return '<div class="lbp-mvt-continu-etape' . ($fort ? ' est-fort' : '') . '">'
+            . '<span class="lbp-mvt-continu-libelle">' . View::e($libelle) . '</span>'
+            . '<strong>' . View::e(self::montant($montant)) . '</strong>'
+            . '<span class="lbp-mvt-continu-note">' . View::e($note) . '</span>'
             . '</div>';
     }
 
@@ -1165,6 +1247,308 @@ final class MouvementsCaisse
     }
 
     /**
+     * Le journal de caisse de la journée, imprimable.
+     *
+     * Les deux historiques de l'écran sont ici réunis en une seule colonne de
+     * temps, avec le solde de la veille en tête et le solde de clôture en pied.
+     * C'est la forme du journal que la caissière tenait avant le logiciel, et
+     * celle qu'elle oppose à son comptage du soir : les deux exports par sens
+     * ne la donnent pas, puisqu'ils séparent ce que le tiroir, lui, vit dans
+     * l'ordre.
+     *
+     * Une colonne « Caisse » s'ajoute à la maquette d'origine. Leur journal
+     * était celui d'un seul tiroir ; ici la direction peut regarder les cinq
+     * agences d'un coup, et sans cette colonne les lignes de Dokui et
+     * d'Adjamé se liraient comme un même tiroir.
+     *
+     * @param array<string, mixed> $mouvements le contrat complet, déjà filtré
+     */
+    public static function journalPdf(array $mouvements, string $editePar = ''): string
+    {
+        $jour = self::date($mouvements['date'] ?? null);
+        $lignes = self::lignesDuJournal($mouvements);
+        $continu = is_array($mouvements['continu'] ?? null) ? $mouvements['continu'] : [];
+
+        $entrees = self::totaux(self::liste($mouvements, 'versements'));
+        $sorties = self::totaux(self::liste($mouvements, 'retraits'));
+
+        $titre = 'Journal de caisse — journée du ' . $jour;
+
+        $colonnes = [
+            ['N°', 'c-n'], ['Heure', 'c-heure'], ['Référence', 'c-ref'], ['N° Dossier', 'c-ref'],
+            ['Bénéficiaire / Déposant', ''], ['Motif', ''], ['Caisse', 'c-caisse'],
+            ['Entrées', 'c-montant'], ['Sorties', 'c-montant'],
+        ];
+
+        $entetes = '';
+        foreach ($colonnes as [$libelle, $classe]) {
+            $entetes .= '<th' . ($classe === '' ? '' : ' class="' . $classe . '"') . '>' . View::e($libelle) . '</th>';
+        }
+
+        // La largeur du libellé des lignes de solde : tout sauf les deux
+        // colonnes de montants, qu'elles occupent ensemble.
+        $largeur = count($colonnes) - 2;
+
+        $corps = '';
+        $n = 0;
+        foreach ($lignes as $ligne) {
+            $n++;
+            $entree = ($ligne['sens'] ?? '') === 'ENTREE';
+            $montant = View::e(self::montantJournal((float) ($ligne['montant'] ?? 0), $ligne['devise'] ?? null));
+
+            $corps .= '<tr>'
+                . '<td class="c-n">' . $n . '</td>'
+                . '<td class="c-heure">' . View::e(self::heure($ligne['date'] ?? null)) . '</td>'
+                . '<td class="c-ref">' . View::e(trim((string) ($ligne['reference'] ?? ''))) . '</td>'
+                . '<td class="c-ref">' . View::e(trim((string) ($ligne['dossier'] ?? ''))) . '</td>'
+                . '<td>' . View::e(trim((string) ($ligne['tiers'] ?? ''))) . '</td>'
+                . '<td>' . View::e(trim((string) ($ligne['libelle'] ?? ''))) . '</td>'
+                . '<td class="c-caisse">' . View::e(trim((string) ($ligne['caisse'] ?? ''))) . '</td>'
+                . '<td class="c-montant">' . ($entree ? $montant : '') . '</td>'
+                . '<td class="c-montant">' . ($entree ? '' : $montant) . '</td>'
+                . '</tr>';
+        }
+
+        return '<!doctype html><html lang="fr"><head><meta charset="utf-8">'
+            . '<title>' . View::e($titre) . '</title>'
+            . '<style>' . self::stylesJournal() . '</style></head><body>'
+            . '<h1>' . View::e($titre) . '</h1>'
+            . '<p class="sous">' . View::e(self::sousTitreJournal($mouvements, $lignes, $editePar)) . '</p>'
+            . '<table><thead><tr>' . $entetes . '</tr></thead>'
+            . '<tbody>' . self::reportDeVeille($mouvements, $continu, $largeur) . $corps
+            . ($lignes === [] ? '<tr><td colspan="' . count($colonnes) . '" class="vide">'
+                . View::e('Aucun mouvement sur cette journée.') . '</td></tr>' : '')
+            . '</tbody>'
+            . self::piedDuJournal($continu, $entrees, $sorties, $jour, $largeur)
+            . '</table>'
+            . self::visas()
+            . '<script>window.onload=function(){window.print();};</script>'
+            . '</body></html>';
+    }
+
+    /**
+     * Les deux sens, remis dans l'ordre du temps.
+     *
+     * @param array<string, mixed> $mouvements
+     * @return array<int, array<string, mixed>>
+     */
+    private static function lignesDuJournal(array $mouvements): array
+    {
+        $lignes = [];
+
+        foreach (['versements' => 'ENTREE', 'retraits' => 'SORTIE'] as $cle => $sens) {
+            foreach (self::liste($mouvements, $cle) as $ligne) {
+                $ligne['sens'] = $sens;
+                $lignes[] = $ligne;
+            }
+        }
+
+        /*
+         * L'heure d'abord, puis l'entrée avant la sortie à heure égale. Un
+         * approvisionnement n'a que sa date de remise, sans heure : il arrive
+         * donc en tête de journée — et c'est juste, puisque c'est lui qui
+         * permet les décaissements qui suivent. Le lire après aurait montré
+         * une caisse passée à découvert en cours de matinée.
+         */
+        usort($lignes, static function (array $a, array $b): int {
+            return [(string) ($a['date'] ?? ''), (string) ($a['sens'] ?? ''), (int) ($a['id'] ?? 0)]
+                <=> [(string) ($b['date'] ?? ''), (string) ($b['sens'] ?? ''), (int) ($b['id'] ?? 0)];
+        });
+
+        return array_values($lignes);
+    }
+
+    /**
+     * La ligne de report, en tête du journal.
+     *
+     * @param array<string, mixed> $mouvements
+     * @param array<string, mixed> $continu
+     */
+    private static function reportDeVeille(array $mouvements, array $continu, int $largeur): string
+    {
+        if ($continu === []) {
+            return '';
+        }
+
+        $veille = self::jourPrecedent((string) ($mouvements['date'] ?? ''));
+
+        return '<tr class="report">'
+            . '<td colspan="' . $largeur . '">'
+            . View::e('Solde de la veille, au soir du ' . self::date($veille)) . '</td>'
+            . '<td colspan="2" class="c-montant">'
+            . View::e(self::montant((float) ($continu['ouverture'] ?? 0))) . '</td>'
+            . '</tr>';
+    }
+
+    /**
+     * Les totaux, le mouvement du jour et le solde de clôture.
+     *
+     * @param array<string, mixed> $continu
+     * @param array<string, float> $entrees
+     * @param array<string, float> $sorties
+     */
+    private static function piedDuJournal(array $continu, array $entrees, array $sorties, string $jour, int $largeur): string
+    {
+        $pied = '<tr class="total">'
+            . '<td colspan="' . $largeur . '">' . View::e('Total des mouvements du ' . $jour) . '</td>'
+            . '<td class="c-montant">' . View::e(self::totauxEnTexte($entrees)) . '</td>'
+            . '<td class="c-montant">' . View::e(self::totauxEnTexte($sorties)) . '</td>'
+            . '</tr>';
+
+        if ($continu !== []) {
+            $pied .= '<tr>'
+                . '<td colspan="' . $largeur . '">' . View::e('Mouvement du jour (entrées moins sorties)') . '</td>'
+                . '<td colspan="2" class="c-montant">'
+                . View::e(self::montant((float) ($continu['mouvement'] ?? 0))) . '</td>'
+                . '</tr>'
+                . '<tr class="cloture">'
+                . '<td colspan="' . $largeur . '">' . View::e('Solde de clôture, au soir du ' . $jour) . '</td>'
+                . '<td colspan="2" class="c-montant">'
+                . View::e(self::montant((float) ($continu['cloture'] ?? 0))) . '</td>'
+                . '</tr>'
+                . self::ligneEnEuros($continu, $largeur);
+        }
+
+        return '<tfoot>' . $pied . '</tfoot>';
+    }
+
+    /**
+     * La caisse de Paris, sur sa propre ligne.
+     *
+     * Les euros ne sont jamais versés dans les colonnes en francs : un total
+     * qui mêlerait les deux ne serait juste dans aucune des deux monnaies. La
+     * ligne n'apparaît que lorsqu'il y a quelque chose à dire.
+     *
+     * @param array<string, mixed> $continu
+     */
+    private static function ligneEnEuros(array $continu, int $largeur): string
+    {
+        $ouverture = (float) ($continu['ouverture_eur'] ?? 0);
+        $mouvement = (float) ($continu['mouvement_eur'] ?? 0);
+        $cloture = (float) ($continu['cloture_eur'] ?? 0);
+
+        if (!self::nonNul($ouverture) && !self::nonNul($mouvement) && !self::nonNul($cloture)) {
+            return '';
+        }
+
+        return '<tr class="euros">'
+            . '<td colspan="' . $largeur . '">'
+            . View::e('En euros : solde de la veille ' . self::somme($ouverture, 'EUR')
+                . ', mouvement du jour ' . self::somme($mouvement, 'EUR'))
+            . '</td>'
+            . '<td colspan="2" class="c-montant">' . View::e(self::somme($cloture, 'EUR')) . '</td>'
+            . '</tr>';
+    }
+
+    /**
+     * Les trois paraphes du bas de page.
+     *
+     * Un journal de caisse se signe : c'est ce qui le distingue d'un relevé
+     * qu'on réimprime. Sans ces cases, le document sorti du logiciel n'aurait
+     * plus la valeur de celui qu'il remplace.
+     */
+    private static function visas(): string
+    {
+        $cases = '';
+        foreach (['Le caissier', 'Le comptable', 'La direction'] as $qui) {
+            $cases .= '<div class="visa"><span>' . View::e($qui) . '</span></div>';
+        }
+
+        return '<div class="visas">' . $cases . '</div>';
+    }
+
+    /**
+     * Le sous-titre du journal : la portée, le compte de lignes, l'édition.
+     *
+     * @param array<string, mixed> $mouvements
+     * @param array<int, array<string, mixed>> $lignes
+     */
+    private static function sousTitreJournal(array $mouvements, array $lignes, string $editePar): string
+    {
+        $edition = 'Édité le ' . date('d/m/Y à H:i');
+
+        return implode(' — ', [
+            self::portee($mouvements),
+            count($lignes) . ' mouvement(s)',
+            $editePar === '' ? $edition : $edition . ' par ' . $editePar,
+        ]);
+    }
+
+    /**
+     * Un montant du journal.
+     *
+     * Le franc est la monnaie de ces deux colonnes : l'écrire sur chaque ligne
+     * ajouterait cinq caractères sans rien apprendre, et l'en-tête le dit
+     * déjà. Une ligne en euros, elle, doit se voir du premier coup d'oeil.
+     */
+    private static function montantJournal(float $valeur, mixed $devise): string
+    {
+        $code = self::devise($devise);
+
+        return $code === 'FCFA' ? self::montant($valeur) : self::montant($valeur, 2) . ' ' . $code;
+    }
+
+    /**
+     * L'heure d'un mouvement, quand sa source en porte une.
+     *
+     * Un approvisionnement n'a qu'une date de remise. Lui écrire « 00:00 » le
+     * ferait passer pour la première opération du matin, à la minute près,
+     * alors que personne ne sait quand le billet est arrivé.
+     */
+    private static function heure(mixed $valeur): string
+    {
+        return preg_match('/\b(\d{2}:\d{2})/', trim((string) ($valeur ?? '')), $trouve) === 1
+            ? $trouve[1]
+            : '';
+    }
+
+    private static function jourPrecedent(string $jour): string
+    {
+        $jour = trim($jour);
+
+        if ($jour === '') {
+            return '';
+        }
+
+        $instant = strtotime($jour . ' -1 day');
+
+        return $instant === false ? $jour : date('Y-m-d', $instant);
+    }
+
+    /**
+     * La mise en page du journal.
+     *
+     * Neuf colonnes ne tiennent pas en portrait : le journal s'imprime en
+     * paysage, et c'est aussi l'orientation du document qu'il remplace.
+     */
+    private static function stylesJournal(): string
+    {
+        return '@page{size:A4 landscape;margin:8mm}'
+            . 'body{font-family:Arial,Helvetica,sans-serif;font-size:10px;color:#111;margin:10mm}'
+            . 'h1{font-size:16px;margin:0 0 2px}'
+            . '.sous{color:#555;margin:0 0 12px;font-size:10px;line-height:1.5}'
+            . 'table{width:100%;border-collapse:collapse}'
+            . 'th,td{border:1px solid #bbb;padding:4px 5px;text-align:left;vertical-align:top}'
+            . 'th{background:#0f172a;color:#fff;font-size:9px;text-transform:uppercase;letter-spacing:.04em}'
+            . '.c-montant{text-align:right;white-space:nowrap}'
+            . '.c-n{text-align:right;width:24px}'
+            . '.c-heure{white-space:nowrap;width:38px}'
+            . '.c-ref,.c-caisse{white-space:nowrap}'
+            . '.vide{text-align:center;color:#666;font-style:italic}'
+            // Le report et la cloture encadrent la journee : ils ne sont pas
+            // des mouvements, et ne doivent pas se lire comme des lignes.
+            . 'tr.report td{background:#eef2f7;font-weight:bold}'
+            . 'tr.total td{background:#eef1f5;font-weight:bold}'
+            . 'tr.cloture td{background:#0f172a;color:#fff;font-weight:bold;font-size:11px}'
+            . 'tr.euros td{background:#f6f7f9;font-style:italic;color:#333}'
+            . '.visas{display:flex;gap:10mm;margin-top:10mm}'
+            . '.visa{flex:1;border-top:1px solid #111;padding-top:2px;font-size:9px;color:#444}'
+            // Sans cela, un journal de deux pages perd ses en-tetes de colonne
+            // des la seconde, et plus personne ne sait ce qu il lit.
+            . '@media print{body{margin:0}thead{display:table-header-group}tfoot{display:table-row-group}}';
+    }
+
+    /**
      * La journée, ouvrable au tableur.
      *
      * Deux colonnes s'ajoutent à celles de l'écran. La devise, parce qu'un
@@ -1424,6 +1808,21 @@ final class MouvementsCaisse
             // Les trois cartes du jour. Fond blanc, bord fin, rayon 14 : la
             // couleur se réserve à l'icône, au signe de la variation et au
             // solde négatif.
+            . '.lbp-mvt-continu{display:flex;align-items:stretch;gap:.75rem;flex-wrap:wrap;background:#fff;border:1px solid #e2e8f0;border-left:4px solid #0f766e;border-radius:10px;padding:1rem 1.25rem;margin:1rem 0 1.5rem;}'
+            . '.lbp-mvt-continu.est-negatif{border-left-color:#dc2626;}'
+            . '.lbp-mvt-continu-etape{flex:1;min-width:150px;display:flex;flex-direction:column;gap:.15rem;}'
+            . '.lbp-mvt-continu-etape strong{font-size:1.25rem;color:#0f172a;font-variant-numeric:tabular-nums;}'
+            . '.lbp-mvt-continu-etape.est-fort strong{color:#0f766e;font-size:1.45rem;}'
+            . '.lbp-mvt-continu.est-negatif .est-fort strong{color:#dc2626;}'
+            . '.lbp-mvt-continu-libelle{font-size:.72rem;text-transform:uppercase;letter-spacing:.1em;color:#64748b;font-weight:700;}'
+            . '.lbp-mvt-continu-note{font-size:.78rem;color:#94a3b8;}'
+            . '.lbp-mvt-continu-op{align-self:center;font-size:1.4rem;color:#94a3b8;font-weight:700;}'
+            . '@media (max-width:640px){.lbp-mvt-continu-op{display:none;}}'
+            . '.lbp-mvt-continu-bloc{margin:1rem 0 1.5rem;}'
+            . '.lbp-mvt-continu-bloc .lbp-mvt-continu{margin:0;}'
+            . '.lbp-mvt-continu-actions{display:flex;justify-content:flex-end;margin-top:.5rem;}'
+            . '.lbp-mvt-continu-tu{background:#fff;border:1px solid #e2e8f0;border-left:4px solid #94a3b8;'
+            . 'border-radius:10px;padding:.85rem 1.25rem;color:#475569;font-size:.86rem;line-height:1.5;}'
             . '.lbp-mvt-cartes{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}'
             . '.lbp-mvt-carte{display:flex;flex-direction:column;gap:12px;padding:16px 18px;background:#fff;'
             . 'border:1px solid var(--mvt-trait);border-radius:14px}'

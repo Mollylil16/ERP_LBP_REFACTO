@@ -207,7 +207,11 @@ class MouvementsCaisseRepository
      * @param array<string, mixed> $portee
      * @return array{versements: float, retraits: float, versements_eur: float, retraits_eur: float}
      */
-    public function cumuls(array $portee): array
+    /**
+     * @param array<string, mixed> $portee
+     * @param string|null $avant Ne compter que ce qui precede strictement ce jour.
+     */
+    public function cumuls(array $portee, ?string $avant = null): array
     {
         $agence = (int) ($portee['agence_id'] ?? 0);
 
@@ -233,6 +237,24 @@ class MouvementsCaisseRepository
         $borneDemandes = $agence > 0 ? ' AND df.agence_id = :agence' : '';
         $borneMvt = $agence > 0 ? ' AND m.agence_id = :agence' : '';
         $params = $agence > 0 ? ['agence' => $agence] : [];
+
+        /*
+         * Le solde d'ouverture : tout ce qui precede STRICTEMENT la journee.
+         *
+         * Chaque flux porte sa propre date, et ce sont celles des requetes du
+         * jour, pas d'autres : un reglement compte au jour de l'encaissement,
+         * un appro au jour de la REMISE — pas de sa validation —, et une
+         * demande de fonds au jour ou l'argent est sorti du tiroir. Prendre
+         * une date voisine ferait glisser des montants d'une journee a l'autre
+         * et le report ne retomberait jamais juste.
+         */
+        if ($avant !== null) {
+            $bornePaiements .= ' AND DATE(p.date_paiement) < :avant';
+            $borneAppros .= ' AND a.date_effet < :avant';
+            $borneDemandes .= ' AND DATE(df.date_decaissement) < :avant';
+            $borneMvt .= ' AND COALESCE(m.date_mouvement, DATE(m.created_at)) < :avant';
+            $params['avant'] = $avant;
+        }
 
         $paiements = $somme('
             SELECT COALESCE(SUM(CASE WHEN UPPER(p.devise) = \'EUR\' THEN 0 ELSE p.montant END), 0) AS xof,

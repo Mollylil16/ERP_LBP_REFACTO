@@ -69,12 +69,23 @@ final class MouvementsCaisseTest extends TestCase
              *
              * @return array<string, float>
              */
-            public function cumuls(array $portee): array
+            public function cumuls(array $portee, ?string $avant = null): array
             {
                 $totaux = ['versements' => 0.0, 'retraits' => 0.0, 'versements_eur' => 0.0, 'retraits_eur' => 0.0];
 
                 foreach ($this->sources as $cle => $lignes) {
                     if (!is_array($lignes) || !str_contains((string) $cle, '@')) {
+                        continue;
+                    }
+
+                    /*
+                     * Les sources sont rangees par « type@jour ». Le report du
+                     * solde de la veille ne compte que ce qui precede
+                     * strictement la journee lue : sans cette borne, le faux
+                     * depot repondrait le cumul de tout temps et le solde
+                     * d'ouverture serait toujours faux.
+                     */
+                    if ($avant !== null && substr((string) $cle, strpos((string) $cle, '@') + 1) >= $avant) {
                         continue;
                     }
 
@@ -382,7 +393,10 @@ final class MouvementsCaisseTest extends TestCase
         $tableau = $this->service(['caisses' => $this->caisses()])->tableauDuJour([]);
 
         self::assertSame(
-            ['date', 'filtres', 'caisses', 'agences', 'kpis', 'cumuls', 'versements', 'retraits', 'peutSaisir'],
+            // « continu » ajoute le 28/10/2026 : le solde de la veille, le
+            // mouvement du jour et le solde de cloture, pour que la caisse se
+            // lise d'un trait comme sur le journal papier.
+            ['date', 'filtres', 'caisses', 'agences', 'kpis', 'continu', 'cumuls', 'versements', 'retraits', 'peutSaisir'],
             array_keys($tableau)
         );
         self::assertSame(['date', 'caisse_id', 'agence_id', 'q'], array_keys($tableau['filtres']));
@@ -1126,6 +1140,104 @@ final class MouvementsCaisseTest extends TestCase
         self::assertStringContainsString('FROM lbp_appros_caisse a', $depot);
         self::assertStringNotContainsString('lbp_appros_caisse', $service);
         self::assertStringNotContainsString('ApproCaisseService::creer', $service);
+    }
+
+    /**
+     * Le journal de caisse est câblé, et fermé comme l'écran.
+     *
+     * Il ne passe pas par exporter() — les quatre autres documents sortent un
+     * seul sens —, et c'est précisément pour cela qu'il faut vérifier
+     * séparément qu'il relit les mêmes filtres et contrôle les mêmes rôles.
+     */
+    public function test_le_journal_de_caisse_est_cable(): void
+    {
+        $routes = (string) file_get_contents(BASE_PATH . '/routes/finance.php');
+        $controleur = (string) file_get_contents(BASE_PATH . '/app/Controllers/Finance/MouvementsCaisseController.php');
+
+        self::assertStringContainsString("\$router->get('/mouvements-caisse/journal/pdf',", $routes);
+        self::assertStringContainsString('public function journalPdf(): void', $controleur);
+
+        $bloc = substr($controleur, (int) strpos($controleur, 'public function journalPdf'), 600);
+        self::assertStringContainsString('$this->service->tableauDuJour($_GET)', $bloc);
+        self::assertStringContainsString('RoleMiddleware::check(MouvementsCaisseAcces::ROLES_LECTURE)', $bloc);
+
+        $vue = BASE_PATH . '/views/finance/mouvements-caisse/journal_pdf.php';
+        self::assertFileExists($vue);
+        self::assertStringContainsString('MouvementsCaisse::journalPdf', (string) file_get_contents($vue));
+    }
+
+    /**
+     * Le solde d'ouverture ne compte que ce qui précède la journée.
+     *
+     * Une caisse de fonctionnement ne repart pas de zéro chaque matin : sans
+     * cette borne, le report aurait repris le cumul de tout temps, journée
+     * lue comprise, et le solde de clôture aurait compté deux fois les
+     * mouvements du jour.
+     */
+    public function test_le_report_s_arrete_a_la_veille(): void
+    {
+        $service = $this->service([
+            'caisses' => $this->caisses(),
+            // 400 000 la veille, 150 000 le jour lu.
+            'paiements@2026-10-07' => [
+                ['id' => 1, 'montant' => 400000.0, 'devise' => 'XOF', 'date_paiement' => '2026-10-07 10:00',
+                 'numero_facture' => 'FA-1', 'agence_id' => 3400, 'mode' => 'especes'],
+            ],
+            'paiements@2026-10-08' => [
+                ['id' => 2, 'montant' => 150000.0, 'devise' => 'XOF', 'date_paiement' => '2026-10-08 09:00',
+                 'numero_facture' => 'FA-2', 'agence_id' => 3400, 'mode' => 'especes'],
+            ],
+        ])->tableauDuJour(['date' => '2026-10-08', 'agence_id' => 3400]);
+
+        $continu = $service['continu'];
+
+        self::assertSame(400000.0, $continu['ouverture'], "L'ouverture ne tient que la veille.");
+        self::assertSame(150000.0, $continu['mouvement'], 'Le mouvement ne tient que le jour.');
+        self::assertSame(550000.0, $continu['cloture'], 'La clôture est la somme des deux.');
+    }
+
+    /**
+     * Une journée filtrée ne se reporte pas.
+     *
+     * Le cumul d'ouverture ignore la recherche : il ne connait que l'agence et
+     * la date. Les lignes du jour, elles, la respectent. Additionner un report
+     * complet et un jour partiel donnerait un solde de clôture a cote de ce
+     * qu'il y a dans le tiroir — et c'est ce solde que la caissiere oppose a
+     * son comptage du soir. On ne reporte donc rien plutot que de reporter
+     * faux.
+     */
+    public function test_une_recherche_fait_taire_le_report(): void
+    {
+        $sources = [
+            'caisses' => $this->caisses(),
+            'paiements@2026-10-07' => [
+                ['id' => 1, 'montant' => 400000.0, 'devise' => 'XOF', 'date_paiement' => '2026-10-07 10:00',
+                 'numero_facture' => 'FA-1', 'agence_id' => 3400, 'mode' => 'especes'],
+            ],
+        ];
+
+        $sans = $this->service($sources)->tableauDuJour(['date' => '2026-10-08', 'agence_id' => 3400]);
+        $avec = $this->service($sources)->tableauDuJour(['date' => '2026-10-08', 'agence_id' => 3400, 'q' => 'SOCIMEX']);
+
+        self::assertSame(400000.0, $sans['continu']['ouverture']);
+        self::assertSame([], $avec['continu'], 'Une recherche ne laisse pas reporter.');
+    }
+
+    /**
+     * Une caisse qui n'est pas celle du guichet non plus.
+     *
+     * Les règlements, les appros et les décaissements ne sont rattachés qu'à
+     * l'agence : ils ne s'affichent que sur la caisse du guichet. Les reporter
+     * sur la caisse de fonctionnement ferait entrer dans son solde des billets
+     * qui ne sont jamais passés par ce tiroir.
+     */
+    public function test_une_caisse_hors_guichet_fait_taire_le_report(): void
+    {
+        // 12 est la caisse de FONCTIONNEMENT : le pivot de l'agence est 11.
+        $tableau = $this->service(['caisses' => $this->caisses()])
+            ->tableauDuJour(['date' => '2026-10-08', 'agence_id' => 3400, 'caisse_id' => 12]);
+
+        self::assertSame([], $tableau['continu']);
     }
 
     /**

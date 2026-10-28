@@ -691,6 +691,275 @@ final class MouvementsCaisseRenduTest extends TestCase
         self::assertStringContainsString('>Déposant</th>', $pdf);
     }
 
+    // ------------------------------------------------------------------
+    // Le report du solde de la veille, et le journal qu'il ouvre
+    // ------------------------------------------------------------------
+
+    /**
+     * Une journée avec son report et ses deux sens datés à l'heure.
+     *
+     * @return array<string, mixed>
+     */
+    private function pourJournal(): array
+    {
+        $donnees = $this->donnees();
+
+        $donnees['continu'] = [
+            'ouverture' => 1250000.0,
+            'mouvement' => 2115000.0,
+            'cloture' => 3365000.0,
+            'ouverture_eur' => 0.0,
+            'mouvement_eur' => 0.0,
+            'cloture_eur' => 0.0,
+        ];
+
+        // Un appro sans heure, un règlement à 11 h, un décaissement à 09 h :
+        // de quoi vérifier l'ordre du temps et non celui des deux listes.
+        $donnees['versements'] = [
+            [
+                'id' => 910, 'source' => 'auto', 'date' => '2026-10-08 11:40', 'cadre' => 'FACTURE_COLIS',
+                'cadre_libelle' => 'Règlements de factures Colis', 'dossier' => null,
+                'libelle' => 'Règlement facture FA-3402-2026-000181', 'reference' => 'FA-3402-2026-000181',
+                'montant' => 1800000.0, 'devise' => 'XOF', 'tiers' => 'SOCIMEX CI',
+                'caisse' => 'Caisse principale', 'caissier' => 'Awa Koné',
+            ],
+            [
+                'id' => 911, 'source' => 'auto', 'date' => '2026-10-08', 'cadre' => 'APPRO',
+                'cadre_libelle' => 'Approvisionnement de caisse', 'dossier' => null,
+                'libelle' => 'Remise du siège', 'reference' => 'APP-2026-0094',
+                'montant' => 800000.0, 'devise' => 'XOF', 'tiers' => 'Siège',
+                'caisse' => 'Caisse principale', 'caissier' => 'Awa Koné',
+            ],
+        ];
+
+        $donnees['retraits'] = [
+            [
+                'id' => 720, 'source' => 'auto', 'date' => '2026-10-08 09:05', 'cadre' => 'FONCTIONNEMENT',
+                'cadre_libelle' => 'Fonctionnement', 'dossier' => null,
+                'libelle' => 'Carburant du véhicule de liaison', 'reference' => 'DF-2026-00412',
+                'montant' => 485000.0, 'devise' => 'XOF', 'tiers' => 'Total Dokui',
+                'caisse' => 'Caisse principale', 'caissier' => 'Awa Koné',
+            ],
+        ];
+
+        return $donnees;
+    }
+
+    /**
+     * La bande du report se lit de gauche à droite : hier soir, aujourd'hui,
+     * ce soir. C'est elle qui manquait à l'écran, et sans elle le solde
+     * affiché ne correspondait à rien de ce qu'il y a dans le tiroir.
+     */
+    public function test_l_ecran_reporte_le_solde_de_la_veille(): void
+    {
+        $html = $this->horsFenetres(MouvementsCaisse::page($this->pourJournal()));
+
+        self::assertStringContainsString('Solde de la veille', $html);
+        self::assertStringContainsString('Mouvement du jour', $html);
+        self::assertStringContainsString('Solde de clôture', $html);
+        self::assertStringContainsString('1 250 000', $html);
+        self::assertStringContainsString('3 365 000', $html);
+    }
+
+    /**
+     * Une clôture négative se signale : la caisse doit plus qu'elle ne tient.
+     */
+    public function test_une_cloture_negative_se_voit(): void
+    {
+        $donnees = $this->pourJournal();
+        $donnees['continu']['cloture'] = -42000.0;
+
+        $html = $this->balisage(MouvementsCaisse::page($donnees));
+
+        self::assertStringContainsString('lbp-mvt-continu est-negatif', $html);
+    }
+
+    /**
+     * Sans report calculé, la bande cède la place à son explication.
+     *
+     * Un solde de clôture à zéro se lirait comme un tiroir vide, et une
+     * bande qui disparaît sans un mot se lit comme une panne. La note dit
+     * pourquoi, et comment retrouver le report — et le bouton du journal,
+     * lui, reste à portée.
+     */
+    public function test_la_bande_cede_la_place_a_son_explication(): void
+    {
+        $html = $this->balisage(MouvementsCaisse::page($this->donnees()));
+
+        self::assertStringNotContainsString('lbp-mvt-continu-etape', $html);
+        self::assertStringContainsString('lbp-mvt-continu-tu', $html);
+        self::assertStringContainsString('sur une sélection filtrée', $html);
+        self::assertStringContainsString('journal/pdf', $html, 'Le journal reste imprimable.');
+    }
+
+    /**
+     * La vue passe bien la clé au composant.
+     *
+     * Le sac de variables de la vue est reconstruit clé par clé : une clé
+     * neuve rendue par le service mais oubliée là n'arrive jamais à l'écran,
+     * et rien ne tombe en panne pour le dire. C'est arrivé à « continu ».
+     */
+    public function test_la_vue_transmet_le_report_au_composant(): void
+    {
+        $vue = (string) file_get_contents(BASE_PATH . '/views/finance/mouvements-caisse/index.php');
+
+        self::assertStringContainsString("'continu' => \$viewData->array('continu')", $vue);
+    }
+
+    /**
+     * Le journal réunit les deux sens dans l'ordre du temps.
+     *
+     * Les deux historiques de l'écran séparent ce que le tiroir, lui, vit
+     * dans l'ordre : c'est pour cela que la caissière tenait un journal, et
+     * c'est lui qu'elle oppose à son comptage du soir.
+     */
+    public function test_le_journal_melange_les_deux_sens_dans_l_ordre_du_temps(): void
+    {
+        $pdf = MouvementsCaisse::journalPdf($this->pourJournal(), 'Comptable LBP');
+
+        self::assertStringContainsString('Journal de caisse', $pdf);
+        self::assertStringContainsString('3 mouvement(s)', $pdf);
+
+        // L'appro n'a pas d'heure : il ouvre la journée, avant le
+        // décaissement de 09 h 05 qu'il a permis, puis vient le règlement.
+        $appro = (int) strpos($pdf, 'Remise du siège');
+        $sortie = (int) strpos($pdf, 'Carburant du véhicule');
+        $reglement = (int) strpos($pdf, 'Règlement facture FA-3402-2026-000181');
+
+        self::assertGreaterThan(0, $appro);
+        self::assertGreaterThan($appro, $sortie);
+        self::assertGreaterThan($sortie, $reglement);
+    }
+
+    /**
+     * Le report ouvre le journal, la clôture le ferme, et les deux colonnes
+     * de montants restent séparées : une entrée ne s'écrit jamais dans la
+     * colonne des sorties.
+     */
+    public function test_le_journal_encadre_la_journee_par_ses_deux_soldes(): void
+    {
+        $pdf = MouvementsCaisse::journalPdf($this->pourJournal(), '');
+
+        self::assertStringContainsString('Solde de la veille, au soir du 07/10/2026', $pdf);
+        self::assertStringContainsString('Solde de clôture, au soir du 08/10/2026', $pdf);
+        self::assertStringContainsString('Total des mouvements du 08/10/2026', $pdf);
+
+        // Les totaux des deux colonnes, chacun dans la sienne.
+        self::assertStringContainsString('2 600 000 FCFA', $pdf);
+        self::assertStringContainsString('485 000 FCFA', $pdf);
+
+        // L'ordre de lecture : report, lignes, clôture.
+        self::assertLessThan(
+            (int) strpos($pdf, 'Solde de clôture'),
+            (int) strpos($pdf, 'Solde de la veille'),
+            'Le report se lit avant la clôture.'
+        );
+    }
+
+    /**
+     * L'heure n'est écrite que lorsque la source en porte une.
+     *
+     * Écrire « 00:00 » à un approvisionnement le ferait passer pour la
+     * première opération du matin, à la minute près, alors que personne ne
+     * sait quand le billet est arrivé.
+     */
+    public function test_le_journal_n_invente_pas_l_heure_d_un_appro(): void
+    {
+        $pdf = MouvementsCaisse::journalPdf($this->pourJournal(), '');
+
+        self::assertStringContainsString('>09:05<', $pdf);
+        self::assertStringContainsString('>11:40<', $pdf);
+        self::assertStringNotContainsString('>00:00<', $pdf);
+    }
+
+    /**
+     * Les euros gardent leur ligne : un total qui mêlerait les deux monnaies
+     * ne serait juste dans aucune des deux.
+     */
+    public function test_le_journal_ne_verse_pas_les_euros_dans_les_francs(): void
+    {
+        $donnees = $this->pourJournal();
+        $donnees['continu']['ouverture_eur'] = 980.0;
+        $donnees['continu']['mouvement_eur'] = 4820.0;
+        $donnees['continu']['cloture_eur'] = 5800.0;
+        $donnees['versements'][] = [
+            'id' => 905, 'source' => 'saisie', 'date' => '2026-10-08 14:10', 'cadre' => 'FACTURE_COLIS',
+            'cadre_libelle' => 'Règlements de factures Colis', 'dossier' => '483-20428520',
+            'libelle' => 'Règlement agence de Paris', 'reference' => '0041782-99',
+            'montant' => 4820.0, 'devise' => 'EUR', 'tiers' => 'LBP Paris',
+            'caisse' => 'Caisse Paris', 'caissier' => 'Awa Koné',
+        ];
+
+        $pdf = MouvementsCaisse::journalPdf($donnees, '');
+
+        // La ligne en euros porte sa monnaie, les lignes en francs non : la
+        // colonne est déjà titrée, et cinq caractères par ligne n'apprennent
+        // rien à qui lit un journal en francs.
+        self::assertStringContainsString('4 820,00 EUR', $pdf);
+        self::assertStringContainsString('>1 800 000<', $pdf);
+
+        // Le total de la colonne garde les deux monnaies côte à côte, et le
+        // solde en euros a sa propre ligne de pied.
+        self::assertStringContainsString('2 600 000 FCFA · 4 820,00 EUR', $pdf);
+        self::assertStringContainsString('En euros : solde de la veille 980,00 EUR', $pdf);
+        self::assertStringContainsString('5 800,00 EUR', $pdf);
+    }
+
+    /** Sans report calculé, le journal reste lisible : il omet les deux soldes. */
+    public function test_le_journal_tient_sans_report_et_sans_ligne(): void
+    {
+        $vide = ['date' => '2026-10-08', 'filtres' => [], 'versements' => [], 'retraits' => []];
+
+        $pdf = MouvementsCaisse::journalPdf($vide, '');
+
+        self::assertStringContainsString('Aucun mouvement sur cette journée.', $pdf);
+        self::assertStringContainsString('0 mouvement(s)', $pdf);
+        self::assertStringNotContainsString('Solde de la veille', $pdf);
+        self::assertStringContainsString('Total des mouvements du 08/10/2026', $pdf);
+    }
+
+    /**
+     * Un journal de caisse se signe : c'est ce qui le distingue d'un relevé
+     * qu'on réimprime. Et il s'imprime en paysage, sinon ses neuf colonnes
+     * sortent coupées.
+     */
+    public function test_le_journal_se_signe_et_s_imprime_en_paysage(): void
+    {
+        $pdf = MouvementsCaisse::journalPdf($this->pourJournal(), '');
+
+        foreach (['Le caissier', 'Le comptable', 'La direction'] as $qui) {
+            self::assertStringContainsString($qui, $pdf, $qui);
+        }
+
+        self::assertStringContainsString('size:A4 landscape', $pdf);
+        self::assertStringContainsString('display:table-header-group', $pdf);
+    }
+
+    /**
+     * Le journal dit sur quoi il porte.
+     *
+     * Sorti d'un écran filtré, il ne montre qu'une partie de la journée :
+     * sans ce rappel il se lirait comme complet, et c'est ainsi qu'on finit
+     * par opposer à quelqu'un un total qui n'en était pas un.
+     */
+    public function test_le_journal_rappelle_sa_portee_et_son_editeur(): void
+    {
+        $donnees = $this->pourJournal();
+        $donnees['filtres']['agence_id'] = 3402;
+
+        $pdf = MouvementsCaisse::journalPdf($donnees, 'Comptable LBP');
+
+        self::assertStringContainsString('Agence : Aéroport Port Bouët Fret', $pdf);
+        self::assertStringContainsString('par Comptable LBP', $pdf);
+    }
+
+    public function test_le_journal_n_emploie_aucun_emoji(): void
+    {
+        $motif = '/[\x{1F300}-\x{1FAFF}\x{2600}-\x{27BF}\x{231A}-\x{231B}\x{23E9}-\x{23FA}\x{FE0F}]/u';
+
+        self::assertSame(0, preg_match($motif, MouvementsCaisse::journalPdf($this->pourJournal(), '')));
+    }
+
     public function test_les_documents_n_emploient_aucun_emoji(): void
     {
         $motif = '/[\x{1F300}-\x{1FAFF}\x{2600}-\x{27BF}\x{231A}-\x{231B}\x{23E9}-\x{23FA}\x{FE0F}]/u';

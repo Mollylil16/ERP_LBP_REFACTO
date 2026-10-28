@@ -58,6 +58,9 @@ $router->group('/finance', function (Router $router): void {
     // ecrites avant /{id}/supprimer dans l esprit, mais celle-la est en POST :
     // aucune collision possible. Elles relisent les filtres de l ecran dans la
     // meme requete GET, pour sortir exactement les lignes affichees.
+    // Le journal de la journee : les deux sens dans l ordre du temps, avec le
+    // solde de la veille en tete et le solde de cloture en pied.
+    $router->get('/mouvements-caisse/journal/pdf', [\App\Controllers\Finance\MouvementsCaisseController::class, 'journalPdf']);
     $router->get('/mouvements-caisse/versements/pdf', [\App\Controllers\Finance\MouvementsCaisseController::class, 'versementsPdf']);
     $router->get('/mouvements-caisse/versements/excel', [\App\Controllers\Finance\MouvementsCaisseController::class, 'versementsExcel']);
     $router->get('/mouvements-caisse/retraits/pdf', [\App\Controllers\Finance\MouvementsCaisseController::class, 'retraitsPdf']);

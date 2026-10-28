@@ -92,6 +92,25 @@ final class MouvementsCaisseController extends FinanceBaseController
     }
 
     /**
+     * Le journal de caisse de la journée.
+     *
+     * Il ne passe pas par exporter() : les quatre autres documents sortent un
+     * seul sens, celui-ci les réunit et porte en plus le report de la veille.
+     * Les filtres, eux, sont relus de la même requête GET et par le même
+     * appel de service — le journal ne peut donc pas dire autre chose que
+     * l'écran d'où son bouton a été cliqué.
+     */
+    public function journalPdf(): void
+    {
+        RoleMiddleware::check(MouvementsCaisseAcces::ROLES_LECTURE);
+
+        $mouvements = $this->service->tableauDuJour($_GET);
+        $editePar = Auth::user()?->fullName ?? '';
+
+        require BASE_PATH . '/views/finance/mouvements-caisse/journal_pdf.php';
+    }
+
+    /**
      * Sort un historique tel qu'il est à l'écran.
      *
      * Les filtres sont relus depuis la même requête GET que l'écran — l'écran

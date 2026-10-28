@@ -18,6 +18,7 @@ echo MouvementsCaisse::page([
     'caisses' => $viewData->array('caisses'),
     'agences' => $viewData->array('agences'),
     'kpis' => $viewData->array('kpis'),
+    'continu' => $viewData->array('continu'),
     'cumuls' => $viewData->array('cumuls'),
     'versements' => $viewData->array('versements'),
     'retraits' => $viewData->array('retraits'),

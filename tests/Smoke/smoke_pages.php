@@ -112,6 +112,7 @@ $ecrans = [
     'Factures clients' => '/finance/factures',
     'Appro caisse' => '/finance/appro-caisse',
     'Mouvements de caisse' => '/finance/mouvements-caisse',
+    'Journal de caisse PDF' => '/finance/mouvements-caisse/journal/pdf',
     'Fournitures de bureau' => '/colisage/exploitation/fournitures',
     'Controle des caisses' => '/finance/controle-caisse',
     'Controle des caisses PDF' => '/finance/controle-caisse/pdf',
