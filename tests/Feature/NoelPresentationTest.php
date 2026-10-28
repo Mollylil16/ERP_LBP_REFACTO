@@ -159,6 +159,56 @@ final class NoelPresentationTest extends TestCase
         self::assertNotNull(NoelProcedure::pour('point_caisse'));
     }
 
+    public function test_aucune_adresse_citee_par_noel_n_est_morte(): void
+    {
+        /*
+         * Constaté le 28/10/2026 : quatre adresses du dictionnaire ne
+         * menaient nulle part — « logistique/groupage-codes-non-payes »,
+         * « admin/utilisateurs », « admin/agences »,
+         * « espace-employe/demandes ». Elles étaient silencieusement écartées
+         * par le filtre des droits, donc NOEL ne proposait simplement rien là
+         * où il aurait dû orienter. Un lien mort ne se voit pas : il se mesure.
+         */
+        $sources = '';
+        foreach (['NoelVocabulaire', 'NoelProcedure'] as $classe) {
+            $sources .= (string) file_get_contents(BASE_PATH . '/app/Services/Noel/' . $classe . '.php');
+        }
+
+        preg_match_all("/'ecrans' => \[([^\]]*)\]/", $sources, $blocs);
+
+        $adresses = [];
+        foreach ($blocs[1] as $bloc) {
+            preg_match_all("/'([a-z0-9\/\-?=]+)'/", $bloc, $trouvees);
+            foreach ($trouvees[1] as $adresse) {
+                $adresses[$adresse] = $adresse;
+            }
+        }
+
+        self::assertNotEmpty($adresses);
+
+        $routes = '';
+        foreach (glob(BASE_PATH . '/routes/*.php') ?: [] as $fichier) {
+            $routes .= (string) file_get_contents($fichier);
+        }
+
+        $mortes = [];
+        foreach ($adresses as $adresse) {
+            $chemin = explode('?', $adresse)[0];
+            $reste = '/' . (str_contains($chemin, '/') ? explode('/', $chemin, 2)[1] : $chemin);
+            $dernier = '/' . basename($chemin);
+
+            $declaree = str_contains($routes, "get('" . $reste . "'")
+                || str_contains($routes, "get('" . $dernier . "'")
+                || str_contains($routes, "group('" . $reste . "'");
+
+            if (!$declaree) {
+                $mortes[] = $adresse;
+            }
+        }
+
+        self::assertSame([], $mortes, 'Adresses sans route : ' . implode(', ', $mortes));
+    }
+
     public function test_chaque_procedure_est_complete(): void
     {
         foreach (NoelProcedure::gestesConnus() as $geste) {

@@ -82,7 +82,7 @@ final class NoelVocabulaire
         ],
         'groupage' => [
             'libelle' => 'le groupage et les expeditions',
-            'ecrans' => ['colisage/groupage', 'logistique/groupage-codes-non-payes'],
+            'ecrans' => ['colisage/groupage', 'logistique/codes-non-payes'],
             'mots' => [
                 'groupage', 'groupe', 'groupe code', 'expedition', 'expeditions',
                 'depart', 'les departs', 'preparer un depart', 'dossier envoi',
@@ -160,7 +160,7 @@ final class NoelVocabulaire
         ],
         'conge' => [
             'libelle' => 'les conges',
-            'ecrans' => ['rh/planning-conges', 'espace-employe/demandes'],
+            'ecrans' => ['rh/planning-conges', 'espace-employe/demandes/nouvelle'],
             'mots' => [
                 'conge', 'conges', 'vacances', 'permission', 'repos annuel',
                 'solde de conge', 'mes conges', 'demander un conge', 'poser un conge',
@@ -186,7 +186,7 @@ final class NoelVocabulaire
         ],
         'espace_employe' => [
             'libelle' => 'votre espace personnel',
-            'ecrans' => ['espace-employe/dashboard', 'espace-employe/demandes'],
+            'ecrans' => ['espace-employe/dashboard', 'espace-employe/demandes/nouvelle'],
             'mots' => [
                 'mon dossier', 'mon espace', 'espace employe', 'mes documents',
                 'mon bulletin', 'ma demande', 'faire une demande', 'mes conges',
@@ -267,7 +267,7 @@ final class NoelVocabulaire
         ],
         'compte_acces' => [
             'libelle' => 'votre compte et vos acces',
-            'ecrans' => ['admin/utilisateurs'],
+            'ecrans' => ['admin/users'],
             'mots' => [
                 'mot de passe', 'mdp', 'connexion', 'me connecter', 'identifiant',
                 'compte bloque', 'compte desactive', 'acces refuse', 'droit', 'droits',
@@ -290,7 +290,7 @@ final class NoelVocabulaire
         ],
         'agence' => [
             'libelle' => 'les agences',
-            'ecrans' => ['admin/agences', 'finance/dashboard'],
+            'ecrans' => ['finance/dashboard'],
             'mots' => [
                 'agence', 'agences', 'site', 'sites', 'dokui', 'abobo dokui',
                 'adjame', 'aeroport', 'port bouet', 'bobigny', 'paris', 'senegal',
