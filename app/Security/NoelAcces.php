@@ -88,6 +88,27 @@ final class NoelAcces
             }
         }
 
+        /*
+         * Les modules gardes par leur controleur, et non par leur menu.
+         *
+         * Constate le 28/10/2026 : NOEL annoncait au comptable les sept ecrans
+         * de l'Administration et les cinq du Pilotage DG. Leurs entrees de
+         * menu portent « available => true » en dur — c'est le controleur qui
+         * refuse, a l'ouverture. NOEL envoyait donc sur des portes fermees.
+         *
+         * Pour Finance, Colisage et les autres, « available » porte le vrai
+         * controle et suffit. Ici il ne dit rien, alors on le dit a sa place.
+         */
+        if ($slug === 'admin') {
+            // AdminMiddleware::check() exige isAdmin, pas un role.
+            return Auth::isAdmin();
+        }
+
+        if ($slug === 'pilotage-dg') {
+            // Les controleurs du module font RoleMiddleware::check(['dg', 'admin']).
+            return Auth::isAdmin() || Auth::hasAnyRole(['dg']);
+        }
+
         return true;
     }
 

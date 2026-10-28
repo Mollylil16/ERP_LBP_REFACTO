@@ -71,6 +71,40 @@ final class NoelFondationsTest extends TestCase
         self::assertNotContains('rh', $modules);
     }
 
+    public function test_les_modules_gardes_par_leur_controleur_sont_fermes_aussi(): void
+    {
+        /*
+         * Constaté le 28/10/2026 : NOEL annonçait au comptable les sept écrans
+         * de l'Administration et les cinq du Pilotage DG. Leurs entrées de
+         * menu portent « available => true » en dur — c'est le contrôleur qui
+         * refuse, à l'ouverture. NOEL envoyait donc sur des portes fermées,
+         * ce qui est la pire façon d'aider quelqu'un.
+         */
+        self::assertFalse(NoelAcces::peutEvoquerModule('admin'));
+        self::assertFalse(NoelAcces::peutEvoquerModule('pilotage-dg'));
+
+        // Et les modules dont le menu porte le vrai contrôle restent ouverts.
+        self::assertTrue(NoelAcces::peutEvoquerModule('finance'));
+        self::assertTrue(NoelAcces::peutEvoquerModule('colisage'));
+
+        $modules = array_keys((new NoelCarte())->modulesVisibles());
+        self::assertNotContains('admin', $modules);
+        self::assertNotContains('pilotage-dg', $modules);
+    }
+
+    public function test_le_verrou_suit_ce_que_les_controleurs_exigent(): void
+    {
+        // Si un jour l'Administration s'ouvre à un rôle, ce test tombe et
+        // oblige à mettre NOEL d'accord avec le logiciel.
+        $middleware = (string) file_get_contents(BASE_PATH . '/app/Middleware/AdminMiddleware.php');
+        self::assertStringContainsString('!$user->isAdmin', $middleware);
+
+        $pilotage = (string) file_get_contents(
+            BASE_PATH . '/app/Controllers/PilotageDg/PilotageDgDashboardController.php'
+        );
+        self::assertStringContainsString("RoleMiddleware::check(['dg', 'admin'])", $pilotage);
+    }
+
     public function test_la_carte_ne_coute_aucune_requete(): void
     {
         /*
