@@ -327,9 +327,107 @@
     });
   };
 
+  /**
+   * Les tableaux, lisibles au telephone.
+   *
+   * Un tableau de sept colonnes ne tient pas sur 390 px. Jusqu ici il y etait
+   * comprime : chaque colonne tombait sous soixante pixels et les mots se
+   * coupaient en plein milieu. Le lire devenait un travail.
+   *
+   * Sous 640 px chaque ligne devient donc une carte, et chaque cellule porte
+   * le nom de sa colonne a gauche de sa valeur. Les vingt-deux ecrans qui
+   * fabriquent leurs tableaux a la main n ont rien a changer : l etiquette est
+   * posee ici, depuis l en-tete que le tableau porte deja.
+   *
+   * Si ce script ne s execute pas, le tableau reste un tableau : on perd le
+   * confort, jamais l information.
+   */
+  const tableauxEnCartes = (racine = document) => {
+    /*
+     * Tous les tableaux de la coque, et pas seulement ceux qui portent la
+     * classe du systeme : le point de caisse et le tableau de bord RH ecrivent
+     * un <table> nu, et ce sont deux des ecrans les plus ouverts.
+     *
+     * Les documents imprimables — bordereaux, rapports, journal de caisse —
+     * sont des pages a part, sans coque et sans ce script : ils gardent leurs
+     * tableaux tels quels, ce qui est bien ce qu on veut sur du papier.
+     */
+    const tableaux = racine.querySelectorAll(
+      ".module-content table, .finea-shell table, table.finea-table",
+    );
+
+    tableaux.forEach((table) => {
+      if (table.dataset.cartesPretes === "1") return;
+
+      const lignesEntete = table.querySelectorAll("thead tr");
+      const entetes = lignesEntete.length
+        ? [...lignesEntete[lignesEntete.length - 1].querySelectorAll("th")].map((th) =>
+            th.textContent.trim(),
+          )
+        : [];
+
+      // Sans en-tete, une cellule ne peut pas porter son etiquette : ce
+      // tableau-la garde son defilement, qui reste lisible.
+      if (entetes.length === 0) {
+        table.dataset.cartesPretes = "1";
+        return;
+      }
+
+      table.dataset.cartesPretes = "1";
+
+      /*
+       * Trois colonnes tiennent deja dans la largeur d un telephone. Les
+       * empiler en carte tripleraient la hauteur de la page sans rien
+       * apprendre de plus.
+       */
+      if (entetes.length <= 3) {
+        table.dataset.mobile = "etroit";
+        return;
+      }
+
+      table.dataset.mobile = "cartes";
+
+      const enveloppe = table.closest(".finea-table-wrap, .finea-table-wrapper");
+      if (enveloppe) enveloppe.dataset.mobile = "cartes";
+
+      table.querySelectorAll("tbody tr, tfoot tr").forEach((ligne) => {
+        let colonne = 0;
+
+        [...ligne.children].forEach((cellule) => {
+          const portee = cellule.colSpan || 1;
+
+          /*
+           * Une cellule qui couvre plusieurs colonnes — un total, un « aucune
+           * ligne » — n appartient a aucune d elles. Elle reste pleine
+           * largeur, sans etiquette qui mentirait.
+           */
+          if (portee === 1 && entetes[colonne]) {
+            cellule.dataset.etiquette = entetes[colonne];
+          } else {
+            cellule.dataset.pleineLargeur = "1";
+          }
+
+          /*
+           * Une cellule vide ne se voit pas dans un tableau. En carte, elle
+           * afficherait une etiquette suivie de rien : autant la retirer.
+           */
+          if (
+            !cellule.textContent.trim() &&
+            !cellule.querySelector("button, a, input, select, textarea, svg, img")
+          ) {
+            cellule.dataset.vide = "1";
+          }
+
+          colonne += portee;
+        });
+      });
+    });
+  };
+
   document.addEventListener("DOMContentLoaded", () => {
     init();
     menuMobile();
+    tableauxEnCartes();
   });
-  window.FineaComponents = { init, menuMobile };
+  window.FineaComponents = { init, menuMobile, tableauxEnCartes };
 })();

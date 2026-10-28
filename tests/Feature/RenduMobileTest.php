@@ -20,6 +20,14 @@ use Tests\TestCase;
  *    colisage.css, alors que les tableaux font 760 px au minimum ;
  * 3. finance.css annulait ce défilement avec overflow: hidden ;
  * 4. la déconnexion était masquée sous 620 px, et c'est le seul lien de sortie.
+ *
+ * Seconde passe, 28/10/2026. Les agents du terrain travaillent debout, une
+ * main sur l'appareil, et le logiciel restait « très difficile à manier ». La
+ * cause mesurée n'était plus un débordement — les quatre ci-dessus étaient
+ * traitées — mais l'inverse : un tableau de sept colonnes comprimé dans
+ * 390 px laissait moins de soixante pixels par colonne, et les mots se
+ * coupaient en plein milieu. Sous 640 px chaque ligne devient donc une carte,
+ * et chaque cellule porte le nom de sa colonne.
  */
 final class RenduMobileTest extends TestCase
 {
@@ -144,5 +152,144 @@ final class RenduMobileTest extends TestCase
         self::assertStringContainsString('flex-wrap: wrap;', $mobile);
         // Un champ ne doit jamais imposer sa largeur à la page.
         self::assertStringContainsString('min-width: 0 !important;', $mobile);
+    }
+
+    // ------------------------------------------------------------------
+    // Seconde passe : la ligne devient une carte
+    // ------------------------------------------------------------------
+
+    private function scriptCommun(): string
+    {
+        return $this->fichier('public/assets/js/components.js');
+    }
+
+    private function socle(): string
+    {
+        return $this->fichier('public/assets/css/finea-ui.css');
+    }
+
+    /**
+     * Le bloc de style qui ne vaut que pour un téléphone.
+     *
+     * Une règle de carte qui s'échapperait de sa requête média casserait
+     * tous les tableaux du bureau d'un coup : c'est la première chose à tenir.
+     */
+    public function test_les_cartes_ne_valent_que_sous_un_ecran_de_telephone(): void
+    {
+        $socle = $this->socle();
+        $depart = strpos($socle, 'table[data-mobile="cartes"]');
+
+        self::assertNotFalse($depart, 'Aucune règle de carte dans la feuille de style.');
+
+        $media = strrpos(substr($socle, 0, $depart), '@media');
+        self::assertNotFalse($media, 'Les cartes ne sont pas sous une requête média.');
+
+        $ouverture = substr($socle, $media, $depart - $media);
+
+        self::assertSame(1, preg_match('/max-width: (\\d{3})px/', $ouverture, $trouve));
+        self::assertLessThanOrEqual(
+            640,
+            (int) $trouve[1],
+            "Au-dessus de 640 px un tableau tient encore : les cartes n'ont rien à y faire."
+        );
+    }
+
+    /**
+     * L'étiquette vient de l'en-tête, et de nulle part ailleurs.
+     *
+     * C'est ce qui permet aux vingt-deux composants qui fabriquent leurs
+     * tableaux à la main de n'avoir rien à changer, et à tout tableau écrit
+     * demain d'être lisible au téléphone sans qu'on y pense.
+     */
+    public function test_l_etiquette_est_posee_depuis_l_en_tete(): void
+    {
+        $script = $this->scriptCommun();
+
+        self::assertStringContainsString('tableauxEnCartes', $script);
+        self::assertStringContainsString('thead tr', $script);
+        self::assertStringContainsString('dataset.etiquette', $script);
+        self::assertStringContainsString('content: attr(data-etiquette)', $this->socle());
+    }
+
+    /** Elle tourne au chargement, et reste appelable après coup. */
+    public function test_la_mise_en_cartes_tourne_au_chargement(): void
+    {
+        $script = $this->scriptCommun();
+        $demarrage = substr($script, (int) strpos($script, 'DOMContentLoaded'));
+
+        self::assertStringContainsString('tableauxEnCartes()', $demarrage);
+        self::assertStringContainsString(
+            'window.FineaComponents = { init, menuMobile, tableauxEnCartes }',
+            $script
+        );
+    }
+
+    /**
+     * Les trois garde-fous, sans lesquels la transformation ferait des dégâts.
+     *
+     * Un tableau sans en-tête ne peut pas étiqueter ses cellules ; un tableau
+     * étroit n'a rien à gagner à tripler de hauteur ; et une cellule qui couvre
+     * plusieurs colonnes — un total, un « aucune ligne » — n'appartient à
+     * aucune d'elles et ne doit porter aucun nom.
+     */
+    public function test_les_trois_garde_fous_de_la_mise_en_cartes(): void
+    {
+        $bloc = substr($this->scriptCommun(), (int) strpos($this->scriptCommun(), 'const tableauxEnCartes'));
+
+        self::assertStringContainsString('entetes.length === 0', $bloc, "Sans en-tête, on ne transforme pas.");
+        self::assertStringContainsString('entetes.length <= 3', $bloc, 'Un tableau étroit reste un tableau.');
+        self::assertStringContainsString('colSpan', $bloc);
+        self::assertStringContainsString('dataset.pleineLargeur', $bloc);
+    }
+
+    /**
+     * Les documents imprimables gardent leurs tableaux.
+     *
+     * Un bordereau, un rapport, le journal de caisse : ce sont des pages à
+     * part, sans coque et sans ce script. Les mettre en cartes sur du papier
+     * n'aurait aucun sens — et la portée du sélecteur est ce qui les en
+     * préserve.
+     */
+    public function test_les_documents_imprimables_restent_des_tableaux(): void
+    {
+        $bloc = substr($this->scriptCommun(), (int) strpos($this->scriptCommun(), 'const tableauxEnCartes'), 1400);
+
+        self::assertStringContainsString('.module-content table', $bloc);
+        self::assertStringContainsString('.finea-shell table', $bloc);
+
+        $journal = $this->fichier('app/View/Components/MouvementsCaisse.php');
+        $extrait = substr($journal, (int) strpos($journal, 'public static function journalPdf'), 3000);
+
+        self::assertStringContainsString('<!doctype html>', $extrait);
+        self::assertStringNotContainsString('module-content', $extrait);
+        self::assertStringNotContainsString('finea-shell', $extrait);
+    }
+
+    /**
+     * Une cellule vide ne se voit pas dans un tableau ; en carte elle
+     * montrerait une étiquette suivie de rien.
+     */
+    public function test_une_cellule_vide_disparait_de_la_carte(): void
+    {
+        $bloc = substr($this->scriptCommun(), (int) strpos($this->scriptCommun(), 'const tableauxEnCartes'));
+
+        self::assertStringContainsString('dataset.vide', $bloc);
+        self::assertStringContainsString('td[data-vide]', $this->socle());
+    }
+
+    /**
+     * Le texte des champs ne rapetisse pas.
+     *
+     * Sous 16 px, iOS agrandit la page à chaque fois qu'on touche un champ, et
+     * il faut repincer pour revoir le formulaire. C'est l'une des causes les
+     * plus courantes d'un « impossible à manier », et la seule protection est
+     * de ne jamais fixer une police plus petite sur les champs.
+     */
+    public function test_les_champs_ne_rapetissent_pas_la_police(): void
+    {
+        $socle = $this->socle();
+        $champs = substr($socle, (int) strpos($socle, '.finea-input,'), 400);
+
+        self::assertStringContainsString('font: inherit', $champs);
     }
 }

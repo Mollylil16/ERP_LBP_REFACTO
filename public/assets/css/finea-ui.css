@@ -856,6 +856,107 @@ textarea.finea-input {
        desormais plutot que de deborder. */
     overflow-wrap: anywhere;
   }
+
+  /*
+   * Au-dela de trois colonnes, la ligne devient une carte.
+   *
+   * Comprimer sept colonnes dans 390 px laissait moins de soixante pixels a
+   * chacune : les mots se coupaient en plein milieu et lire une ligne
+   * demandait un effort que personne ne fournit debout, sur le terrain. En
+   * carte, chaque valeur retrouve sa largeur et garde le nom de sa colonne a
+   * cote d elle.
+   *
+   * C est components.js qui pose « data-mobile » et les etiquettes, depuis
+   * l en-tete que le tableau porte deja. Sans lui, rien de tout ceci ne
+   * s applique et le tableau reste un tableau.
+   */
+  .finea-table-wrap[data-mobile="cartes"],
+  .finea-table-wrapper[data-mobile="cartes"] {
+    /* L enveloppe ne defile plus : son cadre et son ombre de bord n ont plus
+       d objet, et doublaient celui de chaque carte. */
+    overflow-x: visible;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  table[data-mobile="cartes"] {
+    display: block;
+    min-width: 0;
+    font-size: 0.9rem;
+  }
+
+  /* L en-tete a fini dans les cellules : le garder a l ecran le repeterait.
+     Il reste lisible par les lecteurs d ecran. */
+  table[data-mobile="cartes"] thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  table[data-mobile="cartes"] tbody,
+  table[data-mobile="cartes"] tfoot {
+    display: block;
+  }
+
+  table[data-mobile="cartes"] tr {
+    display: block;
+    margin: 0 0 10px;
+    padding: 2px 0;
+    border: 1px solid var(--finea-border);
+    border-radius: 10px;
+    background: #fff;
+  }
+
+  table[data-mobile="cartes"] td {
+    display: flex;
+    gap: 14px;
+    align-items: baseline;
+    justify-content: space-between;
+    padding: 9px 13px;
+    border: 0;
+    border-bottom: 1px solid #f1f5f9;
+    text-align: right;
+  }
+
+  table[data-mobile="cartes"] tr td:last-child {
+    border-bottom: 0;
+  }
+
+  table[data-mobile="cartes"] td[data-etiquette]::before {
+    content: attr(data-etiquette);
+    flex: 0 0 40%;
+    color: #64748b;
+    font-size: 0.7rem;
+    font-weight: 750;
+    letter-spacing: 0.04em;
+    text-align: left;
+    text-transform: uppercase;
+  }
+
+  /* Un total, un « aucune ligne » : rien a etiqueter, toute la largeur. */
+  table[data-mobile="cartes"] td[data-pleine-largeur] {
+    display: block;
+    text-align: left;
+  }
+
+  /* Une case vide ne se voyait pas dans un tableau ; en carte elle aurait
+     montre une etiquette suivie de rien. */
+  table[data-mobile="cartes"] td[data-vide] {
+    display: none;
+  }
+
+  /* Les boutons d une colonne « Actions » prennent la ligne entiere : a deux
+     par case, ils tombaient a trente pixels de large. */
+  table[data-mobile="cartes"] td[data-etiquette] > form,
+  table[data-mobile="cartes"] td[data-etiquette] > .lbp-appro-decision,
+  table[data-mobile="cartes"] td[data-etiquette] > .finea-table-actions {
+    flex: 1 1 auto;
+  }
 }
 
 @media (max-width: 620px) {
