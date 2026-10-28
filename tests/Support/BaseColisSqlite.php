@@ -23,11 +23,17 @@ final class BaseColisSqlite
 
     public function __construct()
     {
-        $pdo = new \Pdo\Sqlite('sqlite::memory:');
+        /*
+         * PDO et non \Pdo\Sqlite : cette classe n'existe qu'a partir de
+         * PHP 8.4, et la production tourne en 8.1.34. Le harnais tombait donc
+         * avec « Class Pdo\Sqlite not found » et emportait les vingt-neuf
+         * tests de la reception avec lui.
+         */
+        $pdo = new PDO('sqlite::memory:');
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
-        $pdo->createFunction('NOW', fn (): string => $this->maintenant, 0);
-        $pdo->createFunction('CURDATE', fn (): string => substr($this->maintenant, 0, 10), 0);
+        $pdo->sqliteCreateFunction('NOW', fn (): string => $this->maintenant, 0);
+        $pdo->sqliteCreateFunction('CURDATE', fn (): string => substr($this->maintenant, 0, 10), 0);
 
         $pdo->exec("CREATE TABLE company_sites (id INTEGER PRIMARY KEY, name TEXT NOT NULL, is_active INTEGER NOT NULL DEFAULT 1,
             fuseau_horaire TEXT NOT NULL DEFAULT 'Africa/Abidjan', updated_at TEXT NULL)");
