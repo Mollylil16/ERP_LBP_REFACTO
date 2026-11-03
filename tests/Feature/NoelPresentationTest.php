@@ -209,6 +209,122 @@ final class NoelPresentationTest extends TestCase
         self::assertSame([], $mortes, 'Adresses sans route : ' . implode(', ', $mortes));
     }
 
+    // ------------------------------------------------------------------
+    // Expliquer un module qu'on n'a pas nommé
+    // ------------------------------------------------------------------
+
+    /**
+     * Personne ne parle en noms de modules.
+     *
+     * Signalé par la direction le 03/11/2026 : NOEL « n'arrive pas toujours
+     * à expliquer chaque module ». La cause mesurée n'était pas une
+     * description manquante — les seize en ont une — mais la reconnaissance :
+     * l'intention « présentation » exige qu'un module soit nommé, et
+     * « comptabilité », « paie » ou « pointage » ne nomment aucun module.
+     *
+     * L'adresse d'un écran, elle, commence par son module. On remonte donc
+     * de l'écran au module, ce qui évite d'allonger la liste des synonymes
+     * d'un mot chaque fois qu'on en découvre un.
+     */
+    public function test_un_mot_qui_ne_nomme_aucun_module_remonte_jusqu_au_sien(): void
+    {
+        foreach ([
+            'comptabilite' => 'finance',
+            'paie' => 'rh',
+            'pointage' => 'rh',
+            'conges' => 'rh',
+        ] as $mot => $attendu) {
+            $lu = NoelVocabulaire::comprendre("c'est quoi la " . $mot . ' ?');
+
+            self::assertSame($attendu, $lu['module'], $mot);
+            self::assertSame(NoelVocabulaire::INTENTION_PRESENTATION, $lu['intention'], $mot);
+        }
+    }
+
+    /**
+     * Et au bout, une vraie explication plutôt qu'une adresse.
+     *
+     * Avant ce rattrapage, « explique-moi la comptabilité » répondait
+     * « C'est ici. » suivi d'un lien. La question demandait ce que c'est, pas
+     * où c'est.
+     *
+     * L'exemple est pris sur Finance et non sur la paie : le module RH est
+     * fermé hors session, et NOEL refuse de décrire une porte qu'on ne peut
+     * pas ouvrir — ce que vérifie déjà
+     * test_un_module_ferme_n_est_jamais_decrit().
+     */
+    public function test_un_mot_de_metier_recoit_une_explication_et_non_une_adresse(): void
+    {
+        $reponse = $this->noel()->repondre('explique moi la comptabilite');
+
+        self::assertStringContainsString('Finance', $reponse['texte']);
+        self::assertStringContainsString('ecrans', $reponse['texte']);
+        self::assertStringNotContainsString("C'est ici", $reponse['texte']);
+    }
+
+    /**
+     * Le module le mieux représenté l'emporte ; à égalité, le premier écran.
+     *
+     * La liste d'écrans d'un concept est écrite par ordre de pertinence :
+     * « paie » commence par rh/paie avant espace-employe/dashboard. Cet ordre
+     * est une information, et s'en priver revenait à ne rien répondre sur la
+     * paie, les congés, les clients et le groupage.
+     */
+    public function test_le_premier_ecran_tranche_les_egalites(): void
+    {
+        self::assertSame('crm', NoelVocabulaire::comprendre("c'est quoi un client ?")['module']);
+        self::assertSame('colisage', NoelVocabulaire::comprendre("c'est quoi le groupage ?")['module']);
+    }
+
+    /**
+     * Le vocabulaire entier doit savoir dire de quel module il parle.
+     *
+     * C'est la mesure qui tient la promesse faite à la direction : 502
+     * expressions passées à la question « c'est quoi … ? », et aucune qui
+     * laisse NOEL sans module à présenter. Mesuré le 03/11/2026.
+     */
+    public function test_tout_le_vocabulaire_remonte_a_un_module(): void
+    {
+        $concepts = (new \ReflectionClass(NoelVocabulaire::class))->getConstant('CONCEPTS');
+
+        self::assertIsArray($concepts);
+        self::assertNotEmpty($concepts);
+
+        $muets = [];
+        $total = 0;
+
+        foreach ($concepts as $cle => $concept) {
+            foreach ($concept['mots'] as $mot) {
+                if (mb_strlen((string) $mot) < 4) {
+                    continue;
+                }
+
+                $total++;
+
+                if (NoelVocabulaire::comprendre("c'est quoi " . $mot . ' ?')['module'] === null) {
+                    $muets[] = $cle . ' : ' . $mot;
+                }
+            }
+        }
+
+        self::assertGreaterThan(400, $total, 'Le vocabulaire a maigri : v\'rifiez ce qui a \'t\' retir\'.');
+        self::assertSame([], array_slice($muets, 0, 10), count($muets) . ' expression(s) sans module.');
+    }
+
+    /**
+     * Mais une question qui demande où reste une question qui demande où.
+     *
+     * Le rattrapage ne doit pas transformer « où je soumets mon point de
+     * caisse » en cours sur la Finance : l'intention « présentation » exige
+     * toujours que la phrase demande une explication.
+     */
+    public function test_le_rattrapage_ne_transforme_pas_une_adresse_en_cours(): void
+    {
+        $lu = NoelVocabulaire::comprendre('ou je soumets mon point de caisse');
+
+        self::assertSame(NoelVocabulaire::INTENTION_OU, $lu['intention']);
+    }
+
     public function test_chaque_procedure_est_complete(): void
     {
         foreach (NoelProcedure::gestesConnus() as $geste) {

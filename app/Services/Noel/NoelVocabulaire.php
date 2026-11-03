@@ -326,7 +326,17 @@ final class NoelVocabulaire
         'agents-correspondants' => ['correspondants', 'agents correspondants', 'partenaires'],
         'pilotage-dg' => ['pilotage', 'direction', 'module pilotage', 'centre de pilotage'],
         'call-center' => ['call center', 'centre d appel', 'standard'],
-        'employee' => ['espace employe', 'mon espace', 'espace personnel'],
+        /*
+         * « employe » tout court n est pas dans cette liste, et ne doit pas y
+         * etre : « le dossier d un employe » parle des Ressources humaines,
+         * pas de l espace personnel. Seules les tournures qui designent
+         * l espace lui-meme y figurent.
+         */
+        'employee' => [
+            'espace employe', 'mon espace', 'espace personnel', 'module employee',
+            'espace employee', 'mon compte', 'mes demandes', 'mes conges',
+            'mes bulletins', 'mes documents', 'mes absences',
+        ],
         'admin' => ['administration', 'module admin', 'parametrage general'],
         'tickets' => ['tickets', 'module tickets', 'incidents'],
     ];
@@ -531,6 +541,20 @@ final class NoelVocabulaire
         $concept = self::meilleurConcept($texte);
         $module = self::moduleNomme($texte);
 
+        /*
+         * Quand la phrase ne nomme aucun module, on remonte par ses ecrans.
+         *
+         * « Explique-moi la comptabilite » ne nomme pas « finance », et n a pas
+         * a le faire : personne ne parle en noms de modules. Mais le concept
+         * « comptabilite » porte ses ecrans, et l adresse d un ecran commence
+         * par son module. Sans ce rattrapage, NOEL trouvait l ecran, ne
+         * trouvait pas le module, et repondait une adresse la ou on lui
+         * demandait une explication.
+         */
+        if ($module === null && $concept['cle'] !== null) {
+            $module = self::moduleDesEcrans(self::CONCEPTS[$concept['cle']]['ecrans']);
+        }
+
         return [
             'concept' => $concept['cle'],
             'libelle' => $concept['cle'] !== null ? self::CONCEPTS[$concept['cle']]['libelle'] : null,
@@ -564,6 +588,62 @@ final class NoelVocabulaire
         }
 
         return $trouve;
+    }
+
+    /**
+     * Les adresses dont le premier segment ne porte pas le nom du module.
+     *
+     * @var array<string, string>
+     */
+    private const MODULE_PAR_ADRESSE = ['espace-employe' => 'employee'];
+
+    /**
+     * Le module auquel appartiennent les ecrans d un concept.
+     *
+     * L adresse d un ecran commence par son module : « finance/comptabilite »
+     * appartient a Finance. C est la seule source qui ne se perime pas, et
+     * elle evite d allonger la liste des synonymes d un mot chaque fois qu on
+     * en decouvre un.
+     *
+     * Deux regles, dans cet ordre. Le module qui tient le PLUS d ecrans
+     * l emporte. A egalite, c est celui du PREMIER ecran : la liste d un
+     * concept est ecrite par ordre de pertinence, et « paie » commence par
+     * rh/paie avant espace-employe/dashboard. Cet ordre est une information,
+     * et s en priver revenait a ne rien repondre sur la paie, les conges, les
+     * clients et le groupage — soit six concepts sur vingt-trois.
+     *
+     * Un cas reste discutable : « imprimer » ouvre finance/factures puis
+     * logistique/colisage, et renvoie donc Finance. La question ne parle
+     * pourtant d aucun module. Les deux ecrans proposes restent les bons, et
+     * c est ce que la personne venait chercher.
+     *
+     * @param array<int, string> $ecrans
+     */
+    private static function moduleDesEcrans(array $ecrans): ?string
+    {
+        $compte = [];
+
+        foreach ($ecrans as $ecran) {
+            $prefixe = explode('/', trim((string) $ecran, '/'), 2)[0];
+            $prefixe = self::MODULE_PAR_ADRESSE[$prefixe] ?? $prefixe;
+
+            if (isset(self::MODULES[$prefixe])) {
+                $compte[$prefixe] = ($compte[$prefixe] ?? 0) + 1;
+            }
+        }
+
+        if ($compte === []) {
+            return null;
+        }
+
+        /*
+         * arsort() garde l ordre d insertion entre valeurs egales, et les
+         * modules ont ete comptes dans l ordre des ecrans : le premier ecran
+         * tranche donc les egalites de lui-meme.
+         */
+        arsort($compte);
+
+        return (string) array_key_first($compte);
     }
 
     /**
