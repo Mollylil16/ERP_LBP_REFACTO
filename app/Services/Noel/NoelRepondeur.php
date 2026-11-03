@@ -90,6 +90,7 @@ final class NoelRepondeur
             NoelVocabulaire::INTENTION_SIGNALEMENT => $this->signalement($message, $lu),
             NoelVocabulaire::INTENTION_PANNE => $this->panne($message, $lu),
             NoelVocabulaire::INTENTION_PRESENTATION => $this->presenter($lu),
+            NoelVocabulaire::INTENTION_CHIFFRE => $this->chiffrer($lu),
             NoelVocabulaire::INTENTION_PROCEDURE => $this->marcheASuivre($message, $lu),
             NoelVocabulaire::INTENTION_INCONNUE => $this->jeNeSaisPas($message, $lu),
             default => $this->orienter($lu),
@@ -387,6 +388,137 @@ final class NoelRepondeur
             : "Cela se trouve a l'un de ces endroits.";
 
         return self::reponse($texte, $liens);
+    }
+
+    /**
+     * Les concepts sur lesquels NOEL sait avancer un chiffre.
+     *
+     * La liste est courte et le restera : chaque entree suppose une requete
+     * ecrite a la main, relue, et bornee aux droits de la personne. Un chiffre
+     * approximatif serait pire que pas de chiffre du tout.
+     *
+     * @var array<int, string>
+     */
+    private const CHIFFRE_COLIS = ['colis', 'suivi_colis', 'groupage'];
+
+    /** @var array<int, string> */
+    private const CHIFFRE_CAISSE = ['point_caisse', 'mouvements_caisse', 'appro'];
+
+    /**
+     * Repondre par un chiffre, quand on en a un.
+     *
+     * Trois choses peuvent manquer : le journal (en test, il n y a pas de
+     * base), le droit (la portee de la personne ne couvre aucune caisse), ou
+     * simplement le concept (NOEL ne sait pas compter les conges). Dans les
+     * trois cas on retombe sur l orientation habituelle — un lien vaut mieux
+     * qu un chiffre invente.
+     *
+     * @param array<string, mixed> $lu
+     *
+     * @return array{texte: string, liens: array<int, array<string, string>>, attente: ?string}
+     */
+    private function chiffrer(array $lu): array
+    {
+        $concept = (string) ($lu['concept'] ?? '');
+        $journal = $this->journal;
+
+        if ($journal === null) {
+            return $this->orienter($lu);
+        }
+
+        if (in_array($concept, self::CHIFFRE_COLIS, true)) {
+            $compte = $journal->colisDuJour();
+
+            if ($compte !== null) {
+                return self::reponse(self::phraseDesColis($compte), $this->liens($lu));
+            }
+        }
+
+        if (in_array($concept, self::CHIFFRE_CAISSE, true)) {
+            $solde = $journal->soldeDeCaisse();
+
+            if ($solde !== null) {
+                return self::reponse(self::phraseDeLaCaisse($solde), $this->liens($lu));
+            }
+        }
+
+        return $this->orienter($lu);
+    }
+
+    /**
+     * « 39 colis enregistres aujourd hui a Abobo Dokui, en 12 saisies. »
+     *
+     * Publique et statique parce qu elle est pure : un tableau entre, une
+     * phrase sort. C est la seule facon de l eprouver sans base, et ce qu on
+     * veut eprouver est justement la phrase — l accord des pluriels, le
+     * silence sur un nombre de saisies qui n apprend rien.
+     *
+     * L ecart entre les deux nombres se dit : un colis saisi peut en porter
+     * plusieurs, et une journee de 39 colis en 12 saisies ne ressemble pas a
+     * une journee de 39 colis en 39 saisies.
+     *
+     * @param array{colis: int, saisies: int, portee: string, reseau: bool} $compte
+     */
+    public static function phraseDesColis(array $compte): string
+    {
+        if ($compte['colis'] === 0) {
+            $texte = 'Aucun colis enregistre aujourd hui ' . $compte['portee'] . '.';
+
+            /*
+             * La piste de l autre agence ne vaut que pour qui ne voit que la
+             * sienne. La servir a quelqu un qui voit tout le reseau serait lui
+             * proposer de chercher la ou il regarde deja.
+             */
+            if (!$compte['reseau']) {
+                $texte .= " Si vous en attendiez, ils ont peut-etre ete saisis sur une autre agence.";
+            }
+
+            return $texte;
+        }
+
+        $texte = self::nombre($compte['colis']) . ' colis enregistre'
+            . ($compte['colis'] > 1 ? 's' : '') . " aujourd'hui " . $compte['portee'];
+
+        if ($compte['saisies'] !== $compte['colis']) {
+            $texte .= ', en ' . self::nombre($compte['saisies']) . ' saisie'
+                . ($compte['saisies'] > 1 ? 's' : '');
+        }
+
+        return $texte . '.';
+    }
+
+    /**
+     * « Il doit rester 1 430 000 F dans le tiroir ce soir. »
+     *
+     * Le detail suit, parce qu un solde sans ses termes ne se verifie pas :
+     * ce qu il y avait hier, ce qui est entre, ce qui est sorti.
+     *
+     * @param array{ouverture: float, mouvement: float, cloture: float, entrees: float, sorties: float} $solde
+     */
+    public static function phraseDeLaCaisse(array $solde): string
+    {
+        return 'Il doit rester ' . self::franc($solde['cloture']) . ' dans le tiroir ce soir.'
+            . "
+
+Le detail : " . self::franc($solde['ouverture']) . ' hier au soir, '
+            . self::franc($solde['entrees']) . " d'entrees et "
+            . self::franc($solde['sorties']) . ' de sorties aujourd hui.'
+            . "
+
+Ce chiffre est celui de l'ecran Mouvements de Caisse, et il s'arrete a ce que"
+            . ' vous avez le droit de voir.';
+    }
+
+    /** Un nombre, avec ses milliers separes. */
+    private static function nombre(int $valeur): string
+    {
+        return number_format($valeur, 0, ',', ' ');
+    }
+
+    /** Un montant en francs. */
+    private static function franc(float $valeur): string
+    {
+        return number_format($valeur, 0, ',', ' ') . ' F';
     }
 
     /**

@@ -414,6 +414,24 @@ final class NoelVocabulaire
     ];
 
     /**
+     * Les facons de demander un CHIFFRE, et non une adresse.
+     *
+     * « Combien de colis aujourd hui ? » recevait un lien vers l ecran des
+     * colis. La personne savait deja ou regarder : elle demandait le nombre.
+     *
+     * La liste reste volontairement courte et sans ambiguite. Un « combien »
+     * qui ne porte sur rien que NOEL sache compter retombe sur l orientation
+     * habituelle : mieux vaut un lien qu un chiffre invente.
+     *
+     * @var array<int, string>
+     */
+    public const CHIFFRE = [
+        'combien', 'quel est le solde', 'quel solde', 'quel est le montant',
+        'quelle somme', 'ca fait combien', 'c est combien', 'on en est a combien',
+        'ou en est la caisse', 'etat de la caisse',
+    ];
+
+    /**
      * Les facons de demander une marche a suivre.
      *
      * « Comment je fais pour integrer un collaborateur » n'attend ni une
@@ -535,6 +553,7 @@ final class NoelVocabulaire
     public const INTENTION_SALUTATION = 'salutation';
     public const INTENTION_REMERCIEMENT = 'remerciement';
     public const INTENTION_PRESENTATION = 'presentation';
+    public const INTENTION_CHIFFRE = 'chiffre';
     public const INTENTION_PROCEDURE = 'procedure';
     public const INTENTION_INCONNUE = 'inconnue';
 
@@ -827,6 +846,18 @@ final class NoelVocabulaire
          */
         if ($moduleNomme && self::contient($texte, self::PRESENTATION)) {
             return self::INTENTION_PRESENTATION;
+        }
+
+        /*
+         * Un chiffre se demande apres l explication et avant l adresse.
+         *
+         * Apres, parce que « c est quoi le solde de la veille » demande ce que
+         * c est, pas combien il fait. Avant, parce que « combien de colis
+         * aujourd hui » contient « ou » nulle part mais tombait quand meme
+         * dans l orientation, faute de mieux.
+         */
+        if ($conceptTrouve && self::contient($texte, self::CHIFFRE)) {
+            return self::INTENTION_CHIFFRE;
         }
 
         // L'ordre compte. Une phrase peut contenir « merci » et une panne ; ce

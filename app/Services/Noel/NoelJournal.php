@@ -184,6 +184,128 @@ final class NoelJournal
     }
 
     /**
+     * Combien de colis ont ete enregistres aujourd hui.
+     *
+     * Le chiffre est borne a ce que la personne a le droit de voir : son
+     * agence, ou le reseau entier pour ceux dont c est le perimetre. Un agent
+     * de Dokui qui demande « combien de colis aujourd hui » parle de Dokui, et
+     * NOEL ne doit pas lui apprendre ce qui se passe a Adjame.
+     *
+     * Un colis saisi peut en porter plusieurs — la colonne « nombre_colis » —,
+     * et c est ce total qui compte au guichet, pas le nombre de lignes. Les
+     * deux sont rendus, parce que l ecart entre eux se dit : « 39 colis en 12
+     * saisies » n est pas la meme journee que « 39 colis en 39 saisies ».
+     *
+     * @return array{colis: int, saisies: int, portee: string, reseau: bool}|null
+     */
+    public function colisDuJour(): ?array
+    {
+        $reseau = Auth::isAdmin() || Auth::hasAnyRole(Auth::ROLES_PORTEE_RESEAU);
+        $agence = (int) (Auth::agenceId() ?? 0);
+
+        // Ni le reseau, ni une agence : on ne sait pas de quoi on parlerait.
+        if (!$reseau && $agence <= 0) {
+            return null;
+        }
+
+        // Un colis annule n a pas ete enregistre : il ne compte pas.
+        $conditions = ["c.statut <> 'annule'", 'DATE(c.created_at) = CURDATE()'];
+        $parametres = [];
+
+        if (!$reseau) {
+            $conditions[] = 'c.agence_depart_id = :agence';
+            $parametres['agence'] = $agence;
+        }
+
+        try {
+            $stmt = $this->pdo->prepare('
+                SELECT COALESCE(SUM(COALESCE(NULLIF(c.nombre_colis, 0), 1)), 0) AS colis,
+                       COUNT(*) AS saisies
+                  FROM lbp_colis c
+                 WHERE ' . implode(' AND ', $conditions) . '
+            ');
+            $stmt->execute($parametres);
+            $ligne = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+        } catch (Throwable $e) {
+            error_log('[NOEL journal] colis du jour illisibles : ' . $e->getMessage());
+
+            return null;
+        }
+
+        return [
+            'colis' => (int) ($ligne['colis'] ?? 0),
+            'saisies' => (int) ($ligne['saisies'] ?? 0),
+            'portee' => $reseau ? 'sur l ensemble du reseau' : 'a ' . $this->nomDeLAgence($agence),
+            'reseau' => $reseau,
+        ];
+    }
+
+    /**
+     * Ce qu il doit rester dans le tiroir ce soir.
+     *
+     * On ne recalcule rien ici. L ecran Mouvements de Caisse sait deja le
+     * faire, avec la portee de la personne, les deux monnaies et le report de
+     * la veille. Refaire la somme de notre cote donnerait un jour deux
+     * chiffres differents pour la meme caisse, et le logiciel perdrait la
+     * seule chose qu on lui demande vraiment : etre d accord avec lui-meme.
+     *
+     * Rend null quand la portee de la personne est bloquee : le service
+     * renvoie alors un report vide, et NOEL se contente d orienter.
+     *
+     * @return array{ouverture: float, mouvement: float, cloture: float, entrees: float, sorties: float}|null
+     */
+    public function soldeDeCaisse(): ?array
+    {
+        /*
+         * Le service va chercher sa propre connexion, et Database::getConnection()
+         * n echoue pas : il arrete le processus. Un try/catch ne protegerait
+         * donc de rien, et la suite de tests tomberait des que NOEL compte.
+         * Meme parade que NoelCarte pour le menu du colisage : on s abstient.
+         */
+        if (($_ENV['APP_ENV'] ?? $_SERVER['APP_ENV'] ?? '') === 'testing') {
+            return null;
+        }
+
+        try {
+            $tableau = \App\Services\Finance\MouvementsCaisseService::creer()->tableauDuJour([]);
+        } catch (Throwable $e) {
+            error_log('[NOEL journal] solde de caisse illisible : ' . $e->getMessage());
+
+            return null;
+        }
+
+        $continu = is_array($tableau['continu'] ?? null) ? $tableau['continu'] : [];
+
+        if ($continu === []) {
+            return null;
+        }
+
+        $kpis = is_array($tableau['kpis'] ?? null) ? $tableau['kpis'] : [];
+
+        return [
+            'ouverture' => (float) ($continu['ouverture'] ?? 0),
+            'mouvement' => (float) ($continu['mouvement'] ?? 0),
+            'cloture' => (float) ($continu['cloture'] ?? 0),
+            'entrees' => (float) ($kpis['entrees']['total'] ?? 0),
+            'sorties' => (float) ($kpis['sorties']['total'] ?? 0),
+        ];
+    }
+
+    /** Le nom de l agence, pour que le chiffre dise de quelle agence il parle. */
+    private function nomDeLAgence(int $agence): string
+    {
+        try {
+            $stmt = $this->pdo->prepare('SELECT name FROM company_sites WHERE id = :id LIMIT 1');
+            $stmt->execute(['id' => $agence]);
+            $nom = trim((string) $stmt->fetchColumn());
+        } catch (Throwable $e) {
+            return 'votre agence';
+        }
+
+        return $nom !== '' ? $nom : 'votre agence';
+    }
+
+    /**
      * Une facture de cette personne a-t-elle recu deux reglements identiques ?
      *
      * Le 15/10/2026, deux caissieres ont encaisse le meme acompte de 100 000 F
