@@ -59,7 +59,11 @@ final class NoelVocabulaire
                 'encaisser', 'encaissement', 'encaissements', 'reglement', 'reglements',
                 'regler', 'payer le client', 'paiement du client', 'paiement client',
                 'acompte', 'solde client', 'reste a payer', 'restant du', 'impaye',
-                'partiellement payee', 'recu', 'recu officiel', 'bon de caisse',
+                'partiellement payee', 'recu', 'recu officiel',
+                // « bon de caisse » a ete retire d ici le 03/11/2026 : il sort
+                // d une demande de fonds — voir la route
+                // /finance/fonds/{id}/bon-caisse-pdf — et non d une facture.
+                // Les deux concepts le revendiquaient, et la facture gagnait.
                 'annuler un reglement', 'annuler le reglement', 'doublon', 'double encaissement',
                 'encaisse deux fois', 'reinitialiser la facture', 'modifier la facture',
                 'supprimer une facture', 'numero de facture', 'editer la facture',
@@ -100,6 +104,7 @@ final class NoelVocabulaire
                 'demande de fonds', 'demande fonds', 'demander de l argent',
                 'besoin d argent', 'budget', 'depense a valider', 'valider une demande',
                 'rejeter une demande', 'autorisation de depense', 'fonds',
+                'bon de caisse', 'bon caisse',
                 'demande de decaissement', 'faire une demande', 'ma demande de fonds',
                 'validation de la demande', 'motif de la demande', 'imputation',
                 'imputer', 'justificatif de depense', 'reliquat',
@@ -132,6 +137,10 @@ final class NoelVocabulaire
                 'mouvement de caisse', 'mouvements', 'mouvements de caisse',
                 'entrees et sorties', 'journal de caisse', 'ce qui est entre',
                 'ce qui est sorti', 'historique de la caisse', 'les operations du jour',
+                // Le report du solde, livre le 28/10/2026 : personne ne
+                // savait le nommer a NOEL.
+                'solde de la veille', 'report de la veille', 'solde d ouverture',
+                'solde de cloture', 'journal de la caisse', 'le journal',
             ],
         ],
         'pointage' => [
@@ -238,6 +247,8 @@ final class NoelVocabulaire
             'ecrans' => ['tracking-colis/dashboard', 'logistique/colisage'],
             'mots' => [
                 'suivi', 'suivi colisage', 'suivre un colis', 'ou est le colis',
+                'ou est mon colis', 'mon colis est ou', 'suivre mon colis',
+                'retrouver un colis', 'tracer un colis',
                 'localiser', 'localisation du colis', 'etat du colis', 'statut du colis',
                 'colis en transit', 'colis arrive', 'colis livre', 'etape',
                 'notifier le client', 'avis d arrivee',
@@ -541,6 +552,10 @@ final class NoelVocabulaire
         $concept = self::meilleurConcept($texte);
         $module = self::moduleNomme($texte);
 
+        // Nomme par la personne, ou seulement deduit de ses ecrans ? Les deux
+        // n appellent pas la meme reponse : voir NoelRepondeur::presenter().
+        $nomme = $module !== null;
+
         /*
          * Quand la phrase ne nomme aucun module, on remonte par ses ecrans.
          *
@@ -560,6 +575,7 @@ final class NoelVocabulaire
             'libelle' => $concept['cle'] !== null ? self::CONCEPTS[$concept['cle']]['libelle'] : null,
             'ecrans' => $concept['cle'] !== null ? self::CONCEPTS[$concept['cle']]['ecrans'] : [],
             'module' => $module,
+            'module_nomme' => $nomme,
             'intention' => self::intention($texte, $concept['cle'] !== null, $module !== null),
             'score' => $concept['score'],
         ];
@@ -656,16 +672,27 @@ final class NoelVocabulaire
      */
     private static function meilleurConcept(string $texte): array
     {
+        $poids = self::poidsDesMots();
         $meilleur = ['cle' => null, 'score' => 0];
 
         foreach (self::CONCEPTS as $cle => $concept) {
+            /*
+             * Le score d un concept est sa MEILLEURE preuve, et non la somme
+             * de toutes.
+             *
+             * Additionner double-comptait les expressions qui se recouvrent :
+             * sur « le point de caisse de mon agence », le concept « agence »
+             * encaissait « agence » puis « mon agence » — les memes mots deux
+             * fois, 162 points — et battait « point de caisse ». Mesure le
+             * 03/11/2026.
+             */
             $score = 0;
 
             foreach ($concept['mots'] as $mot) {
                 $mot = NoelCarte::sansAccent($mot);
 
                 if (str_contains($texte, ' ' . $mot . ' ')) {
-                    $score += 1 + substr_count($mot, ' ') * 2;
+                    $score = max($score, self::valeur($mot, $poids));
                     continue;
                 }
 
@@ -675,7 +702,8 @@ final class NoelVocabulaire
                 if (mb_strlen($mot) >= 6 && !str_contains($mot, ' ')) {
                     foreach (explode(' ', trim($texte)) as $tape) {
                         if (mb_strlen($tape) >= 5 && levenshtein($tape, $mot) <= 1) {
-                            $score += 1;
+                            // Un mot devine vaut moins qu un mot lu.
+                            $score = max($score, (int) round(self::valeur($mot, $poids) / 2));
                             break;
                         }
                     }
@@ -688,6 +716,96 @@ final class NoelVocabulaire
         }
 
         return $meilleur;
+    }
+
+    /**
+     * Ce que vaut une expression trouvee dans la phrase.
+     *
+     * La somme de ses mots, chacun pese par ce qu il distingue. Une expression
+     * de plusieurs mots vaut donc naturellement plus qu un mot seul, sans
+     * qu on ait besoin de la prime d autrefois : « point de caisse » additionne
+     * trois mots la ou « caisse » n en additionne qu un.
+     *
+     * @param array<string, int> $poids
+     */
+    private static function valeur(string $expression, array $poids): int
+    {
+        $valeur = 0;
+        $mots = 0;
+
+        foreach (explode(' ', trim($expression)) as $mot) {
+            if ($mot === '') {
+                continue;
+            }
+
+            $valeur += $poids[$mot] ?? self::POIDS_PLEIN;
+            $mots++;
+        }
+
+        /*
+         * La prime de sequence : retrouver plusieurs mots DANS L ORDRE est une
+         * preuve bien plus forte que d en retrouver un.
+         *
+         * Sans elle, la ponderation seule se retournait contre nous : « de »
+         * traverse presque tous les concepts et ne vaut plus rien, « caisse »
+         * presque rien non plus, si bien que « point de caisse » pesait moins
+         * qu un « agence » croise en fin de phrase. Constate le 03/11/2026 sur
+         * « je veux voir le point de caisse de mon agence ».
+         */
+        return $valeur + max(0, $mots - 1) * (int) round(self::POIDS_PLEIN / 2);
+    }
+
+    /** Ce que vaut un mot qui ne designe qu une seule chose. */
+    private const POIDS_PLEIN = 60;
+
+    /**
+     * Le poids de chaque mot du dictionnaire : d autant plus fort qu il
+     * designe peu de choses.
+     *
+     * « caisse » traverse l appro, le point de caisse, les mouvements, les
+     * fonds et les depenses : entendre « caisse » n apprend presque rien. Le
+     * concept du point de caisse revendiquait pourtant ce mot a lui seul, et
+     * emportait donc toute phrase qui le contenait — « c est quoi un appro de
+     * caisse » recevait une explication sur la cloture du soir.
+     *
+     * « appro », lui, n appartient qu a un seul concept : l entendre tranche.
+     *
+     * Le poids se calcule sur le dictionnaire lui-meme, et non a la main : il
+     * suit donc le vocabulaire quand il s enrichit, sans qu on ait a revenir
+     * reregler quoi que ce soit.
+     *
+     * @return array<string, int>
+     */
+    private static function poidsDesMots(): array
+    {
+        /** @var array<string, int>|null $cache */
+        static $cache = null;
+
+        if ($cache !== null) {
+            return $cache;
+        }
+
+        $concepts = [];
+
+        foreach (self::CONCEPTS as $cle => $concept) {
+            foreach ($concept['mots'] as $mot) {
+                foreach (explode(' ', trim(NoelCarte::sansAccent($mot))) as $simple) {
+                    if ($simple !== '') {
+                        $concepts[$simple][$cle] = true;
+                    }
+                }
+            }
+        }
+
+        $cache = [];
+
+        foreach ($concepts as $mot => $porteurs) {
+            // Un mot porte par n concepts vaut le plein divise par n : deux
+            // concepts le partagent, il vaut la moitie ; cinq, le cinquieme.
+            $cache[$mot] = max(1, (int) round(self::POIDS_PLEIN / count($porteurs)));
+        }
+
+        return $cache;
     }
 
     private static function intention(string $texte, bool $conceptTrouve, bool $moduleNomme = false): string

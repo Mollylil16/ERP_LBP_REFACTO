@@ -325,6 +325,137 @@ final class NoelPresentationTest extends TestCase
         self::assertSame(NoelVocabulaire::INTENTION_OU, $lu['intention']);
     }
 
+    // ------------------------------------------------------------------
+    // La precision : repondre la chose demandee, et pas son voisinage
+    // ------------------------------------------------------------------
+
+    /**
+     * Une question pointue appelle une réponse pointue.
+     *
+     * « C'est quoi un point de caisse ? » nomme une CHOSE, pas un module.
+     * Répondre par la présentation entière de Finance — vingt-deux écrans,
+     * sept groupes — noyait la question, et les quatre liens rendus ne
+     * contenaient même pas celui des points de caisse. Mesuré le 03/11/2026.
+     */
+    public function test_une_question_pointue_recoit_l_ecran_demande(): void
+    {
+        $reponse = $this->noel()->repondre("c'est quoi un point de caisse ?");
+
+        self::assertStringContainsString('point de caisse', mb_strtolower($reponse['texte']));
+        self::assertCount(1, $reponse['liens'], 'Un seul écran, celui qu\'on demande.');
+        self::assertStringContainsString('Points de Caisse', $reponse['liens'][0]['label'] ?? '');
+
+        // Et surtout pas le catalogue du module.
+        self::assertStringNotContainsString('22 ecran', $reponse['texte']);
+        self::assertStringNotContainsString('groupes', $reponse['texte']);
+    }
+
+    /** Nommer le module, en revanche, appelle bien sa présentation entière. */
+    public function test_nommer_le_module_appelle_toujours_sa_presentation(): void
+    {
+        $reponse = $this->noel()->repondre('parle moi du module finance');
+
+        self::assertStringContainsString('ecrans', $reponse['texte']);
+        self::assertStringContainsString('groupes', $reponse['texte']);
+    }
+
+    /**
+     * Le mot « caisse » ne doit pas tout avaler.
+     *
+     * Il traverse l'appro, le point de caisse, les mouvements et les fonds :
+     * l'entendre n'apprend presque rien. Le concept du point de caisse le
+     * revendiquait pourtant à lui seul et emportait toute phrase qui le
+     * contenait — « c'est quoi un appro de caisse » recevait une explication
+     * sur la clôture du soir.
+     */
+    public function test_le_mot_caisse_n_emporte_plus_toute_la_phrase(): void
+    {
+        foreach ([
+            "c'est quoi un appro de caisse ?" => 'appro',
+            'comment valider un appro de caisse' => 'appro',
+            "c'est quoi les mouvements de caisse ?" => 'mouvements_caisse',
+            "c'est quoi le solde de la veille ?" => 'mouvements_caisse',
+            "c'est quoi un point de caisse ?" => 'point_caisse',
+        ] as $question => $attendu) {
+            self::assertSame($attendu, NoelVocabulaire::comprendre($question)['concept'], $question);
+        }
+    }
+
+    /**
+     * Un concept vaut sa meilleure preuve, pas la somme de toutes.
+     *
+     * Additionner double-comptait les expressions qui se recouvrent : sur
+     * « le point de caisse de mon agence », le concept « agence » encaissait
+     * « agence » puis « mon agence » — les mêmes mots deux fois — et battait
+     * « point de caisse ».
+     */
+    public function test_une_expression_longue_resiste_a_un_mot_rare_voisin(): void
+    {
+        $lu = NoelVocabulaire::comprendre('je veux voir le point de caisse de mon agence');
+
+        self::assertSame('point_caisse', $lu['concept']);
+    }
+
+    /**
+     * Le bon de caisse sort d'une demande de fonds.
+     *
+     * La route est /finance/fonds/{id}/bon-caisse-pdf. Les factures le
+     * revendiquaient aussi, et gagnaient : NOEL envoyait aux factures
+     * quelqu'un qui cherchait un bon de caisse.
+     */
+    public function test_le_bon_de_caisse_mene_aux_demandes_de_fonds(): void
+    {
+        self::assertSame('demande_fonds', NoelVocabulaire::comprendre("c'est quoi un bon de caisse ?")['concept']);
+
+        $routes = (string) file_get_contents(BASE_PATH . '/routes/finance.php');
+        self::assertStringContainsString('bon-caisse-pdf', $routes, 'La route justifie ce rattachement.');
+    }
+
+    /**
+     * Le banc d'essai : des questions réelles, et le concept attendu.
+     *
+     * 17 sur 22 avant la reprise du 03/11/2026, 21 après. Ce test tient ce
+     * chiffre : une retouche du classement qui ferait retomber NOEL sous ce
+     * seuil se verra tout de suite.
+     */
+    public function test_le_banc_d_essai_des_questions_reelles(): void
+    {
+        $banc = [
+            ["c'est quoi un appro de caisse ?", 'appro'],
+            ['comment valider un appro de caisse', 'appro'],
+            ["c'est quoi les mouvements de caisse ?", 'mouvements_caisse'],
+            ['ou est le journal de caisse', 'mouvements_caisse'],
+            ["c'est quoi un point de caisse ?", 'point_caisse'],
+            ['je dois soumettre mon point', 'point_caisse'],
+            ['la cloture de caisse du soir', 'point_caisse'],
+            ["c'est quoi une demande de fonds ?", 'demande_fonds'],
+            ['ou je decaisse une demande', 'decaissement'],
+            ['une depense de prestataire', 'depense'],
+            ['ou je saisis un colis', 'colis'],
+            ["c'est quoi le groupage", 'groupage'],
+            ['je cherche ou est mon colis', 'suivi_colis'],
+            ["c'est quoi le pointage", 'pointage'],
+            ['mon bulletin de paie', 'paie'],
+            ['je veux poser des conges', 'conge'],
+            ['le dossier du personnel', 'dossier_personnel'],
+            ['la facture du client', 'facture'],
+            ["c'est quoi la comptabilite", 'comptabilite'],
+            ['mes entrepots et mon stock', 'entrepot'],
+        ];
+
+        $rates = [];
+
+        foreach ($banc as [$question, $attendu]) {
+            $obtenu = NoelVocabulaire::comprendre($question)['concept'];
+
+            if ($obtenu !== $attendu) {
+                $rates[] = $question . ' : attendu ' . $attendu . ', obtenu ' . ($obtenu ?? 'rien');
+            }
+        }
+
+        self::assertSame([], $rates, count($rates) . ' question(s) mal comprises.');
+    }
+
     public function test_chaque_procedure_est_complete(): void
     {
         foreach (NoelProcedure::gestesConnus() as $geste) {

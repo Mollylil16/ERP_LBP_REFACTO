@@ -390,6 +390,61 @@ final class NoelRepondeur
     }
 
     /**
+     * Expliquer une chose precise, et montrer ou elle se fait.
+     *
+     * NOEL ne sait pas DEFINIR « un point de caisse » : personne ne lui a
+     * ecrit de definition, et en inventer une lui ferait dire des choses
+     * qu aucun humain n a relues. Il dit donc ce qu il sait vraiment — le nom
+     * de la chose, le module dont elle releve, et les ecrans ou elle se fait.
+     * C est moins qu une definition, et beaucoup plus qu un cours sur Finance.
+     *
+     * Rend null quand aucun ecran n est ouvert a cette personne : on retombe
+     * alors sur le module, qui sait refuser sans nommer de porte fermee.
+     *
+     * @param array<string, mixed> $lu
+     *
+     * @return array{texte: string, liens: array<int, array<string, string>>, attente: ?string}|null
+     */
+    private function presenterLaChose(array $lu): ?array
+    {
+        $liens = $this->liens($lu);
+
+        if ($liens === []) {
+            return null;
+        }
+
+        $libelle = trim((string) ($lu['libelle'] ?? ''));
+
+        if ($libelle === '') {
+            return null;
+        }
+
+        $slug = (string) ($lu['module'] ?? '');
+        $modules = $this->carte->modulesVisibles();
+
+        $texte = ucfirst($libelle) . '.';
+
+        if (isset($modules[$slug])) {
+            $texte .= ' Cela releve du module ' . $modules[$slug]['label'] . '.';
+        }
+
+        $texte .= "
+
+" . (count($liens) === 1
+            ? "Voici l'ecran ou cela se passe."
+            : 'Voici les ecrans ou cela se passe.');
+
+        if (isset($modules[$slug])) {
+            $texte .= "
+
+Dites-moi ce que vous voulez y faire — par exemple « comment je fais pour "
+                . self::exempleDeGeste($slug) . " » — et je vous donne les etapes.";
+        }
+
+        return self::reponse($texte, $liens);
+    }
+
+    /**
      * Presenter un module : a quoi il sert, et ce qu'on y trouve.
      *
      * « Parle-moi du module finance » n'attend pas un lien mais une
@@ -407,6 +462,26 @@ final class NoelRepondeur
      */
     private function presenter(array $lu): array
     {
+        /*
+         * Une question pointue appelle une reponse pointue.
+         *
+         * « C est quoi un point de caisse ? » nomme une CHOSE, pas un module.
+         * Repondre par la presentation entiere de Finance — vingt-deux ecrans,
+         * sept groupes — noie la question, et les liens offerts deviennent les
+         * portes d entree du module au lieu de l ecran demande. Mesure le
+         * 03/11/2026 : les quatre liens rendus ne contenaient pas celui des
+         * points de caisse.
+         *
+         * Le module ne se raconte donc en entier que lorsqu on l a nomme.
+         */
+        if (empty($lu['module_nomme']) && ($lu['concept'] ?? null) !== null) {
+            $precis = $this->presenterLaChose($lu);
+
+            if ($precis !== null) {
+                return $precis;
+            }
+        }
+
         $slug = (string) ($lu['module'] ?? '');
         $modules = $this->carte->modulesVisibles();
 
