@@ -37,6 +37,26 @@ final class NoelEnigmeTest extends TestCase
         self::assertNotNull($verdict['pourquoi'], 'Même juste, on explique : c\'est ce qui reste.');
     }
 
+    /** Constaté le 04/11/2026 : « je ne sais pas » recevait « Pas tout à fait ». */
+    public function test_je_ne_sais_pas_est_un_abandon_et_donne_la_solution_tout_de_suite(): void
+    {
+        foreach (['je ne sais pas', "Je n'en sais rien", 'aucune idée', "j'abandonne", 'je donne ma langue au chat'] as $abandon) {
+            $verdict = NoelEnigme::juger($abandon, $this->enigme(), 0);
+
+            self::assertSame(NoelEnigme::DONNEE, $verdict['verdict'], $abandon);
+            self::assertStringContainsString('tiroir-caisse', $verdict['message'], $abandon);
+            self::assertNotNull($verdict['pourquoi'], $abandon);
+        }
+    }
+
+    public function test_une_reponse_qui_ressemble_a_un_abandon_reste_une_reponse(): void
+    {
+        $enigme = ['reponse' => 'Rien', 'pourquoi' => 'Parce que.', 'acceptees' => []];
+
+        self::assertSame(NoelEnigme::JUSTE, NoelEnigme::juger('rien', $enigme, 0)['verdict']);
+        self::assertSame(NoelEnigme::ENCORE, NoelEnigme::juger('un tiroir', $this->enigme(), 0)['verdict']);
+    }
+
     public function test_la_solution_arrive_au_troisieme_essai_avec_le_pourquoi(): void
     {
         $enigme = $this->enigme();

@@ -35,6 +35,22 @@ final class NoelEnigme
     {
         $essais = $essaisDeja + 1;
 
+        /*
+         * « Je ne sais pas » n'est pas une mauvaise reponse, c'est un abandon.
+         * Le compter comme un essai rate (« Pas tout a fait ») fait croire a la
+         * personne qu'elle a propose quelque chose : on lui donne la solution
+         * tout de suite, avec son pourquoi. Constate le 04/11/2026.
+         */
+        if (self::abandonne($proposition) && !self::correspond($proposition, $enigme)) {
+            return [
+                'verdict' => self::DONNEE,
+                'message' => "Pas de souci, je vous la donne : " . rtrim($enigme['reponse'], '.') . '.',
+                'essais' => $essais,
+                'reponse' => $enigme['reponse'],
+                'pourquoi' => $enigme['pourquoi'],
+            ];
+        }
+
         if (self::correspond($proposition, $enigme)) {
             return [
                 'verdict' => self::JUSTE,
@@ -62,6 +78,31 @@ final class NoelEnigme
             'reponse' => null,
             'pourquoi' => null,
         ];
+    }
+
+    /** La personne renonce-t-elle plutot que de proposer une reponse ? */
+    public static function abandonne(string $proposition): bool
+    {
+        $texte = mb_strtolower(trim($proposition));
+        $texte = strtr($texte, ['’' => "'", 'é' => 'e', 'è' => 'e', 'ê' => 'e', 'à' => 'a', 'ç' => 'c']);
+        $texte = (string) preg_replace('/[^a-z\' ]+/', ' ', $texte);
+        $texte = trim((string) preg_replace('/\s+/', ' ', $texte));
+
+        $abandons = [
+            'je ne sais pas', 'je sais pas', 'sais pas', 'je ne sais', 'chais pas', 'jsp',
+            "je n'en sais rien", "j'en sais rien", 'je ne sais rien', 'aucune idee', 'pas d\'idee', 'aucun idee',
+            "j'abandonne", 'abandonne', 'je donne ma langue au chat', 'ma langue au chat',
+            'donne la reponse', 'dis moi', 'dis-moi', 'la reponse', 'je seche', 'je trouve pas', 'je ne trouve pas',
+            'je ne connais pas', 'je connais pas', 'aucune', 'rien', 'joker',
+        ];
+
+        foreach ($abandons as $abandon) {
+            if ($texte === $abandon || str_starts_with($texte, $abandon . ' ')) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
