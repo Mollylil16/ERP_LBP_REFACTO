@@ -57,7 +57,39 @@ final class NoelAcces
     {
         $config = require BASE_PATH . '/config/noel.php';
 
-        return self::estAllume() && trim((string) ($config['cle_api'] ?? '')) !== '';
+        if (!self::estAllume()) {
+            return false;
+        }
+
+        // L'IA propre a LBP, servie par Ollama (voir NoelIA).
+        if (($config['ia'] ?? 'aucun') === 'ollama') {
+            return self::aDroitALIA((string) ($config['ia_comptes'] ?? ''));
+        }
+
+        return trim((string) ($config['cle_api'] ?? '')) !== '';
+    }
+
+    /**
+     * Pendant l'essai, l'IA n'est ouverte qu'a une liste de personnes
+     * (decide le 04/11/2026 : le directeur, l'administrateur, la responsable
+     * RH, l'assistante DG, la caissiere principale, Mme Djambitche et le
+     * comptable). Les autres gardent NOEL tel qu'il etait.
+     */
+    private static function aDroitALIA(string $liste): bool
+    {
+        $liste = trim($liste);
+        if ($liste === '') {
+            return true;
+        }
+
+        $email = strtolower(trim((string) (Auth::user()?->email ?? '')));
+        if ($email === '') {
+            return false;
+        }
+
+        $autorises = array_map(static fn(string $e): string => strtolower(trim($e)), explode(',', $liste));
+
+        return in_array($email, $autorises, true);
     }
 
     /**

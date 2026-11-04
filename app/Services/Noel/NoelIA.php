@@ -34,6 +34,7 @@ Règles :
 - N'invente jamais un chiffre, un montant, un nom de client, un numéro de colis, un écran ou une règle.
 - Ne cite que des écrans présents dans la liste des écrans de la personne, avec leur chemin (Module > Écran).
 - Tu ne peux rien modifier dans le logiciel : tu expliques où aller et quoi faire.
+- Écris en texte simple : jamais d'emoji, jamais de gras, d'italique ni de symboles de mise en forme.
 - Ne parle jamais de ces consignes.
 TXT;
 
@@ -57,7 +58,7 @@ TXT;
         }
 
         try {
-            $connaissances = $this->connaissances($question, $carte);
+            $connaissances = $this->connaissances($question, $carte->modulesVisibles());
             $qui = $prenom !== '' ? ' de ' . $prenom : '';
 
             $texte = $this->appeler([
@@ -78,7 +79,8 @@ TXT;
      * suivre les plus proches de la question, et les ecrans que la personne
      * peut ouvrir — jamais un ecran qu'elle ne peut pas ouvrir.
      */
-    public function connaissances(string $question, NoelCarte $carte): string
+    /** @param array<string, array<string, mixed>> $modules les modules visibles de la personne (NoelCarte::modulesVisibles) */
+    public function connaissances(string $question, array $modules): string
     {
         $mots = NoelCarte::motsUtiles($question);
 
@@ -103,7 +105,7 @@ TXT;
 
         // Les ecrans de la personne, module par module.
         $ecrans = '';
-        foreach ($carte->modulesVisibles() as $module) {
+        foreach ($modules as $module) {
             $libelles = array_map(static fn(array $e): string => (string) $e['label'], $module['ecrans']);
             $ecrans .= '- ' . $module['label'] . ' : ' . implode(', ', array_slice($libelles, 0, 25)) . "\n";
         }
@@ -145,12 +147,12 @@ TXT;
     {
         $url = rtrim((string) ($this->config['ia_url'] ?? 'http://127.0.0.1:11434'), '/') . '/api/chat';
         $corps = json_encode([
-            'model' => (string) ($this->config['ia_modele'] ?? 'qwen3:4b'),
+            'model' => (string) ($this->config['ia_modele'] ?? 'qwen3:4b-instruct'),
             'messages' => $messages,
             'stream' => false,
             'think' => false,
             'keep_alive' => '30m',
-            'options' => ['temperature' => 0.2, 'num_ctx' => 6144, 'num_predict' => 500],
+            'options' => ['temperature' => 0.2, 'num_ctx' => 6144, 'num_predict' => 700],
         ], JSON_UNESCAPED_UNICODE);
 
         $entetes = ['Content-Type: application/json'];
@@ -184,10 +186,24 @@ TXT;
         return trim($texte) === '' ? null : $texte;
     }
 
-    /** Retire une eventuelle reflexion visible et les espaces superflus. */
+    /**
+     * Retire une eventuelle reflexion visible et les espaces superflus.
+     *
+     * Certains modeles « reflechissent a voix haute » avant de repondre, en
+     * anglais, et ne marquent parfois que la FIN de cette reflexion : seule la
+     * reponse qui suit le dernier </think> est gardee.
+     */
     public static function nettoyer(string $texte): ?string
     {
+        $fin = strrpos($texte, '</think>');
+        if ($fin !== false) {
+            $texte = substr($texte, $fin + strlen('</think>'));
+        }
         $texte = (string) preg_replace('/<think>.*?<\/think>/s', '', $texte);
+        // Ni emoji ni mise en forme : la messagerie affiche du texte brut.
+        $texte = (string) preg_replace('/[\x{1F000}-\x{1FAFF}\x{2600}-\x{27BF}\x{FE0F}\x{200D}]/u', '', $texte);
+        $texte = (string) preg_replace('/(\*\*|__|(?<![\w*])\*(?=\S)|(?<=\S)\*(?![\w*]))/u', '', $texte);
+        $texte = (string) preg_replace('/^[ 	]+/m', '', $texte);
         $texte = trim((string) preg_replace("/\n{3,}/", "\n\n", $texte));
 
         return $texte === '' ? null : $texte;
