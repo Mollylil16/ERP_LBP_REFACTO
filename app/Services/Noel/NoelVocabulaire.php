@@ -554,6 +554,9 @@ final class NoelVocabulaire
     public const INTENTION_REMERCIEMENT = 'remerciement';
     public const INTENTION_PRESENTATION = 'presentation';
     public const INTENTION_CHIFFRE = 'chiffre';
+
+    /** Ce qu on lit d un message pour le comprendre. Le reste est du bavardage. */
+    private const LONGUEUR_ANALYSEE = 1000;
     public const INTENTION_PROCEDURE = 'procedure';
     public const INTENTION_INCONNUE = 'inconnue';
 
@@ -564,6 +567,20 @@ final class NoelVocabulaire
      */
     public static function comprendre(string $phrase): array
     {
+        /*
+         * On n analyse que le debut du message.
+         *
+         * Le cout du classement est lineaire : 8 000 caracteres coutaient
+         * 369 ms, 20 000 une seconde pleine. Quelqu un qui colle un document
+         * dans le chat figeait sa conversation pour rien — une question tient
+         * en une ligne, et au-dela de mille caracteres ce qui suit n apporte
+         * plus de concept nouveau.
+         *
+         * Le message entier, lui, n est pas touche : c est celui-la qui part
+         * a l administrateur quand on demande une transmission.
+         */
+        $phrase = mb_substr($phrase, 0, self::LONGUEUR_ANALYSEE);
+
         $texte = ' ' . NoelCarte::sansAccent($phrase) . ' ';
         $texte = preg_replace('/[^a-z0-9 ]+/', ' ', $texte) ?? $texte;
         $texte = (string) preg_replace('/\s+/', ' ', $texte);

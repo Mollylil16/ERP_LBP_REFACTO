@@ -76,7 +76,7 @@ final class NoelPresentationTest extends TestCase
         $reponse = $this->noel()->repondre('parle moi du module finance');
 
         self::assertStringContainsString('Finance', $reponse['texte']);
-        self::assertStringContainsString('ecrans', $reponse['texte']);
+        self::assertStringContainsString('écrans', $reponse['texte']);
         self::assertStringContainsString('groupes', $reponse['texte']);
         self::assertNotEmpty($reponse['liens'], 'Une présentation doit proposer par où entrer.');
     }
@@ -104,7 +104,7 @@ final class NoelPresentationTest extends TestCase
         $reponse = $this->noel()->repondre('explique moi le module rh');
 
         self::assertStringNotContainsString('Ressources humaines', $reponse['texte']);
-        self::assertStringNotContainsString('ecrans', $reponse['texte']);
+        self::assertStringNotContainsString('écrans', $reponse['texte']);
         self::assertSame([], $reponse['liens']);
     }
 
@@ -258,7 +258,7 @@ final class NoelPresentationTest extends TestCase
         $reponse = $this->noel()->repondre('explique moi la comptabilite');
 
         self::assertStringContainsString('Finance', $reponse['texte']);
-        self::assertStringContainsString('ecrans', $reponse['texte']);
+        self::assertStringContainsString('écrans', $reponse['texte']);
         self::assertStringNotContainsString("C'est ici", $reponse['texte']);
     }
 
@@ -355,7 +355,7 @@ final class NoelPresentationTest extends TestCase
     {
         $reponse = $this->noel()->repondre('parle moi du module finance');
 
-        self::assertStringContainsString('ecrans', $reponse['texte']);
+        self::assertStringContainsString('écrans', $reponse['texte']);
         self::assertStringContainsString('groupes', $reponse['texte']);
     }
 
@@ -473,15 +473,15 @@ final class NoelPresentationTest extends TestCase
         // Ce que NOEL explique doit porter ce qu'on a corrigé, sinon le guide
         // répète les erreurs que le code ne fait plus.
         self::assertStringContainsString(
-            'Annuler ce reglement',
+            'Annuler ce règlement',
             (string) NoelProcedure::pour('facture')['attention']
         );
         self::assertStringContainsString(
-            'reintegrez l ancien',
+            "reintegrez l'ancien",
             (string) NoelProcedure::pour('dossier_personnel')['attention']
         );
         self::assertStringContainsString(
-            'personne ne decaisse ce qu il a autorise',
+            "personne ne decaisse ce qu'il a autorise",
             (string) NoelProcedure::pour('decaissement')['attention']
         );
     }

@@ -82,6 +82,23 @@ final class NoelRepondeur
             }
         }
 
+        /*
+         * « Comment encaisser un reglement » et « comment je fais pour
+         * encaisser un reglement » sont la meme question.
+         *
+         * Seule la seconde portait un marqueur de procedure ; la premiere
+         * tombait sur « comment » et recevait « C est ici. » suivi d un lien,
+         * la ou l autre recevait les cinq etapes. Mesure le 04/11/2026 : sur
+         * quatre facons de demander la meme chose, deux reponses.
+         *
+         * On ne devine pas pour autant : la question ne devient une procedure
+         * que s il en existe une d ecrite. Sinon elle reste ce qu elle etait.
+         */
+        if ($lu['intention'] === NoelVocabulaire::INTENTION_COMMENT
+            && NoelProcedure::pour($lu['concept'] ?? null, $lu['module'] ?? null) !== null) {
+            $lu['intention'] = NoelVocabulaire::INTENTION_PROCEDURE;
+        }
+
         $this->mesurer($lu);
 
         $reponse = match ($lu['intention']) {
@@ -124,7 +141,7 @@ final class NoelRepondeur
             if (NoelVocabulaire::estNon($message)) {
                 NoelFil::oublierAttente($conversationId);
 
-                return self::reponse("Tres bien, je ne transmets rien. Dites-moi si vous changez d'avis.");
+                return self::reponse("Très bien, je ne transmets rien. Dites-moi si vous changez d'avis.");
             }
 
             // Autre chose : la personne est passee a une nouvelle question.
@@ -301,7 +318,7 @@ final class NoelRepondeur
         }
 
         return self::reponse(
-            "Je ne vois pas de cause evidente de mon cote. L'ecran concerne est ci-dessous. "
+            "Je ne vois pas de cause evidente de mon cote. L'écran concerne est ci-dessous. "
                 . "Si ca bloque toujours, dites-le-moi : je transmets a l'administrateur.",
             $liens,
             'transmission'
@@ -330,8 +347,8 @@ final class NoelRepondeur
                 $heure = $journal->pointDeCaisseDuJour();
 
                 if ($heure !== null) {
-                    return "Votre point de caisse du jour est deja soumis, a " . $heure
-                        . ". C'est sans doute pour cela que l'ecran ne vous propose plus de le faire. "
+                    return "Votre point de caisse du jour est déjà soumis, a " . $heure
+                        . ". C'est sans doute pour cela que l'écran ne vous propose plus de le faire. "
                         . "Si un montant est faux, il faut le rouvrir plutot que le ressaisir.";
                 }
             }
@@ -345,10 +362,10 @@ final class NoelRepondeur
             }
 
             if ($lu['concept'] === 'decaissement') {
-                return "Si l'ecran ne vous propose pas le panneau de decaissement, c'est "
-                    . "probablement que vous avez vous-meme valide cette demande : depuis le "
-                    . "14 octobre, celui qui autorise la depense n'est pas celui qui sort l'argent. "
-                    . "Le decaissement revient alors a quelqu'un d'autre.";
+                return "Si l'écran ne vous propose pas le panneau de décaissement, c'est "
+                    . "probablement que vous avez vous-même valide cette demande : depuis le "
+                    . "14 octobre, celui qui autorise la dépense n'est pas celui qui sort l'argent. "
+                    . "Le décaissement revient alors a quelqu'un d'autre.";
             }
         } catch (Throwable $e) {
             error_log('[NOEL repondeur] cause illisible : ' . $e->getMessage());
@@ -368,6 +385,16 @@ final class NoelRepondeur
     {
         $liens = $this->liens($lu);
 
+        /*
+         * Ce que NOEL sait deja ne doit pas attendre qu on se plaigne.
+         *
+         * « Mon point de caisse est-il soumis ? » recevait « C est ici. »
+         * et un lien, alors que la reponse — oui, a 15h20 — etait a une
+         * requete de distance. Elle n etait dite que dans la branche des
+         * pannes, c est-a-dire a qui disait « ca ne marche pas ».
+         */
+        $etat = $this->etatConnu($lu);
+
         if ($liens === []) {
             /*
              * Le concept est compris, mais aucun ecran n'est ouvert a cette
@@ -376,8 +403,8 @@ final class NoelRepondeur
              * une porte.
              */
             return self::reponse(
-                "Je ne trouve pas d'ecran que vous puissiez ouvrir pour cela. "
-                    . "Si vous pensez qu'il vous en faut l'acces, dites-le-moi : je transmets.",
+                "Je ne trouve pas d'écran que vous puissiez ouvrir pour cela. "
+                    . "Si vous pensez qu'il vous en faut l'accès, dites-le-moi : je transmets.",
                 [],
                 'transmission'
             );
@@ -387,7 +414,46 @@ final class NoelRepondeur
             ? "C'est ici."
             : "Cela se trouve a l'un de ces endroits.";
 
+        if ($etat !== null) {
+            $texte = $etat . "
+
+" . $texte;
+        }
+
         return self::reponse($texte, $liens);
+    }
+
+    /**
+     * Ce que NOEL sait deja de l etat des choses, et qui repond a la question.
+     *
+     * Court, factuel, et toujours vrai au moment ou il le dit. Rien
+     * d interprete : une date de soumission est une date de soumission.
+     *
+     * @param array<string, mixed> $lu
+     */
+    private function etatConnu(array $lu): ?string
+    {
+        if (($lu['concept'] ?? null) !== 'point_caisse') {
+            return null;
+        }
+
+        $journal = $this->journal();
+
+        if ($journal === null) {
+            return null;
+        }
+
+        try {
+            $heure = $journal->pointDeCaisseDuJour();
+        } catch (Throwable $e) {
+            error_log('[NOEL] état du point de caisse illisible : ' . $e->getMessage());
+
+            return null;
+        }
+
+        return $heure === null
+            ? null
+            : 'Votre point de caisse du jour est déjà soumis, a ' . $heure . '.';
     }
 
     /**
@@ -462,7 +528,7 @@ final class NoelRepondeur
     public static function phraseDesColis(array $compte): string
     {
         if ($compte['colis'] === 0) {
-            $texte = 'Aucun colis enregistre aujourd hui ' . $compte['portee'] . '.';
+            $texte = "Aucun colis enregistré aujourd'hui " . $compte['portee'] . '.';
 
             /*
              * La piste de l autre agence ne vaut que pour qui ne voit que la
@@ -470,13 +536,13 @@ final class NoelRepondeur
              * proposer de chercher la ou il regarde deja.
              */
             if (!$compte['reseau']) {
-                $texte .= " Si vous en attendiez, ils ont peut-etre ete saisis sur une autre agence.";
+                $texte .= " Si vous en attendiez, ils ont peut-être été saisis sur une autre agence.";
             }
 
             return $texte;
         }
 
-        $texte = self::nombre($compte['colis']) . ' colis enregistre'
+        $texte = self::nombre($compte['colis']) . ' colis enregistré'
             . ($compte['colis'] > 1 ? 's' : '') . " aujourd'hui " . $compte['portee'];
 
         if ($compte['saisies'] !== $compte['colis']) {
@@ -500,12 +566,12 @@ final class NoelRepondeur
         return 'Il doit rester ' . self::franc($solde['cloture']) . ' dans le tiroir ce soir.'
             . "
 
-Le detail : " . self::franc($solde['ouverture']) . ' hier au soir, '
-            . self::franc($solde['entrees']) . " d'entrees et "
-            . self::franc($solde['sorties']) . ' de sorties aujourd hui.'
+Le détail : " . self::franc($solde['ouverture']) . ' hier au soir, '
+            . self::franc($solde['entrees']) . " d'entrées et "
+            . self::franc($solde['sorties']) . " de sorties aujourd'hui."
             . "
 
-Ce chiffre est celui de l'ecran Mouvements de Caisse, et il s'arrete a ce que"
+Ce chiffre est celui de l'écran Mouvements de Caisse, et il s'arrête à ce que"
             . ' vous avez le droit de voir.';
     }
 
@@ -563,14 +629,14 @@ Ce chiffre est celui de l'ecran Mouvements de Caisse, et il s'arrete a ce que"
         $texte .= "
 
 " . (count($liens) === 1
-            ? "Voici l'ecran ou cela se passe."
-            : 'Voici les ecrans ou cela se passe.');
+            ? "Voici l'écran ou cela se passe."
+            : 'Voici les écrans ou cela se passe.');
 
         if (isset($modules[$slug])) {
             $texte .= "
 
 Dites-moi ce que vous voulez y faire — par exemple « comment je fais pour "
-                . self::exempleDeGeste($slug) . " » — et je vous donne les etapes.";
+                . self::exempleDeGeste($slug) . " » — et je vous donne les étapes.";
         }
 
         return self::reponse($texte, $liens);
@@ -642,13 +708,13 @@ Dites-moi ce que vous voulez y faire — par exemple « comment je fais pour "
 
         $texte .= "
 
-Vous y avez acces a " . count($ecrans) . ' ecran'
+Vous y avez accès a " . count($ecrans) . ' écran'
             . (count($ecrans) > 1 ? 's' : '') . self::parGroupes($ecrans) . '.';
 
         $texte .= "
 
 Dites-moi ce que vous voulez y faire — par exemple « comment je fais pour "
-            . self::exempleDeGeste($slug) . " » — et je vous donne les etapes.";
+            . self::exempleDeGeste($slug) . " » — et je vous donne les étapes.";
 
         return self::reponse($texte, self::premiersEcrans($ecrans));
     }
@@ -713,7 +779,7 @@ Dites-moi ce que vous voulez y faire — par exemple « comment je fais pour "
             'colisage' => 'enregistrer un colis',
             'logistique' => 'preparer un depart',
             'rh' => 'integrer un collaborateur',
-            'crm' => 'creer une fiche client',
+            'crm' => 'créer une fiche client',
             'entrepots' => 'retirer un colis du magasin',
             'transit-douane' => 'suivre un dossier de dedouanement',
             'flotte-transport' => 'suivre un vehicule',
@@ -740,7 +806,7 @@ Dites-moi ce que vous voulez y faire — par exemple « comment je fais pour "
 
             if ($liens !== []) {
                 return self::reponse(
-                    "Je n'ai pas de marche a suivre ecrite pour cela, mais l'ecran est ici. "
+                    "Je n'ai pas de marche a suivre ecrite pour cela, mais l'écran est ici. "
                         . "Si vous voulez que je l'apprenne, dites-le-moi.",
                     $liens,
                     'transmission'
@@ -763,7 +829,7 @@ Dites-moi ce que vous voulez y faire — par exemple « comment je fais pour "
 
         if ($liens === []) {
             return self::reponse(
-                "Cette operation se fait dans une partie du logiciel que vous ne pouvez pas ouvrir. "
+                "Cette opération se fait dans une partie du logiciel que vous ne pouvez pas ouvrir. "
                     . "Dites-moi ce que vous cherchez a faire et je vous orienterai autrement, "
                     . "ou je transmets votre demande a l'administrateur.",
                 [],
@@ -800,7 +866,7 @@ A retenir : " . $etapes['attention'];
         if (!NoelAcces::saitConverser()) {
             return self::reponse(
                 NoelApprentissage::proposition()
-                    . "\n\nJe sais surtout vous dire ou se trouvent les ecrans du logiciel "
+                    . "\n\nJe sais surtout vous dire ou se trouvent les écrans du logiciel "
                     . "et ce qu'on y saisit. Pour le reste, je ne sais pas encore tenir une vraie conversation.",
                 [],
                 'transmission'

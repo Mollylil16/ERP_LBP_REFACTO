@@ -60,7 +60,7 @@ final class NoelRepondeurTest extends TestCase
         $source = $this->source();
 
         self::assertStringContainsString(
-            "Je ne trouve pas d'ecran que vous puissiez ouvrir",
+            "Je ne trouve pas d'écran que vous puissiez ouvrir",
             $source
         );
 
@@ -154,7 +154,7 @@ final class NoelRepondeurTest extends TestCase
          * qui le panneau n'existera jamais.
          */
         self::assertStringContainsString(
-            'vous avez vous-meme valide cette demande',
+            'vous avez vous-même valide cette demande',
             $this->source()
         );
         self::assertStringContainsString('14 octobre', $this->source());

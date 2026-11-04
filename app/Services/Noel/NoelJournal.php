@@ -235,7 +235,7 @@ final class NoelJournal
         return [
             'colis' => (int) ($ligne['colis'] ?? 0),
             'saisies' => (int) ($ligne['saisies'] ?? 0),
-            'portee' => $reseau ? 'sur l ensemble du reseau' : 'a ' . $this->nomDeLAgence($agence),
+            'portee' => $reseau ? "sur l'ensemble du réseau" : 'à ' . $this->nomDeLAgence($agence),
             'reseau' => $reseau,
         ];
     }
