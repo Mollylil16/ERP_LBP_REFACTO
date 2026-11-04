@@ -172,11 +172,40 @@ class MigrationRunner
     private function createNoelTables(): void
     {
         try {
+            $options = 'ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci';
+
+            /*
+             * Ce que NOEL retient d une conversation, et vingt-cinq minutes au
+             * plus.
+             *
+             * Cette memoire vivait dans la session. Sa reponse part pourtant
+             * dans une file d arriere-plan qui ferme la session AVANT de
+             * l executer : il ecrivait donc dans le vide, et oubliait sa
+             * propre enigme a la seconde ou il la posait. Constate le
+             * 04/11/2026.
+             *
+             * La ligne porte cinq champs et une date de peremption. Les
+             * perimees sont effacees a l ecriture suivante : savoir qui a
+             * seche sur l enigme de mercredi ne regarde personne.
+             *
+             * CETTE CREATION EST AVANT LE VERROU CI-DESSOUS, ET C EST VOULU.
+             * Le verrou saute la methode entiere des que la premiere table de
+             * NOEL existe — donc partout ou il tourne deja. Une table ajoutee
+             * apres lui n aurait jamais vu le jour en production, et c est
+             * exactement ce qui est arrive a celle-ci.
+             */
+            $this->pdo->exec("
+                CREATE TABLE IF NOT EXISTS lbp_noel_fils (
+                    conversation_id INT UNSIGNED NOT NULL PRIMARY KEY,
+                    etat TEXT NOT NULL,
+                    expire_at DATETIME NOT NULL,
+                    KEY idx_noel_fil_expire (expire_at)
+                ) {$options}
+            ");
+
             if ($this->schema->tableExists('lbp_noel_apprentissages')) {
                 return;
             }
-
-            $options = 'ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci';
 
             $this->pdo->exec("
                 CREATE TABLE IF NOT EXISTS lbp_noel_mesures (

@@ -136,29 +136,87 @@ final class NoelFilTest extends TestCase
         self::assertFalse(NoelVocabulaire::estNon('oui'));
     }
 
-    public function test_la_memoire_ne_va_jamais_en_base(): void
+    /**
+     * La mémoire a quitté la session, et il a fallu une bonne raison.
+     *
+     * Elle y vivait pour trois motifs, tous justes : ça ne regarde personne,
+     * ça n'a pas à survivre à la journée, et la session expire justement au
+     * bout de vingt-quatre minutes.
+     *
+     * Mais la réponse de NOEL ne part pas dans la requête de la personne :
+     * elle est produite par SuitesEnvoi, une file d'arrière-plan qui appelle
+     * session_write_close() AVANT de l'exécuter, pour rendre la main au
+     * navigateur sans attendre. NOEL écrivait donc dans une session déjà
+     * fermée. Il oubliait son énigme à la seconde où il la posait — vu sur
+     * deux captures le 04/11/2026 — et en ligne de commande, où cette file est
+     * court-circuitée, tout marchait.
+     *
+     * Elle vit donc en base. Les trois motifs tiennent toujours, et c'est ce
+     * que ce test garde : une péremption courte, une purge, et cinq champs.
+     */
+    public function test_la_memoire_expire_vite_et_ne_garde_que_cinq_champs(): void
     {
-        /*
-         * Savoir qui a séché sur l'énigme de mercredi ne regarde personne, et
-         * une question en attente de confirmation n'a pas à survivre à la
-         * journée : « oui » une heure plus tard ne doit rien transmettre.
-         */
         $source = (string) file_get_contents(BASE_PATH . '/app/Services/Noel/NoelFil.php');
 
-        self::assertStringContainsString('$_SESSION', $source);
-        self::assertStringNotContainsString('INSERT', $source);
-        self::assertStringNotContainsString('Database', $source);
+        // Vingt-cinq minutes au plus, comme la session d'avant.
+        self::assertStringContainsString('MINUTES = 25', $source);
+        self::assertStringContainsString('expire_at > NOW()', $source, 'Une ligne périmée ne se lit pas.');
+        self::assertStringContainsString('DELETE FROM lbp_noel_fils WHERE expire_at < NOW()', $source);
+
+        // Rien d'autre que ces cinq champs n'est ecrit.
+        $propre = (string) strstr($source, 'private static function propre');
+        foreach (['concept', 'module', 'attente', 'question', 'essais'] as $champ) {
+            self::assertStringContainsString("'" . $champ . "' =>", $propre, $champ);
+        }
+
+        // Et la base n'est jamais touchee en test.
+        self::assertStringContainsString("=== 'testing'", $source);
     }
 
-    public function test_la_session_ne_gonfle_pas_indefiniment(): void
+    /**
+     * La table se cree AVANT le verrou de createNoelTables().
+     *
+     * Cette methode commence par « si la premiere table de NOEL existe, je ne
+     * fais rien ». Une table ajoutee apres ce verrou n est donc jamais creee
+     * la ou NOEL tourne deja — c est-a-dire en production. C est exactement ce
+     * qui est arrive a celle-ci : la migration passait, et la table n existait
+     * pas. Le piege se reposera au prochain qui ajoutera une table ici.
+     */
+    public function test_la_table_du_fil_echappe_au_verrou_de_la_migration(): void
+    {
+        $migration = (string) file_get_contents(BASE_PATH . '/app/Database/MigrationRunner.php');
+        $bloc = (string) strstr($migration, 'private function createNoelTables');
+
+        $creation = strpos($bloc, 'CREATE TABLE IF NOT EXISTS lbp_noel_fils');
+        $verrou = strpos($bloc, "tableExists('lbp_noel_apprentissages')");
+
+        self::assertNotFalse($creation, 'La table du fil doit etre creee.');
+        self::assertNotFalse($verrou);
+        self::assertLessThan(
+            $verrou,
+            $creation,
+            'La creation doit preceder le verrou, sinon elle ne se fait jamais en production.'
+        );
+    }
+
+    /** La table est créée sans rien détruire, comme les autres. */
+    public function test_la_table_du_fil_est_ajoutee_sans_rien_detruire(): void
+    {
+        $migration = (string) file_get_contents(BASE_PATH . '/app/Database/MigrationRunner.php');
+
+        self::assertStringContainsString('CREATE TABLE IF NOT EXISTS lbp_noel_fils', $migration);
+        self::assertStringContainsString('expire_at DATETIME NOT NULL', $migration);
+        self::assertStringNotContainsString('DROP TABLE lbp_noel_fils', $migration);
+    }
+
+    public function test_la_memoire_ne_gonfle_pas_indefiniment(): void
     {
         // Un agent qui écrit à vingt collègues n'a pas besoin qu'on se
-        // souvienne de tout.
+        // souvienne de tout, et le cache d'une requête n'a aucune raison
+        // d'enfler.
         for ($fil = 1; $fil <= 15; $fil++) {
             NoelFil::retenir($fil, ['concept' => 'colis', 'attente' => null]);
         }
-
-        self::assertLessThanOrEqual(10, count($_SESSION['noel_fils'] ?? []));
 
         // Et ce sont les plus récents qu'on garde.
         self::assertSame('colis', NoelFil::dernier(15)['concept']);

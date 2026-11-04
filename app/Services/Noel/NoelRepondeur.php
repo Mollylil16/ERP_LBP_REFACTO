@@ -254,7 +254,10 @@ final class NoelRepondeur
         $texte = $verdict['message'];
 
         if ($verdict['pourquoi'] !== null) {
+            // Une ligne vide entre la reponse et son pourquoi : colles l un a
+            // l autre, « La lettre R Dans le mot Paris » se lit de travers.
             $texte .= "
+
 " . $verdict['pourquoi'];
         }
 
@@ -1023,6 +1026,15 @@ A retenir : " . $etapes['attention'];
                 [],
                 'transmission'
             );
+        }
+
+        // L'IA propre a LBP (NoelIA) : seulement quand les regles n'ont pas
+        // compris, et jamais pendant la suite de tests.
+        if (!self::enTest()) {
+            $texte = NoelIA::depuisConfiguration()->repondre($message, $this->carte, NoelAcces::prenom());
+            if ($texte !== null) {
+                return self::reponse($texte);
+            }
         }
 
         return self::reponse(NoelApprentissage::proposition(), [], 'transmission');

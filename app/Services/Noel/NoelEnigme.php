@@ -48,7 +48,7 @@ final class NoelEnigme
         if ($essais >= self::ESSAIS_AUTORISES) {
             return [
                 'verdict' => self::DONNEE,
-                'message' => "C'etait : " . $enigme['reponse'],
+                'message' => "C'était : " . rtrim($enigme['reponse'], '.') . '.',
                 'essais' => $essais,
                 'reponse' => $enigme['reponse'],
                 'pourquoi' => $enigme['pourquoi'],
@@ -127,7 +127,7 @@ final class NoelEnigme
         }
 
         if ($essais === 2) {
-            return "C'est ca. Il a fallu deux essais, mais c'est trouve.";
+            return "C'est ça. Il a fallu deux essais, mais c'est trouvé.";
         }
 
         return "Juste au dernier essai. Le plus beau des moments.";
@@ -136,7 +136,7 @@ final class NoelEnigme
     private static function relance(int $restants): string
     {
         if ($restants === 2) {
-            return "Pas tout a fait. Il te reste deux essais.";
+            return "Pas tout à fait. Il te reste deux essais.";
         }
 
         return "Pas encore. Un dernier essai, prends ton temps.";
