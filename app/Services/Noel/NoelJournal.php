@@ -196,7 +196,7 @@ final class NoelJournal
      * deux sont rendus, parce que l ecart entre eux se dit : « 39 colis en 12
      * saisies » n est pas la meme journee que « 39 colis en 39 saisies ».
      *
-     * @return array{colis: int, saisies: int, portee: string, reseau: bool}|null
+     * @return array{colis: int, poids: float, saisies: int, portee: string, reseau: bool}|null
      */
     public function colisDuJour(): ?array
     {
@@ -220,6 +220,7 @@ final class NoelJournal
         try {
             $stmt = $this->pdo->prepare('
                 SELECT COALESCE(SUM(COALESCE(NULLIF(c.nombre_colis, 0), 1)), 0) AS colis,
+                       COALESCE(SUM(c.poids_total), 0) AS poids,
                        COUNT(*) AS saisies
                   FROM lbp_colis c
                  WHERE ' . implode(' AND ', $conditions) . '
@@ -234,6 +235,7 @@ final class NoelJournal
 
         return [
             'colis' => (int) ($ligne['colis'] ?? 0),
+            'poids' => round((float) ($ligne['poids'] ?? 0), 1),
             'saisies' => (int) ($ligne['saisies'] ?? 0),
             'portee' => $reseau ? "sur l'ensemble du réseau" : 'à ' . $this->nomDeLAgence($agence),
             'reseau' => $reseau,
@@ -288,6 +290,169 @@ final class NoelJournal
             'cloture' => (float) ($continu['cloture'] ?? 0),
             'entrees' => (float) ($kpis['entrees']['total'] ?? 0),
             'sorties' => (float) ($kpis['sorties']['total'] ?? 0),
+        ];
+    }
+
+    /**
+     * Ce que CETTE personne a encaisse aujourd hui.
+     *
+     * « Combien j ai encaisse » parle de soi, pas de l agence : la question
+     * se pose en fin de journee, juste avant de compter le tiroir. La colonne
+     * caissiere_id porte qui a pris l argent, et c est la seule borne dont
+     * cette reponse a besoin — chacun lit ses propres encaissements.
+     *
+     * Les deux monnaies restent separees : additionner un euro et un franc ne
+     * donnerait un total juste dans aucune des deux.
+     *
+     * @return array{xof: float, eur: float, nombre: int}|null
+     */
+    public function encaisseDuJour(): ?array
+    {
+        $moi = (int) (Auth::id() ?? 0);
+
+        if ($moi <= 0) {
+            return null;
+        }
+
+        try {
+            $stmt = $this->pdo->prepare("
+                SELECT COALESCE(SUM(CASE WHEN UPPER(p.devise) = 'EUR' THEN 0 ELSE p.montant END), 0) AS xof,
+                       COALESCE(SUM(CASE WHEN UPPER(p.devise) = 'EUR' THEN p.montant ELSE 0 END), 0) AS eur,
+                       COUNT(*) AS nombre
+                  FROM lbp_paiements p
+                 WHERE p.caissiere_id = :moi AND DATE(p.date_paiement) = CURDATE()
+            ");
+            $stmt->execute(['moi' => $moi]);
+            $ligne = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+        } catch (Throwable $e) {
+            error_log('[NOEL journal] encaissements du jour illisibles : ' . $e->getMessage());
+
+            return null;
+        }
+
+        return [
+            'xof' => (float) ($ligne['xof'] ?? 0),
+            'eur' => (float) ($ligne['eur'] ?? 0),
+            'nombre' => (int) ($ligne['nombre'] ?? 0),
+        ];
+    }
+
+    /**
+     * Ce qui reste du sur les factures, et combien de factures le portent.
+     *
+     * Borne comme le compte des colis : son agence, ou le reseau entier pour
+     * ceux dont c est le perimetre.
+     *
+     * Les factures annulees n ont rien a reclamer, et les payees non plus :
+     * seules comptent celles qui attendent encore quelque chose.
+     *
+     * @return array{nombre: int, restant: float, portee: string, reseau: bool}|null
+     */
+    public function facturesImpayees(): ?array
+    {
+        $reseau = Auth::isAdmin() || Auth::hasAnyRole(Auth::ROLES_PORTEE_RESEAU);
+        $agence = (int) (Auth::agenceId() ?? 0);
+
+        if (!$reseau && $agence <= 0) {
+            return null;
+        }
+
+        $conditions = ["f.statut IN ('emise', 'partiellement_payee', 'en_retard')"];
+        $parametres = [];
+
+        if (!$reseau) {
+            $conditions[] = 'f.agence_id = :agence';
+            $parametres['agence'] = $agence;
+        }
+
+        try {
+            $stmt = $this->pdo->prepare('
+                SELECT COUNT(*) AS nombre,
+                       COALESCE(SUM(f.montant_restant), 0) AS restant
+                  FROM lbp_factures f
+                 WHERE ' . implode(' AND ', $conditions) . '
+            ');
+            $stmt->execute($parametres);
+            $ligne = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+        } catch (Throwable $e) {
+            error_log('[NOEL journal] factures impayees illisibles : ' . $e->getMessage());
+
+            return null;
+        }
+
+        return [
+            'nombre' => (int) ($ligne['nombre'] ?? 0),
+            'restant' => (float) ($ligne['restant'] ?? 0),
+            'portee' => $reseau ? "sur l'ensemble du réseau" : 'à ' . $this->nomDeLAgence($agence),
+            'reseau' => $reseau,
+        ];
+    }
+
+    /**
+     * Un colis, retrouve par son numero de suivi.
+     *
+     * C est la question la plus posee au guichet, et jusqu ici NOEL repondait
+     * par un lien vers la liste entiere. Le numero est pourtant dans la
+     * question.
+     *
+     * La recherche est bornee comme le reste : son agence, ou le reseau. Un
+     * colis d une autre agence n est donc pas rendu — c est voulu, et c est la
+     * meme regle que partout ailleurs. Si le terrain a besoin de chercher au
+     * dela, cela se decide, cela ne se contourne pas.
+     *
+     * @return array{numero: string, statut: string, agence: string, poids: float, colis: int, quand: string}|null
+     */
+    public function colisParNumero(string $numero): ?array
+    {
+        $numero = trim($numero);
+
+        if ($numero === '') {
+            return null;
+        }
+
+        $reseau = Auth::isAdmin() || Auth::hasAnyRole(Auth::ROLES_PORTEE_RESEAU);
+        $agence = (int) (Auth::agenceId() ?? 0);
+
+        if (!$reseau && $agence <= 0) {
+            return null;
+        }
+
+        $conditions = ['c.numero_tracking = :numero'];
+        $parametres = ['numero' => $numero];
+
+        if (!$reseau) {
+            $conditions[] = 'c.agence_depart_id = :agence';
+            $parametres['agence'] = $agence;
+        }
+
+        try {
+            $stmt = $this->pdo->prepare('
+                SELECT c.numero_tracking, c.statut, c.poids_total, c.nombre_colis, c.created_at,
+                       s.name AS agence
+                  FROM lbp_colis c
+                  LEFT JOIN company_sites s ON s.id = c.agence_depart_id
+                 WHERE ' . implode(' AND ', $conditions) . '
+                 LIMIT 1
+            ');
+            $stmt->execute($parametres);
+            $ligne = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+        } catch (Throwable $e) {
+            error_log('[NOEL journal] colis introuvable : ' . $e->getMessage());
+
+            return null;
+        }
+
+        if ($ligne === null) {
+            return null;
+        }
+
+        return [
+            'numero' => (string) $ligne['numero_tracking'],
+            'statut' => (string) $ligne['statut'],
+            'agence' => trim((string) ($ligne['agence'] ?? '')) ?: 'une agence',
+            'poids' => round((float) ($ligne['poids_total'] ?? 0), 1),
+            'colis' => max(1, (int) ($ligne['nombre_colis'] ?? 1)),
+            'quand' => date('d/m/Y', (int) strtotime((string) $ligne['created_at'])),
         ];
     }
 

@@ -45,14 +45,17 @@ final class NoelChiffreTest extends TestCase
      */
     private function methode(string $classe, string $nom): string
     {
-        $source = $this->source($classe);
+        // Les fins de ligne sont mélangées dans le dépôt — LF au commit, CRLF
+        // dans la copie de travail. On les ramène à une seule forme, sans quoi
+        // le découpage ne trouve jamais la fin de la méthode.
+        $source = str_replace("\r\n", "\n", $this->source($classe));
         $debut = strpos($source, 'function ' . $nom . '(');
 
         self::assertNotFalse($debut, $classe . '::' . $nom . ' introuvable.');
 
-        $fin = strpos($source, "
-    }
-", (int) $debut);
+        $fin = strpos($source, "\n    }\n", (int) $debut);
+
+        self::assertNotFalse($fin, $classe . '::' . $nom . ' : fin introuvable.');
 
         return substr($source, (int) $debut, (int) $fin - (int) $debut);
     }
@@ -195,6 +198,121 @@ final class NoelChiffreTest extends TestCase
         // Et il dit d'où vient le chiffre, et jusqu'où il porte.
         self::assertStringContainsString('Mouvements de Caisse', $texte);
         self::assertStringContainsString('droit de voir', $texte);
+    }
+
+    // ------------------------------------------------------------------
+    // Les trois chiffres de plus, et la fiche d'un colis
+    // ------------------------------------------------------------------
+
+    /** Le poids vient avec le compte : même requête, même question au guichet. */
+    public function test_le_poids_accompagne_le_compte_des_colis(): void
+    {
+        $texte = NoelRepondeur::phraseDesColis([
+            'colis' => 39, 'poids' => 1088.2, 'saisies' => 12,
+            'portee' => 'à Abobo Dokui', 'reseau' => false,
+        ]);
+
+        self::assertStringContainsString('39 colis', $texte);
+        self::assertStringContainsString('1 088,2 kg', $texte);
+    }
+
+    /** Un poids nul ne s'annonce pas : il n'apprendrait rien. */
+    public function test_un_poids_nul_ne_s_annonce_pas(): void
+    {
+        $texte = NoelRepondeur::phraseDesColis([
+            'colis' => 2, 'poids' => 0.0, 'saisies' => 2,
+            'portee' => 'à Adjamé', 'reseau' => false,
+        ]);
+
+        self::assertStringNotContainsString('kg', $texte);
+    }
+
+    public function test_il_dit_ce_que_j_ai_encaisse_aujourd_hui(): void
+    {
+        $texte = NoelRepondeur::phraseDeMonEncaisse(['xof' => 1250000.0, 'eur' => 0.0, 'nombre' => 9]);
+
+        self::assertStringContainsString('1 250 000 F', $texte);
+        self::assertStringContainsString('9 règlements', $texte);
+    }
+
+    /** Les deux monnaies ne s'additionnent jamais : Paris compte en euros. */
+    public function test_les_euros_restent_a_part_dans_mon_encaisse(): void
+    {
+        $texte = NoelRepondeur::phraseDeMonEncaisse(['xof' => 87900.0, 'eur' => 4820.0, 'nombre' => 3]);
+
+        self::assertStringContainsString('87 900 F', $texte);
+        self::assertStringContainsString('4 820,00 EUR', $texte);
+        self::assertStringNotContainsString('92 720', $texte, "Un euro ne s'ajoute pas à un franc.");
+    }
+
+    public function test_une_journee_sans_encaissement_se_dit(): void
+    {
+        $texte = NoelRepondeur::phraseDeMonEncaisse(['xof' => 0.0, 'eur' => 0.0, 'nombre' => 0]);
+
+        self::assertStringContainsString('aucun règlement', $texte);
+    }
+
+    public function test_il_dit_ce_que_les_factures_attendent_encore(): void
+    {
+        $texte = NoelRepondeur::phraseDesImpayees([
+            'nombre' => 23, 'restant' => 4820000.0, 'portee' => 'à Abobo Dokui', 'reseau' => false,
+        ]);
+
+        self::assertStringContainsString('23 factures', $texte);
+        self::assertStringContainsString('4 820 000 F', $texte);
+    }
+
+    public function test_rien_a_recouvrer_se_dit_aussi(): void
+    {
+        $texte = NoelRepondeur::phraseDesImpayees([
+            'nombre' => 0, 'restant' => 0.0, 'portee' => 'à Adjamé', 'reseau' => false,
+        ]);
+
+        self::assertStringContainsString('Aucune facture impayée', $texte);
+        self::assertStringContainsString('Tout est réglé', $texte);
+    }
+
+    /**
+     * La fiche d'un colis traduit son état en français.
+     *
+     * « en_transit » est un mot de base de données, pas une réponse.
+     */
+    public function test_la_fiche_d_un_colis_traduit_son_etat(): void
+    {
+        $texte = NoelRepondeur::phraseDuColis([
+            'numero' => 'LB-CI-0042', 'statut' => 'en_transit', 'agence' => 'Adjamé',
+            'poids' => 18.5, 'colis' => 3, 'quand' => '02/11/2026',
+        ]);
+
+        self::assertStringContainsString('LB-CI-0042', $texte);
+        self::assertStringContainsString('en transit', $texte);
+        self::assertStringNotContainsString('en_transit', $texte);
+        self::assertStringContainsString('18,5 kg', $texte);
+        self::assertStringContainsString('Adjamé', $texte);
+    }
+
+    /**
+     * La recherche d'un colis est bornée comme le reste.
+     *
+     * Vérifié sur la base le 04/11/2026 : un agent d'une autre agence ne
+     * reçoit pas la fiche, il reçoit les liens habituels.
+     */
+    public function test_la_recherche_d_un_colis_se_borne_a_l_agence(): void
+    {
+        $bloc = $this->methode('NoelJournal', 'colisParNumero');
+
+        self::assertStringContainsString('ROLES_PORTEE_RESEAU', $bloc);
+        self::assertStringContainsString('c.agence_depart_id = :agence', $bloc);
+        self::assertStringContainsString('if (!$reseau && $agence <= 0)', $bloc);
+    }
+
+    /** Et « j'ai encaissé » ne parle que de soi. */
+    public function test_mon_encaisse_ne_parle_que_de_moi(): void
+    {
+        $bloc = $this->methode('NoelJournal', 'encaisseDuJour');
+
+        self::assertStringContainsString('p.caissiere_id = :moi', $bloc);
+        self::assertStringContainsString('CURDATE()', $bloc);
     }
 
     // ------------------------------------------------------------------

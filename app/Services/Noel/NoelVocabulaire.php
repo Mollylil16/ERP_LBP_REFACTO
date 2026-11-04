@@ -86,15 +86,24 @@ final class NoelVocabulaire
         ],
         'groupage' => [
             'libelle' => 'le groupage et les expeditions',
-            'ecrans' => ['colisage/groupage', 'logistique/codes-non-payes'],
+            // L historique des envois rejoint la liste : c est la que vivent le
+            // dossier, la LTA et le manifeste d un depart.
+            'ecrans' => ['colisage/groupage', 'colisage/envois/historique', 'logistique/codes-non-payes'],
             'mots' => [
                 'groupage', 'groupe', 'groupe code', 'expedition', 'expeditions',
+                // « CNP » est le mot du terrain pour l ecran Codes Non Payes.
+                'cnp', 'les cnp',
                 'depart', 'les departs', 'preparer un depart', 'dossier envoi',
                 'dossier d envoi', 'vol', 'les vols', 'cargo', 'avion', 'bateau',
                 'lta', 'numero de lta', 'manifeste', 'liste de colisage',
                 'codes non payes', 'code non paye', 'impayes groupage', 'non paye',
                 'creance', 'creances', 'client qui doit', 'dette client',
                 'trajet', 'les trajets', 'categorie de code', 'lb ci', 'ca ci',
+                // Les mots du terrain qui manquaient, releves le 04/11/2026.
+                'dossiers d envoi', 'les lta', 'lettre de transport',
+                'lettre de transport aerien', 'manifestes', 'manifeste de groupage',
+                'valider un depart', 'depart a valider', 'bordereau d envoi',
+                'feuille de route',
             ],
         ],
         'demande_fonds' => [
@@ -429,6 +438,7 @@ final class NoelVocabulaire
         'combien', 'quel est le solde', 'quel solde', 'quel est le montant',
         'quelle somme', 'ca fait combien', 'c est combien', 'on en est a combien',
         'ou en est la caisse', 'etat de la caisse',
+        'quel est le poids', 'quel poids', 'quel tonnage', 'le total du jour',
     ];
 
     /**

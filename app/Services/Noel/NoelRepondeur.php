@@ -99,15 +99,27 @@ final class NoelRepondeur
             $lu['intention'] = NoelVocabulaire::INTENTION_PROCEDURE;
         }
 
+        /*
+         * Un numero de suivi dans la question vaut mieux que tout le reste.
+         *
+         * « Ou est le colis LB-CI-0042 » recevait un lien vers la liste
+         * entiere, alors que le numero etait dans la phrase. C est la question
+         * la plus posee au guichet.
+         *
+         * Elle passe avant le classement par concept : qui donne un numero ne
+         * demande pas ou se trouve l ecran des colis.
+         */
+        $fiche = $this->ficheDuColis($message);
+
         $this->mesurer($lu);
 
-        $reponse = match ($lu['intention']) {
+        $reponse = $fiche ?? match ($lu['intention']) {
             NoelVocabulaire::INTENTION_SALUTATION => $this->bonjour(),
             NoelVocabulaire::INTENTION_REMERCIEMENT => $this->deRien(),
             NoelVocabulaire::INTENTION_SIGNALEMENT => $this->signalement($message, $lu),
             NoelVocabulaire::INTENTION_PANNE => $this->panne($message, $lu),
             NoelVocabulaire::INTENTION_PRESENTATION => $this->presenter($lu),
-            NoelVocabulaire::INTENTION_CHIFFRE => $this->chiffrer($lu),
+            NoelVocabulaire::INTENTION_CHIFFRE => $this->chiffrer($message, $lu),
             NoelVocabulaire::INTENTION_PROCEDURE => $this->marcheASuivre($message, $lu),
             NoelVocabulaire::INTENTION_INCONNUE => $this->jeNeSaisPas($message, $lu),
             default => $this->orienter($lu),
@@ -483,13 +495,36 @@ final class NoelRepondeur
      *
      * @return array{texte: string, liens: array<int, array<string, string>>, attente: ?string}
      */
-    private function chiffrer(array $lu): array
+    private function chiffrer(string $message, array $lu): array
     {
         $concept = (string) ($lu['concept'] ?? '');
         $journal = $this->journal;
 
         if ($journal === null) {
             return $this->orienter($lu);
+        }
+
+        /*
+         * Deux questions tres differentes portent le meme concept :
+         * « combien j ai encaisse » et « combien de factures impayees ». Seul
+         * le mot de la question les separe, pas le concept.
+         */
+        if ($concept === 'facture') {
+            $plat = NoelCarte::sansAccent($message);
+
+            if (str_contains($plat, 'impay') || str_contains($plat, 'reste a payer')) {
+                $impayees = $journal->facturesImpayees();
+
+                if ($impayees !== null) {
+                    return self::reponse(self::phraseDesImpayees($impayees), $this->liens($lu));
+                }
+            } else {
+                $encaisse = $journal->encaisseDuJour();
+
+                if ($encaisse !== null) {
+                    return self::reponse(self::phraseDeMonEncaisse($encaisse), $this->liens($lu));
+                }
+            }
         }
 
         if (in_array($concept, self::CHIFFRE_COLIS, true)) {
@@ -523,7 +558,7 @@ final class NoelRepondeur
      * plusieurs, et une journee de 39 colis en 12 saisies ne ressemble pas a
      * une journee de 39 colis en 39 saisies.
      *
-     * @param array{colis: int, saisies: int, portee: string, reseau: bool} $compte
+     * @param array{colis: int, poids: float, saisies: int, portee: string, reseau: bool} $compte
      */
     public static function phraseDesColis(array $compte): string
     {
@@ -550,6 +585,15 @@ final class NoelRepondeur
                 . ($compte['saisies'] > 1 ? 's' : '');
         }
 
+        /*
+         * Le poids vient avec, parce qu il est dans la meme requete et qu on
+         * le demande dans la foulee : « combien de colis » et « quel poids »
+         * sont deux moities de la meme question au guichet.
+         */
+        if (($compte['poids'] ?? 0.0) > 0.0) {
+            $texte .= ', pour ' . number_format((float) $compte['poids'], 1, ',', ' ') . ' kg';
+        }
+
         return $texte . '.';
     }
 
@@ -573,6 +617,114 @@ Le détail : " . self::franc($solde['ouverture']) . ' hier au soir, '
 
 Ce chiffre est celui de l'écran Mouvements de Caisse, et il s'arrête à ce que"
             . ' vous avez le droit de voir.';
+    }
+
+    /**
+     * La fiche d un colis, quand la question porte son numero.
+     *
+     * Le format est celui du logiciel : un code d agence, puis des segments
+     * separes par des tirets — LB-CI-0042, ABJ-DKI-001. On ne cherche que si
+     * la phrase contient un tiret entoure de caracteres : sans cela, chaque
+     * question partirait en requete pour rien.
+     *
+     * Rend null des que le moindre doute existe — pas de journal, aucun
+     * numero reconnaissable, ou un colis hors du perimetre de la personne.
+     * NOEL repond alors comme avant.
+     *
+     * @return array{texte: string, liens: array<int, array<string, string>>, attente: ?string}|null
+     */
+    private function ficheDuColis(string $message): ?array
+    {
+        if (preg_match('/\b([A-Z0-9]{2,}(?:-[A-Z0-9]+){1,4})\b/i', $message, $trouve) !== 1) {
+            return null;
+        }
+
+        $journal = $this->journal();
+
+        if ($journal === null) {
+            return null;
+        }
+
+        try {
+            $colis = $journal->colisParNumero(strtoupper($trouve[1]));
+        } catch (Throwable $e) {
+            error_log('[NOEL] recherche de colis impossible : ' . $e->getMessage());
+
+            return null;
+        }
+
+        if ($colis === null) {
+            return null;
+        }
+
+        return self::reponse(
+            self::phraseDuColis($colis),
+            $this->liens(['ecrans' => ['colisage/parcels', 'tracking-colis/dashboard']])
+        );
+    }
+
+    /**
+     * « Vous avez encaisse 1 250 000 F aujourd hui, en 9 reglements. »
+     *
+     * @param array{xof: float, eur: float, nombre: int} $encaisse
+     */
+    public static function phraseDeMonEncaisse(array $encaisse): string
+    {
+        if ($encaisse['nombre'] === 0) {
+            return "Vous n'avez encaissé aucun règlement aujourd'hui.";
+        }
+
+        $montants = [self::franc($encaisse['xof'])];
+
+        // Les deux monnaies restent separees : Paris compte en euros.
+        if (abs($encaisse['eur']) >= 0.005) {
+            $montants[] = number_format($encaisse['eur'], 2, ',', ' ') . ' EUR';
+        }
+
+        return 'Vous avez encaissé ' . implode(' et ', $montants) . " aujourd'hui, en "
+            . self::nombre($encaisse['nombre']) . ' règlement'
+            . ($encaisse['nombre'] > 1 ? 's' : '') . '.';
+    }
+
+    /**
+     * « 23 factures attendent encore 4 820 000 F à Abobo Dokui. »
+     *
+     * @param array{nombre: int, restant: float, portee: string, reseau: bool} $impayees
+     */
+    public static function phraseDesImpayees(array $impayees): string
+    {
+        if ($impayees['nombre'] === 0) {
+            return 'Aucune facture impayée ' . $impayees['portee'] . '. Tout est réglé.';
+        }
+
+        return self::nombre($impayees['nombre']) . ' facture'
+            . ($impayees['nombre'] > 1 ? 's attendent' : ' attend') . ' encore '
+            . self::franc($impayees['restant']) . ' ' . $impayees['portee'] . '.';
+    }
+
+    /**
+     * « LB-CI-0042 : 3 colis, 18,5 kg, enregistré le 02/11/2026 à Adjamé. »
+     *
+     * @param array{numero: string, statut: string, agence: string, poids: float, colis: int, quand: string} $colis
+     */
+    public static function phraseDuColis(array $colis): string
+    {
+        $etats = [
+            'enregistre' => 'enregistré, pas encore facturé',
+            'facture' => 'facturé',
+            'en_transit' => 'en transit',
+            'arrive' => 'arrivé à destination',
+            'livre' => 'livré',
+            'retire' => 'retiré par son destinataire',
+            'annule' => 'annulé',
+        ];
+
+        return $colis['numero'] . ' : ' . ($etats[$colis['statut']] ?? $colis['statut']) . '.'
+            . "
+
+" . self::nombre($colis['colis']) . ' colis, '
+            . number_format($colis['poids'], 1, ',', ' ') . ' kg, saisi le '
+            . $colis['quand'] . ' à ' . $colis['agence'] . '.';
     }
 
     /** Un nombre, avec ses milliers separes. */
@@ -629,8 +781,8 @@ Ce chiffre est celui de l'écran Mouvements de Caisse, et il s'arrête à ce que
         $texte .= "
 
 " . (count($liens) === 1
-            ? "Voici l'écran ou cela se passe."
-            : 'Voici les écrans ou cela se passe.');
+            ? "Voici l'écran où cela se passe."
+            : 'Voici les écrans où cela se passe.');
 
         if (isset($modules[$slug])) {
             $texte .= "
