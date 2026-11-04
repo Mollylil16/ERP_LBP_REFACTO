@@ -44,4 +44,35 @@ final class NoelIATest extends TestCase
         self::assertStringContainsString('Encaisser un règlement', $texte);
         self::assertStringNotContainsString('Ressources humaines', $texte);
     }
+
+    public function testUnMontantInventeParLIAEstRejete(): void
+    {
+        $source = "FAITS SÛRS\nEncaissé aujourd'hui : 125 000 FCFA sur 4 factures.";
+
+        self::assertTrue(NoelIA::chiffresFideles('Vous avez encaissé 125 000 FCFA aujourd’hui.', $source));
+        self::assertTrue(NoelIA::chiffresFideles('1. Ouvrez Finance. 2. Vérifiez les 4 factures.', $source), 'Les petits nombres et numéros d’étape ne sont pas contrôlés.');
+        self::assertFalse(NoelIA::chiffresFideles('Vous avez encaissé 152 000 FCFA aujourd’hui.', $source));
+        self::assertFalse(NoelIA::chiffresFideles('Le colis LB-CI-0042 est parti.', $source));
+    }
+
+    public function testLaBibliothequeNeMontreQueLesModulesDeLaPersonne(): void
+    {
+        $dossier = sys_get_temp_dir() . '/noel_bib_' . bin2hex(random_bytes(4));
+        mkdir($dossier);
+        file_put_contents($dossier . '/general.md', "# Général\n## La fiche d'engagement\nLe client signe la fiche d'engagement au verso de la facture.\n");
+        file_put_contents($dossier . '/rh.md', "# RH\n## Les salaires\nLa fiche d'engagement des salaires est confidentielle.\n");
+        file_put_contents($dossier . '/colisage.md', "# Colisage\n## Fiche d'engagement et colis\nOn imprime la fiche d'engagement avec la facture du colis.\n");
+
+        try {
+            $ia = new NoelIA(['ia' => 'ollama', 'ia_connaissances' => $dossier]);
+            $vu = $ia->extraits("Pourquoi faire signer la fiche d'engagement ?", ['colisage'], 4);
+
+            self::assertStringContainsString('verso de la facture', $vu);
+            self::assertStringContainsString('facture du colis', $vu);
+            self::assertStringNotContainsString('salaires', $vu, 'Un module réservé ne fuit jamais par la bibliothèque.');
+        } finally {
+            array_map('unlink', glob($dossier . '/*.md') ?: []);
+            rmdir($dossier);
+        }
+    }
 }

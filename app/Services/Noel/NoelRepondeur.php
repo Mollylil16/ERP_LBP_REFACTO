@@ -118,12 +118,16 @@ final class NoelRepondeur
             NoelVocabulaire::INTENTION_REMERCIEMENT => $this->deRien(),
             NoelVocabulaire::INTENTION_SIGNALEMENT => $this->signalement($message, $lu),
             NoelVocabulaire::INTENTION_PANNE => $this->panne($message, $lu),
-            NoelVocabulaire::INTENTION_PRESENTATION => $this->avecIA($message, $lu) ?? $this->presenter($lu),
+            NoelVocabulaire::INTENTION_PRESENTATION => $this->presenter($lu),
             NoelVocabulaire::INTENTION_CHIFFRE => $this->chiffrer($message, $lu),
             NoelVocabulaire::INTENTION_PROCEDURE => $this->marcheASuivre($message, $lu),
             NoelVocabulaire::INTENTION_INCONNUE => $this->jeNeSaisPas($message, $lu),
-            default => $this->avecIA($message, $lu) ?? $this->orienter($lu),
+            default => $this->orienter($lu),
         };
+
+        // L'IA propre a LBP redige la reponse finale a partir de ces faits
+        // (voir rediger()). Sans IA, la reponse des regles part telle quelle.
+        $reponse = $this->rediger($message, $lu, $reponse);
 
         NoelFil::retenir($conversationId, [
             'concept' => $lu['concept'] ?? $fil['concept'],
@@ -332,7 +336,7 @@ final class NoelRepondeur
             return $this->jeNeSaisPas($message, $lu);
         }
 
-        return $this->avecIA($message, $lu) ?? self::reponse(
+        return self::reponse(
             "Je ne vois pas de cause evidente de mon cote. L'écran concerne est ci-dessous. "
                 . "Si ca bloque toujours, dites-le-moi : je transmets a l'administrateur.",
             $liens,
@@ -1028,33 +1032,63 @@ A retenir : " . $etapes['attention'];
             );
         }
 
-        return $this->avecIA($message, $lu)
-            ?? self::reponse(NoelApprentissage::proposition(), [], 'transmission');
+        return self::reponse(NoelApprentissage::proposition(), [], 'transmission');
     }
 
     /**
-     * La reponse de l'IA propre a LBP (NoelIA), avec les ecrans que les
-     * regles avaient trouves ; null si l'IA n'est pas la ou n'a pas repondu.
+     * Les regles et l'IA propre a LBP, ensemble (demande du 04/11/2026 :
+     * « l'IA doit s'associer a mes regles pour rendre NOEL plus precis,
+     * realiste, performant, naturel »).
      *
-     * Appelee seulement la ou les regles ne donnent qu'une reponse
-     * approximative (question non comprise, presentation d'un module,
-     * orientation, panne sans cause connue). Ce que NOEL sait avec certitude
-     * — un chiffre, la fiche d'un colis, une marche a suivre ecrite, une cause
-     * lue dans le journal — ne passe jamais par l'IA.
+     * Les regles ont deja fait leur travail : chiffres lus en base, fiche d'un
+     * colis, marche a suivre validee, cause trouvee dans le journal, ecrans que
+     * la personne peut ouvrir. Leur reponse est donnee a l'IA comme FAITS SURS ;
+     * l'IA y ajoute ce qu'elle lit dans la bibliotheque de LBP et redige une
+     * reponse naturelle. NoelIA rejette toute redaction qui contiendrait un
+     * nombre absent de ce qu'on lui a donne : dans ce cas, et chaque fois que
+     * l'IA n'est pas la, la reponse des regles part telle quelle.
+     *
+     * Les salutations, remerciements et signalements restent aux regles : ils
+     * n'ont rien a gagner a passer par un modele.
      *
      * @param array<string, mixed> $lu
+     * @param array{texte: string, liens: array<int, array<string, string>>, attente: ?string} $reponse
      *
-     * @return array{texte: string, liens: array<int, array<string, string>>, attente: ?string}|null
+     * @return array{texte: string, liens: array<int, array<string, string>>, attente: ?string}
      */
-    private function avecIA(string $message, array $lu): ?array
+    private function rediger(string $message, array $lu, array $reponse): array
     {
         if (self::enTest() || !NoelAcces::saitConverser()) {
-            return null;
+            return $reponse;
         }
 
-        $texte = NoelIA::depuisConfiguration()->repondre($message, $this->carte, NoelAcces::prenom());
+        if (in_array($lu['intention'] ?? null, [
+            NoelVocabulaire::INTENTION_SALUTATION,
+            NoelVocabulaire::INTENTION_REMERCIEMENT,
+            NoelVocabulaire::INTENTION_SIGNALEMENT,
+        ], true)) {
+            return $reponse;
+        }
 
-        return $texte === null ? null : self::reponse($texte, $this->liens($lu));
+        $texte = NoelIA::depuisConfiguration()->rediger(
+            $message,
+            self::enMessage($reponse),
+            $this->carte,
+            NoelAcces::prenom()
+        );
+
+        if ($texte === null) {
+            return $reponse;
+        }
+
+        // L'IA propose de transmettre : NOEL garde l'oreille ouverte pour le
+        // « oui » qui suivra, comme avec sa propre proposition.
+        $attente = $reponse['attente'];
+        if ($attente === null && str_contains(mb_strtolower($texte), 'transmet')) {
+            $attente = 'transmission';
+        }
+
+        return ['texte' => $texte, 'liens' => $reponse['liens'], 'attente' => $attente];
     }
 
     // ------------------------------------------------------------------
