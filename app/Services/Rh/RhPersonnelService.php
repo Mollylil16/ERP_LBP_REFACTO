@@ -4,6 +4,7 @@ namespace App\Services\Rh;
 
 use App\Repositories\Rh\RhPersonnelRepository;
 use App\Security\PermissionEntityRegistry;
+use App\Services\Shared\AuditLogService;
 use App\Services\Support\DataVisibilityService;
 use RuntimeException;
 
@@ -140,6 +141,104 @@ class RhPersonnelService
         $this->requireEmployee($id);
         $date = $this->requiredDate($input['start_date'] ?? null, 'La date de reintegration est obligatoire.');
         $this->repository->reintegrate($id, $date, $actorId);
+    }
+
+    /** Libellés de ce qui empêche la suppression, par table. */
+    private const HISTORIQUE_LIBELLES = [
+        'rh_contracts' => 'contrat(s)',
+        'rh_payslips' => 'bulletin(s) de paie',
+        'rh_payroll_slips' => 'bulletin(s) de paie',
+        'rh_attendances' => 'pointage(s)',
+        'rh_attendance_daily' => 'journée(s) de présence',
+        'rh_leave_requests' => 'demande(s) de congé',
+        'rh_leave_opening_balance' => 'solde(s) de congés',
+        'rh_employee_documents' => 'document(s)',
+        'rh_disciplinary_actions' => 'sanction(s)',
+        'rh_explanation_requests' => 'demande(s) d\'explication',
+        'rh_missions' => 'mission(s)',
+        'rh_employee_mutations' => 'mutation(s)',
+        'rh_evaluations' => 'évaluation(s)',
+        'rh_training_enrollments' => 'formation(s)',
+        'rh_objectives' => 'objectif(s)',
+        'rh_assignments' => 'affectation(s)',
+        'rh_signatories' => 'rôle(s) de signataire',
+        'employee_legal_requests' => 'demande(s) administrative(s)',
+    ];
+
+    /**
+     * Ce qu'il faut savoir avant de supprimer : ce qui bloque, et le compte
+     * de connexion qui sera désactivé.
+     *
+     * @return array{employee: array<string,mixed>, bloquants: array<int,string>, comptes: array<int,array<string,mixed>>}
+     */
+    public function avantSuppression(int $id): array
+    {
+        $employee = $this->requireEmployee($id);
+
+        return [
+            'employee' => $employee,
+            'bloquants' => $this->bloquants($this->repository->historiqueReel($id)),
+            'comptes' => $this->repository->comptesLies($id),
+        ];
+    }
+
+    /**
+     * Supprime une fiche créée par erreur (doublon, test, faute de saisie).
+     *
+     * Décidé le 17/11/2026 : refusé dès que la fiche porte un vrai
+     * historique — un employé qui a travaillé passe par « Sortie », qui garde
+     * sa paie et ses contrats. Le compte de connexion rattaché est détaché et
+     * désactivé. Le journal d'audit garde la fiche entière et le motif, de
+     * quoi la recréer en cas d'erreur.
+     */
+    public function supprimer(int $id, string $motif, int $actorId): void
+    {
+        $motif = trim($motif);
+        if (mb_strlen($motif) < 5) {
+            throw new RuntimeException('Indiquez le motif de la suppression (par exemple « doublon de la fiche LBP-016 »).');
+        }
+
+        $avant = $this->avantSuppression($id);
+        if ($avant['bloquants'] !== []) {
+            throw new RuntimeException(
+                'Cette fiche ne peut pas être supprimée : elle a déjà ' . implode(', ', $avant['bloquants'])
+                . '. Pour un départ, utilisez « Sortie / réintégration » : le dossier est conservé.'
+            );
+        }
+
+        $this->repository->supprimer($id);
+
+        AuditLogService::log('delete_employee', 'rh_employees', $id, $avant['employee'], [
+            'motif' => $motif,
+            'comptes_desactives' => array_column($avant['comptes'], 'email'),
+            'par' => $actorId,
+        ]);
+        foreach ($avant['comptes'] as $compte) {
+            AuditLogService::log('deactivate_user', 'users', (int) $compte['id'], ['status' => $compte['status']], [
+                'status' => 'inactive',
+                'motif' => 'fiche du personnel supprimée : ' . $motif,
+            ]);
+        }
+    }
+
+    /**
+     * @param array<string, int> $historique table.colonne => nombre
+     * @return array<int, string>
+     */
+    private function bloquants(array $historique): array
+    {
+        $parTable = [];
+        foreach ($historique as $cle => $n) {
+            $table = strstr($cle, '.', true) ?: $cle;
+            $parTable[$table] = ($parTable[$table] ?? 0) + $n;
+        }
+
+        $phrases = [];
+        foreach ($parTable as $table => $n) {
+            $phrases[] = $n . ' ' . (self::HISTORIQUE_LIBELLES[$table] ?? 'élément(s) rattaché(s)');
+        }
+
+        return $phrases;
     }
 
     public function addHistory(int $id, array $input, int $actorId): void

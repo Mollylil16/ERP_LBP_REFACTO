@@ -112,6 +112,59 @@ final class RhPersonnelServiceTest extends TestCase
 
         $service->exit(12, ['exit_date' => '2026-06-18', 'exit_reason_id' => '8'], 3);
     }
+
+    /** Décidé le 17/11/2026 : un vrai dossier se met en sortie, il ne se supprime pas. */
+    public function test_une_fiche_avec_un_vrai_historique_ne_se_supprime_pas(): void
+    {
+        $repository = $this->createMock(RhPersonnelRepository::class);
+        $repository->method('find')->willReturn(['id' => 1016, 'full_name' => 'LASSICI MARIAM']);
+        $repository->method('historiqueReel')->willReturn(['rh_contracts.employee_id' => 1, 'rh_payslips.employee_id' => 3]);
+        $repository->method('comptesLies')->willReturn([]);
+        $repository->expects(self::never())->method('supprimer');
+
+        $service = new RhPersonnelService($repository, new OpenVisibilityService());
+
+        try {
+            $service->supprimer(1016, 'erreur de saisie', 1);
+            self::fail('La suppression aurait dû être refusée.');
+        } catch (RuntimeException $e) {
+            self::assertStringContainsString('1 contrat(s)', $e->getMessage());
+            self::assertStringContainsString('3 bulletin(s) de paie', $e->getMessage());
+            self::assertStringContainsString('Sortie', $e->getMessage());
+        }
+    }
+
+    public function test_le_motif_de_suppression_est_obligatoire(): void
+    {
+        $repository = $this->createMock(RhPersonnelRepository::class);
+        $repository->expects(self::never())->method('supprimer');
+
+        $service = new RhPersonnelService($repository, new OpenVisibilityService());
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('motif');
+
+        $service->supprimer(1045, '  ', 1);
+    }
+
+    public function test_une_fiche_sans_historique_est_supprimee(): void
+    {
+        $repository = $this->createMock(RhPersonnelRepository::class);
+        $repository->method('find')->willReturn(['id' => 1045, 'full_name' => 'Mariam Lassici']);
+        $repository->method('historiqueReel')->willReturn([]);
+        $repository->method('comptesLies')->willReturn([
+            ['id' => 16, 'full_name' => 'Mariam Lassici', 'email' => 'mariam.lassici@labelleporte.ci', 'status' => 'active'],
+        ]);
+        $repository->expects(self::once())->method('supprimer')->with(1045);
+
+        $service = new RhPersonnelService($repository, new OpenVisibilityService());
+        $avant = $service->avantSuppression(1045);
+
+        self::assertSame([], $avant['bloquants']);
+        self::assertCount(1, $avant['comptes'], 'Le compte qui sera désactivé est annoncé avant la suppression.');
+
+        $service->supprimer(1045, 'doublon de la fiche LBP-016', 1);
+    }
 }
 
 final class OpenVisibilityService extends DataVisibilityService

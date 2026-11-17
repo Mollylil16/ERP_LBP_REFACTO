@@ -101,6 +101,13 @@ final class PersonnelShowPage
                 'variant' => 'secondary',
             ];
         }
+        if (!empty($permissions['delete'])) {
+            $actions[] = [
+                'label' => 'Supprimer la fiche',
+                'href' => 'rh/personnel/' . $this->employeeId . '/supprimer',
+                'variant' => 'danger',
+            ];
+        }
 
         return $actions;
     }

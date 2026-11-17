@@ -262,6 +262,77 @@ class RhPersonnelRepository
         ], $actorId);
     }
 
+    /**
+     * Ce qui est rattaché à la fiche et qui en fait un vrai dossier : contrats,
+     * paie, pointages, congés, documents, sanctions… Lu dans les clés
+     * étrangères de la base, pour qu'une table ajoutée demain soit comptée
+     * sans retoucher ce code. Ne compte pas les lignes créées d'office avec
+     * la fiche (variables de paie vides, historique), ni le compte de
+     * connexion, traité à part.
+     *
+     * @return array<string, int> table.colonne => nombre de lignes
+     */
+    public function historiqueReel(int $id): array
+    {
+        $ignorees = ['users', 'rh_payroll_variables', 'rh_employee_history'];
+        $liens = $this->pdo->query("
+            SELECT table_name, column_name FROM information_schema.key_column_usage
+            WHERE table_schema = DATABASE() AND referenced_table_name = 'rh_employees'
+        ")->fetchAll(PDO::FETCH_NUM);
+
+        $trouve = [];
+        foreach ($liens as [$table, $colonne]) {
+            if (in_array($table, $ignorees, true)) {
+                continue;
+            }
+            $stmt = $this->pdo->prepare("SELECT COUNT(*) FROM `{$table}` WHERE `{$colonne}` = ?");
+            $stmt->execute([$id]);
+            $n = (int) $stmt->fetchColumn();
+            if ($n > 0) {
+                $trouve[$table . '.' . $colonne] = $n;
+            }
+        }
+
+        return $trouve;
+    }
+
+    /** @return array<int, array{id:int, full_name:string, email:string, status:string}> */
+    public function comptesLies(int $id): array
+    {
+        $stmt = $this->pdo->prepare('SELECT id, full_name, email, status FROM users WHERE rh_employee_id = ?');
+        $stmt->execute([$id]);
+
+        return array_map(static fn(array $u): array => [
+            'id' => (int) $u['id'],
+            'full_name' => (string) $u['full_name'],
+            'email' => (string) $u['email'],
+            'status' => (string) $u['status'],
+        ], $stmt->fetchAll(PDO::FETCH_ASSOC));
+    }
+
+    /**
+     * Supprime la fiche. Le compte de connexion qui y était rattaché est
+     * détaché et désactivé (décidé le 17/11/2026) : la personne ne se connecte
+     * plus, mais ce qu'elle a saisi garde son auteur. À n'appeler qu'après
+     * historiqueReel() vide : le service s'en charge.
+     */
+    public function supprimer(int $id): void
+    {
+        $this->pdo->beginTransaction();
+        try {
+            $this->pdo->prepare("UPDATE users SET status = 'inactive', rh_employee_id = NULL, updated_at = NOW() WHERE rh_employee_id = ?")
+                ->execute([$id]);
+            foreach (['rh_payroll_variables', 'rh_employee_history'] as $table) {
+                $this->pdo->prepare("DELETE FROM `{$table}` WHERE employee_id = ?")->execute([$id]);
+            }
+            $this->pdo->prepare('DELETE FROM rh_employees WHERE id = ?')->execute([$id]);
+            $this->pdo->commit();
+        } catch (\Throwable $e) {
+            $this->pdo->rollBack();
+            throw $e;
+        }
+    }
+
     public function addHistory(int $id, array $data, int $actorId): void
     {
         $stmt = $this->pdo->prepare("

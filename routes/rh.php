@@ -117,5 +117,7 @@ $router->group('/rh', function (Router $router): void {
         $router->post('/{id}/sortie', [RhPersonnelController::class, 'applyExit']);
         $router->post('/{id}/reintegration', [RhPersonnelController::class, 'reintegrate']);
         $router->post('/{id}/historique', [RhPersonnelController::class, 'addHistory']);
+        $router->get('/{id}/supprimer', [RhPersonnelController::class, 'confirmDelete']);
+        $router->post('/{id}/supprimer', [RhPersonnelController::class, 'destroy']);
     });
 });

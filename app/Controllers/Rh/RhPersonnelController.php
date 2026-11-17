@@ -12,6 +12,7 @@ use App\Repositories\Rh\RhPersonnelRepository;
 use App\Security\OperationPolicy;
 use App\Security\PermissionAction;
 use App\Security\PermissionEntityRegistry;
+use App\Security\SuppressionPersonnel;
 use App\Services\Rh\RhPersonnelService;
 use App\View\Pages\Rh\PersonnelExitPage;
 use App\View\Pages\Rh\PersonnelFormPage;
@@ -114,6 +115,7 @@ class RhPersonnelController extends RhBaseController
                         PermissionAction::VIEW
                     ),
                     'addHistory' => Auth::canOperation(OperationPolicy::RH_HISTORY_CREATE),
+                    'delete' => SuppressionPersonnel::autorise(),
                 ]),
             ]);
         } catch (RuntimeException $e) {
@@ -230,6 +232,52 @@ class RhPersonnelController extends RhBaseController
             Session::flash('error', $e->getMessage());
         }
         $this->redirect('/rh/personnel/' . (int) $id);
+    }
+
+    /**
+     * Confirmer la suppression d'une fiche créée par erreur.
+     * Réservé à l'administrateur, au DG et à la responsable RH.
+     */
+    public function confirmDelete(string $id): void
+    {
+        AuthMiddleware::check();
+        if (!SuppressionPersonnel::autorise()) {
+            Session::flash('error', 'Seuls l’administrateur, le directeur général et la responsable RH peuvent supprimer une fiche.');
+            $this->redirect('/rh/personnel/' . (int) $id);
+        }
+        try {
+            $this->rhView('rh/personnel/delete', 'Supprimer une fiche', 'personnel', [
+                'avant' => $this->service->avantSuppression((int) $id),
+            ]);
+        } catch (RuntimeException $e) {
+            Session::flash('error', $e->getMessage());
+            $this->redirect('/rh/personnel');
+        }
+    }
+
+    public function destroy(string $id): void
+    {
+        AuthMiddleware::check();
+        if (!SuppressionPersonnel::autorise()) {
+            Session::flash('error', 'Seuls l’administrateur, le directeur général et la responsable RH peuvent supprimer une fiche.');
+            $this->redirect('/rh/personnel/' . (int) $id);
+        }
+        if (!Csrf::verify($_POST['_csrf_token'] ?? null)) {
+            Session::flash('error', 'La page était ouverte depuis trop longtemps. Recommencez.');
+            $this->redirect('/rh/personnel/' . (int) $id . '/supprimer');
+        }
+        if (empty($_POST['confirmation'])) {
+            Session::flash('error', 'Cochez la case de confirmation : la suppression est définitive.');
+            $this->redirect('/rh/personnel/' . (int) $id . '/supprimer');
+        }
+        try {
+            $this->service->supprimer((int) $id, (string) ($_POST['motif'] ?? ''), (int) Auth::id());
+            Session::flash('success', 'La fiche a été supprimée. Son contenu reste consultable dans le journal d’audit.');
+            $this->redirect('/rh/personnel');
+        } catch (RuntimeException $e) {
+            Session::flash('error', $e->getMessage());
+            $this->redirect('/rh/personnel/' . (int) $id . '/supprimer');
+        }
     }
 
     private function guardOperation(string $operation): void
