@@ -54,6 +54,10 @@ class AdminService
         'responsable_marketing' => 'Responsable Marketing',
         'responsable_logistique' => 'Responsable Logistique',
         'responsable_groupage'  => 'Responsable Groupage',
+
+        // Accès étendus, décidés le 18/11/2026 : voir App\Security\AccesEtendu.
+        'acces_finance'         => 'Accès complet au module Finance',
+        'acces_tous_modules'    => 'Accès à tous les modules (hors Administration et Pilotage DG)',
     ];
 
     public function __construct(

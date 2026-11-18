@@ -85,7 +85,7 @@ final class SelectionPortailController extends BaseController
                 return true;
             }
             if ($module['key'] === 'call-center') {
-                if (Auth::hasAnyRole(['dg', 'assistant_dg']) || Auth::isAdmin()) {
+                if (Auth::hasAnyRole(['dg', 'assistant_dg']) || Auth::isAdmin() || \App\Security\AccesEtendu::tousModules()) {
                     return true;
                 }
                 return Auth::can('call_center_view') || Auth::can('call_center_dg_view');

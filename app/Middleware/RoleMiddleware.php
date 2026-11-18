@@ -55,6 +55,13 @@ class RoleMiddleware
             return;
         }
 
+        // Accès étendus attribués à une personne (accès Finance, accès à tous
+        // les modules) : voir App\Security\AccesEtendu.
+        $chemin = (string) parse_url((string) ($_SERVER['REQUEST_URI'] ?? ''), PHP_URL_PATH);
+        if (\App\Security\AccesEtendu::ouvre($chemin, $allowedRoles)) {
+            return;
+        }
+
         // L'Assistant DG possède les mêmes accès de consultation globale que le DG et l'Admin
         if (Auth::isAssistantDg()) {
             if (in_array('dg', $allowedRoles, true) || in_array('admin', $allowedRoles, true) || in_array('assistant_dg', $allowedRoles, true) || in_array('assistante_dg', $allowedRoles, true)) {

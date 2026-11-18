@@ -163,6 +163,7 @@ final class ModuleAccess
 
         return Auth::isAdmin()
             || Auth::isAssistantDg()
+            || AccesEtendu::tousModules()
             || Auth::hasAnyRole(self::rolesLecture($slug));
     }
 
@@ -171,6 +172,7 @@ final class ModuleAccess
     {
         return Auth::isAdmin()
             || Auth::isAssistantDg()
+            || AccesEtendu::tousModules()
             || Auth::hasAnyRole(self::rolesGestion($slug));
     }
 
@@ -182,6 +184,7 @@ final class ModuleAccess
     {
         return Auth::isAdmin()
             || Auth::isAssistantDg()
+            || AccesEtendu::tousModules()
             || Auth::hasAnyRole(self::PORTEE_RESEAU)
             || (Auth::hasRole('agent_groupage') && (Auth::agenceId() === null || Auth::agenceId() <= 0));
     }

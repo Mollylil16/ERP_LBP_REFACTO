@@ -29,7 +29,7 @@ final class CallCenterController extends BaseController
     public function index(): void
     {
         AuthMiddleware::check();
-        if (!Auth::can('call_center_view')) {
+        if (!Auth::can('call_center_view') && !\App\Security\AccesEtendu::tousModules()) {
             Session::flash('error', 'Accès refusé au module Call Center.');
             $this->redirect('portal');
         }
@@ -107,7 +107,7 @@ final class CallCenterController extends BaseController
     public function appels(): void
     {
         AuthMiddleware::check();
-        if (!Auth::can('call_center_view')) {
+        if (!Auth::can('call_center_view') && !\App\Security\AccesEtendu::tousModules()) {
             Session::flash('error', 'Accès refusé.');
             $this->redirect('portal');
         }
@@ -222,7 +222,7 @@ final class CallCenterController extends BaseController
     public function litiges(): void
     {
         AuthMiddleware::check();
-        if (!Auth::can('call_center_view')) {
+        if (!Auth::can('call_center_view') && !\App\Security\AccesEtendu::tousModules()) {
             Session::flash('error', 'Accès refusé.');
             $this->redirect('portal');
         }
@@ -400,7 +400,7 @@ final class CallCenterController extends BaseController
     public function rechercheColis(): void
     {
         AuthMiddleware::check();
-        if (!Auth::can('call_center_view')) {
+        if (!Auth::can('call_center_view') && !\App\Security\AccesEtendu::tousModules()) {
             Session::flash('error', 'Accès refusé.');
             $this->redirect('portal');
         }
@@ -450,7 +450,7 @@ final class CallCenterController extends BaseController
     public function rayons(): void
     {
         AuthMiddleware::check();
-        if (!Auth::can('call_center_view')) {
+        if (!Auth::can('call_center_view') && !\App\Security\AccesEtendu::tousModules()) {
             Session::flash('error', 'Accès refusé.');
             $this->redirect('portal');
         }
@@ -595,7 +595,7 @@ final class CallCenterController extends BaseController
     public function suiviDeparts(): void
     {
         AuthMiddleware::check();
-        if (!Auth::can('call_center_view')) {
+        if (!Auth::can('call_center_view') && !\App\Security\AccesEtendu::tousModules()) {
             Session::flash('error', 'Accès refusé au module Call Center.');
             $this->redirect('portal');
         }
@@ -620,7 +620,7 @@ final class CallCenterController extends BaseController
     public function exportSuiviDepartsPdf(): void
     {
         AuthMiddleware::check();
-        if (!Auth::can('call_center_view')) {
+        if (!Auth::can('call_center_view') && !\App\Security\AccesEtendu::tousModules()) {
             Session::flash('error', 'Accès refusé aux rapports.');
             $this->redirect('portal');
         }
