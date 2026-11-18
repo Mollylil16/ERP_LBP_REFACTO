@@ -31,7 +31,11 @@ final class ModuleReserve
      * @var array<string, array<int, string>>
      */
     public const RESERVES = [
-        'rh' => ['admin', 'dg', 'responsable_rh'],
+        // + un accès individuel, donné nommément (18/11/2026 : le stagiaire RH
+        // qui travaille avec la responsable RH). Ni le rôle « rh », ni
+        // l'assistante DG ne l'ouvrent : l'élargir à un métier entier
+        // rouvrirait ce que la responsable RH a fait fermer le 05/10/2026.
+        'rh' => ['admin', 'dg', 'responsable_rh', 'acces_module_rh'],
     ];
 
     /** Le module réservé auquel cette adresse appartient, s'il y en a un. */

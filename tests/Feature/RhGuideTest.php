@@ -65,7 +65,7 @@ final class RhGuideTest extends TestCase
         // Et le verrou, lui, existe bien pour ce module.
         self::assertArrayHasKey('rh', \App\Security\ModuleReserve::RESERVES);
         self::assertSame(
-            ['admin', 'dg', 'responsable_rh'],
+            ['admin', 'dg', 'responsable_rh', 'acces_module_rh'],
             \App\Security\ModuleReserve::RESERVES['rh']
         );
     }

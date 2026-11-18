@@ -59,6 +59,7 @@ class AdminService
         'acces_finance'         => 'Accès complet au module Finance',
         'acces_tous_modules'    => 'Accès à tous les modules (hors Administration et Pilotage DG)',
         'acces_codes_non_payes' => 'Accès à Logistique > Codes Non Payés uniquement',
+        'acces_module_rh'       => 'Accès au module RH (réservé, à donner nommément)',
     ];
 
     public function __construct(

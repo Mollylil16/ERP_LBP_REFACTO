@@ -23,10 +23,11 @@ final class ModuleRhReserveTest extends TestCase
 {
     public function test_les_trois_seuls_autorises(): void
     {
+        // + l'accès individuel acces_module_rh, donné nommément depuis le 18/11/2026.
         self::assertSame(
-            ['admin', 'dg', 'responsable_rh'],
+            ['admin', 'dg', 'responsable_rh', 'acces_module_rh'],
             ModuleReserve::RESERVES['rh'],
-            "Ni l'assistante DG, ni le superviseur, ni une permission RH ne suffisent plus."
+            "Ni l'assistante DG, ni le superviseur, ni le rôle « rh », ni une permission RH ne suffisent."
         );
     }
 
