@@ -2037,6 +2037,41 @@ class MigrationRunner
             $this->addColumnIfMissing('rh_contracts', $col, $def);
         }
 
+        /*
+         * En production, rh_contracts a été créée par la paie, avant le cycle
+         * de vie : le CREATE TABLE IF NOT EXISTS de ce dernier n'a donc jamais
+         * ajouté ses colonnes, et « Nouveau contrat » échouait sur « reference »
+         * (18/11/2026). Le type était aussi un ENUM CDI/CDD/Stage/Interim :
+         * Prestataire, Consultant ou un paramétrage libre y devenaient ''.
+         */
+        $cycleDeVieCols = [
+            'reference'            => 'VARCHAR(80) NULL',
+            'trial_start_date'     => 'DATE NULL',
+            'trial_status'         => "ENUM('not_applicable','pending','confirmed','renewed','terminated') NOT NULL DEFAULT 'pending'",
+            'alert_days'           => "VARCHAR(30) NOT NULL DEFAULT '30,15,7'",
+            'signed_document_path' => 'VARCHAR(255) NULL',
+            'created_by'           => 'INT NULL',
+        ];
+        foreach ($cycleDeVieCols as $col => $def) {
+            $this->addColumnIfMissing('rh_contracts', $col, $def);
+        }
+
+        // Lu dans information_schema d'abord : l'ALTER ne part qu'une fois.
+        $typeContrat = (string) $this->schema->columnType('rh_contracts', 'contract_type');
+        if (str_starts_with(strtolower($typeContrat), 'enum')) {
+            try {
+                $this->pdo->exec("ALTER TABLE rh_contracts MODIFY COLUMN contract_type VARCHAR(50) NOT NULL DEFAULT ''");
+            } catch (\Throwable $e) {
+            }
+        }
+
+        $this->widenEnumIfMissingValues(
+            'rh_contracts',
+            'status',
+            ['draft', 'approval', 'active', 'expired', 'terminated', 'renewed'],
+            "ENUM('draft','approval','active','expired','terminated','renewed') NOT NULL DEFAULT 'active'"
+        );
+
         // --- Colonnes supplémentaires sur rh_payroll_slips ---
         $slipCols = [
             'transport_premium'  => 'DECIMAL(15,2) NOT NULL DEFAULT 0',
