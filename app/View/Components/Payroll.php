@@ -460,7 +460,7 @@ final class Payroll
             . '  </div>'
             . '  <div>'
             . '    <label style="font-weight: 600; font-size: 13px; display: block; margin-bottom: 4px;">Assurance maladie</label>'
-            . '    <input type="number" id="ded_health" name="health_insurance" value="1000" class="finea-form-control payroll-form-input" />'
+            . '    <input type="number" id="ded_health" name="health_insurance" value="0" class="finea-form-control payroll-form-input" />'
             . '  </div>'
             . '</div>'
             . '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">'
@@ -810,8 +810,14 @@ function calculateBulletin() {
 
     const gross = proratedBase + sur + otPay + adjGains;
 
-    const isRate = parseFloat(document.querySelector("[name=fiscal_is_salarial_rate]")?.value) || 1.2;
-    const cnpsRate = parseFloat(document.querySelector("[name=fiscal_cnps_salarial_rate]")?.value) || 6.3;
+    // LBP ne retient ni impot sur salaire ni CNPS (decision du 18/11/2026) :
+    // sans taux saisi, aucune retenue. Un taux ne s applique que s il est renseigne.
+    const taux = function (nom) {
+        const v = parseFloat(document.querySelector("[name=" + nom + "]")?.value);
+        return Number.isFinite(v) ? v : 0;
+    };
+    const isRate = taux("fiscal_is_salarial_rate");
+    const cnpsRate = taux("fiscal_cnps_salarial_rate");
     const health = parseFloat(document.getElementById("ded_health").value) || 0;
     const advance = parseFloat(document.getElementById("ded_advance").value) || 0;
     const other = parseFloat(document.getElementById("ded_other").value) || 0;

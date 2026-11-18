@@ -188,8 +188,9 @@ final class RhPayrollRepository
     {
         $row = $this->pdo->query("SELECT * FROM rh_payroll_settings LIMIT 1")->fetch();
         return $row ?: [
-            'is_salarial_rate' => 1.2,
-            'cnps_salarial_rate' => 6.3,
+            // LBP ne retient ni impot sur salaire ni CNPS sur le salaire (18/11/2026).
+            'is_salarial_rate' => 0.0,
+            'cnps_salarial_rate' => 0.0,
             'cnps_patronal_rate' => 7.7,
             'family_benefits_rate' => 5.75,
             'work_accident_rate' => 5.0,
