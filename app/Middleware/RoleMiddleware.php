@@ -71,12 +71,23 @@ class RoleMiddleware
 
         // 2. Vérification des rôles
         if (!Auth::hasAnyRole($allowedRoles)) {
-            Session::flash('error', "Accès refusé : Vous n'avez pas l'habilitation requise pour cette page.");
-            
-            // Redirection sécurisée vers la page de sélection du portail ou précédente
-            $referer = $_SERVER['HTTP_REFERER'] ?? '';
             $config = require BASE_PATH . '/config/app.php';
             $baseUrl = rtrim($config['url'], '/');
+
+            // Un accès limité à un seul écran : on y conduit plutôt que de refuser.
+            $vers = \App\Security\AccesEtendu::redirection($chemin);
+            if ($vers !== null) {
+                header('Location: ' . $baseUrl . $vers);
+                if (PHP_SAPI !== 'cli') {
+                    exit;
+                }
+                return;
+            }
+
+            Session::flash('error', "Accès refusé : Vous n'avez pas l'habilitation requise pour cette page.");
+
+            // Redirection sécurisée vers la page de sélection du portail ou précédente
+            $referer = $_SERVER['HTTP_REFERER'] ?? '';
 
             if ($referer !== '' && str_starts_with($referer, $baseUrl)) {
                 header('Location: ' . $referer);

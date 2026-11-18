@@ -58,6 +58,7 @@ class AdminService
         // Accès étendus, décidés le 18/11/2026 : voir App\Security\AccesEtendu.
         'acces_finance'         => 'Accès complet au module Finance',
         'acces_tous_modules'    => 'Accès à tous les modules (hors Administration et Pilotage DG)',
+        'acces_codes_non_payes' => 'Accès à Logistique > Codes Non Payés uniquement',
     ];
 
     public function __construct(

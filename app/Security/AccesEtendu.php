@@ -24,6 +24,10 @@ final class AccesEtendu
 {
     public const ROLE_FINANCE = 'acces_finance';
     public const ROLE_TOUS_MODULES = 'acces_tous_modules';
+    /** L'écran Logistique > Codes Non Payés et ses exports, rien d'autre (18/11/2026, Soro Ibrahim). */
+    public const ROLE_CODES_NON_PAYES = 'acces_codes_non_payes';
+
+    private const CODES_NON_PAYES = '/logistique/codes-non-payes';
 
     /** Rôles de direction : une page ouverte à eux seuls reste à eux seuls. */
     private const DIRECTION = ['dg', 'admin', 'dg_surveillance', 'assistant_dg', 'assistante_dg'];
@@ -55,12 +59,32 @@ final class AccesEtendu
             return true;
         }
 
+        if (Auth::hasRole(self::ROLE_CODES_NON_PAYES)
+            && ($chemin === self::CODES_NON_PAYES || str_starts_with($chemin, self::CODES_NON_PAYES . '/'))) {
+            return true;
+        }
+
         if (!self::tousModules()) {
             return false;
         }
 
         // Une page que son module réserve à la direction reste à la direction.
         return array_diff($rolesDeLaPage, self::DIRECTION) !== [];
+    }
+
+    /**
+     * Où envoyer quelqu'un qui n'a que l'accès aux Codes Non Payés et qui
+     * ouvre l'accueil du module Logistique (la tuile du portail y mène) :
+     * vers son écran, plutôt que vers un refus.
+     */
+    public static function redirection(string $chemin): ?string
+    {
+        $chemin = self::sansPrefixe($chemin);
+        if (Auth::isAdmin() || !Auth::hasRole(self::ROLE_CODES_NON_PAYES)) {
+            return null;
+        }
+
+        return in_array($chemin, ['/logistique', '/logistique/dashboard'], true) ? self::CODES_NON_PAYES : null;
     }
 
     /** Le chemin sans le dossier d'installation local (/ERP_LBP_REFACTO). */

@@ -61,6 +61,19 @@ final class AccesEtenduTest extends TestCase
         self::assertFalse(AccesEtendu::ouvre('/finance/controle-caisse', ['dg', 'comptable']));
     }
 
+    public function testLAccesCodesNonPayesNOuvreQueCetEcran(): void
+    {
+        $this->connecter(['rh_agent', AccesEtendu::ROLE_CODES_NON_PAYES]);
+
+        self::assertTrue(AccesEtendu::ouvre('/logistique/codes-non-payes', ['agent_groupage']));
+        self::assertTrue(AccesEtendu::ouvre('/ERP_LBP_REFACTO/logistique/codes-non-payes/export-pdf', ['agent_groupage']));
+        self::assertFalse(AccesEtendu::ouvre('/logistique/colisage', ['agent_groupage']));
+        self::assertFalse(AccesEtendu::ouvre('/logistique/dashboard', ['dg', 'responsable_logistique']));
+        self::assertFalse(AccesEtendu::ouvre('/finance/factures', ['comptable']));
+        self::assertSame('/logistique/codes-non-payes', AccesEtendu::redirection('/logistique/dashboard'));
+        self::assertNull(AccesEtendu::redirection('/colisage/dashboard'));
+    }
+
     public function testSansRoleEtenduRienNeSOuvre(): void
     {
         $this->connecter(['agent_saisie']);

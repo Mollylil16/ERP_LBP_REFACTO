@@ -27,6 +27,13 @@ final class LogistiqueDashboardController extends LogistiqueBaseController
     {
         AuthMiddleware::check();
 
+        // Accès limité aux Codes Non Payés : la tuile Logistique y conduit directement.
+        $vers = \App\Security\AccesEtendu::redirection((string) parse_url((string) ($_SERVER['REQUEST_URI'] ?? ''), PHP_URL_PATH));
+        if ($vers !== null) {
+            $this->redirect($vers);
+            return;
+        }
+
         $module = $this->service->dashboard();
         $page = new \App\View\Pages\Logistique\DashboardPage($module);
         $rayons = $this->rayonRepository->getAllRayons();
