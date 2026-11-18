@@ -259,6 +259,9 @@ final class Payroll
             . '      <option value="cdi_permanent">CDI permanent</option>'
             . '      <option value="stage">Stage de perfectionnement</option>'
             . '      <option value="vacataire">Vacataire</option>'
+            . '      <option value="Prestataire">Prestataire (prestation de service)</option>'
+            . '      <option value="Consultant">Consultant</option>'
+            . '      <option value="CDI">CDI</option>'
             . '    </select>'
             . '  </div>'
             . '  <div>'
@@ -641,6 +644,16 @@ function onEmployeeChange() {
         document.getElementById("contract_base_salary").value = contract.base_salary || 0;
         document.getElementById("contract_sursalaire").value = contract.sursalaire || 0;
         document.getElementById("contract_transport").value = contract.transport_locality || "";
+        // Le type du contrat existant est repris : sinon « Enregistrer le contrat RH »
+        // le remplacait par « Parametrage libre ».
+        const typeSelect = document.getElementById("contract_form_type");
+        if (typeSelect && contract.contract_type) {
+            const voulu = String(contract.contract_type).toLowerCase();
+            const option = Array.from(typeSelect.options).find(function (o) { return o.value.toLowerCase() === voulu; });
+            if (option) typeSelect.value = option.value;
+        }
+        if (contract.start_date && contract.start_date !== "0000-00-00") document.getElementById("contract_start").value = contract.start_date;
+        if (contract.end_date) document.getElementById("contract_end").value = contract.end_date;
         document.getElementById("rem_salary").value = contract.base_salary || 0;
         document.getElementById("rem_sursalaire").value = contract.sursalaire || 0;
         document.getElementById("rem_category").value = contract.category || "M2";
