@@ -115,17 +115,40 @@ final class RhPayrollController extends RhBaseController
             // Resolve period_id from period_month (e.g. 2026-06)
             $periodMonth = trim((string) ($_POST['period_month'] ?? ''));
             $periodId = 0;
-            if ($periodMonth !== '') {
-                $stmtPeriod = $pdo->prepare("SELECT id FROM rh_payroll_periods WHERE code = ?");
+            if (preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $periodMonth) === 1) {
+                $stmtPeriod = $pdo->prepare("SELECT id, status FROM rh_payroll_periods WHERE code = ?");
                 $stmtPeriod->execute([$periodMonth]);
-                $periodId = (int) $stmtPeriod->fetchColumn();
+                $periode = $stmtPeriod->fetch(\PDO::FETCH_ASSOC) ?: null;
+
+                if ($periode !== null && (string) $periode['status'] !== 'open') {
+                    throw new \RuntimeException('La période de paie ' . $periodMonth . ' est clôturée : aucun bulletin ne peut y être ajouté.');
+                }
+
+                if ($periode === null) {
+                    /*
+                     * Le bulletin porte sur un mois : sa période se déduit du
+                     * mois choisi. Exiger qu'on la crée d'abord, au format exact
+                     * « AAAA-MM », bloquait tout calcul sans dire pourquoi.
+                     */
+                    $debut = $periodMonth . '-01';
+                    $this->repository->createPeriod($periodMonth, $debut, date('Y-m-t', (int) strtotime($debut)));
+                    $periodId = (int) $pdo->lastInsertId();
+                } else {
+                    $periodId = (int) $periode['id'];
+                }
             }
             if ($periodId <= 0) {
                 $periodId = (int) ($_POST['period_id'] ?? 0);
             }
 
-            if ($employeeId <= 0 || $periodId <= 0 || $baseSalary <= 0) {
-                throw new \RuntimeException('Le salarié, la période de paie valide (ouverte) et le salaire de base sont obligatoires.');
+            if ($employeeId <= 0) {
+                throw new \RuntimeException('Choisissez le salarié avant de calculer le bulletin.');
+            }
+            if ($periodId <= 0) {
+                throw new \RuntimeException('Choisissez le mois du bulletin.');
+            }
+            if ($baseSalary <= 0) {
+                throw new \RuntimeException('Le salaire de base est à 0 : saisissez le salaire catégoriel avant de calculer le bulletin.');
             }
 
             // Delete existing slip for this employee and period if any

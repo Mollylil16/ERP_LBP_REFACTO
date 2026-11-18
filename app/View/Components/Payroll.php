@@ -273,7 +273,7 @@ final class Payroll
             . '<div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 16px;">'
             . '  <div>'
             . '    <label style="font-weight: 600; font-size: 13px; display: block; margin-bottom: 6px;">Salaire categoriel</label>'
-            . '    <input type="number" id="contract_base_salary" name="base_salary" value="0" class="finea-form-control payroll-form-input" />'
+            . '    <input type="number" id="contract_base_salary" name="contract_base_salary" value="0" class="finea-form-control payroll-form-input" />'
             . '  </div>'
             . '  <div>'
             . '    <label style="font-weight: 600; font-size: 13px; display: block; margin-bottom: 6px;">Sursalaire</label>'
@@ -527,7 +527,7 @@ final class Payroll
             . '    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="4" y="2" width="16" height="20" rx="2"></rect><line x1="8" y1="6" x2="16" y2="6"></line><line x1="8" y1="10" x2="10" y2="10"></line><line x1="14" y1="10" x2="16" y2="10"></line><line x1="8" y1="14" x2="10" y2="14"></line><line x1="14" y1="14" x2="16" y2="14"></line><line x1="8" y1="18" x2="10" y2="18"></line><line x1="14" y1="18" x2="16" y2="18"></line></svg>'
             . '    Calculer le bulletin'
             . '  </button>'
-            . '  <button type="submit" id="save-btn" style="display: none;" class="payroll-nav-btn payroll-nav-btn--save">'
+            . '  <button type="submit" id="save-btn" onclick="calculateBulletin()" style="display: none;" class="payroll-nav-btn payroll-nav-btn--save">'
             . '    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>'
             . '    Enregistrer la fiche'
             . '  </button>'
@@ -778,8 +778,11 @@ function saveContract() {
 }
 
 function calculateBulletin() {
-    const base = parseFloat(document.getElementById("contract_base_salary").value) || 0;
-    const sur = parseFloat(document.getElementById("contract_sursalaire").value) || 0;
+    // Sans contrat (parametrage libre), le salaire peut avoir ete saisi a l etape Remuneration.
+    const base = parseFloat(document.getElementById("contract_base_salary").value)
+        || parseFloat(document.getElementById("rem_salary")?.value) || 0;
+    const sur = parseFloat(document.getElementById("contract_sursalaire").value)
+        || parseFloat(document.getElementById("rem_sursalaire")?.value) || 0;
     const ot = parseFloat(document.getElementById("rem_overtime").value) || 0;
     const rule = contractRulesData.find(r => r.contract_type === selectedContractType) || {overtime_multiplier:1, working_days:30};
     
