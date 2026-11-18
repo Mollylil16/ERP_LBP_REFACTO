@@ -261,7 +261,11 @@ final class RhPayrollRepository
     {
         $employeeId = (int) ($data['employee_id'] ?? 0);
         $contractType = trim((string) ($data['contract_type'] ?? 'libre'));
-        $startDate = trim((string) ($data['start_date'] ?? date('Y-m-d')));
+        // Un champ vide arrivait tel quel et devenait 0000-00-00 (« 30/11/-0001 »).
+        $startDate = trim((string) ($data['start_date'] ?? ''));
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $startDate) !== 1 || $startDate === '0000-00-00') {
+            $startDate = date('Y-m-d');
+        }
         $endDate = !empty($data['end_date']) ? trim((string) $data['end_date']) : null;
         $baseSalary = (float) ($data['base_salary'] ?? 0);
         $sursalaire = (float) ($data['sursalaire'] ?? 0);
