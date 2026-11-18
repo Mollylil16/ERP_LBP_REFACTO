@@ -42,7 +42,7 @@ class RhLifecycleController extends RhBaseController
     public function storeEvaluation(): void { $this->execute(fn() => $this->service->createEvaluation($_POST, (int) Auth::id()), 'Évaluation planifiée.', 'evaluations'); }
     public function storeTraining(): void { $this->execute(fn() => $this->service->createTraining($_POST, (int) Auth::id()), 'Session de formation créée.', 'trainings'); }
     public function storeDiscipline(): void { $this->execute(fn() => $this->service->createDisciplinaryAction($_POST, (int) Auth::id()), 'Mesure disciplinaire enregistrée.', 'discipline'); }
-    public function decideWorkflow(string $id): void { $this->execute(fn() => $this->service->decideWorkflow((int) $id, (string) ($_POST['decision'] ?? ''), (int) Auth::id()), 'Workflow mis à jour.', 'workflows'); }
+    public function decideWorkflow(string $id): void { $this->execute(fn() => $this->service->decideWorkflow((int) $id, (string) ($_POST['decision'] ?? ''), (int) Auth::id()), 'Décision enregistrée.', 'workflows'); }
     public function decideEmployeeRequest(string $id): void { $this->execute(fn() => $this->service->decideEmployeeRequest((int) $id, (string) ($_POST['decision'] ?? ''), (int) Auth::id(), $_POST['comment'] ?? null), 'Demande employé mise à jour.', 'workflows'); }
 
     /** Suppressions physiques — réservées Admin/DG. */

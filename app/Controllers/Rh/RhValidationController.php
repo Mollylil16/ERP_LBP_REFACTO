@@ -70,7 +70,7 @@ final class RhValidationController extends RhBaseController
         try {
             $decision = (string) ($_POST['decision'] ?? '');
             $this->repository->decideWorkflow((int) $id, $decision, (int) Auth::id());
-            Session::flash('success', 'Le workflow a ete mis a jour.');
+            Session::flash('success', 'Décision enregistrée.');
         } catch (RuntimeException $e) {
             Session::flash('error', $e->getMessage());
         }

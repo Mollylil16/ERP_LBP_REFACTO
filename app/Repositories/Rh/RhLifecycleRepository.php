@@ -153,16 +153,47 @@ class RhLifecycleRepository
         if (!$row) {
             throw new \RuntimeException('Workflow RH introuvable.');
         }
-        $steps = ['manager' => 'rh', 'rh' => 'direction', 'direction' => 'completed'];
-        $next = $decision === 'approve' ? ($steps[$row['current_step']] ?? 'completed') : 'completed';
-        $status = $decision === 'reject' ? 'rejected' : ($next === 'completed' ? 'approved' : 'pending');
-        $stmt = $this->pdo->prepare("
-            UPDATE rh_workflow_requests
-            SET current_step = :step, status = :status, decided_by = :actor,
-                decided_at = IF(:final_status IN ('approved','rejected'), NOW(), decided_at), updated_at = NOW()
-            WHERE id = :id
-        ");
-        $stmt->execute(['step' => $next, 'status' => $status, 'final_status' => $status, 'actor' => $actorId ?: null, 'id' => $id]);
+        if ((string) $row['status'] !== 'pending') {
+            throw new \RuntimeException('Cette demande a déjà été traitée.');
+        }
+
+        /*
+         * Une seule décision suffit (18/11/2026). Le circuit Manager → RH →
+         * Direction demandait trois clics sur le même bouton, sans que rien
+         * ne change à l'écran entre deux : on croyait le bouton cassé. Le
+         * module RH n'est ouvert qu'à la direction, à la RH et à l'admin :
+         * qui y valide a déjà le dernier mot.
+         */
+        $status = $decision === 'approve' ? 'approved' : 'rejected';
+
+        $this->pdo->beginTransaction();
+        try {
+            $stmt = $this->pdo->prepare("
+                UPDATE rh_workflow_requests
+                SET current_step = 'completed', status = :status, decided_by = :actor,
+                    decided_at = NOW(), updated_at = NOW()
+                WHERE id = :id
+            ");
+            $stmt->execute(['status' => $status, 'actor' => $actorId ?: null, 'id' => $id]);
+
+            // Le contrat suit la décision : sans cela il restait « en validation »
+            // pour toujours, et la paie ne le voyait jamais.
+            if ((string) $row['subject_type'] === 'contract' && (int) $row['subject_id'] > 0) {
+                $contrat = $this->pdo->prepare("
+                    UPDATE rh_contracts SET status = :status, updated_at = NOW()
+                    WHERE id = :id AND status = 'approval'
+                ");
+                $contrat->execute([
+                    'status' => $decision === 'approve' ? 'active' : 'draft',
+                    'id' => (int) $row['subject_id'],
+                ]);
+            }
+
+            $this->pdo->commit();
+        } catch (\Throwable $e) {
+            $this->pdo->rollBack();
+            throw $e;
+        }
     }
 
     public function advanceEmployeeRequest(int $id, string $decision, int $actorId, ?string $comment): void

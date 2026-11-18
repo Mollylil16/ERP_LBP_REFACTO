@@ -110,29 +110,11 @@ final class RhValidationRepository
 
     public function decideWorkflow(int $id, string $decision, int $actorId): void
     {
-        $stmt = $this->pdo->prepare("SELECT * FROM rh_workflow_requests WHERE id = :id LIMIT 1");
-        $stmt->execute(['id' => $id]);
-        $row = $stmt->fetch();
-        if (!$row) {
-            throw new \RuntimeException('Workflow RH introuvable.');
+        // Une seule règle pour les trois écrans (Validations, Pilotage DG,
+        // application mobile) et le cycle de vie : voir advanceWorkflow.
+        if (!in_array($decision, ["approve", "reject"], true)) {
+            throw new \RuntimeException("Décision de workflow invalide.");
         }
-
-        $steps = ['manager' => 'rh', 'rh' => 'direction', 'direction' => 'completed'];
-        $next = $decision === 'approve' ? ($steps[$row['current_step']] ?? 'completed') : 'completed';
-        $status = $decision === 'reject' ? 'rejected' : ($next === 'completed' ? 'approved' : 'pending');
-
-        $update = $this->pdo->prepare("
-            UPDATE rh_workflow_requests
-            SET current_step = :step, status = :status, decided_by = :actor,
-                decided_at = IF(:final IN ('approved', 'rejected'), NOW(), decided_at), updated_at = NOW()
-            WHERE id = :id
-        ");
-        $update->execute([
-            'step' => $next,
-            'status' => $status,
-            'final' => $status,
-            'actor' => $actorId ?: null,
-            'id' => $id
-        ]);
+        (new RhLifecycleRepository($this->pdo))->advanceWorkflow($id, $decision, $actorId);
     }
 }
