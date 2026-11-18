@@ -45,7 +45,15 @@ final class RhPayrollController extends RhBaseController
         AuthMiddleware::check();
         
         $pdo = Database::getConnection();
-        $stmt = $pdo->query("SELECT id, full_name, employee_number FROM rh_employees WHERE is_active = 1 ORDER BY full_name ASC");
+        // Le statut de la fiche RH (Prestataire, Stage, CDI, CDD…) : c'est lui
+        // que l'aperçu affiche quand aucun contrat de paie n'a de type.
+        $stmt = $pdo->query("
+            SELECT e.id, e.full_name, e.employee_number, s.name AS statut_rh
+            FROM rh_employees e
+            LEFT JOIN rh_statuses s ON s.id = e.status_id
+            WHERE e.is_active = 1
+            ORDER BY e.full_name ASC
+        ");
         $employees = $stmt->fetchAll() ?: [];
 
         $periods = $this->repository->getPeriods();

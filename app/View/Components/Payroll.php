@@ -92,7 +92,7 @@ final class Payroll
     {
         $employeeOptions = '<option value="">Selectionner un collaborateur</option>';
         foreach ($page->employees as $emp) {
-            $employeeOptions .= '<option value="' . (int)$emp['id'] . '">'
+            $employeeOptions .= '<option value="' . (int)$emp['id'] . '" data-statut-rh="' . View::e((string) ($emp['statut_rh'] ?? '')) . '">'
                 . View::e($emp['full_name']) . ' (' . View::e($emp['employee_number'] ?: 'Sans matricule') . ')'
                 . '</option>';
         }
@@ -627,6 +627,12 @@ function onEmployeeChange() {
     const period = document.getElementById("wizard_period");
     if (period) document.getElementById("preview-period").innerText = period.value;
 
+    // Sans type de contrat de paie, on affiche le statut de la fiche RH
+    // (Prestataire, Stage, CDI...) et jamais un CDI suppose.
+    const statutRh = empSelect.options[empSelect.selectedIndex].dataset.statutRh || "Non renseigné";
+    const libelleSansType = statutRh + " (paramétrage libre)";
+    document.getElementById("preview-contract").innerText = libelleSansType;
+
     // Load contract data if exists
     const contract = employeeContractsData[empId];
     const alert = document.getElementById("contract-alert");
@@ -645,7 +651,14 @@ function onEmployeeChange() {
             selectContractType(card, contract.contract_type);
         } else {
             selectedContractType = contract.contract_type || "libre";
-            document.getElementById("preview-contract").innerText = contract.contract_type || "CDI";
+            document.getElementById("preview-contract").innerText = contract.contract_type
+                ? contract.contract_type.toUpperCase()
+                : libelleSansType;
+        }
+        // Un contrat dont la date de fin est passee est signale comme expire.
+        if (contract.end_date && contract.end_date !== "0000-00-00" && contract.end_date < new Date().toISOString().slice(0, 10)) {
+            const fin = contract.end_date.split("-").reverse().join("/");
+            document.getElementById("preview-contract").innerText += " — expiré le " + fin;
         }
         
         document.getElementById("preview-base").innerText = Number(contract.base_salary || 0).toLocaleString("fr-FR") + " XOF";

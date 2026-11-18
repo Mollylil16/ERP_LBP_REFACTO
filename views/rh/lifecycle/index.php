@@ -56,6 +56,7 @@ use App\View\Pages\Rh\LifecyclePage;
                         ['value' => 'CDD', 'label' => 'CDD'],
                         ['value' => 'Stage', 'label' => 'Stage'],
                         ['value' => 'Consultant', 'label' => 'Consultant'],
+                        ['value' => 'Prestataire', 'label' => 'Prestataire (prestation de service)'],
                     ], 'CDI', ['label' => 'Type', 'required' => true]) ?>
                     <?= Form::input('reference', ['label' => 'Référence']) ?>
                     <?= Form::input('start_date', ['label' => 'Début', 'type' => 'date', 'required' => true]) ?>
