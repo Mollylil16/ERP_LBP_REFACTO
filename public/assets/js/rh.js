@@ -17,17 +17,17 @@ document.addEventListener("DOMContentLoaded", () => {
     childrenContainer.innerHTML = "";
     if (count === 0) return;
     const title = document.createElement("h3");
-    title.textContent = "Extraits de naissance des enfants";
+    title.textContent = "Extraits de naissance des enfants (optionnel)";
     childrenContainer.appendChild(title);
     for (let i = 1; i <= count; i += 1) {
       const label = document.createElement("label");
       label.className = "finea-dropzone finea-child-dropzone";
       label.setAttribute("data-finea-dropzone", "");
       label.innerHTML = `
-        <input type="file" name="child_birth_certificates[]" accept="image/*,.pdf" required>
+        <input type="file" name="child_birth_certificates[]" accept="image/*,.pdf">
         <span class="finea-dropzone-icon">⇪</span>
         <strong>Enfant ${i}</strong>
-        <span>Extrait de naissance obligatoire pour cet enfant.</span>
+        <span>Extrait de naissance (optionnel), ajoutable plus tard depuis le dossier RH.</span>
         <div class="finea-file-preview" data-finea-file-preview></div>`;
       childrenContainer.appendChild(label);
     }
